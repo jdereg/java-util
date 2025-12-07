@@ -15,6 +15,7 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 
+import com.cedarsoftware.util.ArrayUtilities;
 import com.cedarsoftware.util.ClassUtilities;
 import com.cedarsoftware.util.MathUtilities;
 import com.cedarsoftware.util.ReflectionUtils;
@@ -264,9 +265,9 @@ final class ObjectConversions {
         // Handle arrays
         if (valueClass.isArray()) {
             List<Object> result = new ArrayList<>();
-            int length = java.lang.reflect.Array.getLength(value);
+            int length = ArrayUtilities.getLength(value);
             for (int i = 0; i < length; i++) {
-                Object item = java.lang.reflect.Array.get(value, i);
+                Object item = ArrayUtilities.getElement(value, i);
                 if (item != null && !isPrimitiveOrWrapper(item.getClass()) && !(item instanceof String)) {
                     // For complex objects in arrays, convert to string for simplicity
                     result.add(item.toString());

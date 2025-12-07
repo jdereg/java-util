@@ -2,6 +2,8 @@ package com.cedarsoftware.util.convert;
 
 import java.lang.reflect.Array;
 import java.util.Collection;
+
+import com.cedarsoftware.util.ArrayUtilities;
 import java.util.EnumSet;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -55,11 +57,11 @@ final class EnumConversions {
     }
 
     private static <T extends Enum<T>> void processArrayElements(Object array, EnumSet<T> enumSet, Class<T> enumClass) {
-        int length = Array.getLength(array);
+        int length = ArrayUtilities.getLength(array);
         T[] enumConstants = null;  // Lazy initialization
 
         for (int i = 0; i < length; i++) {
-            Object element = Array.get(array, i);
+            Object element = ArrayUtilities.getElement(array, i);
             if (element != null) {
                 enumConstants = processElement(element, enumSet, enumClass, enumConstants);
             }

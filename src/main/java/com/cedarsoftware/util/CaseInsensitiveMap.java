@@ -168,6 +168,7 @@ import java.util.function.Function;
  */
 public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V> {
     private final Map<K, V> map;
+    private final boolean isMultiKeyMapBacking;
     private static final AtomicReference<List<Entry<Class<?>, Function<Integer, ? extends Map<?, ?>>>>> mapRegistry;
 
     static {
@@ -353,7 +354,8 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
      */
     public CaseInsensitiveMap() {
         map = new LinkedHashMap<>();
-   }
+        isMultiKeyMapBacking = false;
+    }
 
     /**
      * Constructs an empty CaseInsensitiveMap with the specified initial capacity
@@ -364,6 +366,7 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
      */
     public CaseInsensitiveMap(int initialCapacity) {
         map = new LinkedHashMap<>(initialCapacity);
+        isMultiKeyMapBacking = false;
     }
 
     /**
@@ -376,6 +379,7 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
      */
     public CaseInsensitiveMap(int initialCapacity, float loadFactor) {
         map = new LinkedHashMap<>(initialCapacity, loadFactor);
+        isMultiKeyMapBacking = false;
     }
 
     /**
@@ -394,6 +398,7 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
             throw new IllegalArgumentException("mapInstance must be empty");
         }
         map = copy(source, mapInstance);
+        isMultiKeyMapBacking = mapInstance instanceof MultiKeyMap;
     }
 
     /**
@@ -409,6 +414,7 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
     public CaseInsensitiveMap(Map<K, V> source) {
         Objects.requireNonNull(source, "Source map cannot be null");
         map = determineBackingMap(source);
+        isMultiKeyMapBacking = map instanceof MultiKeyMap;
     }
 
     /**
@@ -446,7 +452,7 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
      */
     @Override
     public V get(Object key) {
-        if (map instanceof MultiKeyMap) {
+        if (isMultiKeyMapBacking) {
             return map.get(convertKeyForMultiKeyMap(key));
         }
         return map.get(convertKey(key));
@@ -459,7 +465,7 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
      */
     @Override
     public boolean containsKey(Object key) {
-        if (map instanceof MultiKeyMap) {
+        if (isMultiKeyMapBacking) {
             return map.containsKey(convertKeyForMultiKeyMap(key));
         }
         return map.containsKey(convertKey(key));
@@ -472,7 +478,7 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
      */
     @Override
     public V put(K key, V value) {
-        if (map instanceof MultiKeyMap) {
+        if (isMultiKeyMapBacking) {
             return map.put((K) convertKeyForMultiKeyMap(key), value);
         }
         return map.put((K) convertKey(key), value);
@@ -485,7 +491,7 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
      */
     @Override
     public V remove(Object key) {
-        if (map instanceof MultiKeyMap) {
+        if (isMultiKeyMapBacking) {
             return map.remove(convertKeyForMultiKeyMap(key));
         }
         return map.remove(convertKey(key));
@@ -1639,11 +1645,9 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
             return null;
         }
         
-        // Check if the backing map is MultiKeyMap and get its flattenDimensions setting
-        boolean shouldFlatten = false;
-        if (map instanceof MultiKeyMap) {
-            shouldFlatten = ((MultiKeyMap<Object>) map).getFlattenDimensions();
-        }
+        // Get the flattenDimensions setting from the MultiKeyMap backing
+        // This method is only called when isMultiKeyMapBacking is true
+        boolean shouldFlatten = ((MultiKeyMap<Object>) map).getFlattenDimensions();
         
         // When flattenDimensions=false, still need to convert String elements to CaseInsensitiveString
         // for case-insensitive comparison, but preserve the array/collection structure
@@ -1653,10 +1657,10 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
         
         // Handle 1D arrays - convert to Object[] with case-insensitive strings
         if (key.getClass().isArray()) {
-            int length = Array.getLength(key);
+            int length = ArrayUtilities.getLength(key);
             Object[] result = new Object[length];
             for (int i = 0; i < length; i++) {
-                Object element = Array.get(key, i);
+                Object element = ArrayUtilities.getElement(key, i);
                 result[i] = convertKey(element);
             }
             return result;
@@ -1688,10 +1692,10 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
         
         // Handle arrays by creating Object[] with converted elements
         if (obj.getClass().isArray()) {
-            int length = Array.getLength(obj);
+            int length = ArrayUtilities.getLength(obj);
             Object[] result = new Object[length];
             for (int i = 0; i < length; i++) {
-                Object element = Array.get(obj, i);
+                Object element = ArrayUtilities.getElement(obj, i);
                 result[i] = convertElementsRecursively(element);
             }
             return result;

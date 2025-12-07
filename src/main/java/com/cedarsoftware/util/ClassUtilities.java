@@ -7,6 +7,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.Serializable;
 import java.io.UncheckedIOException;
+import java.lang.ref.Reference;
+import java.lang.ref.ReferenceQueue;
+import java.lang.ref.WeakReference;
 import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
@@ -197,10 +200,10 @@ public class ClassUtilities {
     /**
      * Custom WeakReference that remembers its key name for cleanup via ReferenceQueue
      */
-    private static final class NamedWeakRef extends java.lang.ref.WeakReference<Class<?>> {
+    private static final class NamedWeakRef extends WeakReference<Class<?>> {
         final String name;
         
-        NamedWeakRef(String name, Class<?> referent, java.lang.ref.ReferenceQueue<Class<?>> q) {
+        NamedWeakRef(String name, Class<?> referent, ReferenceQueue<Class<?>> q) {
             super(referent, q);
             this.name = name;
         }
@@ -210,8 +213,8 @@ public class ClassUtilities {
      * Holder for per-ClassLoader cache and its associated ReferenceQueue
      */
     private static final class LoaderCache {
-        final LRUCache<String, java.lang.ref.WeakReference<Class<?>>> cache = new LRUCache<>(1024);
-        final java.lang.ref.ReferenceQueue<Class<?>> queue = new java.lang.ref.ReferenceQueue<>();
+        final LRUCache<String, WeakReference<Class<?>>> cache = new LRUCache<>(4096);
+        final ReferenceQueue<Class<?>> queue = new ReferenceQueue<>();
     }
 
     private ClassUtilities() {
@@ -243,7 +246,7 @@ public class ClassUtilities {
             // Opportunistically drain dead references before lookup
             drainQueue(holder);
             
-            java.lang.ref.WeakReference<Class<?>> ref = holder.cache.get(name);
+            WeakReference<Class<?>> ref = holder.cache.get(name);
             Class<?> cls = (ref == null) ? null : ref.get();
             if (ref != null && cls == null) {
                 holder.cache.remove(name);  // Clean up cleared entry
@@ -281,7 +284,7 @@ public class ClassUtilities {
      * Drains the ReferenceQueue, removing dead entries from the cache
      */
     private static void drainQueue(LoaderCache holder) {
-        java.lang.ref.Reference<? extends Class<?>> ref;
+        Reference<? extends Class<?>> ref;
         while ((ref = holder.queue.poll()) != null) {
             if (ref instanceof NamedWeakRef) {
                 holder.cache.remove(((NamedWeakRef) ref).name);
@@ -1661,10 +1664,10 @@ public class ClassUtilities {
                         }
                     }
                     try {
-                        Array.set(varargsArray, i, value);
-                    } catch (ArrayStoreException ex) {
+                        ArrayUtilities.setElement(varargsArray, i, value);
+                    } catch (IllegalArgumentException ex) {
                         // Last-chance guard for exotic conversions - use default safely
-                        Array.set(varargsArray, i, getArgForType(converter, componentType));
+                        ArrayUtilities.setElement(varargsArray, i, getArgForType(converter, componentType));
                     }
                 }
                 result[fixedParamCount] = varargsArray;
@@ -1709,10 +1712,10 @@ public class ClassUtilities {
                         }
                     }
                     try {
-                        Array.set(varargsArray, i, value);
-                    } catch (ArrayStoreException ex) {
+                        ArrayUtilities.setElement(varargsArray, i, value);
+                    } catch (IllegalArgumentException ex) {
                         // Last-chance guard for exotic conversions - use default safely
-                        Array.set(varargsArray, i, getArgForType(converter, componentType));
+                        ArrayUtilities.setElement(varargsArray, i, getArgForType(converter, componentType));
                     }
                 }
                 result[0] = varargsArray;
@@ -2242,10 +2245,10 @@ public class ClassUtilities {
                         int k = 0;
                         for (Object item : src) {
                             try {
-                                Array.set(array, k++, converter.convert(item, componentType));
+                                ArrayUtilities.setElement(array, k++, converter.convert(item, componentType));
                             } catch (Exception e) {
                                 // Use default value if conversion fails
-                                Array.set(array, k++, getArgForType(converter, componentType));
+                                ArrayUtilities.setElement(array, k++, getArgForType(converter, componentType));
                             }
                         }
                     }
@@ -2253,7 +2256,7 @@ public class ClassUtilities {
                     
                     if (LOG.isLoggable(Level.FINEST)) {
                         LOG.log(Level.FINEST, "  Matched varargs parameter ''{0}'' with array of length: {1}",
-                                new Object[]{paramNames[i], Array.getLength(array)});
+                                new Object[]{paramNames[i], ArrayUtilities.getLength(array)});
                     }
                     continue;
                 }

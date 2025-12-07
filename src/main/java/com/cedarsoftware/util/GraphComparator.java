@@ -409,10 +409,10 @@ public class GraphComparator
                 {
                     StringBuilder s = new StringBuilder();
                     s.append('[');
-                    final int len = Array.getLength(foo);
+                    final int len = ArrayUtilities.getLength(foo);
                     for (int i=0; i < len; i++)
                     {
-                        Object element = Array.get(foo, i);
+                        Object element = ArrayUtilities.getElement(foo, i);
                         s.append(element == null ? "null" : element.toString());
                         if (i < len - 1)
                         {
@@ -662,8 +662,8 @@ public class GraphComparator
      * Cyclomatic code complexity reduction by: AxataDarji
      */
     private static void compareArrays(Delta delta, Collection<Delta> deltas, LinkedList<Delta> stack, ID idFetcher) {
-        int srcLen = Array.getLength(delta.srcValue);
-        int targetLen = Array.getLength(delta.targetValue);
+        int srcLen = ArrayUtilities.getLength(delta.srcValue);
+        int targetLen = ArrayUtilities.getLength(delta.targetValue);
 
         if (srcLen != targetLen) {
             handleArrayResize(delta, deltas, targetLen);
@@ -687,11 +687,11 @@ public class GraphComparator
 
     private static void processPrimitiveArray(Delta delta, Collection<Delta> deltas, String sysId, int srcLen, int targetLen) {
         for (int i = 0; i < targetLen; i++) {
-            final Object targetValue = Array.get(delta.targetValue, i);
+            final Object targetValue = ArrayUtilities.getElement(delta.targetValue, i);
             String srcPtr = sysId + '[' + i + ']';
 
             if (i < srcLen) {
-                final Object srcValue = Array.get(delta.srcValue, i);
+                final Object srcValue = ArrayUtilities.getElement(delta.srcValue, i);
                 if (srcValue == null && targetValue != null ||
                         srcValue != null && targetValue == null ||
                         !srcValue.equals(targetValue)) {
@@ -705,11 +705,11 @@ public class GraphComparator
 
     private static void processNonPrimitiveArray(Delta delta, Collection<Delta> deltas, LinkedList<Delta> stack, ID idFetcher, String sysId, int srcLen, int targetLen) {
         for (int i = targetLen - 1; i >= 0; i--) {
-            final Object targetValue = Array.get(delta.targetValue, i);
+            final Object targetValue = ArrayUtilities.getElement(delta.targetValue, i);
             String srcPtr = sysId + '[' + i + ']';
 
             if (i < srcLen) {
-                final Object srcValue = Array.get(delta.srcValue, i);
+                final Object srcValue = ArrayUtilities.getElement(delta.srcValue, i);
                 if (targetValue == null || srcValue == null) {
                     if (srcValue != targetValue) {
                         copyArrayElement(delta, deltas, srcPtr, srcValue, targetValue, i);
@@ -1126,7 +1126,7 @@ public class GraphComparator
 
             Object sourceArray = Helper.getFieldValueAs(source, field, field.getType(), delta);
             int pos = Helper.getResizeValue(delta);
-            int srcArrayLen = Array.getLength(sourceArray);
+            int srcArrayLen = ArrayUtilities.getLength(sourceArray);
 
             if (pos >= srcArrayLen)
             {   // pos < 0 already checked in getResizeValue()
@@ -1134,7 +1134,7 @@ public class GraphComparator
                         ", array size: " + srcArrayLen + ", field: " + field.getName() + ", obj id: " + delta.id);
             }
 
-            Array.set(sourceArray, pos, delta.targetValue);
+            ArrayUtilities.setElement(sourceArray, pos, delta.targetValue);
         }
 
         public void processArrayResize(Object source, Field field, Delta delta)
@@ -1147,7 +1147,7 @@ public class GraphComparator
 
             int newSize = Helper.getResizeValue(delta);
             Object sourceArray = Helper.getFieldValueAs(source, field, field.getType(), delta);
-            int oldSize = Array.getLength(sourceArray);
+            int oldSize = ArrayUtilities.getLength(sourceArray);
             int maxKeepLen = Math.min(newSize, oldSize);
             Object newArray = Array.newInstance(field.getType().getComponentType(), newSize);
             System.arraycopy(sourceArray, 0, newArray, 0, maxKeepLen);

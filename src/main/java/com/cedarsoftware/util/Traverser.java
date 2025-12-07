@@ -528,7 +528,7 @@ public class Traverser {
     }
     
     private void processArray(Deque<TraversalNode> stack, Object array, Set<Class<?>> classesToSkip, int depth) {
-        int length = Array.getLength(array);
+        int length = ArrayUtilities.getLength(array);
         Class<?> componentType = array.getClass().getComponentType();
 
         if (!componentType.isPrimitive()) {
@@ -536,7 +536,7 @@ public class Traverser {
             validateArrayLength(length);
             
             for (int i = 0; i < length; i++) {
-                Object element = Array.get(array, i);
+                Object element = ArrayUtilities.getElement(array, i);
                 if (element != null && !shouldSkipClass(element.getClass(), classesToSkip)) {
                     stack.addFirst(new TraversalNode(element, depth + 1));
                 }

@@ -2,6 +2,8 @@ package com.cedarsoftware.util.convert;
 
 import java.lang.reflect.Array;
 import java.util.ArrayDeque;
+
+import com.cedarsoftware.util.ArrayUtilities;
 import java.util.Collection;
 import java.util.Deque;
 import java.util.IdentityHashMap;
@@ -82,10 +84,10 @@ public final class CollectionConversions {
 
         while (!queue.isEmpty()) {
             ArrayToCollectionWorkItem work = queue.poll();
-            int workLength = Array.getLength(work.sourceArray);
+            int workLength = ArrayUtilities.getLength(work.sourceArray);
 
             for (int i = 0; i < workLength; i++) {
-                Object element = Array.get(work.sourceArray, i);
+                Object element = ArrayUtilities.getElement(work.sourceArray, i);
 
                 if (element != null && element.getClass().isArray()) {
                     // Check if we've already converted this array (circular reference)

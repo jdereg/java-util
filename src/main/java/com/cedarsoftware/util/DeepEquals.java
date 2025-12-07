@@ -1208,8 +1208,8 @@ public class DeepEquals {
         }
 
         // 3. Check lengths
-        int len1 = Array.getLength(array1);
-        int len2 = Array.getLength(array2);
+        int len1 = ArrayUtilities.getLength(array1);
+        int len2 = ArrayUtilities.getLength(array2);
         
         // Security check: validate array sizes
         if (maxArraySize > 0 && (len1 > maxArraySize || len2 > maxArraySize)) {
@@ -1313,7 +1313,7 @@ public class DeepEquals {
             // For object arrays, push elements in reverse order
             // This ensures element 0 is compared first due to LIFO stack
             for (int i = len1 - 1; i >= 0; i--) {
-                stack.addFirst(new ItemsToCompare(Array.get(array1, i), Array.get(array2, i),
+                stack.addFirst(new ItemsToCompare(ArrayUtilities.getElement(array1, i), ArrayUtilities.getElement(array2, i),
                         new int[]{i}, currentItem, Difference.ARRAY_ELEMENT_MISMATCH));
             }
         }
@@ -1598,11 +1598,11 @@ public class DeepEquals {
 
             // Ensure array order matters to hash
             if (obj.getClass().isArray()) {
-                final int len = Array.getLength(obj);
+                final int len = ArrayUtilities.getLength(obj);
                 long result = 1;
 
                 for (int i = 0; i < len; i++) {
-                    Object element = Array.get(obj, i);
+                    Object element = ArrayUtilities.getElement(obj, i);
                     result = 31 * result + hashElement(visited, element);
                 }
                 hash += (int) result;
@@ -2024,8 +2024,8 @@ public class DeepEquals {
 
             case LENGTH:
                 result.append(String.format("  Expected length: %d%n  Found length: %d",
-                        Array.getLength(detailNode._key1),
-                        Array.getLength(detailNode._key2)));
+                        ArrayUtilities.getLength(detailNode._key1),
+                        ArrayUtilities.getLength(detailNode._key2)));
                 break;
 
             case DIMENSION:
@@ -2093,7 +2093,7 @@ public class DeepEquals {
 
             // Handle arrays
             if (value.getClass().isArray()) {
-                int length = Array.getLength(value);
+                int length = ArrayUtilities.getLength(value);
                 String typeName = getTypeDescription(value.getClass().getComponentType());
                 return String.format("%s[%s]", typeName,
                         length == 0 ? EMPTY : "0.." + (length - 1));
@@ -2144,7 +2144,7 @@ public class DeepEquals {
                 }
                 else if (fieldType.isArray()) {
                     // Array - show type and size
-                    int length = Array.getLength(fieldValue);
+                    int length = ArrayUtilities.getLength(fieldValue);
                     String typeName = getTypeDescription(fieldType.getComponentType());
                     sb.append(String.format("%s[%s]", typeName,
                             length == 0 ? EMPTY : "0.." + (length - 1)));
@@ -2309,7 +2309,7 @@ public class DeepEquals {
         sb.append(componentType.getSimpleName());  // Base type (int, String, etc.)
 
         // Only show outer dimensions
-        int outerLength = Array.getLength(array);
+        int outerLength = ArrayUtilities.getLength(array);
         sb.append("[").append(outerLength).append("]");
         Class<?> current = type.getComponentType();
         while (current != null && current.isArray()) {
@@ -2319,21 +2319,21 @@ public class DeepEquals {
 
         // Add contents
         sb.append("{");
-        int length = Array.getLength(array);  // Using original array here
+        int length = ArrayUtilities.getLength(array);  // Using original array here
         if (length > 0) {
             int showItems = Math.min(length, limit);
             for (int i = 0; i < showItems; i++) {
                 if (i > 0) sb.append(", ");
-                Object item = Array.get(array, i);
+                Object item = ArrayUtilities.getElement(array, i);
                 if (item == null) {
                     sb.append("null");
                 } else if (item.getClass().isArray()) {
                     // For sub-arrays, just show their contents in brackets
-                    int subLength = Array.getLength(item);
+                    int subLength = ArrayUtilities.getLength(item);
                     sb.append('[');
                     for (int j = 0; j < Math.min(subLength, limit); j++) {
                         if (j > 0) sb.append(", ");
-                        sb.append(formatValue(Array.get(item, j)));
+                        sb.append(formatValue(ArrayUtilities.getElement(item, j)));
                     }
                     if (subLength > 3) sb.append(", ...");
                     sb.append(']');
@@ -2491,7 +2491,7 @@ public class DeepEquals {
     private static String formatArrayNotation(Object array) {
         if (array == null) return "null";
 
-        int length = Array.getLength(array);
+        int length = ArrayUtilities.getLength(array);
         String typeName = getTypeDescription(array.getClass().getComponentType());
         return String.format("%s[%s]", typeName,
                 length == 0 ? EMPTY : "0.." + (length - 1));
@@ -2639,7 +2639,7 @@ public class DeepEquals {
         if (container == null) return 0;
         if (container instanceof Collection) return ((Collection<?>) container).size();
         if (container instanceof Map) return ((Map<?,?>) container).size();
-        if (container.getClass().isArray()) return Array.getLength(container);
+        if (container.getClass().isArray()) return ArrayUtilities.getLength(container);
         return 0;
     }
 

@@ -699,7 +699,7 @@ public class CollectionUtilities {
                                 // Special case: primitive arrays are fully copied immediately
                                 if (element.getClass().isArray() && element.getClass().getComponentType().isPrimitive()) {
                                     // Create and fully copy the primitive array
-                                    int elemLength = Array.getLength(element);
+                                    int elemLength = ArrayUtilities.getLength(element);
                                     Class<?> componentType = element.getClass().getComponentType();
                                     Object elementCopy = Array.newInstance(componentType, elemLength);
                                     System.arraycopy(element, 0, elementCopy, 0, elemLength);
@@ -738,7 +738,7 @@ public class CollectionUtilities {
                             if (element.getClass().isArray() && 
                                 element.getClass().getComponentType().isPrimitive()) {
                                 // Create and fully copy the primitive array
-                                int elemLength = Array.getLength(element);
+                                int elemLength = ArrayUtilities.getLength(element);
                                 Class<?> componentType = element.getClass().getComponentType();
                                 Object elementCopy = Array.newInstance(componentType, elemLength);
                                 System.arraycopy(element, 0, elementCopy, 0, elemLength);
@@ -781,7 +781,7 @@ public class CollectionUtilities {
     @SuppressWarnings({"unchecked", "rawtypes"})
     private static Object createContainerCopy(Object source) {
         if (source.getClass().isArray()) {
-            int length = Array.getLength(source);
+            int length = ArrayUtilities.getLength(source);
             Class<?> componentType = source.getClass().getComponentType();
             Object newArray = Array.newInstance(componentType, length);
             

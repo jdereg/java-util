@@ -1,6 +1,5 @@
 package com.cedarsoftware.util;
 
-import java.lang.reflect.Array;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.AbstractMap;
@@ -462,7 +461,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             } else {
                 Class<?> keyClass = normalizedKeys.getClass();
                 if (keyClass.isArray()) {
-                    this.size = Array.getLength(normalizedKeys);
+                    this.size = ArrayUtilities.getLength(normalizedKeys);
                     // Check if it's a primitive array
                     Class<?> componentType = keyClass.getComponentType();
                     this.kind = (componentType != null && componentType.isPrimitive()) 
@@ -1393,7 +1392,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         // === FAST PATH: Primitive arrays - handle each type separately to keep them unboxed ===
         if (isKeyArray && keyClass.getComponentType().isPrimitive()) {
             // Handle empty arrays once for all primitive types
-            int length = Array.getLength(key);
+            int length = ArrayUtilities.getLength(key);
             if (length == 0) {
                 return new MultiKey<>(key, 0, null);
             }
@@ -1849,7 +1848,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
 
     private <T> MultiKey<T> process1DGenericArray(Object arr) {
         // Fallback method using reflection for uncommon array types
-        final int len = Array.getLength(arr);
+        final int len = ArrayUtilities.getLength(arr);
         if (len == 0) {
             return new MultiKey<>(arr, 0, null);
         }
@@ -1860,7 +1859,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         
         // Compute full hash for all elements
         for (int i = 0; i < len; i++) {
-            Object e = Array.get(arr, i);
+            Object e = ArrayUtilities.getElement(arr, i);
             h = h * 31 + computeElementHash(e, caseSensitive);
             if (e instanceof Collection || (e != null && e.getClass().isArray())) {
                 is1D = false;
@@ -1884,7 +1883,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         int estimatedSize = 8;
         if (key != null) {
             if (key.getClass().isArray()) {
-                int len = Array.getLength(key);
+                int len = ArrayUtilities.getLength(key);
                 // For arrays: size + potential OPEN/CLOSE markers + buffer for nested expansion
                 estimatedSize = flattenDimensions ? len : len + 2;
                 // Add some buffer for potential nested structures
@@ -1929,9 +1928,9 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                     result.add(OPEN);
                     runningHash = runningHash * 31 + OPEN.hashCode();
                 }
-                int len = Array.getLength(current);
+                int len = ArrayUtilities.getLength(current);
                 for (int i = 0; i < len; i++) {
-                    runningHash = expandAndHash(Array.get(current, i), result, visited, runningHash, useFlatten, caseSensitive);
+                    runningHash = expandAndHash(ArrayUtilities.getElement(current, i), result, visited, runningHash, useFlatten, caseSensitive);
                 }
                 if (!useFlatten) {
                     result.add(CLOSE);
@@ -2029,14 +2028,9 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                 // If stored key is also a Collection/array, compare using elementEquals
                 // This handles COLLECTIONS_NOT_EXPANDED mode where collections are single keys
                 if (stored.keys instanceof Collection || stored.keys.getClass().isArray()) {
-                    // In COLLECTIONS_NOT_EXPANDED mode, collections are treated as single keys
-                    // Use elementEquals to handle cases where collection types differ (e.g., List vs Set)
-                    // but content is the same - this can happen after deserialization when MultiKeyMap
-                    // converts Sets to Lists internally
-                    if (collectionKeyMode == CollectionKeyMode.COLLECTIONS_NOT_EXPANDED) {
-                        return elementEquals(stored.keys, lookup, valueBasedEquality, caseSensitive);
-                    }
-                    // In COLLECTIONS_EXPANDED mode, use elementEquals
+                    // Both stored and lookup are Collection/array - compare using elementEquals
+                    // This handles cases where collection types differ (e.g., List vs Set)
+                    // but content is the same - can happen after deserialization
                     return elementEquals(stored.keys, lookup, valueBasedEquality, caseSensitive);
                 }
                 // Stored is not Collection/array but lookup is - no match
@@ -2051,7 +2045,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         final byte lookupKind;
         
         if (lookupClass.isArray()) {
-            lookupSize = Array.getLength(lookup);
+            lookupSize = ArrayUtilities.getLength(lookup);
             Class<?> componentType = lookupClass.getComponentType();
             lookupKind = (componentType != null && componentType.isPrimitive()) 
                 ? MultiKey.KIND_PRIMITIVE_ARRAY 
@@ -2223,7 +2217,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
 
         ArrayIterator(Object array) {
             this.array = array;
-            this.len = Array.getLength(array);
+            this.len = ArrayUtilities.getLength(array);
         }
 
         @Override
@@ -2233,7 +2227,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
 
         @Override
         public Object next() {
-            return Array.get(array, index++);
+            return ArrayUtilities.getElement(array, index++);
         }
     }
     
@@ -4321,8 +4315,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         if (key == NULL_SENTINEL) return forToString ? EMOJI_KEY + EMOJI_EMPTY : EMOJI_EMPTY;
         
         // Handle single-element Object[] that contains a Collection (from MultiKeyEntry constructor)
-        if (key.getClass().isArray() && Array.getLength(key) == 1) {
-            Object element = Array.get(key, 0);
+        if (key.getClass().isArray() && ArrayUtilities.getLength(key) == 1) {
+            Object element = ArrayUtilities.getElement(key, 0);
             if (element instanceof Collection) {
                 return dumpExpandedKeyStatic(element, forToString, selfMap);
             }
@@ -4361,12 +4355,12 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             }
             
             if (key.getClass().isArray()) {
-                int len = Array.getLength(key);
+                int len = ArrayUtilities.getLength(key);
                 
                 // Check if this array is already-flattened (starts with OPEN sentinel)
                 boolean isAlreadyFlattenedArray = false;
                 if (len > 0) {
-                    Object first = Array.get(key, 0);
+                    Object first = ArrayUtilities.getElement(key, 0);
                     if (first == OPEN) {
                         isAlreadyFlattenedArray = true;
                     }
@@ -4378,7 +4372,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                     sb.append(EMOJI_KEY);
                     List<Object> arrayList = new ArrayList<>();
                     for (int i = 0; i < len; i++) {
-                        arrayList.add(Array.get(key, i));
+                        arrayList.add(ArrayUtilities.getElement(key, i));
                     }
                     int[] index = {0};
                     // The flattened structure should start with OPEN, so process it directly
@@ -4387,7 +4381,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                 }
                 
                 if (len == 1) {
-                    Object element = Array.get(key, 0);
+                    Object element = ArrayUtilities.getElement(key, 0);
                     if (element == NULL_SENTINEL) return EMOJI_KEY + EMOJI_EMPTY;
                     if (selfMap != null && element == selfMap) return EMOJI_KEY + THIS_MAP;
                     if (element == OPEN) {
@@ -4407,7 +4401,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                     sb.append(EMOJI_KEY).append("[");
                     boolean needsComma = false;
                     for (int i = 0; i < len; i++) {
-                        Object element = Array.get(key, i);
+                        Object element = ArrayUtilities.getElement(key, i);
                         if (element == NULL_SENTINEL) {
                             if (needsComma) sb.append(", ");
                             sb.append(EMOJI_EMPTY);
@@ -4574,7 +4568,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      * Format array values with ∅ for nulls
      */
     private static String formatArrayValueForToString(Object array, MultiKeyMap<?> selfMap) {
-        int len = Array.getLength(array);
+        int len = ArrayUtilities.getLength(array);
         if (len == 0) {
             return "[]";
         }
@@ -4592,7 +4586,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             // Primitive arrays require reflection for boxing
             for (int i = 0; i < len; i++) {
                 if (i > 0) sb.append(", ");
-                Object element = Array.get(array, i);  // Reflection only for primitives
+                Object element = ArrayUtilities.getElement(array, i);  // Uses optimized primitive retrieval
                 sb.append(formatValueForToString(element, selfMap));
             }
         }

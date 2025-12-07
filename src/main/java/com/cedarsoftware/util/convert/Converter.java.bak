@@ -1,10 +1,6 @@
 package com.cedarsoftware.util.convert;
 
-import com.cedarsoftware.util.geom.Color;
-import com.cedarsoftware.util.geom.Dimension;
-import com.cedarsoftware.util.geom.Insets;
-import com.cedarsoftware.util.geom.Point;
-import com.cedarsoftware.util.geom.Rectangle;
+import java.awt.*;
 import java.io.Externalizable;
 import java.io.File;
 import java.io.Serializable;
@@ -40,10 +36,12 @@ import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Calendar;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.Currency;
 import java.util.Date;
 import java.util.EnumSet;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
@@ -55,11 +53,11 @@ import java.util.TimeZone;
 import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicIntegerArray;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLongArray;
 import java.util.concurrent.atomic.AtomicReferenceArray;
 import java.util.regex.Pattern;
@@ -69,7 +67,6 @@ import java.util.stream.LongStream;
 
 import com.cedarsoftware.util.ClassUtilities;
 import com.cedarsoftware.util.ClassValueMap;
-import com.cedarsoftware.util.MultiKeyMap;
 
 /**
  * Instance conversion utility for converting objects between various types.
@@ -134,20 +131,6 @@ import com.cedarsoftware.util.MultiKeyMap;
  * </p>
  *
  * <p>
- * <strong>JDK Module Requirements:</strong>
- * <ul>
- *     <li><b>java.sql</b> (REQUIRED): Core date/time conversions use {@code java.sql.Timestamp} and {@code java.sql.Date}.
- *         This adds ~500KB to your runtime footprint but does NOT require database connectivity or JDBC drivers.
- *         For JPMS modules, this dependency is automatically transitive when you {@code requires com.cedarsoftware.util}.</li>
- *     <li><b>java.compiler</b> (OPTIONAL): Only needed for {@code CompactMap} runtime code generation.
- *         Most users don't need this. Available at compile time in JDK, may not be present in JRE-only environments.</li>
- *     <li><b>java.xml</b> (OPTIONAL): Only needed for XML-specific methods in {@code IOUtilities}.
- *         Marked as a static (optional) dependency in the JPMS module descriptor.</li>
- * </ul>
- * See the README for more details on module requirements and deployment considerations.
- * </p>
- *
- * <p>
  * <strong>Usage Example:</strong>
  * <pre>{@code
  *     ConverterOptions options = new ConverterOptions();
@@ -180,6 +163,21 @@ import com.cedarsoftware.util.MultiKeyMap;
  * }</pre>
  * </p>
  *
+ * <p>
+ * <strong>Module Dependencies:</strong>
+ * </p>
+ * <ul>
+ *   <li>
+ *     <b>SQL support:</b> Conversions involving {@code java.sql.Date} and {@code java.sql.Timestamp} require
+ *     the {@code java.sql} module to be present at runtime. If you're using OSGi, ensure your bundle imports
+ *     the {@code java.sql} package or declare it as an optional import if SQL support is not required.
+ *   </li>
+ *   <li>
+ *     <b>XML support:</b> This library does not directly use XML classes, but {@link com.cedarsoftware.util.IOUtilities}
+ *     provides XML stream support that requires the {@code java.xml} module. See {@link com.cedarsoftware.util.IOUtilities}
+ *     for more details.
+ *   </li>
+ * </ul>
  *
  * @author John DeRegnaucourt (jdereg@gmail.com)
  * Copyright (c) Cedar Software LLC
@@ -200,26 +198,27 @@ public final class Converter {
     private static final Convert<?> UNSUPPORTED = Converter::unsupported;
     static final String VALUE = "_v";
     
-    // Precision constants for time conversions
+    // Precision constants for time conversion feature options
+    /**
+     * Constant for millisecond precision in time conversions.
+     * This is the default precision for all time to long conversions.
+     */
     public static final String PRECISION_MILLIS = "millis";
+    
+    /**
+     * Constant for nanosecond precision in time conversions.
+     * Can be used to override the default millisecond precision.
+     */
     public static final String PRECISION_NANOS = "nanos";
+    
     private static final Map<Class<?>, SortedSet<ClassLevel>> cacheParentTypes = new ClassValueMap<>();
-    private static final Map<Class<?>, SortedSet<ClassLevel>> cacheCompleteHierarchy = new ClassValueMap<>();
-    private static final MultiKeyMap<InheritancePair[]> cacheInheritancePairs = MultiKeyMap.<InheritancePair[]>builder()
-            .flattenDimensions(true)
-            .collectionKeyMode(MultiKeyMap.CollectionKeyMode.COLLECTIONS_NOT_EXPANDED)
-            .build();
-    private static final Map<ConversionPair, Convert<?>> CONVERSION_DB = new ConcurrentHashMap<>(4096, 0.8f);
-    private final Map<ConversionPair, Convert<?>> USER_DB = new ConcurrentHashMap<>(16, 0.8f);
-    private static final Map<ConversionPair, Convert<?>> FULL_CONVERSION_CACHE = new ConcurrentHashMap<>(1024, 0.75f);
+    private static ConversionTripleMap<Convert<?>> CONVERSION_DB = new ConversionTripleMap<>();
+    private static final ConversionTripleMap<Convert<?>> USER_DB = new ConversionTripleMap<>();
+    private static final ConversionTripleMap<Convert<?>> FULL_CONVERSION_CACHE = new ConversionTripleMap<>();
     private static final Map<Class<?>, String> CUSTOM_ARRAY_NAMES = new ClassValueMap<>();
     private static final ClassValueMap<Boolean> SIMPLE_TYPE_CACHE = new ClassValueMap<>();
     private static final ClassValueMap<Boolean> SELF_CONVERSION_CACHE = new ClassValueMap<>();
     private static final AtomicLong INSTANCE_ID_GENERATOR = new AtomicLong(1);
-    
-    // Identity converter for marking non-standard types and handling identity conversions
-    private static final Convert<?> IDENTITY_CONVERTER = (source, converter) -> source;
-    
     private final ConverterOptions options;
     private final long instanceId;
 
@@ -244,10 +243,6 @@ public final class Converter {
 
         public Class<?> getTarget() {
             return target;
-        }
-
-        public long getInstanceId() {
-            return instanceId;
         }
 
         @Override
@@ -281,7 +276,6 @@ public final class Converter {
     static {
         CUSTOM_ARRAY_NAMES.put(java.sql.Date[].class, "java.sql.Date[]");
         buildFactoryConversions();
-        
     }
 
     /**
@@ -291,6 +285,11 @@ public final class Converter {
      */
     public ConverterOptions getOptions() {
         return options;
+    }
+
+    // Helper method for buildFactoryConversions to add static conversions with instanceId=0
+    private static void addStaticConversion(Class<?> source, Class<?> target, Convert<?> converter) {
+        CONVERSION_DB.put(source, target, 0, converter);
     }
 
     /**
@@ -318,7 +317,6 @@ public final class Converter {
         CONVERSION_DB.put(pair(AtomicLong.class, Number.class), Converter::identity);
         CONVERSION_DB.put(pair(BigInteger.class, Number.class), Converter::identity);
         CONVERSION_DB.put(pair(BigDecimal.class, Number.class), Converter::identity);
-        CONVERSION_DB.put(pair(Duration.class, Number.class), DurationConversions::toNumber);
 
         // toByte
         CONVERSION_DB.put(pair(Void.class, byte.class), NumberConversions::toByteZero);
@@ -371,6 +369,12 @@ public final class Converter {
         CONVERSION_DB.put(pair(Map.class, Integer.class), MapConversions::toInt);
         CONVERSION_DB.put(pair(String.class, Integer.class), StringConversions::toInt);
         CONVERSION_DB.put(pair(Color.class, Integer.class), ColorConversions::toInteger);
+        CONVERSION_DB.put(pair(Dimension.class, Integer.class), DimensionConversions::toInteger);
+        CONVERSION_DB.put(pair(Point.class, Integer.class), PointConversions::toInteger);
+        CONVERSION_DB.put(pair(Rectangle.class, Integer.class), RectangleConversions::toInteger);
+        CONVERSION_DB.put(pair(Insets.class, Integer.class), InsetsConversions::toInteger);
+        CONVERSION_DB.put(pair(LocalTime.class, Integer.class), LocalTimeConversions::toInteger);
+        CONVERSION_DB.put(pair(OffsetTime.class, Integer.class), OffsetTimeConversions::toInteger);
         CONVERSION_DB.put(pair(Year.class, Integer.class), YearConversions::toInt);
 
         // toLong
@@ -402,6 +406,10 @@ public final class Converter {
         CONVERSION_DB.put(pair(Map.class, Long.class), MapConversions::toLong);
         CONVERSION_DB.put(pair(String.class, Long.class), StringConversions::toLong);
         CONVERSION_DB.put(pair(Color.class, Long.class), ColorConversions::toLong);
+        CONVERSION_DB.put(pair(Dimension.class, Long.class), DimensionConversions::toLong);
+        CONVERSION_DB.put(pair(Point.class, Long.class), PointConversions::toLong);
+        CONVERSION_DB.put(pair(Rectangle.class, Long.class), RectangleConversions::toLong);
+        CONVERSION_DB.put(pair(Insets.class, Long.class), InsetsConversions::toLong);
         CONVERSION_DB.put(pair(Year.class, Long.class), YearConversions::toLong);
 
         // toFloat
@@ -419,11 +427,9 @@ public final class Converter {
         CONVERSION_DB.put(pair(BigDecimal.class, Float.class), NumberConversions::toFloat);
         CONVERSION_DB.put(pair(Map.class, Float.class), MapConversions::toFloat);
         CONVERSION_DB.put(pair(String.class, Float.class), StringConversions::toFloat);
-        CONVERSION_DB.put(pair(Year.class, Float.class), YearConversions::toFloat);
 
         // toDouble
         CONVERSION_DB.put(pair(Void.class, double.class), NumberConversions::toDoubleZero);
-        CONVERSION_DB.put(pair(Year.class, double.class), YearConversions::toDouble);
         CONVERSION_DB.put(pair(Void.class, Double.class), VoidConversions::toNull);
         CONVERSION_DB.put(pair(Byte.class, Double.class), NumberConversions::toDouble);
         CONVERSION_DB.put(pair(Short.class, Double.class), NumberConversions::toDouble);
@@ -448,14 +454,11 @@ public final class Converter {
         CONVERSION_DB.put(pair(BigDecimal.class, Double.class), NumberConversions::toDouble);
         CONVERSION_DB.put(pair(Map.class, Double.class), MapConversions::toDouble);
         CONVERSION_DB.put(pair(String.class, Double.class), StringConversions::toDouble);
-        CONVERSION_DB.put(pair(Year.class, Double.class), YearConversions::toDouble);
 
         // Boolean/boolean conversions supported
         CONVERSION_DB.put(pair(Void.class, boolean.class), VoidConversions::toBoolean);
         CONVERSION_DB.put(pair(AtomicBoolean.class, boolean.class), UniversalConversions::atomicBooleanToBoolean);
-        CONVERSION_DB.put(pair(Duration.class, boolean.class), DurationConversions::toBoolean);
         CONVERSION_DB.put(pair(AtomicBoolean.class, Boolean.class), AtomicBooleanConversions::toBoolean);
-        CONVERSION_DB.put(pair(Duration.class, Boolean.class), DurationConversions::toBooleanWrapper);
         CONVERSION_DB.put(pair(Void.class, Boolean.class), VoidConversions::toNull);
         CONVERSION_DB.put(pair(Byte.class, Boolean.class), NumberConversions::isIntTypeNotZero);
         CONVERSION_DB.put(pair(Short.class, Boolean.class), NumberConversions::isIntTypeNotZero);
@@ -515,7 +518,12 @@ public final class Converter {
         CONVERSION_DB.put(pair(OffsetTime.class, BigInteger.class), OffsetTimeConversions::toBigInteger);
         CONVERSION_DB.put(pair(OffsetDateTime.class, BigInteger.class), OffsetDateTimeConversions::toBigInteger);
         CONVERSION_DB.put(pair(UUID.class, BigInteger.class), UUIDConversions::toBigInteger);
-        CONVERSION_DB.put(pair(Calendar.class, BigInteger.class), CalendarConversions::toBigInteger);  // Restored - bridge has precision difference (millis vs. nanos)
+        CONVERSION_DB.put(pair(Color.class, BigInteger.class), ColorConversions::toBigInteger);
+        CONVERSION_DB.put(pair(Dimension.class, BigInteger.class), DimensionConversions::toBigInteger);
+        CONVERSION_DB.put(pair(Point.class, BigInteger.class), PointConversions::toBigInteger);
+        CONVERSION_DB.put(pair(Rectangle.class, BigInteger.class), RectangleConversions::toBigInteger);
+        CONVERSION_DB.put(pair(Insets.class, BigInteger.class), InsetsConversions::toBigInteger);
+        CONVERSION_DB.put(pair(Calendar.class, BigInteger.class), CalendarConversions::toBigInteger);  // Restored - bridge has precision difference (millis vs nanos)
         CONVERSION_DB.put(pair(Map.class, BigInteger.class), MapConversions::toBigInteger);
         CONVERSION_DB.put(pair(String.class, BigInteger.class), StringConversions::toBigInteger);
         CONVERSION_DB.put(pair(Year.class, BigInteger.class), YearConversions::toBigInteger);
@@ -545,14 +553,16 @@ public final class Converter {
         CONVERSION_DB.put(pair(OffsetDateTime.class, BigDecimal.class), OffsetDateTimeConversions::toBigDecimal);
         CONVERSION_DB.put(pair(UUID.class, BigDecimal.class), UUIDConversions::toBigDecimal);
         CONVERSION_DB.put(pair(Color.class, BigDecimal.class), ColorConversions::toBigDecimal);
+        CONVERSION_DB.put(pair(Dimension.class, BigDecimal.class), DimensionConversions::toBigDecimal);
+        CONVERSION_DB.put(pair(Insets.class, BigDecimal.class), InsetsConversions::toBigDecimal);
+        CONVERSION_DB.put(pair(Point.class, BigDecimal.class), PointConversions::toBigDecimal);
+        CONVERSION_DB.put(pair(Rectangle.class, BigDecimal.class), RectangleConversions::toBigDecimal);
         CONVERSION_DB.put(pair(Calendar.class, BigDecimal.class), CalendarConversions::toBigDecimal);
         CONVERSION_DB.put(pair(Map.class, BigDecimal.class), MapConversions::toBigDecimal);
         CONVERSION_DB.put(pair(String.class, BigDecimal.class), StringConversions::toBigDecimal);
-        CONVERSION_DB.put(pair(Year.class, BigDecimal.class), YearConversions::toBigDecimal);
 
         // AtomicBoolean conversions supported
         CONVERSION_DB.put(pair(Void.class, AtomicBoolean.class), VoidConversions::toNull);
-        CONVERSION_DB.put(pair(Duration.class, AtomicBoolean.class), DurationConversions::toAtomicBoolean);
         CONVERSION_DB.put(pair(Byte.class, AtomicBoolean.class), NumberConversions::toAtomicBoolean);
         CONVERSION_DB.put(pair(Short.class, AtomicBoolean.class), NumberConversions::toAtomicBoolean);
         CONVERSION_DB.put(pair(Integer.class, AtomicBoolean.class), NumberConversions::toAtomicBoolean);
@@ -566,11 +576,6 @@ public final class Converter {
         CONVERSION_DB.put(pair(AtomicBoolean.class, AtomicBoolean.class), AtomicBooleanConversions::toAtomicBoolean);
         CONVERSION_DB.put(pair(Map.class, AtomicBoolean.class), MapConversions::toAtomicBoolean);
         CONVERSION_DB.put(pair(String.class, AtomicBoolean.class), StringConversions::toAtomicBoolean);
-        CONVERSION_DB.put(pair(Dimension.class, AtomicBoolean.class), DimensionConversions::toAtomicBoolean);
-        CONVERSION_DB.put(pair(Point.class, AtomicBoolean.class), PointConversions::toAtomicBoolean);
-        CONVERSION_DB.put(pair(Rectangle.class, AtomicBoolean.class), RectangleConversions::toAtomicBoolean);
-        CONVERSION_DB.put(pair(Insets.class, AtomicBoolean.class), InsetsConversions::toAtomicBoolean);
-        CONVERSION_DB.put(pair(Year.class, AtomicBoolean.class), YearConversions::toAtomicBoolean);
 
         // AtomicInteger conversions supported
         CONVERSION_DB.put(pair(Void.class, AtomicInteger.class), VoidConversions::toNull);
@@ -585,9 +590,10 @@ public final class Converter {
         CONVERSION_DB.put(pair(BigInteger.class, AtomicInteger.class), NumberConversions::toAtomicInteger);
         CONVERSION_DB.put(pair(BigDecimal.class, AtomicInteger.class), NumberConversions::toAtomicInteger);
         CONVERSION_DB.put(pair(AtomicInteger.class, AtomicInteger.class), AtomicIntegerConversions::toAtomicInteger);
+        CONVERSION_DB.put(pair(LocalTime.class, AtomicInteger.class), LocalTimeConversions::toAtomicInteger);
+        CONVERSION_DB.put(pair(OffsetTime.class, AtomicInteger.class), OffsetTimeConversions::toAtomicInteger);
         CONVERSION_DB.put(pair(Map.class, AtomicInteger.class), MapConversions::toAtomicInteger);
         CONVERSION_DB.put(pair(String.class, AtomicInteger.class), StringConversions::toAtomicInteger);
-        CONVERSION_DB.put(pair(Year.class, AtomicInteger.class), YearConversions::toAtomicInteger);
 
         // AtomicLong conversions supported
         CONVERSION_DB.put(pair(Void.class, AtomicLong.class), VoidConversions::toNull);
@@ -612,11 +618,9 @@ public final class Converter {
         CONVERSION_DB.put(pair(LocalDateTime.class, AtomicLong.class), LocalDateTimeConversions::toAtomicLong);
         CONVERSION_DB.put(pair(ZonedDateTime.class, AtomicLong.class), ZonedDateTimeConversions::toAtomicLong);
         CONVERSION_DB.put(pair(OffsetTime.class, AtomicLong.class), OffsetTimeConversions::toAtomicLong);
-        CONVERSION_DB.put(pair(OffsetTime.class, AtomicLong.class), OffsetTimeConversions::toAtomicLong);
         CONVERSION_DB.put(pair(OffsetDateTime.class, AtomicLong.class), OffsetDateTimeConversions::toAtomicLong);
         CONVERSION_DB.put(pair(Map.class, AtomicLong.class), MapConversions::toAtomicLong);
         CONVERSION_DB.put(pair(String.class, AtomicLong.class), StringConversions::toAtomicLong);
-        CONVERSION_DB.put(pair(Year.class, AtomicLong.class), YearConversions::toAtomicLong);
 
         // Date conversions supported
         CONVERSION_DB.put(pair(Void.class, Date.class), VoidConversions::toNull);
@@ -632,7 +636,6 @@ public final class Converter {
         CONVERSION_DB.put(pair(LocalDateTime.class, Date.class), LocalDateTimeConversions::toDate);
         CONVERSION_DB.put(pair(ZonedDateTime.class, Date.class), ZonedDateTimeConversions::toDate);
         CONVERSION_DB.put(pair(OffsetDateTime.class, Date.class), OffsetDateTimeConversions::toDate);
-        CONVERSION_DB.put(pair(Duration.class, Date.class), DurationConversions::toDate);
         CONVERSION_DB.put(pair(Map.class, Date.class), MapConversions::toDate);
         CONVERSION_DB.put(pair(String.class, Date.class), StringConversions::toDate);
 
@@ -687,7 +690,6 @@ public final class Converter {
         CONVERSION_DB.put(pair(LocalDateTime.class, Calendar.class), LocalDateTimeConversions::toCalendar);
         CONVERSION_DB.put(pair(ZonedDateTime.class, Calendar.class), ZonedDateTimeConversions::toCalendar);
         CONVERSION_DB.put(pair(OffsetDateTime.class, Calendar.class), OffsetDateTimeConversions::toCalendar);
-        CONVERSION_DB.put(pair(Duration.class, Calendar.class), DurationConversions::toCalendar);
         CONVERSION_DB.put(pair(Calendar.class, Calendar.class), CalendarConversions::clone);
         CONVERSION_DB.put(pair(Map.class, Calendar.class), MapConversions::toCalendar);
         CONVERSION_DB.put(pair(String.class, Calendar.class), StringConversions::toCalendar);
@@ -707,7 +709,6 @@ public final class Converter {
         CONVERSION_DB.put(pair(LocalDateTime.class, LocalDate.class), LocalDateTimeConversions::toLocalDate);
         CONVERSION_DB.put(pair(ZonedDateTime.class, LocalDate.class), ZonedDateTimeConversions::toLocalDate);
         CONVERSION_DB.put(pair(OffsetDateTime.class, LocalDate.class), OffsetDateTimeConversions::toLocalDate);
-        CONVERSION_DB.put(pair(Duration.class, LocalDate.class), DurationConversions::toLocalDate);
         CONVERSION_DB.put(pair(Map.class, LocalDate.class), MapConversions::toLocalDate);
         CONVERSION_DB.put(pair(String.class, LocalDate.class), StringConversions::toLocalDate);
 
@@ -726,7 +727,6 @@ public final class Converter {
         CONVERSION_DB.put(pair(Calendar.class, LocalDateTime.class), CalendarConversions::toLocalDateTime);
         CONVERSION_DB.put(pair(ZonedDateTime.class, LocalDateTime.class), ZonedDateTimeConversions::toLocalDateTime);
         CONVERSION_DB.put(pair(OffsetDateTime.class, LocalDateTime.class), OffsetDateTimeConversions::toLocalDateTime);
-        CONVERSION_DB.put(pair(Duration.class, LocalDateTime.class), DurationConversions::toLocalDateTime);
         CONVERSION_DB.put(pair(Map.class, LocalDateTime.class), MapConversions::toLocalDateTime);
         CONVERSION_DB.put(pair(String.class, LocalDateTime.class), StringConversions::toLocalDateTime);
 
@@ -743,7 +743,6 @@ public final class Converter {
         CONVERSION_DB.put(pair(LocalTime.class, LocalTime.class), Converter::identity);
         CONVERSION_DB.put(pair(ZonedDateTime.class, LocalTime.class), ZonedDateTimeConversions::toLocalTime);
         CONVERSION_DB.put(pair(OffsetDateTime.class, LocalTime.class), OffsetDateTimeConversions::toLocalTime);
-        CONVERSION_DB.put(pair(Duration.class, LocalTime.class), DurationConversions::toLocalTime);
         CONVERSION_DB.put(pair(Map.class, LocalTime.class), MapConversions::toLocalTime);
         CONVERSION_DB.put(pair(String.class, LocalTime.class), StringConversions::toLocalTime);
 
@@ -762,7 +761,6 @@ public final class Converter {
         CONVERSION_DB.put(pair(ZonedDateTime.class, ZonedDateTime.class), Converter::identity);
         CONVERSION_DB.put(pair(OffsetDateTime.class, ZonedDateTime.class), OffsetDateTimeConversions::toZonedDateTime);
         CONVERSION_DB.put(pair(Calendar.class, ZonedDateTime.class), CalendarConversions::toZonedDateTime);
-        CONVERSION_DB.put(pair(Duration.class, ZonedDateTime.class), DurationConversions::toZonedDateTime);
         CONVERSION_DB.put(pair(Map.class, ZonedDateTime.class), MapConversions::toZonedDateTime);
         CONVERSION_DB.put(pair(String.class, ZonedDateTime.class), StringConversions::toZonedDateTime);
 
@@ -782,10 +780,10 @@ public final class Converter {
         CONVERSION_DB.put(pair(Instant.class, OffsetDateTime.class), InstantConversions::toOffsetDateTime);
         CONVERSION_DB.put(pair(ZonedDateTime.class, OffsetDateTime.class), ZonedDateTimeConversions::toOffsetDateTime);
         CONVERSION_DB.put(pair(LocalDateTime.class, OffsetDateTime.class), LocalDateTimeConversions::toOffsetDateTime);
-        CONVERSION_DB.put(pair(Duration.class, OffsetDateTime.class), DurationConversions::toOffsetDateTime);
 
         // toOffsetTime
         CONVERSION_DB.put(pair(Void.class, OffsetTime.class), VoidConversions::toNull);
+        CONVERSION_DB.put(pair(Integer.class, OffsetTime.class), NumberConversions::toOffsetTime);
         CONVERSION_DB.put(pair(Long.class, OffsetTime.class), NumberConversions::toOffsetTime);
         CONVERSION_DB.put(pair(Double.class, OffsetTime.class), DoubleConversions::toOffsetTime);
         CONVERSION_DB.put(pair(BigInteger.class, OffsetTime.class), BigIntegerConversions::toOffsetTime);
@@ -815,6 +813,8 @@ public final class Converter {
         CONVERSION_DB.put(pair(Color.class, Color.class), Converter::identity);
         CONVERSION_DB.put(pair(String.class, Color.class), StringConversions::toColor);
         CONVERSION_DB.put(pair(Map.class, Color.class), MapConversions::toColor);
+        CONVERSION_DB.put(pair(Integer.class, Color.class), NumberConversions::toColor);
+        CONVERSION_DB.put(pair(Long.class, Color.class), NumberConversions::toColor);
         CONVERSION_DB.put(pair(int[].class, Color.class), ArrayConversions::toColor);
 
         // Dimension conversions supported
@@ -822,31 +822,60 @@ public final class Converter {
         CONVERSION_DB.put(pair(Dimension.class, Dimension.class), Converter::identity);
         CONVERSION_DB.put(pair(String.class, Dimension.class), StringConversions::toDimension);
         CONVERSION_DB.put(pair(Map.class, Dimension.class), MapConversions::toDimension);
+        CONVERSION_DB.put(pair(Integer.class, Dimension.class), NumberConversions::toDimension);
+        CONVERSION_DB.put(pair(Long.class, Dimension.class), NumberConversions::toDimension);
+        CONVERSION_DB.put(pair(BigInteger.class, Dimension.class), NumberConversions::toDimension);
+        CONVERSION_DB.put(pair(BigDecimal.class, Dimension.class), NumberConversions::bigDecimalToDimension);
+        CONVERSION_DB.put(pair(Boolean.class, Dimension.class), NumberConversions::booleanToDimension);
         CONVERSION_DB.put(pair(int[].class, Dimension.class), ArrayConversions::toDimension);
+        CONVERSION_DB.put(pair(Rectangle.class, Dimension.class), RectangleConversions::toDimension);
+        CONVERSION_DB.put(pair(Insets.class, Dimension.class), InsetsConversions::toDimension);
+        CONVERSION_DB.put(pair(Point.class, Dimension.class), PointConversions::toDimension);
 
         // Point conversions supported
         CONVERSION_DB.put(pair(Void.class, Point.class), VoidConversions::toNull);
         CONVERSION_DB.put(pair(Point.class, Point.class), Converter::identity);
         CONVERSION_DB.put(pair(String.class, Point.class), StringConversions::toPoint);
         CONVERSION_DB.put(pair(Map.class, Point.class), MapConversions::toPoint);
+        CONVERSION_DB.put(pair(Integer.class, Point.class), NumberConversions::toPoint);
+        CONVERSION_DB.put(pair(Long.class, Point.class), NumberConversions::toPoint);
+        CONVERSION_DB.put(pair(BigInteger.class, Point.class), NumberConversions::toPoint);
+        CONVERSION_DB.put(pair(BigDecimal.class, Point.class), NumberConversions::bigDecimalToPoint);
+        CONVERSION_DB.put(pair(Boolean.class, Point.class), NumberConversions::booleanToPoint);
         CONVERSION_DB.put(pair(int[].class, Point.class), ArrayConversions::toPoint);
         CONVERSION_DB.put(pair(Dimension.class, Point.class), DimensionConversions::toPoint);
+        CONVERSION_DB.put(pair(Rectangle.class, Point.class), RectangleConversions::toPoint);
+        CONVERSION_DB.put(pair(Insets.class, Point.class), InsetsConversions::toPoint);
 
         // Rectangle conversions supported
         CONVERSION_DB.put(pair(Void.class, Rectangle.class), VoidConversions::toNull);
         CONVERSION_DB.put(pair(Rectangle.class, Rectangle.class), Converter::identity);
         CONVERSION_DB.put(pair(String.class, Rectangle.class), StringConversions::toRectangle);
         CONVERSION_DB.put(pair(Map.class, Rectangle.class), MapConversions::toRectangle);
+        CONVERSION_DB.put(pair(Integer.class, Rectangle.class), NumberConversions::integerToRectangle);
+        CONVERSION_DB.put(pair(Long.class, Rectangle.class), NumberConversions::longToRectangle);
+        CONVERSION_DB.put(pair(BigInteger.class, Rectangle.class), NumberConversions::bigIntegerToRectangle);
+        CONVERSION_DB.put(pair(BigDecimal.class, Rectangle.class), NumberConversions::bigDecimalToRectangle);
+        CONVERSION_DB.put(pair(Boolean.class, Rectangle.class), NumberConversions::booleanToRectangle);
         CONVERSION_DB.put(pair(int[].class, Rectangle.class), ArrayConversions::toRectangle);
+        CONVERSION_DB.put(pair(Point.class, Rectangle.class), PointConversions::toRectangle);
         CONVERSION_DB.put(pair(Dimension.class, Rectangle.class), DimensionConversions::toRectangle);
+        CONVERSION_DB.put(pair(Insets.class, Rectangle.class), InsetsConversions::toRectangle);
 
         // Insets conversions supported
         CONVERSION_DB.put(pair(Void.class, Insets.class), VoidConversions::toNull);
         CONVERSION_DB.put(pair(Insets.class, Insets.class), Converter::identity);
         CONVERSION_DB.put(pair(String.class, Insets.class), StringConversions::toInsets);
         CONVERSION_DB.put(pair(Map.class, Insets.class), MapConversions::toInsets);
+        CONVERSION_DB.put(pair(Integer.class, Insets.class), NumberConversions::integerToInsets);
+        CONVERSION_DB.put(pair(Long.class, Insets.class), NumberConversions::longToInsets);
+        CONVERSION_DB.put(pair(BigInteger.class, Insets.class), NumberConversions::bigIntegerToInsets);
+        CONVERSION_DB.put(pair(BigDecimal.class, Insets.class), NumberConversions::bigDecimalToInsets);
+        CONVERSION_DB.put(pair(Boolean.class, Insets.class), NumberConversions::booleanToInsets);
         CONVERSION_DB.put(pair(int[].class, Insets.class), ArrayConversions::toInsets);
+        CONVERSION_DB.put(pair(Point.class, Insets.class), PointConversions::toInsets);
         CONVERSION_DB.put(pair(Dimension.class, Insets.class), DimensionConversions::toInsets);
+        CONVERSION_DB.put(pair(Rectangle.class, Insets.class), RectangleConversions::toInsets);
 
         // toFile
         CONVERSION_DB.put(pair(Void.class, File.class), VoidConversions::toNull);
@@ -993,7 +1022,6 @@ public final class Converter {
         CONVERSION_DB.put(pair(LocalDateTime.class, Instant.class), LocalDateTimeConversions::toInstant);
         CONVERSION_DB.put(pair(ZonedDateTime.class, Instant.class), ZonedDateTimeConversions::toInstant);
         CONVERSION_DB.put(pair(OffsetDateTime.class, Instant.class), OffsetDateTimeConversions::toInstant);
-        CONVERSION_DB.put(pair(Duration.class, Instant.class), DurationConversions::toInstant);
 
         CONVERSION_DB.put(pair(String.class, Instant.class), StringConversions::toInstant);
         CONVERSION_DB.put(pair(Map.class, Instant.class), MapConversions::toInstant);
@@ -1026,14 +1054,6 @@ public final class Converter {
         CONVERSION_DB.put(pair(OffsetDateTime.class, MonthDay.class), OffsetDateTimeConversions::toMonthDay);
         CONVERSION_DB.put(pair(String.class, MonthDay.class), StringConversions::toMonthDay);
         CONVERSION_DB.put(pair(Map.class, MonthDay.class), MapConversions::toMonthDay);
-        CONVERSION_DB.put(pair(Short.class, MonthDay.class), NumberConversions::toMonthDay);
-        CONVERSION_DB.put(pair(Integer.class, MonthDay.class), NumberConversions::toMonthDay);
-        CONVERSION_DB.put(pair(Long.class, MonthDay.class), NumberConversions::toMonthDay);
-        CONVERSION_DB.put(pair(Float.class, MonthDay.class), NumberConversions::toMonthDay);
-        CONVERSION_DB.put(pair(Double.class, MonthDay.class), NumberConversions::toMonthDay);
-        CONVERSION_DB.put(pair(AtomicInteger.class, MonthDay.class), NumberConversions::toMonthDay);
-        CONVERSION_DB.put(pair(AtomicLong.class, MonthDay.class), NumberConversions::toMonthDay);
-        CONVERSION_DB.put(pair(BigInteger.class, MonthDay.class), NumberConversions::toMonthDay);
 
         // YearMonth conversions supported
         CONVERSION_DB.put(pair(Void.class, YearMonth.class), VoidConversions::toNull);
@@ -1105,7 +1125,7 @@ public final class Converter {
         CONVERSION_DB.put(pair(Map.class, ByteBuffer.class), MapConversions::toByteBuffer);
 
         // toYear
-        CONVERSION_DB.put(pair(Void.class, Year.class), NumberConversions::nullToYear);
+        CONVERSION_DB.put(pair(Void.class, Year.class), VoidConversions::toNull);
         CONVERSION_DB.put(pair(Year.class, Year.class), Converter::identity);
         CONVERSION_DB.put(pair(Short.class, Year.class), NumberConversions::toYear);
         CONVERSION_DB.put(pair(Integer.class, Year.class), NumberConversions::toYear);
@@ -1146,7 +1166,7 @@ public final class Converter {
         CONVERSION_DB.put(pair(Date.class, Map.class), DateConversions::toMap);
         CONVERSION_DB.put(pair(java.sql.Date.class, Map.class), SqlDateConversions::toMap);
         CONVERSION_DB.put(pair(Timestamp.class, Map.class), TimestampConversions::toMap);
-        CONVERSION_DB.put(pair(Calendar.class, Map.class), CalendarConversions::toMap);  // Restored - bridge produces different map key (zonedDateTime vs. calendar)
+        CONVERSION_DB.put(pair(Calendar.class, Map.class), CalendarConversions::toMap);  // Restored - bridge produces different map key (zonedDateTime vs calendar)
         CONVERSION_DB.put(pair(LocalDate.class, Map.class), LocalDateConversions::toMap);
         CONVERSION_DB.put(pair(LocalDateTime.class, Map.class), LocalDateTimeConversions::toMap);
         CONVERSION_DB.put(pair(ZonedDateTime.class, Map.class), ZonedDateTimeConversions::toMap);
@@ -1254,24 +1274,31 @@ public final class Converter {
         // Stream Bridges
         // ========================================
 
-        // Array → Stream bridges (Stream → Array removed due to single-use limitation)
+        // IntStream ↔ int[] bridges
+        CONVERSION_DB.put(pair(IntStream.class, int[].class), UniversalConversions::intStreamToIntArray);
         CONVERSION_DB.put(pair(int[].class, IntStream.class), UniversalConversions::intArrayToIntStream);
+
+        // LongStream ↔ long[] bridges
+        CONVERSION_DB.put(pair(LongStream.class, long[].class), UniversalConversions::longStreamToLongArray);
         CONVERSION_DB.put(pair(long[].class, LongStream.class), UniversalConversions::longArrayToLongStream);
+
+        // DoubleStream ↔ double[] bridges
+        CONVERSION_DB.put(pair(DoubleStream.class, double[].class), UniversalConversions::doubleStreamToDoubleArray);
         CONVERSION_DB.put(pair(double[].class, DoubleStream.class), UniversalConversions::doubleArrayToDoubleStream);
 
         // Register Record.class -> Map.class conversion if Records are supported
         try {
             Class<?> recordClass = Class.forName("java.lang.Record");
-            CONVERSION_DB.put(pair(recordClass, Map.class, 0L), MapConversions::recordToMap);
+            CONVERSION_DB.put(pair(recordClass, Map.class), MapConversions::recordToMap);
         } catch (ClassNotFoundException e) {
             // Records not available in this JVM (JDK < 14)
         }
 
-
         // Expand bridge conversions - discover multi-hop paths and add them to CONVERSION_DB
         expandBridgeConversions();
 
-        // CONVERSION_DB is now ready for use (MultiKeyMap is inherently thread-safe)
+        // Make CONVERSION_DB unmodifiable after all expansions are complete
+        CONVERSION_DB = Collections.unmodifiableMap(CONVERSION_DB);
     }
 
     /**
@@ -1286,7 +1313,7 @@ public final class Converter {
 
     /**
      * List 1: SURROGATE → PRIMARY (surrogateCanReachEverythingPrimaryCanReach)
-     * Every "surrogate" on the left can be losslessly collapsed to the "primary" on the
+     * Every "surrogate" on the left can be loss-lessly collapsed to the "primary" on the
      * right, so it is safe to give the surrogate all the outbound conversions that the
      * primary already owns.
      */
@@ -1319,21 +1346,25 @@ public final class Converter {
                     new SurrogatePrimaryPair(URL.class, URI.class,
                             UrlConversions::toURI, null),
 
-//                    // Year → Long (maximum reach for data pipelines)
-//                    new SurrogatePrimaryPair(Year.class, Long.class,
-//                            YearConversions::toLong, null),
-//
-//                    // YearMonth → String (maximum reach for temporal formatting)
-//                    new SurrogatePrimaryPair(YearMonth.class, String.class,
-//                            UniversalConversions::toString, null),
-//
-//                    // Duration → Long (numeric reach for time calculations)
-//                    new SurrogatePrimaryPair(Duration.class, Long.class,
-//                            DurationConversions::toLong, null),
-//
-//                    // OffsetTime → String (maximum reach preserving offset info)
-//                    new SurrogatePrimaryPair(OffsetTime.class, String.class,
-//                            OffsetTimeConversions::toString, null),
+                    // Year → Long (maximum reach for data pipelines)
+                    new SurrogatePrimaryPair(Year.class, Long.class,
+                            YearConversions::toLong, null),
+
+                    // YearMonth → String (maximum reach for temporal formatting)
+                    new SurrogatePrimaryPair(YearMonth.class, String.class,
+                            UniversalConversions::toString, null),
+
+                    // MonthDay → String (maximum reach for temporal formatting)
+                    new SurrogatePrimaryPair(MonthDay.class, String.class,
+                            UniversalConversions::toString, null),
+
+                    // Duration → Long (numeric reach for time calculations)
+                    new SurrogatePrimaryPair(Duration.class, Long.class,
+                            DurationConversions::toLong, null),
+
+                    // OffsetTime → String (maximum reach preserving offset info)
+                    new SurrogatePrimaryPair(OffsetTime.class, String.class,
+                            OffsetTimeConversions::toString, null),
 
                     // Date & Time
                     new SurrogatePrimaryPair(Calendar.class, ZonedDateTime.class, 
@@ -1387,7 +1418,7 @@ public final class Converter {
     }
 
     /**
-     * Represents a surrogate-primary class pair with bidirectional bridge conversion functions.
+     * Represents a surrogate-primary class pair with bi-directional bridge conversion functions.
      */
     private static class SurrogatePrimaryPair {
         final Class<?> surrogateClass;
@@ -1425,9 +1456,16 @@ public final class Converter {
      * as a composite conversion function.
      */
     private static void expandBridgeConversions() {
+        // Track original size for logging
+        int originalSize = CONVERSION_DB.size();
+
         // Expand all configured surrogate bridges in both directions
         expandSurrogateBridges(BridgeDirection.SURROGATE_TO_PRIMARY);
         expandSurrogateBridges(BridgeDirection.PRIMARY_TO_SURROGATE);
+
+        int expandedSize = CONVERSION_DB.size();
+        // TODO: Add logging when ready
+        // System.out.println("Expanded CONVERSION_DB from " + originalSize + " to " + expandedSize + " entries via bridge discovery");
     }
 
     /**
@@ -1437,14 +1475,10 @@ public final class Converter {
      * @param direction The direction of bridge expansion (SURROGATE_TO_PRIMARY or PRIMARY_TO_SURROGATE)
      */
     private static void expandSurrogateBridges(BridgeDirection direction) {
-        // Create a snapshot of existing entries to avoid ConcurrentModificationException
-        List<Map.Entry<ConversionPair, Convert<?>>> existingEntries = new ArrayList<>(CONVERSION_DB.size());
-        for (Map.Entry<ConversionPair, Convert<?>> entry : CONVERSION_DB.entrySet()) {
-            // All entries are ConversionPair instances with (Class, Class, long) pattern
-            existingEntries.add(entry);
-        }
+        // Create a snapshot of existing pairs to avoid ConcurrentModificationException
+        Set<ConversionPair> existingPairs = new HashSet<>(CONVERSION_DB.keySet());
 
-        // Get the appropriate configuration list based on a direction
+        // Get the appropriate configuration list based on direction
         List<SurrogatePrimaryPair> configs = (direction == BridgeDirection.SURROGATE_TO_PRIMARY) ?
             getSurrogateToPrimaryPairs() : getPrimaryToSurrogatePairs();
 
@@ -1457,18 +1491,17 @@ public final class Converter {
                 Class<?> primaryClass = config.primaryClass;
 
                 // Find all targets that the primary class can convert to
-                for (Map.Entry<ConversionPair, Convert<?>> entry : existingEntries) {
-                    ConversionPair key = entry.getKey();
-                    Class<?> sourceClass = key.getSource();
-                    Class<?> targetClass = key.getTarget();
-                    long instanceId = key.getInstanceId();
-                    if (sourceClass.equals(primaryClass)) {
+                for (ConversionPair pair : existingPairs) {
+                    if (pair.source.equals(primaryClass)) {
+                        Class<?> targetClass = pair.target;
+                        ConversionPair surrogateConversionPair = pair(surrogateClass, targetClass);
+
                         // Only add if not already defined and not converting to itself
-                        if (CONVERSION_DB.get(pair(surrogateClass, targetClass, 0L)) == null && !targetClass.equals(surrogateClass)) {
+                        if (!CONVERSION_DB.containsKey(surrogateConversionPair) && !targetClass.equals(surrogateClass)) {
                             // Create composite conversion: Surrogate → primary → target
-                            Convert<?> originalConversion = CONVERSION_DB.get(pair(sourceClass, targetClass, instanceId));
+                            Convert<?> originalConversion = CONVERSION_DB.get(pair);
                             Convert<?> bridgeConversion = createSurrogateToPrimaryBridgeConversion(config, originalConversion);
-                            CONVERSION_DB.put(pair(surrogateClass, targetClass, 0L), bridgeConversion);
+                            CONVERSION_DB.put(surrogateConversionPair, bridgeConversion);
                         }
                     }
                 }
@@ -1479,18 +1512,17 @@ public final class Converter {
                 Class<?> surrogateClass = config.primaryClass;  // and primary is the target
 
                 // Find all sources that can convert to the primary class
-                for (Map.Entry<ConversionPair, Convert<?>> entry : existingEntries) {
-                    ConversionPair key = entry.getKey();
-                    Class<?> sourceClass = key.getSource();
-                    Class<?> targetClass = key.getTarget();
-                    long instanceId = key.getInstanceId();
-                    if (targetClass.equals(primaryClass)) {
+                for (ConversionPair pair : existingPairs) {
+                    if (pair.target.equals(primaryClass)) {
+                        Class<?> sourceClass = pair.source;
+                        ConversionPair sourceToSurrogateConversionPair = pair(sourceClass, surrogateClass);
+
                         // Only add if not already defined and not converting from itself
-                        if (CONVERSION_DB.get(pair(sourceClass, surrogateClass, 0L)) == null && !sourceClass.equals(surrogateClass)) {
+                        if (!CONVERSION_DB.containsKey(sourceToSurrogateConversionPair) && !sourceClass.equals(surrogateClass)) {
                             // Create composite conversion: Source → primary → surrogate
-                            Convert<?> originalConversion = CONVERSION_DB.get(pair(sourceClass, targetClass, instanceId));
+                            Convert<?> originalConversion = CONVERSION_DB.get(pair);
                             Convert<?> bridgeConversion = createPrimaryToSurrogateBridgeConversion(config, originalConversion);
-                            CONVERSION_DB.put(pair(sourceClass, surrogateClass, 0L), bridgeConversion);
+                            CONVERSION_DB.put(sourceToSurrogateConversionPair, bridgeConversion);
                         }
                     }
                 }
@@ -1527,7 +1559,7 @@ public final class Converter {
         }
 
         return (from, converter) -> {
-            // First: Convert a source to primary using existing conversion
+            // First: Convert source to primary using existing conversion  
             Object primaryValue = sourceToPrimaryConversion.convert(from, converter);
             // Second: Convert primary to surrogate (e.g., Integer → int, Integer → AtomicInteger)
             return primaryToSurrogateConversion.convert(primaryValue, converter);
@@ -1547,15 +1579,7 @@ public final class Converter {
     public Converter(ConverterOptions options) {
         this.options = options;
         this.instanceId = INSTANCE_ID_GENERATOR.getAndIncrement();
-        
-        for (Map.Entry<ConversionPair, Convert<?>> entry : this.options.getConverterOverrides().entrySet()) {
-            ConversionPair pair = entry.getKey();
-            USER_DB.put(pair(pair.getSource(), pair.getTarget(), pair.getInstanceId()), entry.getValue());
-            
-            // Add identity conversions for non-standard types to enable O(1) hasConverterOverrideFor lookup
-            addIdentityConversionIfNeeded(pair.getSource(), pair.getInstanceId());
-            addIdentityConversionIfNeeded(pair.getTarget(), pair.getInstanceId());
-        }
+        USER_DB.putAll(this.options.getConverterOverrides());
     }
 
     /**
@@ -1590,27 +1614,27 @@ public final class Converter {
      *     // Example 1: Convert String to Integer
      *     String numberStr = "123";
      *     Integer number = converter.convert(numberStr, Integer.class);
-     *     LOG.info("Converted Integer: " + number); // Output: Converted Integer: 123
+     *     System.out.println("Converted Integer: " + number); // Output: Converted Integer: 123
      *
      *     // Example 2: Convert String to Date
      *     String dateStr = "2024-04-27";
      *     LocalDate date = converter.convert(dateStr, LocalDate.class);
-     *     LOG.info("Converted Date: " + date); // Output: Converted Date: 2024-04-27
+     *     System.out.println("Converted Date: " + date); // Output: Converted Date: 2024-04-27
      *
      *     // Example 3: Convert Enum to String
      *     Day day = Day.MONDAY;
      *     String dayStr = converter.convert(day, String.class);
-     *     LOG.info("Converted Day: " + dayStr); // Output: Converted Day: MONDAY
+     *     System.out.println("Converted Day: " + dayStr); // Output: Converted Day: MONDAY
      *
      *     // Example 4: Convert Array to List
      *     String[] stringArray = {"apple", "banana", "cherry"};
      *     List<String> stringList = converter.convert(stringArray, List.class);
-     *     LOG.info("Converted List: " + stringList); // Output: Converted List: [apple, banana, cherry]
+     *     System.out.println("Converted List: " + stringList); // Output: Converted List: [apple, banana, cherry]
      *
      *     // Example 5: Convert Map to UUID
      *     Map<String, Object> uuidMap = Map.of("mostSigBits", 123456789L, "leastSigBits", 987654321L);
      *     UUID uuid = converter.convert(uuidMap, UUID.class);
-     *     LOG.info("Converted UUID: " + uuid); // Output: Converted UUID: 00000000-075b-cd15-0000-0000003ade68
+     *     System.out.println("Converted UUID: " + uuid); // Output: Converted UUID: 00000000-075b-cd15-0000-0000003ade68
      *
      *     // Example 6: Convert Object[], String[], Collection, and primitive Arrays to EnumSet
      *     Object[] array = {Day.MONDAY, Day.WEDNESDAY, "FRIDAY", 4};
@@ -1630,7 +1654,7 @@ public final class Converter {
      *
      *     String customStr = "customValue";
      *     CustomType custom = converter.convert(customStr, CustomType.class);
-     *     LOG.info("Converted CustomType: " + custom); // Output: Converted CustomType: CustomType{value='customValue'}
+     *     System.out.println("Converted CustomType: " + custom); // Output: Converted CustomType: CustomType{value='customValue'}
      * }
      * </pre>
      *
@@ -1685,7 +1709,7 @@ public final class Converter {
      * <p>
      * The Converter utilizes caching mechanisms to store and retrieve converters, ensuring efficient performance
      * even with a large number of conversion operations. However, registering an excessive number of custom converters
-     * may impact memory usage. It is recommended to register only the necessary converters to maintain optimal performance.
+     * may impact memory usage. It is recommended to register only necessary converters to maintain optimal performance.
      * </p>
      *
      * @param from   The source object to be converted. Can be any object, including {@code null}.
@@ -1709,7 +1733,7 @@ public final class Converter {
             // Also check the cache for (Void.class, toType) to avoid redundant lookups.
             Convert<?> cached = getCachedConverter(sourceType, toType);
             if (cached != null) {
-                return (T) cached.convert(null, this, toType);
+                return (T) cached.convert(from, this, toType);
             }
         } else {
             sourceType = from.getClass();
@@ -1724,25 +1748,29 @@ public final class Converter {
             }
         }
 
-        // Check user-added conversions in this context (either instanceId 0L for static, or specific instanceId for instance)
-        Convert<?> conversionMethod = USER_DB.get(pair(sourceType, toType, this.instanceId));
+        // Prepare a conversion key.
+        ConversionPair key = pair(sourceType, toType);
+
+        // Check user-added conversions first.
+        Convert<?> conversionMethod = USER_DB.get(key);
         if (isValidConversion(conversionMethod)) {
             cacheConverter(sourceType, toType, conversionMethod);
             return (T) conversionMethod.convert(from, this, toType);
         }
 
         // Then check the factory conversion database.
-        conversionMethod = CONVERSION_DB.get(pair(sourceType, toType, 0L));
+        conversionMethod = CONVERSION_DB.get(key);
         if (isValidConversion(conversionMethod)) {
             // Cache built-in conversions with instance ID 0 to keep them shared across instances
-            FULL_CONVERSION_CACHE.put(pair(sourceType, toType, 0L), conversionMethod);
+            ConversionPair sharedKey = pair(sourceType, toType, 0);
+            FULL_CONVERSION_CACHE.put(sharedKey, conversionMethod);
             // Also cache with current instance ID for faster future lookup
             cacheConverter(sourceType, toType, conversionMethod);
             return (T) conversionMethod.convert(from, this, toType);
         }
 
         // Attempt inheritance-based conversion.
-        conversionMethod = getInheritedConverter(sourceType, toType, this.instanceId);
+        conversionMethod = getInheritedConverter(sourceType, toType);
         if (isValidConversion(conversionMethod)) {
             cacheConverter(sourceType, toType, conversionMethod);
             return (T) conversionMethod.convert(from, this, toType);
@@ -1775,20 +1803,35 @@ public final class Converter {
     }
 
     private Convert<?> getCachedConverter(Class<?> source, Class<?> target) {
-        // Use MultiKeyMap's optimized getMultiKey which uses internal ThreadLocal for zero allocation
         // First check instance-specific cache
-        Convert<?> converter = FULL_CONVERSION_CACHE.get(pair(source, target, this.instanceId));
+        ConversionPair key = pair(source, target, this.instanceId);
+        Convert<?> converter = FULL_CONVERSION_CACHE.get(key);
         if (converter != null) {
             return converter;
         }
 
         // Fall back to shared conversions (instance ID 0)
-        return FULL_CONVERSION_CACHE.get(pair(source, target, 0L));
+        ConversionPair sharedKey = pair(source, target, 0);
+        return FULL_CONVERSION_CACHE.get(sharedKey);
     }
 
     private void cacheConverter(Class<?> source, Class<?> target, Convert<?> converter) {
-        // Use put with pair() to create conversion key
-        FULL_CONVERSION_CACHE.put(pair(source, target, this.instanceId), converter);
+        ConversionPair key = pair(source, target, this.instanceId);
+        FULL_CONVERSION_CACHE.put(key, converter);
+    }
+
+    // Cache JsonObject class to avoid repeated reflection lookups
+    private static final Class<?> JSON_OBJECT_CLASS;
+
+    static {
+        Class<?> jsonObjectClass;
+        try {
+            jsonObjectClass = Class.forName("com.cedarsoftware.io.JsonObject");
+        } catch (ClassNotFoundException e) {
+            // JsonObject not available - use Void.class as a safe fallback that will never match
+            jsonObjectClass = Objects.class;
+        }
+        JSON_OBJECT_CLASS = jsonObjectClass;
     }
 
     @SuppressWarnings("unchecked")
@@ -1893,20 +1936,78 @@ public final class Converter {
      * @param toType     The target type to convert to
      * @return A {@link Convert} instance for the most appropriate conversion, or {@code null} if no suitable converter is found
      */
-    private Convert<?> getInheritedConverter(Class<?> sourceType, Class<?> toType, long instanceId) {
-        // Get cached sorted inheritance pairs (builds and caches on first call for this source/target combination)
-        InheritancePair[] pairs = getSortedInheritancePairs(sourceType, toType);
+
+    private static Convert<?> getInheritedConverter(Class<?> sourceType, Class<?> toType) {
+        // Build the complete set of source types (including sourceType itself) with levels.
+        Set<ClassLevel> sourceTypes = new TreeSet<>(getSuperClassesAndInterfaces(sourceType));
+        sourceTypes.add(new ClassLevel(sourceType, 0));
+        // Build the complete set of target types (including toType itself) with levels.
+        Set<ClassLevel> targetTypes = new TreeSet<>(getSuperClassesAndInterfaces(toType));
+        targetTypes.add(new ClassLevel(toType, 0));
+
+        // Create pairs of source/target types with their associated levels.
+        class ConversionPairWithLevel {
+            private final ConversionPair pair;
+            private final int sourceLevel;
+            private final int targetLevel;
+
+            private ConversionPairWithLevel(Class<?> source, Class<?> target, int sourceLevel, int targetLevel) {
+                this.pair = Converter.pair(source, target);
+                this.sourceLevel = sourceLevel;
+                this.targetLevel = targetLevel;
+            }
+        }
+
+        List<ConversionPairWithLevel> pairs = new ArrayList<>();
+        for (ClassLevel source : sourceTypes) {
+            for (ClassLevel target : targetTypes) {
+                pairs.add(new ConversionPairWithLevel(source.clazz, target.clazz, source.level, target.level));
+            }
+        }
+
+        // Sort the pairs by a composite of rules:
+        // - Exact target matches first.
+        // - Then by assignability of the target types.
+        // - Then by combined inheritance distance.
+        // - Finally, prefer concrete classes over interfaces.
+        pairs.sort((p1, p2) -> {
+            boolean p1ExactTarget = p1.pair.getTarget() == toType;
+            boolean p2ExactTarget = p2.pair.getTarget() == toType;
+            if (p1ExactTarget != p2ExactTarget) {
+                return p1ExactTarget ? -1 : 1;
+            }
+            if (p1.pair.getTarget() != p2.pair.getTarget()) {
+                boolean p1AssignableToP2 = p2.pair.getTarget().isAssignableFrom(p1.pair.getTarget());
+                boolean p2AssignableToP1 = p1.pair.getTarget().isAssignableFrom(p2.pair.getTarget());
+                if (p1AssignableToP2 != p2AssignableToP1) {
+                    return p1AssignableToP2 ? -1 : 1;
+                }
+            }
+            int dist1 = p1.sourceLevel + p1.targetLevel;
+            int dist2 = p2.sourceLevel + p2.targetLevel;
+            if (dist1 != dist2) {
+                return dist1 - dist2;
+            }
+            boolean p1FromInterface = p1.pair.getSource().isInterface();
+            boolean p2FromInterface = p2.pair.getSource().isInterface();
+            if (p1FromInterface != p2FromInterface) {
+                return p1FromInterface ? 1 : -1;
+            }
+            boolean p1ToInterface = p1.pair.getTarget().isInterface();
+            boolean p2ToInterface = p2.pair.getTarget().isInterface();
+            if (p1ToInterface != p2ToInterface) {
+                return p1ToInterface ? 1 : -1;
+            }
+            return 0;
+        });
 
         // Iterate over sorted pairs and check the converter databases.
-        for (InheritancePair inheritancePair : pairs) {
-            final Class<?> source = inheritancePair.source;
-            final Class<?> target = inheritancePair.target;
-
-            Convert<?> tempConverter = USER_DB.get(pair(source, target, instanceId));
+        for (ConversionPairWithLevel pairWithLevel : pairs) {
+            Convert<?> tempConverter = USER_DB.get(pairWithLevel.pair);
             if (tempConverter != null) {
                 return tempConverter;
             }
-            tempConverter = CONVERSION_DB.get(pair(source, target, 0L));
+            tempConverter = CONVERSION_DB.get(pairWithLevel.pair);
             if (tempConverter != null) {
                 return tempConverter;
             }
@@ -1943,106 +2044,6 @@ public final class Converter {
 
             return parentTypes;
         });
-    }
-
-    /**
-     * Gets the complete type hierarchy for a class, including the class itself at level 0.
-     * <p>
-     * This method returns a cached, immutable sorted set containing:
-     * <ul>
-     *   <li>The class itself at level 0</li>
-     *   <li>All superclasses and interfaces with their inheritance distances</li>
-     * </ul>
-     * The result is cached per class, so no copying is needed on subsequent calls.
-     * </p>
-     *
-     * @param clazz The class to analyze
-     * @return Sorted set of ClassLevel objects representing the complete type hierarchy
-     */
-    private static SortedSet<ClassLevel> getCompleteTypeHierarchy(Class<?> clazz) {
-        return cacheCompleteHierarchy.computeIfAbsent(clazz, key -> {
-            SortedSet<ClassLevel> hierarchy = new TreeSet<>(getSuperClassesAndInterfaces(key));
-            hierarchy.add(new ClassLevel(key, 0));
-            return hierarchy;
-        });
-    }
-
-    /**
-     * Gets the sorted list of inheritance pairs for a given source/target type combination.
-     * <p>
-     * The pairs are sorted by:
-     * <ol>
-     *   <li>Exact target matches first</li>
-     *   <li>More specific target types (assignability)</li>
-     *   <li>Combined inheritance distance (lower is better)</li>
-     *   <li>Concrete classes before interfaces</li>
-     * </ol>
-     * The result is cached per (sourceType, toType) combination.
-     * </p>
-     *
-     * @param sourceType The source type
-     * @param toType The target type
-     * @return Cached, sorted array of InheritancePair objects
-     */
-    private static InheritancePair[] getSortedInheritancePairs(Class<?> sourceType, Class<?> toType) {
-        Object[] key = {sourceType, toType};
-        InheritancePair[] cached = cacheInheritancePairs.get(key);
-        if (cached != null) {
-            return cached;
-        }
-
-        // Build pairs from complete hierarchies (already cached per type)
-        SortedSet<ClassLevel> sourceTypes = getCompleteTypeHierarchy(sourceType);
-        SortedSet<ClassLevel> targetTypes = getCompleteTypeHierarchy(toType);
-
-        List<InheritancePair> pairs = new ArrayList<>(sourceTypes.size() * targetTypes.size());
-        for (ClassLevel source : sourceTypes) {
-            for (ClassLevel target : targetTypes) {
-                pairs.add(new InheritancePair(source.clazz, target.clazz, source.level, target.level));
-            }
-        }
-
-        // Sort the pairs by a composite of rules
-        final Class<?> finalToType = toType;
-        pairs.sort((p1, p2) -> {
-            // Exact target matches first
-            boolean p1ExactTarget = p1.target == finalToType;
-            boolean p2ExactTarget = p2.target == finalToType;
-            if (p1ExactTarget != p2ExactTarget) {
-                return p1ExactTarget ? -1 : 1;
-            }
-            // More specific target types (by assignability)
-            if (p1.target != p2.target) {
-                boolean p1AssignableToP2 = p2.target.isAssignableFrom(p1.target);
-                boolean p2AssignableToP1 = p1.target.isAssignableFrom(p2.target);
-                if (p1AssignableToP2 != p2AssignableToP1) {
-                    return p1AssignableToP2 ? -1 : 1;
-                }
-            }
-            // Combined inheritance distance
-            int dist1 = p1.sourceLevel + p1.targetLevel;
-            int dist2 = p2.sourceLevel + p2.targetLevel;
-            if (dist1 != dist2) {
-                return dist1 - dist2;
-            }
-            // Prefer concrete classes over interfaces (source)
-            boolean p1FromInterface = p1.source.isInterface();
-            boolean p2FromInterface = p2.source.isInterface();
-            if (p1FromInterface != p2FromInterface) {
-                return p1FromInterface ? 1 : -1;
-            }
-            // Prefer concrete classes over interfaces (target)
-            boolean p1ToInterface = p1.target.isInterface();
-            boolean p2ToInterface = p2.target.isInterface();
-            if (p1ToInterface != p2ToInterface) {
-                return p1ToInterface ? 1 : -1;
-            }
-            return 0;
-        });
-
-        InheritancePair[] pairsArray = pairs.toArray(new InheritancePair[0]);
-        cacheInheritancePairs.putMultiKey(pairsArray, sourceType, toType);
-        return pairsArray;
     }
 
     /**
@@ -2094,27 +2095,6 @@ public final class Converter {
         @Override
         public int hashCode() {
             return clazz.hashCode() * 31 + level;
-        }
-    }
-
-    /**
-     * Represents a source/target class pair with their inheritance levels for converter lookup.
-     * <p>
-     * This class is used to cache the sorted list of inheritance pairs for a given source/target
-     * type combination, avoiding repeated computation and sorting.
-     * </p>
-     */
-    static final class InheritancePair {
-        final Class<?> source;
-        final Class<?> target;
-        final int sourceLevel;
-        final int targetLevel;
-
-        InheritancePair(Class<?> source, Class<?> target, int sourceLevel, int targetLevel) {
-            this.source = source;
-            this.target = target;
-            this.sourceLevel = sourceLevel;
-            this.targetLevel = targetLevel;
         }
     }
 
@@ -2275,11 +2255,6 @@ public final class Converter {
      * @see #isConversionSupportedFor(Class, Class)
      */
     public boolean isSimpleTypeConversionSupported(Class<?> source, Class<?> target) {
-        // If user has registered custom converter overrides for this conversion pair, it's not simple anymore
-        if (hasConverterOverrideFor(source, target)) {
-            return false;
-        }
-        
         // First, try to get the converter from the FULL_CONVERSION_CACHE.
         Convert<?> cached = getCachedConverter(source, target);
         if (cached != null) {
@@ -2293,7 +2268,7 @@ public final class Converter {
             return false;
         }
 
-        // Special case: When a source is Number, delegate using Long.
+        // Special case: When source is Number, delegate using Long.
         if (source.equals(Number.class)) {
             Convert<?> method = getConversionFromDBs(Long.class, target);
             cacheConverter(source, target, method);
@@ -2309,7 +2284,7 @@ public final class Converter {
         }
 
         // Finally, attempt an inheritance-based lookup.
-        method = getInheritedConverter(source, target, 0L);
+        method = getInheritedConverter(source, target);
         if (isValidConversion(method)) {
             cacheConverter(source, target, method);
             return true;
@@ -2323,64 +2298,13 @@ public final class Converter {
     /**
      * Overload of {@link #isSimpleTypeConversionSupported(Class, Class)} that checks
      * if the specified class is considered a simple type.
-     * Results are cached for fast subsequent lookups when no custom overrides exist.
-     * 
-     * <p>If custom converter overrides exist for the specified type, this method returns false,
-     * regardless of inheritance-based conversion support. This ensures that user-defined custom
-     * converters take precedence over automatic simple type conversions.</p>
+     * Results are cached for fast subsequent lookups.
      *
      * @param type the class to check
-     * @return {@code true} if a simple type conversion exists for the class and no custom overrides are registered
+     * @return {@code true} if a simple type conversion exists for the class
      */
     public boolean isSimpleTypeConversionSupported(Class<?> type) {
-        // If user has registered custom converter overrides targeting this type, it's not simple anymore
-        if (hasConverterOverrideFor(type)) {
-            return false;
-        }
-        
-        // Use cached result for types without custom overrides
         return SIMPLE_TYPE_CACHE.computeIfAbsent(type, t -> isSimpleTypeConversionSupported(t, t));
-    }
-
-    /**
-     * Checks if custom converter overrides exist for the specified source-target conversion pair.
-     * Uses efficient hash lookup in USER_DB instead of linear search.
-     *
-     * @param sourceType the source type to check for custom overrides
-     * @param targetType the target type to check for custom overrides  
-     * @return {@code true} if custom converter overrides exist for the conversion pair, {@code false} otherwise
-     */
-    private boolean hasConverterOverrideFor(Class<?> sourceType, Class<?> targetType) {
-        // Check if there are custom overrides for this conversion pair
-        if (options != null) {
-            Map<ConversionPair, Convert<?>> converterOverrides = options.getConverterOverrides();
-            if (converterOverrides != null && !converterOverrides.isEmpty()) {
-                // Get instance ID from first conversion pair (all pairs for this instance use same ID)
-                ConversionPair firstPair = converterOverrides.keySet().iterator().next();
-                long instanceId = firstPair.getInstanceId();
-                
-                // Direct hash lookup in USER_DB using this instance's ID
-                Convert<?> converter = USER_DB.get(pair(sourceType, targetType, instanceId));
-                return converter != null && converter != UNSUPPORTED;
-            }
-        }
-        return false;
-    }
-
-    /**
-     * Checks if custom converter overrides exist for the specified target type.
-     * Uses the brilliant optimization of checking for identity conversion (T -> T) which is 
-     * automatically added for all non-standard types involved in custom conversions.
-     * This provides O(1) performance instead of O(n) linear search.
-     * 
-     * @param targetType the target type to check for custom overrides
-     * @return {@code true} if custom converter overrides exist for the target type, {@code false} otherwise
-     */
-    private boolean hasConverterOverrideFor(Class<?> targetType) {
-        // Optimization: Just check for identity conversion (T -> T)
-        // Non-standard types involved in custom conversions automatically get identity conversions
-        // This turns an O(n) linear search into an O(1) hash lookup
-        return hasConverterOverrideFor(targetType, targetType);
     }
 
     /**
@@ -2427,18 +2351,14 @@ public final class Converter {
         if (isContainerConversionSupported(source, target)) {
             // Special handling for array-to-array conversions:
             if (source.isArray() && target.isArray()) {
-                Class<?> srcComp = source.getComponentType();
-                Class<?> tgtComp = target.getComponentType();
-                // If either component is Object, be optimistic - we can't know actual element types at compile time
-                // If both are specific types, recursively check if component conversion is supported
-                return srcComp == Object.class || tgtComp == Object.class ||
-                        isConversionSupportedFor(srcComp, tgtComp);
+                return target.getComponentType() == Object.class ||
+                        isConversionSupportedFor(source.getComponentType(), target.getComponentType());
             }
             return true;  // All other collection conversions are supported.
         }
 
         // Finally, attempt inheritance-based conversion.
-        method = getInheritedConverter(source, target, 0L);
+        method = getInheritedConverter(source, target);
         if (isValidConversion(method)) {
             cacheConverter(source, target, method);
             return true;
@@ -2469,14 +2389,15 @@ public final class Converter {
      * @param target Class of target type.
      * @return Convert instance
      */
-    private Convert<?> getConversionFromDBs(Class<?> source, Class<?> target) {
+    private static Convert<?> getConversionFromDBs(Class<?> source, Class<?> target) {
         source = ClassUtilities.toPrimitiveWrapperClass(source);
         target = ClassUtilities.toPrimitiveWrapperClass(target);
-        Convert<?> method = USER_DB.get(pair(source, target, 0L));
+        ConversionPair key = pair(source, target);
+        Convert<?> method = USER_DB.get(key);
         if (isValidConversion(method)) {
             return method;
         }
-        method = CONVERSION_DB.get(pair(source, target, 0L));
+        method = CONVERSION_DB.get(key);
         if (isValidConversion(method)) {
             return method;
         }
@@ -2489,17 +2410,13 @@ public final class Converter {
      * The returned map's keys are source classes, and each key maps to a {@code Set} of target classes
      * that the source can be converted to.
      * </p>
-     * <p>
-     * This includes both simple type conversions from the conversion database and dynamic
-     * array/collection conversions which are handled at runtime.
-     * </p>
      *
-     * @return A {@code Map<Class<?>, Set<Class<?>>>} representing all supported (built-in) conversions.
+     * @return A {@code Map<Class<?>, Set<Class<?>>>} representing all supported conversions.
      */
     public static Map<Class<?>, Set<Class<?>>> allSupportedConversions() {
         Map<Class<?>, Set<Class<?>>> toFrom = new TreeMap<>(Comparator.comparing(Class::getName));
         addSupportedConversion(CONVERSION_DB, toFrom);
-        addArrayCollectionConversions(toFrom);
+        addSupportedConversion(USER_DB, toFrom);
         return toFrom;
     }
 
@@ -2509,86 +2426,14 @@ public final class Converter {
      * The returned map's keys are source class names, and each key maps to a {@code Set} of target class names
      * that the source can be converted to.
      * </p>
-     * <p>
-     * This includes both simple type conversions from the conversion database and dynamic
-     * array/collection conversions which are handled at runtime.
-     * </p>
      *
-     * @return A {@code Map<String, Set<String>>} representing all supported (built-int) conversions by class names.
+     * @return A {@code Map<String, Set<String>>} representing all supported conversions by class names.
      */
     public static Map<String, Set<String>> getSupportedConversions() {
         Map<String, Set<String>> toFrom = new TreeMap<>(String::compareTo);
         addSupportedConversionName(CONVERSION_DB, toFrom);
-        addArrayCollectionConversionNames(toFrom);
+        addSupportedConversionName(USER_DB, toFrom);
         return toFrom;
-    }
-
-    /**
-     * Adds the dynamic array/collection conversion entries to the supported conversions map.
-     * These conversions are handled at runtime by ArrayConversions and CollectionConversions
-     * and support any component types where the component conversion is supported.
-     */
-    private static void addArrayCollectionConversions(Map<Class<?>, Set<Class<?>>> toFrom) {
-        Comparator<Class<?>> classComparator = Comparator.comparing(Class::getName);
-
-        // Array to Array (component types converted dynamically)
-        toFrom.computeIfAbsent(Object[].class, k -> new TreeSet<>(classComparator)).add(Object[].class);
-
-        // Array to Collection
-        toFrom.computeIfAbsent(Object[].class, k -> new TreeSet<>(classComparator)).add(Collection.class);
-
-        // Array to Enum (creates EnumSet)
-        toFrom.computeIfAbsent(Object[].class, k -> new TreeSet<>(classComparator)).add(Enum.class);
-
-        // Collection to Array
-        toFrom.computeIfAbsent(Collection.class, k -> new TreeSet<>(classComparator)).add(Object[].class);
-
-        // Collection to Collection
-        toFrom.computeIfAbsent(Collection.class, k -> new TreeSet<>(classComparator)).add(Collection.class);
-
-        // Collection to Enum (creates EnumSet)
-        toFrom.computeIfAbsent(Collection.class, k -> new TreeSet<>(classComparator)).add(Enum.class);
-
-        // Map to Enum (creates EnumSet from keySet)
-        toFrom.computeIfAbsent(Map.class, k -> new TreeSet<>(classComparator)).add(Enum.class);
-
-        // EnumSet to Array
-        toFrom.computeIfAbsent(EnumSet.class, k -> new TreeSet<>(classComparator)).add(Object[].class);
-
-        // EnumSet to Collection
-        toFrom.computeIfAbsent(EnumSet.class, k -> new TreeSet<>(classComparator)).add(Collection.class);
-    }
-
-    /**
-     * Adds the dynamic array/collection conversion entry names to the supported conversions map.
-     */
-    private static void addArrayCollectionConversionNames(Map<String, Set<String>> toFrom) {
-        // Array to Array (component types converted dynamically)
-        toFrom.computeIfAbsent("Object[]", k -> new TreeSet<>()).add("Object[]");
-
-        // Array to Collection
-        toFrom.computeIfAbsent("Object[]", k -> new TreeSet<>()).add("Collection");
-
-        // Array to Enum (creates EnumSet)
-        toFrom.computeIfAbsent("Object[]", k -> new TreeSet<>()).add("Enum");
-
-        // Collection to Array
-        toFrom.computeIfAbsent("Collection", k -> new TreeSet<>()).add("Object[]");
-
-        // Collection to Collection
-        toFrom.computeIfAbsent("Collection", k -> new TreeSet<>()).add("Collection");
-
-        // Collection to Enum (creates EnumSet)
-        toFrom.computeIfAbsent("Collection", k -> new TreeSet<>()).add("Enum");
-
-        // Map to Enum (creates EnumSet from keySet)
-        toFrom.computeIfAbsent("Map", k -> new TreeSet<>()).add("Enum");
-
-        // EnumSet to Array
-        toFrom.computeIfAbsent("EnumSet", k -> new TreeSet<>()).add("Object[]");
-
-        // EnumSet to Collection
-        toFrom.computeIfAbsent("EnumSet", k -> new TreeSet<>()).add("Collection");
     }
 
     /**
@@ -2600,10 +2445,8 @@ public final class Converter {
     private static void addSupportedConversion(Map<ConversionPair, Convert<?>> db, Map<Class<?>, Set<Class<?>>> toFrom) {
         for (Map.Entry<ConversionPair, Convert<?>> entry : db.entrySet()) {
             if (entry.getValue() != UNSUPPORTED) {
-                ConversionPair key = entry.getKey();
-                Class<?> source = key.getSource();
-                Class<?> target = key.getTarget();
-                toFrom.computeIfAbsent(source, k -> new TreeSet<>(Comparator.comparing((Class<?> c) -> c.getName()))).add(target);
+                ConversionPair pair = entry.getKey();
+                toFrom.computeIfAbsent(pair.getSource(), k -> new TreeSet<>(Comparator.comparing((Class<?> c) -> c.getName()))).add(pair.getTarget());
             }
         }
     }
@@ -2617,42 +2460,36 @@ public final class Converter {
     private static void addSupportedConversionName(Map<ConversionPair, Convert<?>> db, Map<String, Set<String>> toFrom) {
         for (Map.Entry<ConversionPair, Convert<?>> entry : db.entrySet()) {
             if (entry.getValue() != UNSUPPORTED) {
-                ConversionPair key = entry.getKey();
-                Class<?> source = key.getSource();
-                Class<?> target = key.getTarget();
-                toFrom.computeIfAbsent(getShortName(source), k -> new TreeSet<>(String::compareTo)).add(getShortName(target));
+                ConversionPair pair = entry.getKey();
+                toFrom.computeIfAbsent(getShortName(pair.getSource()), k -> new TreeSet<>(String::compareTo)).add(getShortName(pair.getTarget()));
             }
         }
     }
 
     /**
-     * @param conversionMethod A method that converts an instance of the source type to an instance of the target type.
-     * @return The previous conversion method associated with the source and target types, or {@code null} if no conversion existed.
-     * @deprecated Use {@link #addConversion(Convert, Class, Class)} instead. This method will be removed in a future version as it is less safe and does not handle all type variations correctly.
-     */
-    @Deprecated
-    public Convert<?> addConversion(Class<?> source, Class<?> target, Convert<?> conversionMethod) {
-        return addConversion(conversionMethod, source, target);
-    }
-
-    /**
-     * Adds a new conversion function for converting from one type to another for this specific Converter instance.
-     * <p>When {@code convert(source, target)} is called on this instance, the conversion function is located by:
-     * <ol>
-     *   <li>Checking instance-specific conversions first (added via this method)</li>
-     *   <li>Checking factory conversions (built-in conversions)</li>
-     *   <li>Attempting inheritance-based conversion lookup</li>
-     * </ol></p>
+     * Adds a new conversion function for converting from one type to another. If a conversion already exists
+     * for the specified source and target types, the existing conversion will be overwritten.
      *
-     * <p>This method automatically handles primitive types by converting them to their corresponding wrapper types
-     * and stores conversions for all primitive/wrapper combinations, just like the static version.</p>
+     * <p>When {@code convert(source, target)} is called, the conversion function is located by matching the class
+     * of the source instance and the target class. If an exact match is found, that conversion function is used.
+     * If no exact match is found, the method attempts to find the most appropriate conversion by traversing
+     * the class hierarchy of the source and target types (including interfaces), excluding common marker
+     * interfaces such as {@link java.io.Serializable}, {@link java.lang.Comparable}, and {@link java.lang.Cloneable}.
+     * The nearest match based on class inheritance and interface implementation is used.
      *
-     * @param conversionMethod A method that converts an instance of the source type to an instance of the target type.
+     * <p>This method allows you to explicitly define custom conversions between types. It also supports the automatic
+     * handling of primitive types by converting them to their corresponding wrapper types (e.g., {@code int} to {@code Integer}).
+     *
+     * <p><strong>Note:</strong> This method utilizes the {@link ClassUtilities#toPrimitiveWrapperClass(Class)} utility
+     * to ensure that primitive types are mapped to their respective wrapper classes before attempting to locate
+     * or store the conversion.
+     *
      * @param source           The source class (type) to convert from.
      * @param target           The target class (type) to convert to.
-     * @return The previous conversion method associated with the source and target types for this instance, or {@code null} if no conversion existed.
+     * @param conversionMethod A method that converts an instance of the source type to an instance of the target type.
+     * @return The previous conversion method associated with the source and target types, or {@code null} if no conversion existed.
      */
-    public Convert<?> addConversion(Convert<?> conversionMethod, Class<?> source, Class<?> target) {
+    public static Convert<?> addConversion(Class<?> source, Class<?> target, Convert<?> conversionMethod) {
         // Collect all type variations (primitive and wrapper) for both source and target
         Set<Class<?>> sourceTypes = getTypeVariations(source);
         Set<Class<?>> targetTypes = getTypeVariations(target);
@@ -2667,19 +2504,15 @@ public final class Converter {
         // Store the wrapper version first to capture return value
         Class<?> wrapperSource = ClassUtilities.toPrimitiveWrapperClass(source);
         Class<?> wrapperTarget = ClassUtilities.toPrimitiveWrapperClass(target);
-        Convert<?> previous = USER_DB.get(pair(wrapperSource, wrapperTarget, this.instanceId));
-        USER_DB.put(pair(wrapperSource, wrapperTarget, this.instanceId), conversionMethod);
+        Convert<?> previous = USER_DB.put(pair(wrapperSource, wrapperTarget), conversionMethod);
 
-        // Add all type combinations to USER_DB with this instance ID
+        // Add all type combinations to USER_DB
         for (Class<?> srcType : sourceTypes) {
             for (Class<?> tgtType : targetTypes) {
-                USER_DB.put(pair(srcType, tgtType, this.instanceId), conversionMethod);
+                USER_DB.put(pair(srcType, tgtType), conversionMethod);
             }
         }
 
-        // Add identity conversions for non-standard types to enable O(1) hasConverterOverrideFor lookup
-        addIdentityConversionIfNeeded(source, this.instanceId);
-        addIdentityConversionIfNeeded(target, this.instanceId);
         return previous;
     }
 
@@ -2704,19 +2537,6 @@ public final class Converter {
         return types;
     }
 
-    /**
-     * Adds an identity conversion (T -> T) for a non-standard type to enable O(1) lookup
-     * in hasConverterOverrideFor. This serves as a marker that the type is involved in
-     * custom conversions while also providing useful identity conversion functionality.
-     * 
-     * @param type the type to add identity conversion for
-     * @param instanceId the instance ID to use for the conversion
-     */
-    private void addIdentityConversionIfNeeded(Class<?> type, long instanceId) {
-        if (type != null && USER_DB.get(pair(type, type, instanceId)) == null) {
-            USER_DB.put(pair(type, type, instanceId), IDENTITY_CONVERTER);
-        }
-    }
 
     /**
      * Performs an identity conversion, returning the source object as-is.
@@ -2746,24 +2566,12 @@ public final class Converter {
         // Note: Since cache keys now include instance ID, we need to clear all cache entries
         // that match the source/target classes regardless of instance. This is less efficient
         // but necessary for the static addConversion API.
-
-        // Collect keys to remove (can't modify during iteration)
-        java.util.List<ConversionPair> keysToRemove = new java.util.ArrayList<>(16);
-        for (Map.Entry<ConversionPair, Convert<?>> entry : FULL_CONVERSION_CACHE.entrySet()) {
+        FULL_CONVERSION_CACHE.entrySet().removeIf(entry -> {
             ConversionPair key = entry.getKey();
-            Class<?> sourceClass = key.getSource();
-            Class<?> targetClass = key.getTarget();
-            if ((sourceClass == source && targetClass == target) ||
-                // Also clear inheritance-based entries
-                isInheritanceRelated(sourceClass, targetClass, source, target)) {
-                keysToRemove.add(key);
-            }
-        }
-
-        // Remove the collected keys
-        for (ConversionPair key : keysToRemove) {
-            FULL_CONVERSION_CACHE.remove(key);
-        }
+            return (key.getSource() == source && key.getTarget() == target) ||
+                    // Also clear inheritance-based entries
+                    isInheritanceRelated(key.getSource(), key.getTarget(), source, target);
+        });
 
         SIMPLE_TYPE_CACHE.remove(source);
         SIMPLE_TYPE_CACHE.remove(target);
@@ -2776,5 +2584,4 @@ public final class Converter {
         return (keySource != source && (source.isAssignableFrom(keySource) || keySource.isAssignableFrom(source))) ||
                 (keyTarget != target && (target.isAssignableFrom(keyTarget) || keyTarget.isAssignableFrom(target)));
     }
-
 }

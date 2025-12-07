@@ -277,6 +277,27 @@ public class CompactMap<K, V> implements Map<K, V> {
     private static final TemplateClassLoader templateClassLoader = new TemplateClassLoader(ClassUtilities.getClassLoader(CompactMap.class));
     private static final Map<String, ReentrantLock> CLASS_LOCKS = new ConcurrentHashMap<>();
 
+    /**
+     * Per-class cache for the isLegacyConstructed() result. This is the only configuration
+     * method that does real work (string operations on class name). The other config methods
+     * (isCaseInsensitive, compactSize, getOrdering) simply return constants and are already fast.
+     */
+    private static final ClassValueMap<Boolean> LEGACY_CONSTRUCTED_CACHE = new ClassValueMap<>();
+
+    /**
+     * Returns whether this instance was created through legacy subclassing (cached per class).
+     * This caches the result of the class name check which would otherwise be computed repeatedly.
+     */
+    private boolean getCachedLegacyConstructed() {
+        Class<?> clazz = getClass();
+        Boolean legacy = LEGACY_CONSTRUCTED_CACHE.get(clazz);
+        if (legacy == null) {
+            legacy = !clazz.getName().startsWith("com.cedarsoftware.util.CompactMap$");
+            LEGACY_CONSTRUCTED_CACHE.put(clazz, legacy);
+        }
+        return legacy;
+    }
+
     private static boolean isAllowedMapType(Class<?> mapType) {
         String name = mapType.getName();
         for (String prefix : ALLOWED_MAP_PACKAGES) {
@@ -304,7 +325,7 @@ public class CompactMap<K, V> implements Map<K, V> {
         }
 
         // Only check direct subclasses, not our generated classes
-        if (getClass() != CompactMap.class && isLegacyConstructed()) {
+        if (getClass() != CompactMap.class && getCachedLegacyConstructed()) {
             Map<K,V> map = getNewMap();
             if (map instanceof SortedMap) {
                 SortedMap<?,?> sortedMap = (SortedMap<?,?>)map;
@@ -737,12 +758,13 @@ public class CompactMap<K, V> implements Map<K, V> {
             return;
         }
 
-        if (isLegacyConstructed()) {
+        if (getCachedLegacyConstructed()) {
             Map<K,V> mapInstance = getNewMap();  // Called only once before iteration
 
             // Only sort if it's a SortedMap
             if (mapInstance instanceof SortedMap) {
-                boolean reverse = REVERSE.equals(getOrdering());
+                String ordering = getOrdering();
+                boolean reverse = REVERSE.equals(ordering);
 
                 // Fall back to detecting a reverse comparator when legacy
                 // subclasses did not override getOrdering().  Older

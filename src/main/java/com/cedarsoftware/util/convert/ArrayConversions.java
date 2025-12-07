@@ -1,16 +1,24 @@
 package com.cedarsoftware.util.convert;
 
-import com.cedarsoftware.util.geom.Color;
-import com.cedarsoftware.util.geom.Dimension;
-import com.cedarsoftware.util.geom.Insets;
-import com.cedarsoftware.util.geom.Point;
-import com.cedarsoftware.util.geom.Rectangle;
+import java.io.File;
 import java.lang.reflect.Array;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
 import java.util.ArrayDeque;
 import java.util.Collection;
 import java.util.Deque;
 import java.util.EnumSet;
 import java.util.IdentityHashMap;
+
+import com.cedarsoftware.util.geom.Color;
+import com.cedarsoftware.util.geom.Dimension;
+import com.cedarsoftware.util.geom.Insets;
+import com.cedarsoftware.util.geom.Point;
+import com.cedarsoftware.util.geom.Rectangle;
+
+import static com.cedarsoftware.util.ArrayUtilities.getElement;
+import static com.cedarsoftware.util.ArrayUtilities.getLength;
+import static com.cedarsoftware.util.ArrayUtilities.setElement;
 
 /**
  * @author John DeRegnaucourt (jdereg@gmail.com)
@@ -51,7 +59,7 @@ final class ArrayConversions {
         IdentityHashMap<Object, Object> visited = new IdentityHashMap<>();
 
         // Create root target array
-        int length = Array.getLength(sourceArray);
+        int length = getLength(sourceArray);
         Class<?> targetComponentType = targetArrayType.getComponentType();
         Object targetArray = Array.newInstance(targetComponentType, length);
 
@@ -68,9 +76,9 @@ final class ArrayConversions {
             Object tgt = work.targetArray;
             Class<?> compType = work.targetComponentType;
 
-            int len = Array.getLength(src);
+            int len = getLength(src);
             for (int i = 0; i < len; i++) {
-                Object value = Array.get(src, i);
+                Object value = getElement(src, i);
                 Object convertedValue;
 
                 if (value == null) {
@@ -93,7 +101,7 @@ final class ArrayConversions {
                     } else if (compType.isArray() || compType == Object.class || compType.isAssignableFrom(value.getClass())) {
                         // Target can hold arrays (either it's an array type, Object.class, or assignable)
                         // Convert nested array recursively
-                        int valueLen = Array.getLength(value);
+                        int valueLen = getLength(value);
                         Class<?> nestedComponentType = compType.isArray() ? compType.getComponentType() : Object.class;
                         Object nestedTarget = Array.newInstance(nestedComponentType, valueLen);
                         visited.put(value, nestedTarget);
@@ -112,7 +120,7 @@ final class ArrayConversions {
                     convertedValue = converter.convert(value, compType);
                 }
 
-                Array.set(tgt, i, convertedValue);
+                setElement(tgt, i, convertedValue);
             }
         }
 
@@ -229,7 +237,7 @@ final class ArrayConversions {
                     convertedValue = converter.convert(item, compType);
                 }
 
-                Array.set(tgtArray, index++, convertedValue);
+                setElement(tgtArray, index++, convertedValue);
             }
         }
 
@@ -265,12 +273,12 @@ final class ArrayConversions {
 
         if (componentType == String.class) {
             for (Enum<?> value : enumSet) {
-                Array.set(array, i++, value.name());
+                setElement(array, i++, value.name());
             }
         } else if (componentType == Integer.class || componentType == int.class ||
                 componentType == Long.class || componentType == long.class) {
             for (Enum<?> value : enumSet) {
-                Array.set(array, i++, value.ordinal());
+                setElement(array, i++, value.ordinal());
             }
         } else if (componentType == Short.class || componentType == short.class) {
             for (Enum<?> value : enumSet) {
@@ -278,7 +286,7 @@ final class ArrayConversions {
                 if (ordinal > Short.MAX_VALUE) {
                     throw new IllegalArgumentException("Enum ordinal too large for short: " + ordinal);
                 }
-                Array.set(array, i++, (short) ordinal);
+                setElement(array, i++, (short) ordinal);
             }
         } else if (componentType == Byte.class || componentType == byte.class) {
             for (Enum<?> value : enumSet) {
@@ -286,16 +294,16 @@ final class ArrayConversions {
                 if (ordinal > Byte.MAX_VALUE) {
                     throw new IllegalArgumentException("Enum ordinal too large for byte: " + ordinal);
                 }
-                Array.set(array, i++, (byte) ordinal);
+                setElement(array, i++, (byte) ordinal);
             }
         } else if (componentType == Class.class) {
             for (Enum<?> value : enumSet) {
-                Array.set(array, i++, value.getDeclaringClass());
+                setElement(array, i++, value.getDeclaringClass());
             }
         } else {
             // Default case for other types
             for (Enum<?> value : enumSet) {
-                Array.set(array, i++, value);
+                setElement(array, i++, value);
             }
         }
         return array;
@@ -439,10 +447,10 @@ final class ArrayConversions {
      * @param converter Converter instance
      * @return File instance
      */
-    static java.io.File charArrayToFile(Object from, Converter converter) {
+    static File charArrayToFile(Object from, Converter converter) {
         char[] array = (char[]) from;
         String path = new String(array);
-        return converter.convert(path, java.io.File.class);
+        return converter.convert(path, File.class);
     }
 
     /**
@@ -452,10 +460,10 @@ final class ArrayConversions {
      * @param converter Converter instance
      * @return File instance
      */
-    static java.io.File byteArrayToFile(Object from, Converter converter) {
+    static File byteArrayToFile(Object from, Converter converter) {
         byte[] array = (byte[]) from;
-        String path = new String(array, java.nio.charset.StandardCharsets.UTF_8);
-        return converter.convert(path, java.io.File.class);
+        String path = new String(array, StandardCharsets.UTF_8);
+        return converter.convert(path, File.class);
     }
 
     /**
@@ -465,10 +473,10 @@ final class ArrayConversions {
      * @param converter Converter instance
      * @return Path instance
      */
-    static java.nio.file.Path charArrayToPath(Object from, Converter converter) {
+    static Path charArrayToPath(Object from, Converter converter) {
         char[] array = (char[]) from;
         String path = new String(array);
-        return converter.convert(path, java.nio.file.Path.class);
+        return converter.convert(path, Path.class);
     }
 
     /**
@@ -478,9 +486,9 @@ final class ArrayConversions {
      * @param converter Converter instance
      * @return Path instance
      */
-    static java.nio.file.Path byteArrayToPath(Object from, Converter converter) {
+    static Path byteArrayToPath(Object from, Converter converter) {
         byte[] array = (byte[]) from;
-        String path = new String(array, java.nio.charset.StandardCharsets.UTF_8);
-        return converter.convert(path, java.nio.file.Path.class);
+        String path = new String(array, StandardCharsets.UTF_8);
+        return converter.convert(path, Path.class);
     }
 }

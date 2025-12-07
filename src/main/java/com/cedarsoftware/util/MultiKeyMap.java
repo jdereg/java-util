@@ -1908,11 +1908,21 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         return new MultiKey<>(expanded, hash, null);
     }
     
-    private static int expandAndHash(Object current, List<Object> result, IdentityHashMap<Object, Boolean> visited, 
+    private static int expandAndHash(Object current, List<Object> result, IdentityHashMap<Object, Boolean> visited,
                                       int runningHash, boolean useFlatten, boolean caseSensitive) {
         if (current == null) {
             result.add(NULL_SENTINEL);
             return runningHash * 31 + NULL_SENTINEL.hashCode();
+        }
+
+        // Fast path: Common leaf types (final classes - safe to use == for class comparison)
+        // These are the most frequent key types, so check them first to skip the instanceof chain
+        Class<?> clazz = current.getClass();
+        if (clazz == String.class || clazz == Integer.class || clazz == Long.class ||
+            clazz == Double.class || clazz == Boolean.class || clazz == Short.class ||
+            clazz == Byte.class || clazz == Character.class || clazz == Float.class) {
+            result.add(current);
+            return runningHash * 31 + computeElementHash(current, caseSensitive);
         }
 
         if (visited.containsKey(current)) {
@@ -1921,7 +1931,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             return runningHash * 31 + cycle.hashCode();
         }
 
-        if (current.getClass().isArray()) {
+        // Use getComponentType() != null instead of isArray() - slightly faster
+        if (clazz.getComponentType() != null) {
             visited.put(current, true);
             try {
                 if (!useFlatten) {

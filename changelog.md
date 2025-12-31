@@ -2,6 +2,10 @@
 
 #### 4.72.0 - 2025-12-31
 * **BUG FIX**: Fixed Jackson dependencies incorrectly declared without `<scope>test</scope>`. Jackson (jackson-databind, jackson-dataformat-xml) is only used for testing and should not be a transitive dependency. This restores java-util's zero external runtime dependencies.
+* **BUG FIX**: Fixed `ThreadedLRUCacheStrategy` scheduled task accumulation. When `CaseInsensitiveMap.replaceCache()` was called multiple times, each new cache scheduled a purge task that was never cancelled. These orphaned tasks accumulated and could overwhelm the scheduler thread. Now:
+  * `ThreadedLRUCacheStrategy.shutdown()` properly cancels the scheduled purge task
+  * `LRUCache.shutdown()` delegates to the strategy's shutdown
+  * `CaseInsensitiveMap.replaceCache()` calls shutdown on the old cache before replacing
 * **UPDATED**: Test dependencies updated to latest versions:
   * jackson-databind: 2.17.2 → 2.20.1
   * jackson-dataformat-xml: 2.17.2 → 2.20.1

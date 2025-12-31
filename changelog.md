@@ -1,5 +1,11 @@
 ### Revision History
 
+#### 4.72.0 - 2025-12-31
+* **BUG FIX**: Fixed Jackson dependencies incorrectly declared without `<scope>test</scope>`. Jackson (jackson-databind, jackson-dataformat-xml) is only used for testing and should not be a transitive dependency. This restores java-util's zero external runtime dependencies.
+* **UPDATED**: Test dependencies updated to latest versions:
+  * jackson-databind: 2.17.2 → 2.20.1
+  * jackson-dataformat-xml: 2.17.2 → 2.20.1
+
 #### 4.71.0 - 2025-12-31
 * **PERFORMANCE**: `MultiKeyMap.expandAndHash()` - Multiple optimizations for faster key processing:
   * **Fast-path for common leaf types**: Added early-exit check for common final types (String, Integer, Long, Double, Boolean, Short, Byte, Character, Float) using class identity comparison (`==`) instead of falling through the `instanceof` chain. Since these are the most frequent key types, checking them first skips the more expensive `instanceof` checks (Map, Set, Collection) for 80%+ of calls.

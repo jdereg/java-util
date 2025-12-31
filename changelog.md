@@ -1,6 +1,6 @@
 ### Revision History
 
-#### 4.72.0 (Upcoming)
+#### 4.71.0 - 2025-12-31
 * **PERFORMANCE**: `MultiKeyMap.expandAndHash()` - Multiple optimizations for faster key processing:
   * **Fast-path for common leaf types**: Added early-exit check for common final types (String, Integer, Long, Double, Boolean, Short, Byte, Character, Float) using class identity comparison (`==`) instead of falling through the `instanceof` chain. Since these are the most frequent key types, checking them first skips the more expensive `instanceof` checks (Map, Set, Collection) for 80%+ of calls.
   * **Array detection optimization**: Replaced `isArray()` with `getComponentType() != null` for slight additional speedup.
@@ -16,8 +16,6 @@
   * Array/Collection conversions: Object[] ↔ Collection, array to array
   * Enum conversions: Array/Collection/Map to Enum (creates EnumSet), EnumSet to Collection/Object[]
   * `isConversionSupportedFor()`: Added optimistic handling for Object[] source component type - returns true when source component is Object.class (can't know actual element types at compile time)
-
-#### 4.71.0 - 2025-12-31
 * **CLEANUP**: `FastReader` - Removed unused extended API methods that were never utilized by json-io:
   * Removed: `skipWhitespace()`, `scanStringNoEscape()`, `extractString()`, `extractStringCached()`, `scanFieldName()`, `extractFieldName()`, `fieldNameEquals()`, `scanNumber()`, `isSimpleInteger()`
   * Removed inner types: `StringCache`, `FieldNameScanResult`, `NumberScanResult`

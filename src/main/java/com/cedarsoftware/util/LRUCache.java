@@ -218,11 +218,16 @@ public class LRUCache<K, V> implements Map<K, V> {
     }
 
     /**
-     * This method is no longer needed as the ThreadedLRUCacheStrategy will automatically end because it uses a
-     * daemon thread.
-     * @deprecated 
+     * Shuts down this cache, releasing any resources associated with the scheduling of cleanup tasks.
+     * For ThreadedLRUCacheStrategy, this cancels the scheduled purge task.
+     * For LockingLRUCacheStrategy, this is a no-op.
+     * <p>
+     * This method should be called when the cache is no longer needed, especially when
+     * replacing a cache with a new instance, to prevent accumulation of orphaned scheduled tasks.
      */
-    @Deprecated
     public void shutdown() {
+        if (strategy instanceof ThreadedLRUCacheStrategy) {
+            ((ThreadedLRUCacheStrategy<K, V>) strategy).shutdown();
+        }
     }
 }

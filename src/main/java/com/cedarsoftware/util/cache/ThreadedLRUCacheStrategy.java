@@ -13,6 +13,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -57,6 +58,7 @@ public class ThreadedLRUCacheStrategy<K, V> implements Map<K, V> {
     private final int capacity;
     private final ConcurrentMap<K, Node<K, V>> cache;
     private final AtomicBoolean cleanupScheduled = new AtomicBoolean(false);
+    private volatile ScheduledFuture<?> scheduledPurgeTask;
 
     // Shared ScheduledExecutorService for all cache instances
     // set thread to daemon so application can shut down properly.
@@ -135,7 +137,20 @@ public class ThreadedLRUCacheStrategy<K, V> implements Map<K, V> {
     private void schedulePurgeTask() {
         WeakReference<ThreadedLRUCacheStrategy<K, V>> cacheRef = new WeakReference<>(this);
         PurgeTask<K, V> purgeTask = new PurgeTask<>(cacheRef);
-        scheduler.scheduleAtFixedRate(purgeTask, cleanupDelayMillis, cleanupDelayMillis, TimeUnit.MILLISECONDS);
+        scheduledPurgeTask = scheduler.scheduleAtFixedRate(purgeTask, cleanupDelayMillis, cleanupDelayMillis, TimeUnit.MILLISECONDS);
+    }
+
+    /**
+     * Shuts down this cache's scheduled purge task.
+     * After calling this method, the cache will no longer perform automatic cleanup.
+     * This should be called when the cache is no longer needed to prevent resource leaks.
+     */
+    public void shutdown() {
+        ScheduledFuture<?> task = scheduledPurgeTask;
+        if (task != null) {
+            task.cancel(false);
+            scheduledPurgeTask = null;
+        }
     }
 
     /**

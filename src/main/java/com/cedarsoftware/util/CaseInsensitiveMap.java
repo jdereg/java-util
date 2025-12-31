@@ -253,6 +253,7 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
      * Replaces the current cache used for CaseInsensitiveString instances with a new cache.
      * This operation is thread-safe due to the volatile nature of the cache field.
      * When replacing the cache:
+     * - The old cache is shut down to release scheduled cleanup resources
      * - Existing CaseInsensitiveString instances in maps remain valid
      * - The new cache will begin populating with strings as they are accessed
      * - There may be temporary duplicate CaseInsensitiveString instances during transition
@@ -262,7 +263,10 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
      */
     public static void replaceCache(LRUCache<String, CaseInsensitiveString> lruCache) {
         Objects.requireNonNull(lruCache, "Cache cannot be null");
-        CaseInsensitiveString.COMMON_STRINGS_REF.set(lruCache);
+        Map<String, CaseInsensitiveString> oldCache = CaseInsensitiveString.COMMON_STRINGS_REF.getAndSet(lruCache);
+        if (oldCache instanceof LRUCache) {
+            ((LRUCache<String, CaseInsensitiveString>) oldCache).shutdown();
+        }
     }
 
     /**

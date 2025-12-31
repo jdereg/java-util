@@ -213,7 +213,7 @@ public class ClassUtilities {
      * Holder for per-ClassLoader cache and its associated ReferenceQueue
      */
     private static final class LoaderCache {
-        final LRUCache<String, WeakReference<Class<?>>> cache = new LRUCache<>(4096);
+        final ConcurrentMap<String, WeakReference<Class<?>>> cache = new ConcurrentHashMap<>(2048);
         final ReferenceQueue<Class<?>> queue = new ReferenceQueue<>();
     }
 

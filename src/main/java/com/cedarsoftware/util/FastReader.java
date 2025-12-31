@@ -390,7 +390,7 @@ public final class FastReader extends Reader {
     /**
      * Scans a JSON field name directly from the buffer, computing hash as we go.
      * This is optimized for the common case where field names are:
-     * - Short (< 32 chars)
+     * - Short @code{< 32 chars}
      * - ASCII only (no escapes)
      * - Entirely within the current buffer
      *
@@ -504,7 +504,8 @@ public final class FastReader extends Reader {
             return false;
         }
         int pos = scanResult.startPos;
-        for (int i = 0; i < scanResult.length; i++) {
+        final int len = scanResult.length;
+        for (int i = 0; i < len; i++) {
             if (buf[pos + i] != cached.charAt(i)) {
                 return false;
             }

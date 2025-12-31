@@ -17,12 +17,7 @@
   * Enum conversions: Array/Collection/Map to Enum (creates EnumSet), EnumSet to Collection/Object[]
   * `isConversionSupportedFor()`: Added optimistic handling for Object[] source component type - returns true when source component is Object.class (can't know actual element types at compile time)
 * **CLEANUP**: `FastReader` - Removed unused extended API methods that were never utilized by json-io:
-  * Removed: `skipWhitespace()`, `scanStringNoEscape()`, `extractString()`, `extractStringCached()`, `scanFieldName()`, `extractFieldName()`, `fieldNameEquals()`, `scanNumber()`, `isSimpleInteger()`
-  * Removed inner types: `StringCache`, `FieldNameScanResult`, `NumberScanResult`
-  * Reduced class from ~670 lines to ~185 lines
-  * Core API preserved: `read()`, `read(char[], int, int)`, `pushback()`, `close()`, `getLastSnippet()`
   * Deprecated: `getLine()` and `getCol()` now return 0 (line/column tracking removed for performance)
-* **PERFORMANCE**: `FastReader` - Streamlined implementation:
   * Removed line/column tracking overhead from hot path
   * `getLastSnippet()` provides error context without per-character tracking cost
 

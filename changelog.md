@@ -16,22 +16,17 @@
   * Array/Collection conversions: Object[] ↔ Collection, array to array
   * Enum conversions: Array/Collection/Map to Enum (creates EnumSet), EnumSet to Collection/Object[]
   * `isConversionSupportedFor()`: Added optimistic handling for Object[] source component type - returns true when source component is Object.class (can't know actual element types at compile time)
-* **PERFORMANCE**: `FastReader` - Multiple parsing optimizations for JSON processing:
-  * **scanNumber()**: New method returning NumberScanResult with parsed value, float detection, overflow detection, and terminating character. Allows parsers to avoid re-parsing digits when transitioning from integer to floating point.
-  * **scanFieldName()**: New method that scans field names computing hash inline, enabling cache lookup before String allocation.
-  * **extractStringCached()**: New method with StringCache interface for allocation-free cache lookups. Computes hash from buffer and looks up in cache BEFORE allocating a String - on cache hit, returns cached String with zero allocation.
-  * **Line/column tracking removed**: Eliminated line/col fields and all tracking logic for performance. `getLine()` and `getCol()` deprecated (return 0). Error context should use `getLastSnippet()` instead.
-  * **Dead code removal**: Fixed skipWhitespace() impossible newline checks after determining character is not whitespace.
-  * **Bulk read optimization**: Use `System.arraycopy()` in `read(char[], off, len)` instead of char-by-char copy.
 
-#### 4.71.0 - 2025-11-21
-* **PERFORMANCE**: `FastReader` - Added buffer-scanning fast-path methods for JSON parsing optimization:
-  * **`scanStringNoEscape()`**: Scans buffer directly for escape-free strings (80-90% of JSON strings). Returns string length if no escapes found, -1 otherwise. Enables avoiding StringBuilder overhead for simple field names and values.
-  * **`extractString(int length)`**: Zero-copy string extraction from buffer after successful `scanStringNoEscape()`. Creates String directly from char[] buffer without intermediate copying.
-  * **`scanInteger(int firstChar)`**: Parses integers directly from buffer in a tight loop. Returns parsed long value or `Long.MIN_VALUE` sentinel for complex numbers (decimals, exponents, overflow). Enables Jackson/Gson-style fast-path number parsing.
-  * **Buffer size tuning**: Reduced default buffer from 16KB to 8KB based on profiling - smaller buffer has better cache locality for typical JSON documents.
-  * **Impact**: These methods enable `JsonParser` to scan the buffer directly instead of character-by-character `read()` calls, providing ~75% reduction in parsing overhead for simple JSON values.
-  * **Profiler results**: `readChar()` eliminated from hot path (was 325 samples, now 0). String parsing reduced by ~22%, integer parsing improved by ~71ms per iteration.
+#### 4.71.0 - 2025-12-31
+* **CLEANUP**: `FastReader` - Removed unused extended API methods that were never utilized by json-io:
+  * Removed: `skipWhitespace()`, `scanStringNoEscape()`, `extractString()`, `extractStringCached()`, `scanFieldName()`, `extractFieldName()`, `fieldNameEquals()`, `scanNumber()`, `isSimpleInteger()`
+  * Removed inner types: `StringCache`, `FieldNameScanResult`, `NumberScanResult`
+  * Reduced class from ~670 lines to ~185 lines
+  * Core API preserved: `read()`, `read(char[], int, int)`, `pushback()`, `close()`, `getLastSnippet()`
+  * Deprecated: `getLine()` and `getCol()` now return 0 (line/column tracking removed for performance)
+* **PERFORMANCE**: `FastReader` - Streamlined implementation:
+  * Removed line/column tracking overhead from hot path
+  * `getLastSnippet()` provides error context without per-character tracking cost
 
 #### 4.70.0 - 2025-11-18
 

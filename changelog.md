@@ -608,7 +608,7 @@
 >   * **BigInteger Unchanged**: BigInteger conversions continue to use precision-based rules (legacy classes = millis, modern classes = nanos)
 >   * **Feature Options**: Added configurable precision control for advanced use cases requiring nanosecond precision:
 >     * System properties: `cedarsoftware.converter.modern.time.long.precision`, `cedarsoftware.converter.duration.long.precision`, `cedarsoftware.converter.localtime.long.precision`
->     * Per-instance options via `ConverterOptions.getCustomOption()` - see [Time Conversion Documentation](userguide.md#time-conversion-precision-rules) for details
+>     * Per-instance options via `ConverterOptions.getCustomOption()` - see [Feature Options for Precision Control](userguide.md#feature-options-for-precision-control) for details
 >   * **Impact**: Minimal - fixes inconsistent behavior and provides migration path through feature options
 >   * **Rationale**: Eliminates confusion from mixed precision behavior and provides simple, memorable conversion rules
 > * Added `computeIfAbsent` support to `MultiKeyMap` for lazy value population

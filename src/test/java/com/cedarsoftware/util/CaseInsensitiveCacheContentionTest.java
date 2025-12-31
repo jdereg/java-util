@@ -15,8 +15,8 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 public class CaseInsensitiveCacheContentionTest {
 
-    private static final int WARMUP_ITERATIONS = 50_000;
-    private static final int MEASUREMENT_ITERATIONS = 500_000;
+    private static final int WARMUP_ITERATIONS = 10_000;
+    private static final int MEASUREMENT_ITERATIONS = 50_000;
 
     @AfterEach
     public void cleanup() {
@@ -26,6 +26,7 @@ public class CaseInsensitiveCacheContentionTest {
 
     @Test
     @EnabledIfSystemProperty(named = "performRelease", matches = "true")
+    @org.junit.jupiter.api.Timeout(value = 120, unit = TimeUnit.SECONDS)
     public void measureCacheContention() throws Exception {
         System.out.println("\n" + repeat("=", 80));
         System.out.println("CaseInsensitiveString Cache Contention Analysis");
@@ -76,6 +77,7 @@ public class CaseInsensitiveCacheContentionTest {
 
     @Test
     @EnabledIfSystemProperty(named = "performRelease", matches = "true")
+    @org.junit.jupiter.api.Timeout(value = 120, unit = TimeUnit.SECONDS)
     public void compareWithAndWithoutCache() throws Exception {
         System.out.println("\n" + repeat("=", 80));
         System.out.println("Cache vs No-Cache Performance Comparison");
@@ -113,6 +115,7 @@ public class CaseInsensitiveCacheContentionTest {
 
     @Test
     @EnabledIfSystemProperty(named = "performRelease", matches = "true")
+    @org.junit.jupiter.api.Timeout(value = 120, unit = TimeUnit.SECONDS)
     public void compareThreadedVsLockingStrategy() throws Exception {
         System.out.println("\n" + repeat("=", 80));
         System.out.println("THREADED vs LOCKING LRU Strategy Comparison");

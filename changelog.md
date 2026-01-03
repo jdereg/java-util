@@ -1,6 +1,10 @@
 ### Revision History
 
 #### 4.73.0 (Unreleased)
+* **PERFORMANCE**: `ClassUtilities` and `GraphComparator` - Replace `isAssignableFrom(obj.getClass())` with `isInstance(obj)`
+  * `ClassUtilities.java:2278` - Constructor parameter type matching now uses `isInstance()`
+  * `GraphComparator.java:375` - Field type validation now uses `isInstance()`
+  * `isInstance()` avoids the `getClass()` call, providing better performance on hot paths
 * **FIX**: `ClassUtilities` - Fixed unsafe mode reentrancy issue with counter-based ThreadLocal approach
   * Previously, nested `setUseUnsafe(true)`/`setUseUnsafe(false)` calls would incorrectly disable unsafe mode for outer callers
   * Changed from `ThreadLocal<Boolean>` to `ThreadLocal<Integer>` counter (`unsafeDepth`)

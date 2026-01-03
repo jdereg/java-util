@@ -372,7 +372,7 @@ public class GraphComparator
                             delta.id + ", optionalKey: " + getStringValue(delta.optionalKey));
                 }
 
-                if (!type.isAssignableFrom(fieldValue.getClass()))
+                if (!type.isInstance(fieldValue))
                 {
                     throw new ClassCastException(delta.cmd + " failed, field: " + field.getName() + " is not of type: " +
                             type.getName() + ", obj id: " + delta.id + ", optionalKey: " + getStringValue(delta.optionalKey));

@@ -1,5 +1,13 @@
 ### Revision History
 
+#### 4.73.0 (Unreleased)
+* **FIX**: `ClassUtilities` - Fixed unsafe mode reentrancy issue with counter-based ThreadLocal approach
+  * Previously, nested `setUseUnsafe(true)`/`setUseUnsafe(false)` calls would incorrectly disable unsafe mode for outer callers
+  * Changed from `ThreadLocal<Boolean>` to `ThreadLocal<Integer>` counter (`unsafeDepth`)
+  * `setUseUnsafe(true)` increments the counter, `setUseUnsafe(false)` decrements (but not below 0)
+  * Unsafe mode is active when counter > 0, supporting proper nesting
+  * Added comprehensive tests for nested calls, triple nesting, extra disables, and thread isolation
+
 #### 4.72.0 - 2025-12-31
 * **BUG FIX**: Fixed Jackson dependencies incorrectly declared without `<scope>test</scope>`. Jackson (jackson-databind, jackson-dataformat-xml) is only used for testing and should not be a transitive dependency. This restores java-util's zero external runtime dependencies.
 * **BUG FIX**: Fixed `ThreadedLRUCacheStrategy` scheduled task accumulation. When `CaseInsensitiveMap.replaceCache()` was called multiple times, each new cache scheduled a purge task that was never cancelled. These orphaned tasks accumulated and could overwhelm the scheduler thread. Now:

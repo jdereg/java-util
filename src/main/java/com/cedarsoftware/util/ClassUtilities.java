@@ -313,7 +313,10 @@ public class ClassUtilities {
     // Cache for OSGi ClassLoader to avoid repeated reflection calls
     private static final Map<Class<?>, ClassLoader> osgiClassLoaders = new ClassValueMap<>();
     private static final ClassLoader SYSTEM_LOADER = ClassLoader.getSystemClassLoader();
-    private static final ThreadLocal<Boolean> useUnsafe = ThreadLocal.withInitial(() -> false);
+    // Counter-based ThreadLocal for reentrant unsafe mode support.
+    // Each setUseUnsafe(true) increments, each setUseUnsafe(false) decrements.
+    // Unsafe mode is active when count > 0. This supports nested enable/disable calls.
+    private static final ThreadLocal<Integer> unsafeDepth = ThreadLocal.withInitial(() -> 0);
     private static volatile Unsafe unsafe;
 
     // Configurable Security Controls
@@ -2275,7 +2278,7 @@ public class ClassUtilities {
                                 // For object types, just use null directly
                                 args[i] = null;
                             }
-                        } else if (parameters[i].getType().isAssignableFrom(value.getClass())) {
+                        } else if (parameters[i].getType().isInstance(value)) {
                             // Value is already the right type
                             args[i] = value;
                         } else {
@@ -2591,7 +2594,7 @@ public class ClassUtilities {
     // for e.g. ConcurrentHashMap or can cause problems when the class is not initialized,
     // that's why we try ordinary constructors first.
     private static Object tryUnsafeInstantiation(Class<?> c) {
-        if (useUnsafe.get()) {
+        if (unsafeDepth.get() > 0) {
             try {
                 // Security: Apply security checks even in unsafe mode to prevent bypassing security controls
                 SecurityChecker.verifyClass(c);
@@ -2633,20 +2636,33 @@ public class ClassUtilities {
             // The old "accessClassInPackage.sun.misc" check is outdated for modern JDKs
             sm.checkPermission(new RuntimePermission("com.cedarsoftware.util.enableUnsafe"));
         }
-        
-        useUnsafe.set(state);
-        if (state && unsafe == null) {
-            synchronized (ClassUtilities.class) {
-                if (unsafe == null) {
-                    try {
-                        unsafe = new Unsafe();
-                    } catch (Exception e) {
-                        useUnsafe.set(false);
-                        if (LOG.isLoggable(Level.FINE)) {
-                            LOG.log(Level.FINE, "Failed to initialize unsafe instantiation: " + e.getMessage());
+
+        // Counter-based approach for reentrant support:
+        // - setUseUnsafe(true) increments the counter
+        // - setUseUnsafe(false) decrements the counter (but not below 0)
+        // - Unsafe mode is active when counter > 0
+        if (state) {
+            unsafeDepth.set(unsafeDepth.get() + 1);
+            // Initialize unsafe singleton on first enable
+            if (unsafe == null) {
+                synchronized (ClassUtilities.class) {
+                    if (unsafe == null) {
+                        try {
+                            unsafe = new Unsafe();
+                        } catch (Exception e) {
+                            // Failed to initialize - revert the increment
+                            unsafeDepth.set(unsafeDepth.get() - 1);
+                            if (LOG.isLoggable(Level.FINE)) {
+                                LOG.log(Level.FINE, "Failed to initialize unsafe instantiation: " + e.getMessage());
+                            }
                         }
                     }
                 }
+            }
+        } else {
+            int depth = unsafeDepth.get();
+            if (depth > 0) {
+                unsafeDepth.set(depth - 1);
             }
         }
     }

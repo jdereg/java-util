@@ -665,8 +665,9 @@ public class CollectionUtilities {
         
         // Only queue the root if it needs processing
         // Primitive arrays are already fully copied by createContainerCopy
-        boolean rootIsPrimitiveArray = 
-            source.getClass().isArray() && source.getClass().getComponentType().isPrimitive();
+        Class<?> sourceClass = source.getClass();
+        boolean rootIsPrimitiveArray =
+            sourceClass.isArray() && sourceClass.getComponentType().isPrimitive();
         if (!rootIsPrimitiveArray) {
             workQueue.add(new ContainerPair(source, rootCopy));
         }
@@ -676,10 +677,11 @@ public class CollectionUtilities {
             ContainerPair pair = workQueue.poll();
             
             // Process this container's contents directly (no per-element allocations)
-            if (pair.source.getClass().isArray()) {
+            Class<?> pairSourceClass = pair.source.getClass();
+            if (pairSourceClass.isArray()) {
                 // Handle array contents
                 // Skip primitive arrays - already copied by System.arraycopy
-                if (!pair.source.getClass().getComponentType().isPrimitive()) {
+                if (!pairSourceClass.getComponentType().isPrimitive()) {
                     // Use direct array access for object arrays (avoids reflection overhead)
                     // Casting once per container is safe for any reference array
                     Object[] srcArr = (Object[]) pair.source;
@@ -697,10 +699,11 @@ public class CollectionUtilities {
                                 dstArr[i] = existingCopy;
                             } else {
                                 // Special case: primitive arrays are fully copied immediately
-                                if (element.getClass().isArray() && element.getClass().getComponentType().isPrimitive()) {
+                                Class<?> elementClass = element.getClass();
+                                if (elementClass.isArray() && elementClass.getComponentType().isPrimitive()) {
                                     // Create and fully copy the primitive array
                                     int elemLength = ArrayUtilities.getLength(element);
-                                    Class<?> componentType = element.getClass().getComponentType();
+                                    Class<?> componentType = elementClass.getComponentType();
                                     Object elementCopy = Array.newInstance(componentType, elemLength);
                                     System.arraycopy(element, 0, elementCopy, 0, elemLength);
                                     visited.put(element, elementCopy);
@@ -735,11 +738,11 @@ public class CollectionUtilities {
                             targetCollection.add(existingCopy);
                         } else {
                             // Special case: primitive arrays are fully copied immediately
-                            if (element.getClass().isArray() && 
-                                element.getClass().getComponentType().isPrimitive()) {
+                            Class<?> elementClass = element.getClass();
+                            if (elementClass.isArray() && elementClass.getComponentType().isPrimitive()) {
                                 // Create and fully copy the primitive array
                                 int elemLength = ArrayUtilities.getLength(element);
-                                Class<?> componentType = element.getClass().getComponentType();
+                                Class<?> componentType = elementClass.getComponentType();
                                 Object elementCopy = Array.newInstance(componentType, elemLength);
                                 System.arraycopy(element, 0, elementCopy, 0, elemLength);
                                 visited.put(element, elementCopy);
@@ -780,9 +783,10 @@ public class CollectionUtilities {
      */
     @SuppressWarnings({"unchecked", "rawtypes"})
     private static Object createContainerCopy(Object source) {
-        if (source.getClass().isArray()) {
+        Class<?> sourceClass = source.getClass();
+        if (sourceClass.isArray()) {
             int length = ArrayUtilities.getLength(source);
-            Class<?> componentType = source.getClass().getComponentType();
+            Class<?> componentType = sourceClass.getComponentType();
             Object newArray = Array.newInstance(componentType, length);
             
             // For primitive arrays, copy immediately - no need to queue work

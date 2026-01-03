@@ -1,6 +1,10 @@
 ### Revision History
 
-#### 4.73.0 (Unreleased)
+#### 4.80.0 (Unreleased)
+* **PERFORMANCE**: Cache repeated `getClass()` calls in hot paths
+  * `ConcurrentNavigableMapNullSafe` - Cache `o1.getClass()` and `o2.getClass()` in comparator (6 calls → 2)
+  * `CollectionUtilities` - Cache class lookups in deep copy operations for source, pair.source, and element objects
+  * `GraphComparator` - Cache `srcValue.getClass()` and `targetValue.getClass()` in compare loop (7 calls → 2)
 * **PERFORMANCE**: `ClassUtilities` and `GraphComparator` - Replace `isAssignableFrom(obj.getClass())` with `isInstance(obj)`
   * `ClassUtilities.java:2278` - Constructor parameter type matching now uses `isInstance()`
   * `GraphComparator.java:375` - Field type validation now uses `isInstance()`

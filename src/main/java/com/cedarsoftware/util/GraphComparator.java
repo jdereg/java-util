@@ -485,7 +485,11 @@ public class GraphComparator
                 continue;
             }
 
-            if (!srcValue.getClass().equals(targetValue.getClass()))
+            // Cache class lookups - getClass() is called multiple times below
+            Class<?> srcValueClass = srcValue.getClass();
+            Class<?> targetValueClass = targetValue.getClass();
+
+            if (!srcValueClass.equals(targetValueClass))
             {   // Must be same class when not a Map, Set, List.  This allows comparison to
                 // ignore an ArrayList versus a LinkedList (only the contents will be checked).
                 if (!((srcValue instanceof Map && targetValue instanceof Map) ||
@@ -498,7 +502,7 @@ public class GraphComparator
                 }
             }
 
-            if (isLogicalPrimitive(srcValue.getClass()))
+            if (isLogicalPrimitive(srcValueClass))
             {
                 if (!srcValue.equals(targetValue))
                 {
@@ -509,7 +513,7 @@ public class GraphComparator
             }
 
             // Special handle [] types because they require CopyElement / Resize commands unique to Arrays.
-            if (srcValue.getClass().isArray())
+            if (srcValueClass.isArray())
             {
                 compareArrays(delta, deltas, stack, idFetcher);
                 continue;
@@ -555,7 +559,7 @@ public class GraphComparator
                     continue;
                 }
 
-                final Collection<Field> fields = ReflectionUtils.getAllDeclaredFields(srcValue.getClass());
+                final Collection<Field> fields = ReflectionUtils.getAllDeclaredFields(srcValueClass);
                 String sysId = "(" + System.identityHashCode(srcValue) + ").";
 
                 for (Field field : fields)

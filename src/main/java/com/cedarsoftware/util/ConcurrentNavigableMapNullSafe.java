@@ -110,14 +110,18 @@ public class ConcurrentNavigableMapNullSafe<K, V> extends AbstractConcurrentNull
                 return comparator.compare((K) o1, (K) o2);
             }
 
+            // Cache class lookups - getClass() is called multiple times below
+            Class<?> class1 = o1.getClass();
+            Class<?> class2 = o2.getClass();
+
             // If keys are of the same class and Comparable, compare them
-            if (o1.getClass() == o2.getClass() && o1 instanceof Comparable) {
+            if (class1 == class2 && o1 instanceof Comparable) {
                 return ((Comparable<Object>) o1).compareTo(o2);
             }
 
             // Compare class names to provide ordering between different types
-            String className1 = o1.getClass().getName();
-            String className2 = o2.getClass().getName();
+            String className1 = class1.getName();
+            String className2 = class2.getName();
             int classComparison = className1.compareTo(className2);
 
             if (classComparison != 0) {
@@ -125,8 +129,8 @@ public class ConcurrentNavigableMapNullSafe<K, V> extends AbstractConcurrentNull
             }
 
             // If class names are the same but classes are different (rare), compare class loader information
-            ClassLoader cl1 = o1.getClass().getClassLoader();
-            ClassLoader cl2 = o2.getClass().getClassLoader();
+            ClassLoader cl1 = class1.getClassLoader();
+            ClassLoader cl2 = class2.getClassLoader();
             String loader1 = cl1 == null ? "" : cl1.getClass().getName();
             String loader2 = cl2 == null ? "" : cl2.getClass().getName();
             int loaderCompare = loader1.compareTo(loader2);

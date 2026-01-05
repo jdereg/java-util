@@ -213,9 +213,17 @@ public abstract class AbstractConcurrentNullSafeMap<K, V> implements ConcurrentM
         Objects.requireNonNull(mappingFunction);
         Object maskedKey = maskNullKey(key);
 
+        // Fast path: check if value exists without locking
+        // This avoids the expensive compute() call for cache hits
+        Object existing = internalMap.get(maskedKey);
+        if (existing != null && existing != NullSentinel.NULL_VALUE) {
+            return unmaskNullValue(existing);
+        }
+
+        // Slow path: use compute() to handle the absent case atomically
         Object result = internalMap.compute(maskedKey, (k, v) -> {
             if (v != null && v != NullSentinel.NULL_VALUE) {
-                // Existing non-null value remains untouched
+                // Another thread computed the value while we were waiting
                 return v;
             }
 

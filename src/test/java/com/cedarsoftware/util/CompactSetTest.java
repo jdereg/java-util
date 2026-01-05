@@ -448,7 +448,7 @@ class CompactSetTest
         }
         for (int i = lower; i < upper; i++)
         {
-            LOG.info("CompacSet.compactSize: " + i + " = " + totals[i - lower] / 1000000.0d);
+            LOG.info("CompactSet.compactSize: " + i + " = " + totals[i - lower] / 1000000.0d);
         }
         LOG.info("HashSet = " + totals[totals.length - 1] / 1000000.0d);
     }

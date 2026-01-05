@@ -196,6 +196,16 @@ public class LRUCache<K, V> implements Map<K, V> {
     }
 
     @Override
+    public V computeIfAbsent(K key, java.util.function.Function<? super K, ? extends V> mappingFunction) {
+        return strategy.computeIfAbsent(key, mappingFunction);
+    }
+
+    @Override
+    public V putIfAbsent(K key, V value) {
+        return strategy.putIfAbsent(key, value);
+    }
+
+    @Override
     public String toString() {
         return strategy.toString();
     }

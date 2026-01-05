@@ -17,6 +17,7 @@ public class CaseInsensitiveCacheContentionTest {
 
     private static final int WARMUP_ITERATIONS = 50_000;
     private static final int MEASUREMENT_ITERATIONS = 500_000;
+    private static final int PROGRESS_INTERVAL = 20_000;
 
     @AfterEach
     public void cleanup() {
@@ -218,6 +219,7 @@ public class CaseInsensitiveCacheContentionTest {
         ExecutorService executor = Executors.newFixedThreadPool(threadCount);
         int opsPerThread = MEASUREMENT_ITERATIONS / threadCount;
         AtomicLong coldKeyCounter = new AtomicLong(0);
+        AtomicLong progress = new AtomicLong(0);
 
         // Warm up
         for (int i = 0; i < WARMUP_ITERATIONS; i++) {
@@ -238,6 +240,7 @@ public class CaseInsensitiveCacheContentionTest {
                         String coldKey = "cold_" + threadId + "_" + coldKeyCounter.incrementAndGet();
                         map.put(coldKey, "value");
                     }
+                    reportProgress(progress, MEASUREMENT_ITERATIONS, "MixedInternal");
                 }
             }));
         }
@@ -257,6 +260,7 @@ public class CaseInsensitiveCacheContentionTest {
         CaseInsensitiveMap<String, String> map = new CaseInsensitiveMap<>();
 
         int opsPerThread = MEASUREMENT_ITERATIONS / threadCount;
+        AtomicLong progress = new AtomicLong(0);
 
         long startTime = System.nanoTime();
 
@@ -267,6 +271,7 @@ public class CaseInsensitiveCacheContentionTest {
                 for (int i = 0; i < opsPerThread; i++) {
                     String key = "unique_" + threadId + "_" + i;
                     map.put(key, "value");
+                    reportProgress(progress, MEASUREMENT_ITERATIONS, "CacheMissesInternal");
                 }
             }));
         }
@@ -298,13 +303,11 @@ public class CaseInsensitiveCacheContentionTest {
     }
 
     private long measureCacheMisses(int threadCount) throws Exception {
-        // Use unique keys each time to force cache misses
-        AtomicLong keyCounter = new AtomicLong(0);
-
         ExecutorService executor = Executors.newFixedThreadPool(threadCount);
         CaseInsensitiveMap<String, String> map = new CaseInsensitiveMap<>();
 
         int opsPerThread = MEASUREMENT_ITERATIONS / threadCount;
+        AtomicLong progress = new AtomicLong(0);
 
         // Warm up
         for (int i = 0; i < WARMUP_ITERATIONS; i++) {
@@ -324,6 +327,7 @@ public class CaseInsensitiveCacheContentionTest {
                 for (int i = 0; i < opsPerThread; i++) {
                     String key = "unique_" + threadId + "_" + i;
                     map.put(key, "value");
+                    reportProgress(progress, MEASUREMENT_ITERATIONS, "CacheMisses");
                 }
             }));
         }
@@ -354,6 +358,7 @@ public class CaseInsensitiveCacheContentionTest {
         ExecutorService executor = Executors.newFixedThreadPool(threadCount);
         int opsPerThread = MEASUREMENT_ITERATIONS / threadCount;
         AtomicLong coldKeyCounter = new AtomicLong(0);
+        AtomicLong progress = new AtomicLong(0);
 
         // Warm up
         for (int i = 0; i < WARMUP_ITERATIONS; i++) {
@@ -376,6 +381,7 @@ public class CaseInsensitiveCacheContentionTest {
                         String coldKey = "cold_" + threadId + "_" + coldKeyCounter.incrementAndGet();
                         map.put(coldKey, "value");
                     }
+                    reportProgress(progress, MEASUREMENT_ITERATIONS, "MixedWorkload");
                 }
             }));
         }
@@ -405,6 +411,7 @@ public class CaseInsensitiveCacheContentionTest {
 
         ExecutorService executor = Executors.newFixedThreadPool(threadCount);
         int opsPerThread = MEASUREMENT_ITERATIONS / threadCount;
+        AtomicLong progress = new AtomicLong(0);
 
         // Warm up
         for (int i = 0; i < WARMUP_ITERATIONS; i++) {
@@ -424,6 +431,7 @@ public class CaseInsensitiveCacheContentionTest {
                     } else {
                         map.get(key);
                     }
+                    reportProgress(progress, MEASUREMENT_ITERATIONS, "MapOperations");
                 }
             }));
         }
@@ -448,6 +456,7 @@ public class CaseInsensitiveCacheContentionTest {
 
         ExecutorService executor = Executors.newFixedThreadPool(threadCount);
         int opsPerThread = totalOps / threadCount;
+        AtomicLong progress = new AtomicLong(0);
 
         long startTime = System.nanoTime();
 
@@ -458,6 +467,7 @@ public class CaseInsensitiveCacheContentionTest {
                 for (int i = 0; i < opsPerThread; i++) {
                     String key = keys[random.nextInt(keys.length)];
                     map.get(key);
+                    reportProgress(progress, totalOps, "CacheHits");
                 }
             }));
         }
@@ -478,5 +488,17 @@ public class CaseInsensitiveCacheContentionTest {
             sb.append(str);
         }
         return sb.toString();
+    }
+
+    /**
+     * Reports progress periodically during long-running measurement loops.
+     * Only prints when the count crosses a PROGRESS_INTERVAL boundary.
+     */
+    private static void reportProgress(AtomicLong progressCounter, int total, String testName) {
+        long count = progressCounter.incrementAndGet();
+        if (count % PROGRESS_INTERVAL == 0) {
+            double pct = (100.0 * count) / total;
+            System.out.printf("  [%s] Progress: %,d / %,d (%.1f%%)\n", testName, count, total, pct);
+        }
     }
 }

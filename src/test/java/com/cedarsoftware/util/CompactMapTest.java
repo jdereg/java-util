@@ -4311,7 +4311,7 @@ public class CompactMapTest
         }
         for (int i = lower; i < upper; i++)
         {
-            LOG.info("CompacMap.compactSize: " + i + " = " + totals[i - lower] / 1000000.0d);
+            LOG.info("CompactMap.compactSize: " + i + " = " + totals[i - lower] / 1000000.0d);
         }
         LOG.info("HashMap = " + totals[totals.length - 1] / 1000000.0d);
     }

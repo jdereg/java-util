@@ -239,6 +239,41 @@ public class LockingLRUCacheStrategy<K, V> implements Map<K, V> {
         }
     }
 
+    @Override
+    public V computeIfAbsent(K key, java.util.function.Function<? super K, ? extends V> mappingFunction) {
+        lock.lock();
+        try {
+            Node<K, V> node = cache.get(key);
+            if (node != null) {
+                moveToHead(node);
+                return node.value;
+            }
+            V value = mappingFunction.apply(key);
+            if (value != null) {
+                put(key, value);
+            }
+            return value;
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    @Override
+    public V putIfAbsent(K key, V value) {
+        lock.lock();
+        try {
+            Node<K, V> node = cache.get(key);
+            if (node != null) {
+                moveToHead(node);
+                return node.value;
+            }
+            put(key, value);
+            return null;
+        } finally {
+            lock.unlock();
+        }
+    }
+
     /**
      * Removes all mappings from this cache.
      * The cache will be empty after this call returns.

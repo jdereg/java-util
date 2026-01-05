@@ -1,19 +1,6 @@
 ### Revision History
 
-#### 4.80.0 (Unreleased)
-* **FIX**: `ThreadedLRUCacheStrategy` - Major concurrency fixes and architectural improvements:
-  * **Architecture**: Replaced per-instance ScheduledFutures with single shared cleanup thread for all cache instances. Uses WeakReference registry allowing unused caches to be garbage collected. Dead references pruned automatically during iteration.
-  * **Fix silent task death**: Wrapped cleanup in try-catch to prevent ScheduledExecutorService from silently cancelling the task on exceptions.
-  * **Fix sort instability**: Capture timestamps to array before sorting to prevent `IllegalArgumentException: Comparison method violates its general contract` caused by concurrent timestamp updates during sort.
-  * **Aggressive cleanup**: When cache exceeds 10x capacity, removes all excess items immediately instead of batching.
-* **PERFORMANCE**: `AbstractConcurrentNullSafeMap.computeIfAbsent()` - Added fast-path check before locking
-  * Original implementation always called `compute()` which locks the bucket even for cache hits
-  * New implementation checks `get()` first - cache hits now bypass locking entirely
-  * Significant reduction in lock contention under concurrent load
-* **ADDED**: `computeIfAbsent()` and `putIfAbsent()` support to LRU cache strategies
-  * `ThreadedLRUCacheStrategy` - atomic operations with timestamp updates
-  * `LockingLRUCacheStrategy` - atomic operations with LRU reordering
-  * `LRUCache` - delegation to underlying strategy
+#### 4.80.0
 * **PERFORMANCE**: Cache repeated `getClass()` calls in hot paths
   * `ConcurrentNavigableMapNullSafe` - Cache `o1.getClass()` and `o2.getClass()` in comparator (6 calls → 2)
   * `CollectionUtilities` - Cache class lookups in deep copy operations for source, pair.source, and element objects
@@ -28,6 +15,19 @@
   * `setUseUnsafe(true)` increments the counter, `setUseUnsafe(false)` decrements (but not below 0)
   * Unsafe mode is active when counter > 0, supporting proper nesting
   * Added comprehensive tests for nested calls, triple nesting, extra disables, and thread isolation
+* **FIX**: `ThreadedLRUCacheStrategy` - Major concurrency fixes and architectural improvements:
+  * **Architecture**: Replaced per-instance ScheduledFutures with single shared cleanup thread for all cache instances. Uses WeakReference registry allowing unused caches to be garbage collected. Dead references pruned automatically during iteration.
+  * **Fix silent task death**: Wrapped cleanup in try-catch to prevent ScheduledExecutorService from silently cancelling the task on exceptions.
+  * **Fix sort instability**: Capture timestamps to array before sorting to prevent `IllegalArgumentException: Comparison method violates its general contract` caused by concurrent timestamp updates during sort.
+  * **Aggressive cleanup**: When cache exceeds 10x capacity, removes all excess items immediately instead of batching.
+* **PERFORMANCE**: `AbstractConcurrentNullSafeMap.computeIfAbsent()` - Added fast-path check before locking
+  * Original implementation always called `compute()` which locks the bucket even for cache hits
+  * New implementation checks `get()` first - cache hits now bypass locking entirely
+  * Significant reduction in lock contention under concurrent load
+* **ADDED**: `computeIfAbsent()` and `putIfAbsent()` support to LRU cache strategies
+  * `ThreadedLRUCacheStrategy` - atomic operations with timestamp updates
+  * `LockingLRUCacheStrategy` - atomic operations with LRU reordering
+  * `LRUCache` - delegation to underlying strategy
 
 #### 4.72.0 - 2025-12-31
 * **BUG FIX**: Fixed Jackson dependencies incorrectly declared without `<scope>test</scope>`. Jackson (jackson-databind, jackson-dataformat-xml) is only used for testing and should not be a transitive dependency. This restores java-util's zero external runtime dependencies.

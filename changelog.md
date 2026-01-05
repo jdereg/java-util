@@ -1,6 +1,6 @@
 ### Revision History
 
-#### 4.80.0
+#### 4.80.0 - 2025-01-05
 * **PERFORMANCE**: Cache repeated `getClass()` calls in hot paths
   * `ConcurrentNavigableMapNullSafe` - Cache `o1.getClass()` and `o2.getClass()` in comparator (6 calls → 2)
   * `CollectionUtilities` - Cache class lookups in deep copy operations for source, pair.source, and element objects

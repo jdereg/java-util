@@ -14,6 +14,7 @@ import java.util.Arrays;
  *   <li>Convert hexadecimal strings to byte arrays ({@link #decode(String)}).</li>
  *   <li>Convert byte arrays to hexadecimal strings ({@link #encode(byte[])}).</li>
  *   <li>Check if a byte array is GZIP-compressed ({@link #isGzipped(byte[])}).</li>
+ *   <li>Find byte patterns within byte arrays ({@link #indexOf(byte[], byte[], int)}).</li>
  *   <li>Internally optimized for performance with reusable utilities like {@link #toHexChar(int)}.</li>
  * </ul>
  *
@@ -256,5 +257,50 @@ public final class ByteUtilities {
         }
         return bytes.length - offset >= 2 &&
                 bytes[offset] == GZIP_MAGIC[0] && bytes[offset + 1] == GZIP_MAGIC[1];
+    }
+
+    /**
+     * Finds the first occurrence of a byte pattern within a byte array, starting from the specified index.
+     * <p>
+     * This method performs a simple linear search for the pattern within the data array.
+     * It is useful for locating byte sequences such as markers, headers, or placeholders
+     * within binary data.
+     * </p>
+     *
+     * <h3>Example Usage</h3>
+     * <pre>{@code
+     * byte[] data = {0x00, 0x01, 0x02, 0x03, 0x04, 0x02, 0x03};
+     * byte[] pattern = {0x02, 0x03};
+     * int index = ByteUtilities.indexOf(data, pattern, 0);  // Returns 2
+     * int next = ByteUtilities.indexOf(data, pattern, 3);   // Returns 5
+     * }</pre>
+     *
+     * @param data    the byte array to search within
+     * @param pattern the byte pattern to find
+     * @param start   the index to start searching from (inclusive)
+     * @return the index of the first occurrence of the pattern, or -1 if not found
+     *         or if any parameter is invalid (null arrays, negative start, etc.)
+     */
+    public static int indexOf(byte[] data, byte[] pattern, int start) {
+        if (data == null || pattern == null || start < 0 || pattern.length == 0) {
+            return -1;
+        }
+        final int dataLen = data.length;
+        final int patternLen = pattern.length;
+        if (patternLen > dataLen || start > dataLen - patternLen) {
+            return -1;
+        }
+
+        final int limit = dataLen - patternLen;
+        outer:
+        for (int i = start; i <= limit; i++) {
+            for (int j = 0; j < patternLen; j++) {
+                if (data[i + j] != pattern[j]) {
+                    continue outer;
+                }
+            }
+            return i;
+        }
+        return -1;
     }
 }

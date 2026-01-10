@@ -2,6 +2,8 @@ package com.cedarsoftware.util;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Modifier;
+import java.util.List;
 import java.nio.charset.StandardCharsets;
 import java.util.AbstractCollection;
 import java.util.AbstractMap;
@@ -2830,7 +2832,7 @@ public class CompactMap<K, V> implements Map<K, V> {
             if (templateBytecode == null) {
                 synchronized (TemplateGenerator.class) {
                     if (templateBytecode == null) {
-                        templateBytecode = hexToBytes(BYTECODE_TEMPLATE);
+                        templateBytecode = ByteUtilities.decode(BYTECODE_TEMPLATE);
                     }
                 }
             }
@@ -2841,7 +2843,7 @@ public class CompactMap<K, V> implements Map<K, V> {
 
             // Find and replace all occurrences of the placeholder
             int idx = 0;
-            while ((idx = indexOf(patched, PLACEHOLDER_BYTES, idx)) != -1) {
+            while ((idx = ByteUtilities.indexOf(patched, PLACEHOLDER_BYTES, idx)) != -1) {
                 System.arraycopy(replacement, 0, patched, idx, replacement.length);
                 idx += replacement.length;
             }
@@ -2856,77 +2858,48 @@ public class CompactMap<K, V> implements Map<K, V> {
          * @param options configuration map
          */
         private static void injectStaticFields(Class<?> clazz, Map<String, Object> options) {
+            // Get all static fields and build a name-to-field map
+            List<Field> staticFields = ReflectionUtils.getDeclaredFields(clazz,
+                    field -> Modifier.isStatic(field.getModifiers()));
+            Map<String, Field> fieldMap = new HashMap<>();
+            for (Field field : staticFields) {
+                fieldMap.put(field.getName(), field);
+            }
+
             try {
                 // _caseSensitive
-                Field caseSensitiveField = clazz.getDeclaredField("_caseSensitive");
-                caseSensitiveField.setAccessible(true);
-                caseSensitiveField.setBoolean(null, (boolean) options.getOrDefault(CASE_SENSITIVE, DEFAULT_CASE_SENSITIVE));
+                fieldMap.get("_caseSensitive").setBoolean(null,
+                        (boolean) options.getOrDefault(CASE_SENSITIVE, DEFAULT_CASE_SENSITIVE));
 
                 // _compactSize
-                Field compactSizeField = clazz.getDeclaredField("_compactSize");
-                compactSizeField.setAccessible(true);
-                compactSizeField.setInt(null, (int) options.getOrDefault(COMPACT_SIZE, DEFAULT_COMPACT_SIZE));
+                fieldMap.get("_compactSize").setInt(null,
+                        (int) options.getOrDefault(COMPACT_SIZE, DEFAULT_COMPACT_SIZE));
 
                 // _singleKey
-                Field singleKeyField = clazz.getDeclaredField("_singleKey");
-                singleKeyField.setAccessible(true);
-                singleKeyField.set(null, options.getOrDefault(SINGLE_KEY, DEFAULT_SINGLE_KEY));
+                fieldMap.get("_singleKey").set(null,
+                        options.getOrDefault(SINGLE_KEY, DEFAULT_SINGLE_KEY));
 
                 // _ordering
-                Field orderingField = clazz.getDeclaredField("_ordering");
-                orderingField.setAccessible(true);
-                orderingField.set(null, options.getOrDefault(ORDERING, UNORDERED));
+                fieldMap.get("_ordering").set(null,
+                        options.getOrDefault(ORDERING, UNORDERED));
 
                 // _mapClassName
-                Field mapClassNameField = clazz.getDeclaredField("_mapClassName");
-                mapClassNameField.setAccessible(true);
                 Object mapTypeObj = options.getOrDefault(MAP_TYPE, DEFAULT_MAP_TYPE);
                 String mapClassName = (mapTypeObj instanceof Class)
                     ? ((Class<?>) mapTypeObj).getName()
                     : String.valueOf(mapTypeObj);
-                mapClassNameField.set(null, mapClassName);
+                fieldMap.get("_mapClassName").set(null, mapClassName);
 
                 // _innerMapClassName (for CaseInsensitiveMap wrapping)
-                Field innerMapClassNameField = clazz.getDeclaredField("_innerMapClassName");
-                innerMapClassNameField.setAccessible(true);
                 Object innerMapTypeObj = options.get(INNER_MAP_TYPE);
                 String innerMapClassName = (innerMapTypeObj instanceof Class)
                     ? ((Class<?>) innerMapTypeObj).getName()
                     : (innerMapTypeObj != null ? String.valueOf(innerMapTypeObj) : null);
-                innerMapClassNameField.set(null, innerMapClassName);
+                fieldMap.get("_innerMapClassName").set(null, innerMapClassName);
 
-            } catch (NoSuchFieldException | IllegalAccessException e) {
+            } catch (IllegalAccessException e) {
                 throw new IllegalStateException("Failed to inject static fields into generated class", e);
             }
-        }
-
-        /**
-         * Converts hex string to byte array.
-         */
-        private static byte[] hexToBytes(String hex) {
-            int len = hex.length();
-            byte[] data = new byte[len / 2];
-            for (int i = 0; i < len; i += 2) {
-                data[i / 2] = (byte) ((Character.digit(hex.charAt(i), 16) << 4)
-                                     + Character.digit(hex.charAt(i + 1), 16));
-            }
-            return data;
-        }
-
-        /**
-         * Finds the index of a byte pattern in a byte array.
-         */
-        private static int indexOf(byte[] data, byte[] pattern, int start) {
-            outer:
-            for (int i = start; i <= data.length - pattern.length; i++) {
-                for (int j = 0; j < pattern.length; j++) {
-                    if (data[i + j] != pattern[j]) {
-                        continue outer;
-                    }
-                }
-                return i;
-            }
-            return -1;
         }
 
         /**

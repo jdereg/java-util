@@ -1,20 +1,8 @@
 package com.cedarsoftware.util;
 
-import javax.tools.Diagnostic;
-import javax.tools.DiagnosticCollector;
-import javax.tools.FileObject;
-import javax.tools.ForwardingJavaFileManager;
-import javax.tools.JavaCompiler;
-import javax.tools.JavaFileManager;
-import javax.tools.JavaFileObject;
-import javax.tools.SimpleJavaFileObject;
-import javax.tools.StandardJavaFileManager;
-import javax.tools.ToolProvider;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.OutputStream;
+import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
-import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.util.AbstractCollection;
 import java.util.AbstractMap;
 import java.util.AbstractSet;
@@ -2538,31 +2526,204 @@ public class CompactMap<K, V> implements Map<K, V> {
     }
 
     // -----------------------------------------------------------------------------------------------------------------
-    
+
     /**
      * Internal class that handles dynamic generation of specialized CompactMap implementations.
      * <p>
-     * This class generates and compiles optimized CompactMap subclasses at runtime based on
-     * configuration options. Generated classes are cached for reuse. Class names encode their
-     * configuration, for example: "CompactMap$HashMap_CS_S50_id_Unord" represents a
-     * case-sensitive, unordered map with HashMap backing, compact size of 50, and "id" as
-     * the single value key.
+     * This class generates optimized CompactMap subclasses at runtime using bytecode template
+     * manipulation. A pre-compiled template class is patched with a unique class name (based on
+     * SHA-1 hash of configuration), and configuration values are injected via static fields
+     * after class loading.
+     * <p>
+     * This approach eliminates the dependency on javax.tools.JavaCompiler, making CompactMap
+     * work in JRE-only environments, containers, and other restricted runtime environments.
      * <p>
      * This is an implementation detail and not part of the public API.
+     *
+     * <h3>Template Source Code</h3>
+     * <p>The bytecode template is generated from the following Java source code. This source
+     * is maintained in {@code src/test/java/.../StandaloneBytecodeGenerator.java} and compiled
+     * to produce the BYTECODE_TEMPLATE constant below.</p>
+     * <pre>{@code
+     * package com.cedarsoftware.util;
+     *
+     * import java.util.Comparator;
+     * import java.util.Map;
+     *
+     * public class CompactMap$0000000000000000 extends CompactMap {
+     *     // Static fields - injected after class loading
+     *     private static boolean _caseSensitive;
+     *     private static int _compactSize;
+     *     private static String _singleKey;
+     *     private static String _ordering;
+     *     private static String _mapClassName;
+     *     private static String _innerMapClassName;
+     *
+     *     @Override
+     *     protected boolean isCaseInsensitive() {
+     *         return !_caseSensitive;
+     *     }
+     *
+     *     @Override
+     *     protected int compactSize() {
+     *         return _compactSize;
+     *     }
+     *
+     *     @Override
+     *     protected Object getSingleValueKey() {
+     *         return _singleKey;
+     *     }
+     *
+     *     @Override
+     *     protected String getOrdering() {
+     *         return _ordering;
+     *     }
+     *
+     *     @Override
+     *     protected Map getNewMap() {
+     *         try {
+     *             Class<?> mapClass = Class.forName(_mapClassName);
+     *             // Handle CaseInsensitiveMap specially - it needs an inner map
+     *             if (_innerMapClassName != null &&
+     *                     "com.cedarsoftware.util.CaseInsensitiveMap".equals(_mapClassName)) {
+     *                 Class<?> innerMapClass = Class.forName(_innerMapClassName);
+     *                 Map innerMap;
+     *                 // Create inner map with capacity if possible
+     *                 try {
+     *                     java.lang.reflect.Constructor<?> ctor =
+     *                             innerMapClass.getConstructor(int.class);
+     *                     innerMap = (Map) ctor.newInstance(_compactSize + 1);
+     *                 } catch (NoSuchMethodException e) {
+     *                     innerMap = (Map) innerMapClass.getDeclaredConstructor().newInstance();
+     *                 }
+     *                 // Create CaseInsensitiveMap with the inner map
+     *                 java.lang.reflect.Constructor<?> ciCtor = mapClass.getConstructor(Map.class);
+     *                 return (Map) ciCtor.newInstance(innerMap);
+     *             }
+     *             // Try capacity constructor first (HashMap, LinkedHashMap, etc.)
+     *             try {
+     *                 java.lang.reflect.Constructor<?> ctor = mapClass.getConstructor(int.class);
+     *                 return (Map) ctor.newInstance(_compactSize + 1);
+     *             } catch (NoSuchMethodException e) {
+     *                 // Fall through
+     *             }
+     *             // Try Comparator constructor for sorted maps
+     *             if ("sorted".equals(_ordering) || "reverse".equals(_ordering)) {
+     *                 try {
+     *                     java.lang.reflect.Constructor<?> ctor =
+     *                             mapClass.getConstructor(Comparator.class);
+     *                     Comparator<Object> comp = new CompactMap.CompactMapComparator(
+     *                             !_caseSensitive, "reverse".equals(_ordering));
+     *                     return (Map) ctor.newInstance(comp);
+     *                 } catch (NoSuchMethodException e) {
+     *                     // Fall through
+     *                 }
+     *             }
+     *             // Default constructor
+     *             return (Map) mapClass.getDeclaredConstructor().newInstance();
+     *         } catch (Exception e) {
+     *             throw new IllegalStateException("Failed to create map: " + _mapClassName, e);
+     *         }
+     *     }
+     * }
+     * }</pre>
      */
     private static final class TemplateGenerator {
         private static final String TEMPLATE_CLASS_PREFIX = "com.cedarsoftware.util.CompactMap$";
 
+        // Placeholder in bytecode that gets patched with actual class name hash
+        private static final String CLASS_NAME_PLACEHOLDER = "0000000000000000";
+        private static final byte[] PLACEHOLDER_BYTES = CLASS_NAME_PLACEHOLDER.getBytes(StandardCharsets.UTF_8);
+
+        // Pre-compiled bytecode template (generated by StandaloneBytecodeGenerator)
+        // Template class: com.cedarsoftware.util.CompactMap$0000000000000000
+        // This bytecode contains static fields that are injected after defineClass():
+        //   _caseSensitive (boolean), _compactSize (int), _singleKey (String),
+        //   _ordering (String), _mapClassName (String), _innerMapClassName (String)
+        private static final String BYTECODE_TEMPLATE =
+            "CAFEBABE0000003D007E0A000200030700040C00050006010021636F6D2F6365646172736F66" +
+            "74776172652F7574696C2F436F6D706163744D61700100063C696E69743E0100032829560900" +
+            "08000907000A0C000B000C010032636F6D2F6365646172736F6674776172652F7574696C2F43" +
+            "6F6D706163744D6170243030303030303030303030303030303001000E5F6361736553656E73" +
+            "69746976650100015A090008000E0C000F001001000C5F636F6D7061637453697A6501000149" +
+            "09000800120C0013001401000A5F73696E676C654B65790100124C6A6176612F6C616E672F53" +
+            "7472696E673B09000800160C001700140100095F6F72646572696E6709000800190C001A0014" +
+            "01000D5F6D6170436C6173734E616D650A001C001D07001E0C001F002001000F6A6176612F6C" +
+            "616E672F436C617373010007666F724E616D65010025284C6A6176612F6C616E672F53747269" +
+            "6E673B294C6A6176612F6C616E672F436C6173733B09000800220C002300140100125F696E6E" +
+            "65724D6170436C6173734E616D65080025010029636F6D2E6365646172736F6674776172652E" +
+            "7574696C2E43617365496E73656E7369746976654D61700A002700280700290C002A002B0100" +
+            "106A6176612F6C616E672F537472696E67010006657175616C73010015284C6A6176612F6C61" +
+            "6E672F4F626A6563743B295A09002D002E07002F0C003000310100116A6176612F6C616E672F" +
+            "496E7465676572010004545950450100114C6A6176612F6C616E672F436C6173733B0A001C00" +
+            "330C0034003501000E676574436F6E7374727563746F72010033285B4C6A6176612F6C616E67" +
+            "2F436C6173733B294C6A6176612F6C616E672F7265666C6563742F436F6E7374727563746F72" +
+            "3B0700370100106A6176612F6C616E672F4F626A6563740A002D00390C003A003B0100077661" +
+            "6C75654F660100162849294C6A6176612F6C616E672F496E74656765723B0A003D003E07003F" +
+            "0C0040004101001D6A6176612F6C616E672F7265666C6563742F436F6E7374727563746F7201" +
+            "000B6E6577496E7374616E6365010027285B4C6A6176612F6C616E672F4F626A6563743B294C" +
+            "6A6176612F6C616E672F4F626A6563743B07004301000D6A6176612F7574696C2F4D61700700" +
+            "4501001F6A6176612F6C616E672F4E6F537563684D6574686F64457863657074696F6E0A001C" +
+            "00470C004800350100166765744465636C61726564436F6E7374727563746F7208004A010006" +
+            "736F7274656408004C0100077265766572736507004E0100146A6176612F7574696C2F436F6D" +
+            "70617261746F72070050010036636F6D2F6365646172736F6674776172652F7574696C2F436F" +
+            "6D706163744D617024436F6D706163744D6170436F6D70617261746F720A004F00520C000500" +
+            "53010005285A5A29560700550100136A6176612F6C616E672F457863657074696F6E07005701" +
+            "001F6A6176612F6C616E672F496C6C6567616C5374617465457863657074696F6E1200000059" +
+            "0C005A005B0100176D616B65436F6E63617457697468436F6E7374616E7473010026284C6A61" +
+            "76612F6C616E672F537472696E673B294C6A6176612F6C616E672F537472696E673B0A005600" +
+            "5D0C0005005E01002A284C6A6176612F6C616E672F537472696E673B4C6A6176612F6C616E67" +
+            "2F5468726F7761626C653B2956010004436F646501000F4C696E654E756D6265725461626C65" +
+            "010011697343617365496E73656E73697469766501000328295A01000D537461636B4D617054" +
+            "61626C6501000B636F6D7061637453697A6501000328294901001167657453696E676C655661" +
+            "6C75654B657901001428294C6A6176612F6C616E672F4F626A6563743B01000B6765744F7264" +
+            "6572696E6701001428294C6A6176612F6C616E672F537472696E673B0100096765744E65774D" +
+            "617001001128294C6A6176612F7574696C2F4D61703B01000A536F7572636546696C65010020" +
+            "436F6D706163744D617024303030303030303030303030303030302E6A617661010010426F6F" +
+            "7473747261704D6574686F64730F0600700A007100720700730C005A00740100246A6176612F" +
+            "6C616E672F696E766F6B652F537472696E67436F6E636174466163746F7279010098284C6A61" +
+            "76612F6C616E672F696E766F6B652F4D6574686F6448616E646C6573244C6F6F6B75703B4C6A" +
+            "6176612F6C616E672F537472696E673B4C6A6176612F6C616E672F696E766F6B652F4D657468" +
+            "6F64547970653B4C6A6176612F6C616E672F537472696E673B5B4C6A6176612F6C616E672F4F" +
+            "626A6563743B294C6A6176612F6C616E672F696E766F6B652F43616C6C536974653B08007601" +
+            "00174661696C656420746F20637265617465206D61703A200101000C496E6E6572436C617373" +
+            "6573010014436F6D706163744D6170436F6D70617261746F7207007A0100256A6176612F6C61" +
+            "6E672F696E766F6B652F4D6574686F6448616E646C6573244C6F6F6B757007007C01001E6A61" +
+            "76612F6C616E672F696E766F6B652F4D6574686F6448616E646C65730100064C6F6F6B757000" +
+            "210008000200000006000A000B000C0000000A000F00100000000A001300140000000A001700" +
+            "140000000A001A00140000000A00230014000000060001000500060001005F0000001D000100" +
+            "01000000052AB70001B1000000010060000000060001000000060004006100620001005F0000" +
+            "002F000100010000000CB200079A000704A7000403AC00000002006000000006000100000011" +
+            "00630000000500020A40010004006400650001005F0000001C0001000100000004B2000DAC00" +
+            "0000010060000000060001000000160004006600670001005F0000001C0001000100000004B2" +
+            "0011B00000000100600000000600010000001B0004006800690001005F0000001C0001000100" +
+            "000004B20015B0000000010060000000060001000000200004006A006B0001005F0000022F00" +
+            "0600050000011BB20018B8001B4CB20021C600751224B20018B6002699006AB20021B8001B4D" +
+            "2C04BD001C5903B2002C53B600323A04190404BD00365903B2000D0460B8003853B6003CC000" +
+            "424EA700183A042C03BD001CB6004603BD0036B6003CC000424E2B04BD001C5903124253B600" +
+            "323A04190404BD003659032D53B6003CC00042B02B04BD001C5903B2002C53B600324D2C04BD" +
+            "00365903B2000D0460B8003853B6003CC00042B04D1249B20015B600269A000E124BB20015B6" +
+            "002699003D2B04BD001C5903124D53B600324DBB004F59B200079A000704A7000403124BB200" +
+            "15B60026B700514E2C04BD003659032D53B6003CC00042B04D2B03BD001CB6004603BD0036B6" +
+            "003CC00042B04CBB005659B20018BA005800002BB7005CBF0007001F0047004A0044007F00A4" +
+            "00A5004400BC00F400F500440000007E01090054007F00A40109005400A500F40109005400F5" +
+            "01080109005400020060000000560015000000260007002800180029001F002D002F002E0047" +
+            "0031004A002F004C0030005F0033006E0034007F0038008E003900A5003A00A6003E00BC0040" +
+            "00CA004100E5004200F5004300F6004801090049010A004A00630000006E000AFF004A000307" +
+            "000807001C07001C0001070044FC0014070042F9001F6507004416FF001B000307000807001C" +
+            "07003D00020800CA0800CAFF0000000307000807001C07003D00030800CA0800CA01FF001B00" +
+            "0207000807001C000107004400FF0012000107000800010700540003006C00000002006D006E" +
+            "000000080001006F000100750077000000120002004F0002007800090079007B007D0019";
+
+        // Cached template bytecode (lazily initialized)
+        private static volatile byte[] templateBytecode;
+
         /**
          * Returns an existing or creates a new template class for the specified configuration options.
-         * <p>
-         * First attempts to load an existing template class matching the options. If not found,
-         * generates, compiles, and loads a new template class. Generated classes are cached
-         * for future reuse.
          *
          * @param options configuration map containing case sensitivity, ordering, map type, etc.
          * @return the template Class object matching the specified options
-         * @throws IllegalStateException if template generation or compilation fails
+         * @throws IllegalStateException if template generation fails
          */
         private static Class<?> getOrCreateTemplateClass(Map<String, Object> options) {
             String className = generateClassName(options);
@@ -2572,549 +2733,207 @@ public class CompactMap<K, V> implements Map<K, V> {
                 return generateTemplateClass(options);
             }
         }
+
         /**
-         * Generates a unique class name encoding the configuration options.
+         * Generates a unique class name based on SHA-1 hash of the configuration options.
          * <p>
-         * Format: "CompactMap$[MapType]_[CS/CI]_S[Size]_[SingleKey]_[Order]"
-         * Example: "CompactMap$HashMap_CS_S50_id_Unord" represents:
-         * <ul>
-         *     <li>HashMap backing</li>
-         *     <li>Case Sensitive (CS)</li>
-         *     <li>Size 50</li>
-         *     <li>Single key "id"</li>
-         *     <li>Unordered</li>
-         * </ul>
+         * Format: "CompactMap$[16-char-hash]"
+         * Example: "CompactMap$a1b2c3d4e5f67890"
          *
          * @param options configuration map containing case sensitivity, ordering, map type, etc.
          * @return the generated class name
          */
         private static String generateClassName(Map<String, Object> options) {
-            StringBuilder keyBuilder = new StringBuilder(TEMPLATE_CLASS_PREFIX);
+            // Build a canonical string representation of the configuration
+            StringBuilder configBuilder = new StringBuilder();
 
-            // Add map type's simple name
+            // Map type
             Object mapTypeObj = options.get(MAP_TYPE);
-            String mapTypeName;
-            if (mapTypeObj instanceof Class) {
-                mapTypeName = ((Class<?>) mapTypeObj).getSimpleName();
-            } else {
-                mapTypeName = (String) mapTypeObj;
-            }
-            // Sanitize map type name for safe class name usage
-            mapTypeName = sanitizeForClassName(mapTypeName);
-            keyBuilder.append(mapTypeName);
+            String mapTypeName = (mapTypeObj instanceof Class)
+                ? ((Class<?>) mapTypeObj).getName()
+                : String.valueOf(mapTypeObj);
+            configBuilder.append("mt:").append(mapTypeName).append(";");
 
-            // Add case sensitivity
-            keyBuilder.append('_')
-                    .append((boolean)options.getOrDefault(CASE_SENSITIVE, DEFAULT_CASE_SENSITIVE) ? "CS" : "CI");
+            // Case sensitivity
+            boolean caseSensitive = (boolean) options.getOrDefault(CASE_SENSITIVE, DEFAULT_CASE_SENSITIVE);
+            configBuilder.append("cs:").append(caseSensitive).append(";");
 
-            // Add size
-            keyBuilder.append("_S")
-                    .append(options.getOrDefault(COMPACT_SIZE, DEFAULT_COMPACT_SIZE));
+            // Compact size
+            int compactSize = (int) options.getOrDefault(COMPACT_SIZE, DEFAULT_COMPACT_SIZE);
+            configBuilder.append("sz:").append(compactSize).append(";");
 
-            // Add single key value (convert to title case and remove non-alphanumeric)
+            // Single key
             String singleKey = (String) options.getOrDefault(SINGLE_KEY, DEFAULT_SINGLE_KEY);
-            singleKey = sanitizeForClassName(singleKey);
-            keyBuilder.append('_').append(singleKey);
+            configBuilder.append("sk:").append(singleKey).append(";");
 
-            // Add ordering
+            // Ordering
             String ordering = (String) options.getOrDefault(ORDERING, UNORDERED);
-            keyBuilder.append('_');
-            switch (ordering) {
-                case SORTED:
-                    keyBuilder.append("Sort");
-                    break;
-                case REVERSE:
-                    keyBuilder.append("Rev");
-                    break;
-                case INSERTION:
-                    keyBuilder.append("Ins");
-                    break;
-                default:
-                    keyBuilder.append("Unord");
-            }
+            configBuilder.append("or:").append(ordering);
 
-            return keyBuilder.toString();
+            // Generate SHA-1 hash and take first 16 characters
+            String fullHash = EncryptionUtilities.calculateSHA1Hash(configBuilder.toString().getBytes(StandardCharsets.UTF_8));
+            String hash16 = fullHash.substring(0, 16).toLowerCase();
+
+            return TEMPLATE_CLASS_PREFIX + hash16;
         }
 
         /**
-         * Sanitizes input for use in class name generation to prevent injection attacks.
-         * 
-         * @param input the input string to sanitize
-         * @return sanitized string safe for use in class names
-         * @throws IllegalArgumentException if input is invalid
-         */
-        private static String sanitizeForClassName(String input) {
-            if (input == null || input.isEmpty()) {
-                throw new IllegalArgumentException("Input cannot be null or empty");
-            }
-            
-            // Strict whitelist approach - only allow alphanumeric characters
-            String sanitized = input.replaceAll("[^a-zA-Z0-9]", "");
-            if (sanitized.isEmpty()) {
-                throw new IllegalArgumentException("Input must contain alphanumeric characters: " + input);
-            }
-            
-            // Ensure first character is uppercase, rest lowercase to follow Java naming conventions
-            return sanitized.substring(0, 1).toUpperCase() + 
-                   (sanitized.length() > 1 ? sanitized.substring(1).toLowerCase() : "");
-        }
-
-        /**
-         * Creates a new template class for the specified configuration options.
-         * <p>
-         * This method effectively synchronizes on the class name to ensure that only one thread can be
-         * compiling a particular class, but multiple threads can compile different classes concurrently.
-         * <ul>
-         *     <li>Double-checks if class was created while waiting for lock</li>
-         *     <li>Generates source code for the template class</li>
-         *     <li>Compiles the source code</li>
-         *     <li>Loads and returns the compiled class</li>
-         * </ul>
+         * Creates a new template class by patching bytecode and injecting configuration values.
          *
          * @param options configuration map containing case sensitivity, ordering, map type, etc.
-         * @return the newly generated and compiled template Class
-         * @throws IllegalStateException if compilation fails or class cannot be loaded
+         * @return the newly generated template Class
+         * @throws IllegalStateException if class generation fails
          */
         private static Class<?> generateTemplateClass(Map<String, Object> options) {
-            // Determine the target class name
             String className = generateClassName(options);
+            String classNameSuffix = className.substring(TEMPLATE_CLASS_PREFIX.length());
 
-            // Acquire (or create) a lock dedicated to this className
+            // Acquire lock for this class name
             ReentrantLock lock = CLASS_LOCKS.computeIfAbsent(className, k -> new ReentrantLock());
 
             lock.lock();
             try {
-                // --- Double-check if class was created while waiting for lock ---
+                // Double-check if class was created while waiting for lock
                 try {
                     return ClassUtilities.getClassLoader(CompactMap.class).loadClass(className);
                 } catch (ClassNotFoundException ignored) {
                     // Not found, proceed with generation
                 }
 
-                // --- Generate source code ---
-                String sourceCode = generateSourceCode(className, options);
+                // Patch bytecode with the new class name
+                byte[] patchedBytecode = patchBytecode(classNameSuffix);
 
-                // --- Compile the source code using JavaCompiler ---
-                Class<?> templateClass = compileClass(className, sourceCode);
+                // Define the class
+                Class<?> templateClass = defineClass(className, patchedBytecode);
+
+                // Inject static field values
+                injectStaticFields(templateClass, options);
+
                 return templateClass;
-            }
-            finally {
+            } finally {
                 lock.unlock();
             }
         }
-        
+
         /**
-         * Generates Java source code for a CompactMap template class.
-         * <p>
-         * Creates a class that extends CompactMap and overrides:
-         * <ul>
-         *     <li>isCaseInsensitive()</li>
-         *     <li>compactSize()</li>
-         *     <li>getSingleValueKey()</li>
-         *     <li>getOrdering()</li>
-         *     <li>getNewMap()</li>
-         * </ul>
-         * The generated class implements the behavior specified by the configuration options.
+         * Patches the bytecode template by replacing the placeholder with the actual class name suffix.
          *
-         * @param className fully qualified name for the generated class
-         * @param options configuration map containing case sensitivity, ordering, map type, etc.
-         * @return Java source code as a String
+         * @param classNameSuffix the 16-character hash to use as class name suffix
+         * @return patched bytecode
          */
-        private static String generateSourceCode(String className, Map<String, Object> options) {
-            String simpleClassName = className.substring(className.lastIndexOf('.') + 1);
-            StringBuilder sb = new StringBuilder();
-
-            // Package declaration
-            sb.append("package com.cedarsoftware.util;\n\n");
-
-            // Basic imports
-            sb.append("import java.util.*;\n");
-            sb.append("import java.util.concurrent.*;\n");
-
-            // Add import for test classes if needed
-            Class<?> mapType = (Class<?>) options.get(MAP_TYPE);
-            if (mapType != null) {
-                String mapClassName = getMapClassName(mapType);
-                if (!mapClassName.startsWith("java.util.") &&
-                        !mapClassName.startsWith("java.util.concurrent.") &&
-                        !mapClassName.startsWith("com.cedarsoftware.util.")) {
-                    sb.append("import ").append(mapClassName).append(";\n");
-                }
+        private static byte[] patchBytecode(String classNameSuffix) {
+            if (classNameSuffix.length() != 16) {
+                throw new IllegalArgumentException("Class name suffix must be exactly 16 characters: " + classNameSuffix);
             }
-            
-            sb.append("\n");
 
-            // Class declaration
-            sb.append("public class ").append(simpleClassName)
-                    .append(" extends CompactMap {\n");
-
-            // Override isCaseInsensitive
-            boolean caseSensitive = (boolean)options.getOrDefault(CASE_SENSITIVE, DEFAULT_CASE_SENSITIVE);
-            sb.append("    @Override\n")
-                    .append("    protected boolean isCaseInsensitive() {\n")
-                    .append("        return ").append(!caseSensitive).append(";\n")
-                    .append("    }\n\n");
-
-            // Override compactSize
-            sb.append("    @Override\n")
-                    .append("    protected int compactSize() {\n")
-                    .append("        return ").append(options.getOrDefault(COMPACT_SIZE, DEFAULT_COMPACT_SIZE)).append(";\n")
-                    .append("    }\n\n");
-
-            // Override getSingleValueKey
-            sb.append("    @Override\n")
-                    .append("    protected Object getSingleValueKey() {\n")
-                    .append("        return \"").append(options.getOrDefault(SINGLE_KEY, DEFAULT_SINGLE_KEY)).append("\";\n")
-                    .append("    }\n\n");
-
-            // Override getOrdering
-            String ordering = (String)options.getOrDefault(ORDERING, UNORDERED);
-            sb.append("    @Override\n")
-                    .append("    protected String getOrdering() {\n")
-                    .append("        return \"").append(ordering).append("\";\n")
-                    .append("    }\n\n");
-
-            // Add getNewMap override
-            appendGetNewMapOverride(sb, options);
-
-            // Close class
-            sb.append("}\n");
-            return sb.toString();
-        }
-
-        /**
-         * Generates the getNewMap() method override for the template class.
-         * <p>
-         * Creates code that instantiates the appropriate map type with:
-         * <ul>
-         *     <li>Correct constructor (default, capacity, or comparator)</li>
-         *     <li>Error handling for constructor failures</li>
-         *     <li>Type validation checks</li>
-         *     <li>Support for wrapper maps (CaseInsensitive, etc.)</li>
-         * </ul>
-         *
-         * @param sb StringBuilder to append the generated code to
-         * @param options configuration map containing map type and related options
-         */
-        private static void appendGetNewMapOverride(StringBuilder sb, Map<String, Object> options) {
-            // Main method template
-            String methodTemplate =
-                    "    @Override\n" +
-                            "    protected Map getNewMap() {\n" +
-                            "        Map map;\n" +
-                            "        try {\n" +
-                            "%s" +  // Indented map creation code will be inserted here
-                            "        } catch (Exception e) {\n" +
-                            "            throw new IllegalStateException(\"Failed to create map instance\", e);\n" +
-                            "        }\n" +
-                            "        if (!(map instanceof Map)) {\n" +
-                            "            throw new IllegalStateException(\"mapType must be a Map class\");\n" +
-                            "        }\n" +
-                            "        return map;\n" +
-                            "    }\n";
-
-            // Get the appropriate map creation code and indent it
-            String mapCreationCode = getMapCreationCode(options);
-            String indentedCreationCode = indentCode(mapCreationCode, 12); // 3 levels of indent * 4 spaces
-
-            // Combine it all
-            sb.append(String.format(methodTemplate, indentedCreationCode));
-        }
-
-        /**
-         * Generates code to create a sorted map instance (TreeMap or similar).
-         */
-        private static String getSortedMapCreationCode(Class<?> mapType, boolean caseSensitive,
-                                                       String ordering, Map<String, Object> options) {
-            // Template for comparator-based constructor
-            String comparatorTemplate =
-                    "map = new %s(new CompactMapComparator(%b, %b));";
-
-            // Check if capacity constructor exists using ReflectionUtils
-            boolean hasCapacityConstructor = ReflectionUtils.getConstructor(mapType, int.class) != null;
-
-            // Template based on available constructors
-            String capacityTemplate = hasCapacityConstructor ?
-                    "map = new %s();\n" +
-                            "map = new %s(%d);" :
-                    "map = new %s();";
-
-            if (hasComparatorConstructor(mapType)) {
-                return String.format(comparatorTemplate,
-                        getMapClassName(mapType),
-                        !caseSensitive,
-                        REVERSE.equals(ordering));
-            } else {
-                int compactSize = (Integer) options.getOrDefault(COMPACT_SIZE, DEFAULT_COMPACT_SIZE);
-                if (hasCapacityConstructor) {
-                    return String.format(capacityTemplate,
-                            getMapClassName(mapType),
-                            getMapClassName(mapType),
-                            compactSize + 1);  // Use compactSize + 1 as capacity
-                } else {
-                    return String.format(capacityTemplate, getMapClassName(mapType));
-                }
-            }
-        }
-
-        /**
-         * Generates code to create a standard (non-sorted) map instance.
-         */
-        private static String getStandardMapCreationCode(Class<?> mapType, Map<String, Object> options) {
-            // Check if capacity constructor exists using ReflectionUtils
-            boolean hasCapacityConstructor = ReflectionUtils.getConstructor(mapType, int.class) != null;
-
-            // Template based on available constructors
-            String template = hasCapacityConstructor ?
-                    "map = new %s();\n" +
-                            "map = new %s(%d);" :
-                    "map = new %s();";
-
-            String mapClassName = getMapClassName(mapType);
-            int compactSize = (Integer) options.getOrDefault(COMPACT_SIZE, DEFAULT_COMPACT_SIZE);
-
-            if (hasCapacityConstructor) {
-                return String.format(template,
-                        mapClassName,
-                        mapClassName,
-                        compactSize + 1);  // Use compactSize + 1 as initial capacity
-            } else {
-                return String.format(template, mapClassName);
-            }
-        }
-
-        /**
-         * Checks if the map class has a constructor that accepts a Comparator.
-         * <p>
-         * Used to determine if a sorted map can be created with a custom
-         * comparator (e.g., case-insensitive or reverse order).
-         *
-         * @param mapType the Class object for the map implementation
-         * @return true if the class has a Comparator constructor, false otherwise
-         */
-        private static boolean hasComparatorConstructor(Class<?> mapType) {
-            return ReflectionUtils.getConstructor(mapType, Comparator.class) != null;
-        }
-
-        /**
-         * Returns the appropriate class name for use in generated code.
-         * <p>
-         * Handles special cases:
-         * <ul>
-         *     <li>Inner classes (converts '$' to '.')</li>
-         *     <li>Test classes (uses simple name)</li>
-         *     <li>java-util classes (uses enclosing class prefix)</li>
-         * </ul>
-         *
-         * @param mapType the Class object for the map implementation
-         * @return fully qualified or simple class name appropriate for generated code
-         */
-        private static String getMapClassName(Class<?> mapType) {
-            if (mapType.getEnclosingClass() != null) {
-                if (mapType.getName().contains("Test")) {
-                    return mapType.getSimpleName();
-                } else if (mapType.getPackage().getName().equals("com.cedarsoftware.util")) {
-                    return mapType.getEnclosingClass().getSimpleName() + "." + mapType.getSimpleName();
-                }
-                return mapType.getName().replace('$', '.');
-            }
-            return mapType.getName();
-        }
-
-        /**
-         * Indents each line of the provided code by the specified number of spaces.
-         * <p>
-         * Splits input on newlines, adds leading spaces to each line, and
-         * rejoins with newlines. Used to format generated source code with
-         * proper indentation.
-         *
-         * @param code the source code to indent
-         * @param spaces number of spaces to add at start of each line
-         * @return the indented source code
-         */
-        private static String indentCode(String code, int spaces) {
-            String indent = String.format("%" + spaces + "s", "");
-            return Arrays.stream(code.split("\n"))
-                    .map(line -> indent + line)
-                    .collect(Collectors.joining("\n"));
-        }
-
-        /**
-         * Generates code to instantiate the appropriate map implementation.
-         * <p>
-         * Handles multiple scenarios:
-         * <ul>
-         *     <li>CaseInsensitiveMap with specified inner map type</li>
-         *     <li>Sorted maps (TreeMap) with comparator</li>
-         *     <li>Standard maps with capacity constructor</li>
-         *     <li>Wrapper maps (maintaining inner map characteristics)</li>
-         * </ul>
-         * Generated code includes proper error handling and constructor fallbacks.
-         *
-         * @param options configuration map containing MAP_TYPE, INNER_MAP_TYPE, ordering, etc.
-         * @return String containing Java code to create the configured map instance
-         */
-        private static String getMapCreationCode(Map<String, Object> options) {
-            String ordering = (String)options.getOrDefault(ORDERING, UNORDERED);
-            boolean caseSensitive = (boolean)options.getOrDefault(CASE_SENSITIVE, DEFAULT_CASE_SENSITIVE);
-            Class<?> mapType = (Class<?>)options.getOrDefault(MAP_TYPE, DEFAULT_MAP_TYPE);
-
-            // Handle CaseInsensitiveMap with inner map type
-            if (mapType == CaseInsensitiveMap.class) {
-                Class<?> innerMapType = (Class<?>) options.get(INNER_MAP_TYPE);
-                if (innerMapType != null) {
-                    if (SORTED.equals(ordering) || REVERSE.equals(ordering)) {
-                        return String.format(
-                                "map = new CaseInsensitiveMap(new %s(new CompactMapComparator(%b, %b)));",
-                                getMapClassName(innerMapType),
-                                !caseSensitive,
-                                REVERSE.equals(ordering));
-                    } else {
-                        String template =
-                                "Map innerMap = new %s();\n" +
-                                        "try {\n" +
-                                        "    innerMap = new %s(%d);\n" +
-                                        "} catch (Exception e) {\n" +
-                                        "    // Fallback to default constructor already done\n" +
-                                        "}\n" +
-                                        "map = new CaseInsensitiveMap(innerMap);";
-
-                        return String.format(template,
-                                getMapClassName(innerMapType),
-                                getMapClassName(innerMapType),
-                                (Integer)options.getOrDefault(COMPACT_SIZE, DEFAULT_COMPACT_SIZE) + 1);
+            // Lazily parse template bytecode
+            if (templateBytecode == null) {
+                synchronized (TemplateGenerator.class) {
+                    if (templateBytecode == null) {
+                        templateBytecode = hexToBytes(BYTECODE_TEMPLATE);
                     }
                 }
             }
 
-            // Handle regular sorted/ordered maps
-            if (SORTED.equals(ordering) || REVERSE.equals(ordering)) {
-                return getSortedMapCreationCode(mapType, caseSensitive, ordering, options);
-            } else {
-                return getStandardMapCreationCode(mapType, options);
+            // Create a copy to patch
+            byte[] patched = templateBytecode.clone();
+            byte[] replacement = classNameSuffix.getBytes(StandardCharsets.UTF_8);
+
+            // Find and replace all occurrences of the placeholder
+            int idx = 0;
+            while ((idx = indexOf(patched, PLACEHOLDER_BYTES, idx)) != -1) {
+                System.arraycopy(replacement, 0, patched, idx, replacement.length);
+                idx += replacement.length;
             }
+
+            return patched;
         }
 
         /**
-         * Compiles Java source code into a Class object at runtime.
-         * <p>
-         * Process:
-         * <ul>
-         *     <li>Uses JavaCompiler from JDK tools</li>
-         *     <li>Compiles in memory (no file system access needed)</li>
-         *     <li>Captures compilation diagnostics for error reporting</li>
-         *     <li>Loads compiled bytecode via custom ClassLoader</li>
-         * </ul>
+         * Injects configuration values into static fields of the generated class.
          *
-         * @param className fully qualified name for the class to create
-         * @param sourceCode Java source code to compile
-         * @return the compiled Class object
-         * @throws IllegalStateException if compilation fails or JDK compiler unavailable
+         * @param clazz the class to inject values into
+         * @param options configuration map
          */
-        private static Class<?> compileClass(String className, String sourceCode) {
-            JavaCompiler compiler;
+        private static void injectStaticFields(Class<?> clazz, Map<String, Object> options) {
             try {
-                compiler = ToolProvider.getSystemJavaCompiler();
-            } catch (Throwable t) {
-                throw new IllegalStateException("No JavaCompiler found (JDK required, not just JRE).", t);
+                // _caseSensitive
+                Field caseSensitiveField = clazz.getDeclaredField("_caseSensitive");
+                caseSensitiveField.setAccessible(true);
+                caseSensitiveField.setBoolean(null, (boolean) options.getOrDefault(CASE_SENSITIVE, DEFAULT_CASE_SENSITIVE));
+
+                // _compactSize
+                Field compactSizeField = clazz.getDeclaredField("_compactSize");
+                compactSizeField.setAccessible(true);
+                compactSizeField.setInt(null, (int) options.getOrDefault(COMPACT_SIZE, DEFAULT_COMPACT_SIZE));
+
+                // _singleKey
+                Field singleKeyField = clazz.getDeclaredField("_singleKey");
+                singleKeyField.setAccessible(true);
+                singleKeyField.set(null, options.getOrDefault(SINGLE_KEY, DEFAULT_SINGLE_KEY));
+
+                // _ordering
+                Field orderingField = clazz.getDeclaredField("_ordering");
+                orderingField.setAccessible(true);
+                orderingField.set(null, options.getOrDefault(ORDERING, UNORDERED));
+
+                // _mapClassName
+                Field mapClassNameField = clazz.getDeclaredField("_mapClassName");
+                mapClassNameField.setAccessible(true);
+                Object mapTypeObj = options.getOrDefault(MAP_TYPE, DEFAULT_MAP_TYPE);
+                String mapClassName = (mapTypeObj instanceof Class)
+                    ? ((Class<?>) mapTypeObj).getName()
+                    : String.valueOf(mapTypeObj);
+                mapClassNameField.set(null, mapClassName);
+
+                // _innerMapClassName (for CaseInsensitiveMap wrapping)
+                Field innerMapClassNameField = clazz.getDeclaredField("_innerMapClassName");
+                innerMapClassNameField.setAccessible(true);
+                Object innerMapTypeObj = options.get(INNER_MAP_TYPE);
+                String innerMapClassName = (innerMapTypeObj instanceof Class)
+                    ? ((Class<?>) innerMapTypeObj).getName()
+                    : (innerMapTypeObj != null ? String.valueOf(innerMapTypeObj) : null);
+                innerMapClassNameField.set(null, innerMapClassName);
+
+            } catch (NoSuchFieldException | IllegalAccessException e) {
+                throw new IllegalStateException("Failed to inject static fields into generated class", e);
             }
-            if (compiler == null) {
-                throw new IllegalStateException("No JavaCompiler found. Ensure JDK (not just JRE) is being used.");
-            }
-
-            DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<>();
-            Map<String, ByteArrayOutputStream> classOutputs = new HashMap<>();
-
-            // Manage file managers with try-with-resources
-            try (StandardJavaFileManager stdFileManager = compiler.getStandardFileManager(diagnostics, null, null);
-                 JavaFileManager fileManager = new ForwardingJavaFileManager<StandardJavaFileManager>(stdFileManager) {
-                     @Override
-                     public JavaFileObject getJavaFileForOutput(Location location,
-                                                                String className,
-                                                                JavaFileObject.Kind kind,
-                                                                FileObject sibling) throws IOException {
-                         if (kind == JavaFileObject.Kind.CLASS) {
-                             ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-                             classOutputs.put(className, outputStream);
-                             return new SimpleJavaFileObject(
-                                     URI.create("byte:///" + className.replace('.', '/') + ".class"),
-                                     JavaFileObject.Kind.CLASS) {
-                                 @Override
-                                 public OutputStream openOutputStream() {
-                                     return outputStream;
-                                 }
-                             };
-                         }
-                         return super.getJavaFileForOutput(location, className, kind, sibling);
-                     }
-                 }) {
-
-                // Create in-memory source file
-                SimpleJavaFileObject sourceFile = new SimpleJavaFileObject(
-                        URI.create("string:///" + className.replace('.', '/') + ".java"),
-                        JavaFileObject.Kind.SOURCE) {
-                    @Override
-                    public CharSequence getCharContent(boolean ignoreEncodingErrors) {
-                        return sourceCode;
-                    }
-                };
-
-                // Compile the source
-                JavaCompiler.CompilationTask task = compiler.getTask(
-                    null,                // Writer for compiler messages
-                    fileManager,         // Custom file manager
-                    diagnostics,         // DiagnosticListener
-                    Collections.singletonList("-proc:none"), // Compiler options - disable annotation processing
-                    null,                // Classes for annotation processing
-                    Collections.singletonList(sourceFile)  // Source files to compile
-            );
-
-            boolean success = task.call();
-            if (!success) {
-                StringBuilder error = new StringBuilder("Compilation failed:\n");
-                for (Diagnostic<? extends JavaFileObject> diagnostic : diagnostics.getDiagnostics()) {
-                    error.append(diagnostic.toString()).append('\n');
-                }
-                throw new IllegalStateException(error.toString());
-            }
-
-            // Get the class bytes
-            ByteArrayOutputStream classOutput = classOutputs.get(className);
-            if (classOutput == null) {
-                throw new IllegalStateException("No class file generated for " + className);
-            }
-
-            // Define the class
-            byte[] classBytes = classOutput.toByteArray();
-            // Ensure all class output streams are properly closed
-            for (ByteArrayOutputStream baos : classOutputs.values()) {
-                if (baos != null) {
-                    try {
-                        baos.close();
-                    } catch (IOException ignored) {
-                        // ByteArrayOutputStream.close() is a no-op, but be defensive
-                    }
-                }
-            }
-            return defineClass(className, classBytes);
-        } // end try-with-resources
-        catch (IOException e) {
-            throw new IllegalStateException("I/O error during compilation", e);
         }
-    } // close compileClass()
 
         /**
-         * Defines a Class object from compiled bytecode using a custom ClassLoader.
-         * <p>
-         * Uses TemplateClassLoader to:
-         * <ul>
-         *     <li>Define new template classes</li>
-         *     <li>Handle class loading hierarchy properly</li>
-         *     <li>Support test class loading via thread context</li>
-         * </ul>
+         * Converts hex string to byte array.
+         */
+        private static byte[] hexToBytes(String hex) {
+            int len = hex.length();
+            byte[] data = new byte[len / 2];
+            for (int i = 0; i < len; i += 2) {
+                data[i / 2] = (byte) ((Character.digit(hex.charAt(i), 16) << 4)
+                                     + Character.digit(hex.charAt(i + 1), 16));
+            }
+            return data;
+        }
+
+        /**
+         * Finds the index of a byte pattern in a byte array.
+         */
+        private static int indexOf(byte[] data, byte[] pattern, int start) {
+            outer:
+            for (int i = start; i <= data.length - pattern.length; i++) {
+                for (int j = 0; j < pattern.length; j++) {
+                    if (data[i + j] != pattern[j]) {
+                        continue outer;
+                    }
+                }
+                return i;
+            }
+            return -1;
+        }
+
+        /**
+         * Defines a Class object from bytecode using a custom ClassLoader.
          *
          * @param className fully qualified name of the class to define
-         * @param classBytes compiled bytecode for the class
+         * @param classBytes bytecode for the class
          * @return the defined Class object
          * @throws LinkageError if class definition fails
          */

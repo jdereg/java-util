@@ -10,20 +10,20 @@ import java.lang.reflect.Type;
  * you can use the static {@code of()} method to create a TypeHolder instance.
  *
  * <p>Example usage via anonymous subclassing:</p>
- * <pre>
- *     TypeHolder&lt;List&lt;Point&gt;&gt; holder = new TypeHolder&lt;List&lt;Point&gt;&gt;() {};
+ * <pre>{@code
+ *     TypeHolder<List<Point>> holder = new TypeHolder<List<Point>>() {};
  *     Type captured = holder.getType();
- * </pre>
+ * }</pre>
  *
  * <p>Example usage using the {@code of()} method:</p>
- * <pre>
+ * <pre>{@code
  *     // With a raw class:
- *     TypeHolder&lt;Point&gt; holder = TypeHolder.of(Point.class);
+ *     TypeHolder<Point> holder = TypeHolder.of(Point.class);
  *
  *     // With a parameterized type (if you already have one):
- *     Type type = new TypeReference&lt;List&lt;Point&gt;&gt;() {}.getType();
- *     TypeHolder&lt;List&lt;Point&gt;&gt; holder2 = TypeHolder.of(type);
- * </pre>
+ *     Type type = new TypeReference<List<Point>>() {}.getType();
+ *     TypeHolder<List<Point>> holder2 = TypeHolder.of(type);
+ * }</pre>
  *
  * @param <T> the type that is being captured
  */
@@ -80,14 +80,14 @@ public class TypeHolder<T> {
      * wish to use the generic API without anonymous subclassing.
      *
      * <p>Example usage:</p>
-     * <pre>
-     * // For a raw class:
-     * TypeHolder&lt;Point&gt; holder = TypeHolder.of(Point.class);
+     * <pre>{@code
+     *     // For a raw class:
+     *     TypeHolder<Point> holder = TypeHolder.of(Point.class);
      *
-     * // For a parameterized type:
-     * Type type = new TypeReference&lt;List&lt;Point&gt;&gt;() {}.getType();
-     * TypeHolder&lt;List&lt;Point&gt;&gt; holder2 = TypeHolder.of(type);
-     * </pre>
+     *     // For a parameterized type:
+     *     Type type = new TypeReference<List<Point>>() {}.getType();
+     *     TypeHolder<List<Point>> holder2 = TypeHolder.of(type);
+     * }</pre>
      *
      * @param type the Type to wrap in a TypeHolder
      * @param <T> the type parameter

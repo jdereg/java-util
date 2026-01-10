@@ -1959,12 +1959,12 @@ public class ClassUtilities {
      * @param c Class to instantiate
      * @param arguments Can be:
      *                  - null or empty (no-arg constructor)
-     *                  - Map&lt;String, Object&gt; to match by parameter name (when available) or type
+     *                  - {@code Map<String, Object>} to match by parameter name (when available) or type
      *                    Note: When named parameter matching fails, falls back to positional matching.
      *                    For deterministic behavior, values are ordered by:
      *                    • LinkedHashMap/SortedMap: preserves existing order
      *                    • HashMap: sorts keys alphabetically
-     *                  - Collection&lt;?&gt; of values to match by type
+     *                  - {@code Collection<?>} of values to match by type
      *                  - Object[] of values to match by type
      *                  - Single value for single-argument constructors
      * @return A new instance of the specified class
@@ -1993,12 +1993,12 @@ public class ClassUtilities {
      * @param c Class to instantiate
      * @param arguments Can be:
      *                  - null or empty (no-arg constructor)
-     *                  - Map&lt;String, Object&gt; to match by parameter name (when available) or type
+     *                  - {@code Map<String, Object>} to match by parameter name (when available) or type
      *                    Note: When named parameter matching fails, falls back to positional matching.
      *                    For deterministic behavior, values are ordered by:
      *                    • LinkedHashMap/SortedMap: preserves existing order
      *                    • HashMap: sorts keys alphabetically
-     *                  - Collection&lt;?&gt; of values to match by type
+     *                  - {@code Collection<?>} of values to match by type
      *                  - Object[] of values to match by type
      *                  - Single value for single-argument constructors
      * @return A new instance of the specified class

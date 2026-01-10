@@ -1020,12 +1020,12 @@ public final class StringUtilities {
 //    }
 
     /**
-     * Removes control characters (char &lt;= 32) from both
+     * Removes control characters ({@code char <= 32}) from both
      * ends of this String, handling {@code null} by returning
      * {@code null}.
      *
      * <p>The String is trimmed using {@link String#trim()}.
-     * Trim removes start and end characters &lt;= 32.
+     * Trim removes start and end characters {@code <= 32}.
      *
      * @param str the String to be trimmed, may be null
      * @return the trimmed string, {@code null} if null String input

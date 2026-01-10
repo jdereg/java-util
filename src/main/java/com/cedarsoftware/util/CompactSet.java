@@ -238,7 +238,7 @@ public class CompactSet<E> implements Set<E> {
     /**
      * Builder for creating CompactSet instances with custom configurations.
      * <p>
-     * Internally, the builder configures a {@link CompactMap} (with &lt;E, Object&gt;).
+     * Internally, the builder configures a {@link CompactMap} (with {@code <E, Object>}).
      */
     public static final class Builder<E> {
         private final CompactMap.Builder<E, Object> mapBuilder;

@@ -430,11 +430,11 @@ public class TypeUtilities {
      * </p>
      *
      * @param container the full container type, e.g.
-     *                  - Map&lt;String, List&lt;Point&gt;&gt; (infers List&lt;Point&gt;)
-     *                  - List&lt;Person&gt; (infers Person)
-     *                  - Point[] (infers Point)
+     *                  {@code Map<String, List<Point>>} (infers {@code List<Point>}),
+     *                  {@code List<Person>} (infers {@code Person}),
+     *                  {@code Point[]} (infers {@code Point})
      * @param fieldGenericType the declared generic type of the field
-     * @return the resolved element type based on the container’s type, e.g. List&lt;Point&gt;, Person, or Point
+     * @return the resolved element type based on the container's type, e.g. {@code List<Point>}, {@code Person}, or {@code Point}
      */
     public static Type inferElementType(Type container, Type fieldGenericType) {
         if (container instanceof ParameterizedType) {

@@ -1947,7 +1947,7 @@ public class CompactMap<K, V> implements Map<K, V> {
      *   </tr>
      *   <tr>
      *     <td>{@link #MAP_TYPE}</td>
-     *     <td>Class&lt;? extends Map&gt;</td>
+     *     <td>{@code Class<? extends Map>}</td>
      *     <td>Type of backing map to use</td>
      *     <td>HashMap.class</td>
      *   </tr>
@@ -1959,7 +1959,7 @@ public class CompactMap<K, V> implements Map<K, V> {
      *   </tr>
      *   <tr>
      *     <td>{@link #SOURCE_MAP}</td>
-     *     <td>Map&lt;K,V&gt;</td>
+     *     <td>{@code Map<K,V>}</td>
      *     <td>Initial entries for the map</td>
      *     <td>null</td>
      *   </tr>

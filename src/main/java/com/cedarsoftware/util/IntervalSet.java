@@ -489,7 +489,7 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
      *
      * @param start inclusive start of the range to remove
      * @param end   exclusive end of the range to remove
-     * @throws IllegalArgumentException if <code>end &lt;= start</code>
+     * @throws IllegalArgumentException if {@code end <= start}
      */
     public void removeRange(T start, T end) {
         Objects.requireNonNull(start, "start");
@@ -669,7 +669,7 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
      * @param fromKey the start of the range (inclusive)
      * @param toKey   the end of the range (inclusive)
      * @return a list of intervals within the specified range, ordered by start key
-     * @throws IllegalArgumentException if fromKey &gt; toKey
+     * @throws IllegalArgumentException if {@code fromKey > toKey}
      */
     public List<Interval<T>> getIntervalsInRange(T fromKey, T toKey) {
         Objects.requireNonNull(fromKey);
@@ -782,7 +782,7 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
      * @param fromKey the start of the range (inclusive)
      * @param toKey   the end of the range (inclusive)
      * @return the number of intervals removed
-     * @throws IllegalArgumentException if fromKey &gt; toKey
+     * @throws IllegalArgumentException if {@code fromKey > toKey}
      */
     public int removeIntervalsInKeyRange(T fromKey, T toKey) {
         Objects.requireNonNull(fromKey);

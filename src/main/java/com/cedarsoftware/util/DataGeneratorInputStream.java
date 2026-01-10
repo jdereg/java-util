@@ -14,7 +14,7 @@ import java.util.function.IntSupplier;
  * for testing with very large stream sizes.</p>
  *
  * <p>Example usage:</p>
- * <pre>
+ * <pre>{@code
  * // Random bytes
  * try (InputStream input = DataGeneratorInputStream.withRandomBytes(1024 * 1024)) {
  *     processStream(input);
@@ -26,10 +26,10 @@ import java.util.function.IntSupplier;
  * }
  *
  * // Custom generator
- * try (InputStream input = DataGeneratorInputStream.withGenerator(1024, () -&gt; 42)) {
+ * try (InputStream input = DataGeneratorInputStream.withGenerator(1024, () -> 42)) {
  *     processStream(input);
  * }
- * </pre>
+ * }</pre>
  *
  * @author John DeRegnaucourt (jdereg@gmail.com)
  *         <br>
@@ -201,7 +201,7 @@ public class DataGeneratorInputStream extends InputStream {
 
     /**
      * Creates a stream that counts sequentially between two byte values, wrapping when reaching the end.
-     * If startByte &lt;= endByte, counts upward. If startByte &gt; endByte, counts downward.
+     * If {@code startByte <= endByte} counts upward. If {@code startByte > endByte} counts downward.
      *
      * <p>Examples:</p>
      * <ul>

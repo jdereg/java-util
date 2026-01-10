@@ -275,7 +275,7 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
      * each time they are needed. This helps prevent memory exhaustion from very long strings.
      *
      * @param length the maximum length of strings to cache. Must be non-negative.
-     * @throws IllegalArgumentException if length is &lt; 10.
+     * @throws IllegalArgumentException if length is {@code < 10}.
      */
     public static void setMaxCacheLengthString(int length) {
         if (length < 10) {

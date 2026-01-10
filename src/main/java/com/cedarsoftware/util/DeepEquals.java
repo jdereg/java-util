@@ -80,7 +80,7 @@ import static com.cedarsoftware.util.Converter.convert2boolean;
  *  </ul>
  * <p><strong>Example usage:</strong></p>
  * <pre><code>
- * Map&lt;String, Object&gt; options = new HashMap&lt;&gt;();
+ * Map<String, Object> options = new HashMap<>();
  * options.put(IGNORE_CUSTOM_EQUALS, Set.of(MyClass.class, OtherClass.class));
  * options.put(ALLOW_STRINGS_TO_MATCH_NUMBERS, true);
  *
@@ -353,7 +353,7 @@ public class DeepEquals {
      * Performs a deep comparison between two objects, going beyond a simple {@code equals()} check.
      * <p>
      * This method is functionally equivalent to calling
-     * {@link #deepEquals(Object, Object, Map) deepEquals(a, b, new HashMap&lt;&gt;())},
+     * {@link #deepEquals(Object, Object, Map) deepEquals(a, b, new HashMap<>())},
      * which means it uses no additional comparison options. In other words:
      * <ul>
      *   <li>{@code IGNORE_CUSTOM_EQUALS} is not set (all custom {@code equals()} methods are used)</li>

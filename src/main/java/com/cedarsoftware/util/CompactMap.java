@@ -2868,20 +2868,16 @@ public class CompactMap<K, V> implements Map<K, V> {
 
             try {
                 // _caseSensitive
-                fieldMap.get("_caseSensitive").setBoolean(null,
-                        (boolean) options.getOrDefault(CASE_SENSITIVE, DEFAULT_CASE_SENSITIVE));
+                fieldMap.get("_caseSensitive").setBoolean(null, (boolean) options.getOrDefault(CASE_SENSITIVE, DEFAULT_CASE_SENSITIVE));
 
                 // _compactSize
-                fieldMap.get("_compactSize").setInt(null,
-                        (int) options.getOrDefault(COMPACT_SIZE, DEFAULT_COMPACT_SIZE));
+                fieldMap.get("_compactSize").setInt(null, (int) options.getOrDefault(COMPACT_SIZE, DEFAULT_COMPACT_SIZE));
 
                 // _singleKey
-                fieldMap.get("_singleKey").set(null,
-                        options.getOrDefault(SINGLE_KEY, DEFAULT_SINGLE_KEY));
+                fieldMap.get("_singleKey").set(null, options.getOrDefault(SINGLE_KEY, DEFAULT_SINGLE_KEY));
 
                 // _ordering
-                fieldMap.get("_ordering").set(null,
-                        options.getOrDefault(ORDERING, UNORDERED));
+                fieldMap.get("_ordering").set(null, options.getOrDefault(ORDERING, UNORDERED));
 
                 // _mapClassName
                 Object mapTypeObj = options.getOrDefault(MAP_TYPE, DEFAULT_MAP_TYPE);

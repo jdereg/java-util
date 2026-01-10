@@ -21,7 +21,7 @@ Most applications simply instantiate one of the provided subclasses
 such as `CompactCIHashSet`, `CompactCILinkedSet`, or
 `CompactLinkedSet`. You may also subclass `CompactSet` yourself to
 hard-code your preferred options. The builder API is available for
-advanced use cases when running on a full JDK.
+advanced use cases.
 
 ### Usage Examples
 
@@ -30,23 +30,13 @@ advanced use cases when running on a full JDK.
 CompactLinkedSet<String> linked = new CompactLinkedSet<>();
 linked.add("hello");
 
-// Advanced: build a custom CompactSet (requires JDK)
+// Advanced: build a custom CompactSet
 CompactSet<String> set = CompactSet.<String>builder()
     .caseSensitive(false)
     .sortedOrder()
     .compactSize(50)
     .build();
 ```
-
-> **JDK Requirement**
->
-> The `build()` and `withConfig()` APIs dynamically generate a
-> specialized subclass using the JDK compiler. These methods will throw an
-> `IllegalStateException` when the compiler tools are unavailable (for example
-> in JRE-only container environments). In those cases, either use the default
-> constructor, one of the pre-built classes such as `CompactLinkedSet`,
-> `CompactCIHashSet`, or `CompactCILinkedSet`, or create your own subclass and 
-> override the configuration options (compact-size, ordering, case-sensitivity, etc.)
 
 ### Configuration Options
 
@@ -524,7 +514,7 @@ A memory-efficient Map implementation that dynamically adapts its internal stora
 
 ### Key Features
 - Dynamic storage optimization based on size
-- Optional builder API for advanced configuration (requires JDK)
+- Builder API for advanced configuration
 - Support for case-sensitive/insensitive String keys
 - Configurable ordering (sorted, reverse, insertion, unordered)
 - Custom backing map implementations
@@ -534,8 +524,7 @@ A memory-efficient Map implementation that dynamically adapts its internal stora
 Most developers will instantiate one of the pre-built subclasses such
 as `CompactLinkedMap`, `CompactCIHashMap`, or `CompactCILinkedMap`. You
 can also extend `CompactMap` and override its configuration methods to
-create your own variant. The builder API should generally be reserved
-for situations where you know you are running on a full JDK.
+create your own variant.
 
 ### Usage Examples
 
@@ -550,7 +539,7 @@ Map<String, Object> source = new HashMap<>();
 CompactLinkedMap<String, Object> copy = new CompactLinkedMap<>(source);
 ```
 
-**Builder Pattern (requires execution on JDK):**
+**Builder Pattern:**
 ```java
 // Case-insensitive, sorted map
 CompactMap<String, Object> map = CompactMap.<String, Object>builder()
@@ -565,16 +554,6 @@ CompactMap<String, Object> ordered = CompactMap.<String, Object>builder()
     .mapType(LinkedHashMap.class)
     .build();
 ```
-
-> **JDK Requirement**
-> 
-> The `build()`, `newMap()`, and `withConfig()` APIs dynamically generate a
-> specialized subclass using the JDK compiler. These methods will throw an
-> `IllegalStateException` when the compiler tools are unavailable (for example
-> in JRE-only container environments). In those cases, either use the default
-> constructor, one of the pre-built classes such as `CompactLinkedMap`,
-> `CompactCIHashMap`, or `CompactCILinkedMap`, or create your own subclass and
-> override the configuration options (compact-size, ordering, case-sensitivity, etc.)
 
 **Configuration Options:**
 ```java

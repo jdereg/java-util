@@ -213,25 +213,63 @@ public abstract class AbstractConcurrentNullSafeMap<K, V> implements ConcurrentM
         Objects.requireNonNull(mappingFunction);
         Object maskedKey = maskNullKey(key);
 
-        // Fast path: check if value exists without locking
-        // This avoids the expensive compute() call for cache hits
-        Object existing = internalMap.get(maskedKey);
-        if (existing != null && existing != NullSentinel.NULL_VALUE) {
-            return unmaskNullValue(existing);
-        }
-
-        // Slow path: use compute() to handle the absent case atomically
-        Object result = internalMap.compute(maskedKey, (k, v) -> {
-            if (v != null && v != NullSentinel.NULL_VALUE) {
-                // Another thread computed the value while we were waiting
-                return v;
-            }
-
-            V newValue = mappingFunction.apply(unmaskNullKey(k));
-            return (newValue == null) ? null : maskNullValue(newValue);
+        // Fast path: delegate directly to ConcurrentHashMap.computeIfAbsent
+        // This is lock-free for cache hits and highly optimized.
+        // It handles the common case where no null values are stored.
+        Object result = internalMap.computeIfAbsent(maskedKey, k -> {
+            V value = mappingFunction.apply(key);
+            return value == null ? null : maskNullValue(value);
         });
 
+        if (result == null) {
+            return null;
+        }
+
+        // Check if key was previously mapped to null (rare case)
+        if (result == NullSentinel.NULL_VALUE) {
+            // Per computeIfAbsent contract: "if key is mapped to null, compute"
+            // This path is only taken when someone previously did put(key, null)
+            return computeIfAbsentReplaceNull(key, maskedKey, mappingFunction);
+        }
+
         return unmaskNullValue(result);
+    }
+
+    /**
+     * Handles the rare case where key is mapped to null and we need to compute a replacement.
+     */
+    private V computeIfAbsentReplaceNull(K key, Object maskedKey, java.util.function.Function<? super K, ? extends V> mappingFunction) {
+        V newValue = mappingFunction.apply(key);
+        if (newValue == null) {
+            // Per computeIfAbsent contract: if function returns null, remove the mapping
+            internalMap.remove(maskedKey, NullSentinel.NULL_VALUE);
+            return null;
+        }
+
+        Object maskedValue = maskNullValue(newValue);
+        // Try to replace NULL_VALUE with the new value
+        while (true) {
+            if (internalMap.replace(maskedKey, NullSentinel.NULL_VALUE, maskedValue)) {
+                return newValue;
+            }
+            // Replace failed - check current state
+            Object current = internalMap.get(maskedKey);
+            if (current == null) {
+                // Key was removed - try to insert
+                Object prev = internalMap.putIfAbsent(maskedKey, maskedValue);
+                if (prev == null) {
+                    return newValue;
+                }
+                if (prev != NullSentinel.NULL_VALUE) {
+                    return unmaskNullValue(prev);
+                }
+                // prev is NULL_VALUE - loop and try replace again
+            } else if (current != NullSentinel.NULL_VALUE) {
+                // Someone inserted a real value
+                return unmaskNullValue(current);
+            }
+            // Still NULL_VALUE - loop and try replace again
+        }
     }
 
     @Override

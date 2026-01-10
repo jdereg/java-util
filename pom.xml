@@ -5,7 +5,7 @@
     <groupId>com.cedarsoftware</groupId>
     <artifactId>java-util</artifactId>
     <packaging>bundle</packaging>
-    <version>4.80.0</version>
+    <version>4.81.0</version>
     <description>Java Utilities</description>
     <url>https://github.com/jdereg/java-util</url>
 
@@ -316,7 +316,6 @@
                                 <moduleInfoSource>
                                     module com.cedarsoftware.util {
                                     requires java.sql;
-                                    requires static java.compiler;
                                     requires static java.xml;
                                     exports com.cedarsoftware.util;
                                     exports com.cedarsoftware.util.cache;

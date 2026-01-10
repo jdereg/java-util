@@ -624,12 +624,35 @@ public class TTLCache<K, V> implements Map<K, V>, AutoCloseable {
     }
 
     /**
-     * Shuts down the shared scheduler. Call this method when your application is terminating.
+     * Shuts down the shared scheduler used by all TTLCache instances.
+     * This method is primarily intended for application shutdown or testing cleanup.
+     * <p>
+     * After calling this method, creating new cache instances will automatically restart
+     * the scheduler. Existing caches will no longer receive automatic purging until the
+     * scheduler is restarted.
+     * <p>
+     * This method waits up to 5 seconds for the scheduler to terminate gracefully.
+     *
+     * @return true if the scheduler terminated cleanly, false if it timed out or was interrupted
      */
-    public static synchronized void shutdown() {
-        if (scheduler != null) {
-            scheduler.shutdown();
+    public static synchronized boolean shutdown() {
+        if (scheduler == null || scheduler.isShutdown()) {
+            return true;
+        }
+        scheduler.shutdown();
+        try {
+            boolean terminated = scheduler.awaitTermination(5, TimeUnit.SECONDS);
+            if (!terminated) {
+                scheduler.shutdownNow();
+                terminated = scheduler.awaitTermination(1, TimeUnit.SECONDS);
+            }
             scheduler = null;
+            return terminated;
+        } catch (InterruptedException e) {
+            scheduler.shutdownNow();
+            scheduler = null;
+            Thread.currentThread().interrupt();
+            return false;
         }
     }
 }

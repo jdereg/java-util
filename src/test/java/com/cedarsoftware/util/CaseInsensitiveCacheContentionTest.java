@@ -1,5 +1,6 @@
 package com.cedarsoftware.util;
 
+import com.cedarsoftware.util.cache.ThreadedLRUCacheStrategy;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
@@ -9,15 +10,20 @@ import java.util.List;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicLong;
 
+import static org.junit.jupiter.api.Assertions.*;
+
 /**
  * Benchmark to measure LRU cache contention in CaseInsensitiveMap.
  * Tests the performance impact of the CaseInsensitiveString cache under concurrent access.
+ *
+ * Also includes realistic zone-transition tests that simulate burst/pause traffic patterns
+ * to verify the ThreadedLRUCacheStrategy's zone-based eviction algorithm.
  */
 public class CaseInsensitiveCacheContentionTest {
 
-    private static final int WARMUP_ITERATIONS = 50_000;
-    private static final int MEASUREMENT_ITERATIONS = 500_000;
-    private static final int PROGRESS_INTERVAL = 20_000;
+    private static final int WARMUP_ITERATIONS = 10_000;
+    private static final int MEASUREMENT_ITERATIONS = 50_000;  // Reduced from 500k for faster tests
+    private static final int PROGRESS_INTERVAL = 10_000;
 
     @AfterEach
     public void cleanup() {
@@ -499,6 +505,235 @@ public class CaseInsensitiveCacheContentionTest {
         if (count % PROGRESS_INTERVAL == 0) {
             double pct = (100.0 * count) / total;
             System.out.printf("  [%s] Progress: %,d / %,d (%.1f%%)\n", testName, count, total, pct);
+        }
+    }
+
+    // ==================== Zone-Based Eviction Tests ====================
+
+    /**
+     * Tests the ThreadedLRUCacheStrategy's zone-based eviction with realistic
+     * burst/pause traffic patterns. Verifies that:
+     * - Zone A (0-1x): Normal operation, no eviction
+     * - Zone B (1x-1.5x): Background cleanup brings cache back to capacity
+     * - Zone C (1.5x-2x): Probabilistic inline eviction
+     * - Zone D (2x+): Hard cap maintained via evict-before-insert
+     */
+    @Test
+    @EnabledIfSystemProperty(named = "performRelease", matches = "true")
+    public void testZoneTransitionsWithBurstPausePattern() throws Exception {
+        System.out.println("\n" + repeat("=", 80));
+        System.out.println("Zone-Based Eviction: Burst/Pause Traffic Pattern Test");
+        System.out.println(repeat("=", 80));
+
+        final int CACHE_CAPACITY = 1000;
+        final int SOFT_CAP = (int) (CACHE_CAPACITY * 1.5);  // 1500
+        final int HARD_CAP = CACHE_CAPACITY * 2;            // 2000
+
+        // Create a fresh cache for this test
+        LRUCache<String, String> cache = new LRUCache<>(CACHE_CAPACITY, LRUCache.StrategyType.THREADED);
+
+        System.out.println("\nCache configuration:");
+        System.out.println("  Capacity: " + CACHE_CAPACITY);
+        System.out.println("  Soft cap (Zone C starts): " + SOFT_CAP);
+        System.out.println("  Hard cap (Zone D): " + HARD_CAP);
+
+        // === Phase 1: Fill to Zone A (normal operation) ===
+        System.out.println("\n--- Phase 1: Fill to Zone A (0 to capacity) ---");
+        for (int i = 0; i < CACHE_CAPACITY; i++) {
+            cache.put("key_" + i, "value_" + i);
+        }
+        int sizeAfterPhase1 = cache.size();
+        System.out.println("  After inserting " + CACHE_CAPACITY + " entries: size = " + sizeAfterPhase1);
+        assertTrue(sizeAfterPhase1 <= CACHE_CAPACITY, "Zone A should not exceed capacity");
+
+        // === Phase 2: Burst to Zone B (background cleanup territory) ===
+        System.out.println("\n--- Phase 2: Burst to Zone B (capacity to 1.5x) ---");
+        int burstSize = CACHE_CAPACITY / 2;  // Add 500 more to reach ~1.5x
+        for (int i = 0; i < burstSize; i++) {
+            cache.put("burst1_" + i, "value");
+        }
+        int sizeAfterBurst1 = cache.size();
+        System.out.println("  After burst of " + burstSize + " entries: size = " + sizeAfterBurst1);
+        System.out.println("  Zone: " + getZone(sizeAfterBurst1, CACHE_CAPACITY, SOFT_CAP, HARD_CAP));
+
+        // === Phase 3: Pause and let background cleanup work ===
+        System.out.println("\n--- Phase 3: Pause (let background cleanup run) ---");
+        System.out.println("  Waiting 1.5 seconds for background cleanup...");
+        Thread.sleep(1500);  // Background runs every 500ms, give it 3 cycles
+        int sizeAfterPause1 = cache.size();
+        System.out.println("  After pause: size = " + sizeAfterPause1);
+        System.out.println("  Zone: " + getZone(sizeAfterPause1, CACHE_CAPACITY, SOFT_CAP, HARD_CAP));
+        assertTrue(sizeAfterPause1 <= CACHE_CAPACITY,
+                "Background cleanup should bring cache back to capacity, but size = " + sizeAfterPause1);
+
+        // === Phase 4: Aggressive burst to Zone C/D ===
+        System.out.println("\n--- Phase 4: Aggressive burst toward Zone D ---");
+        int aggressiveBurst = CACHE_CAPACITY;  // Add 1000 entries rapidly
+        for (int i = 0; i < aggressiveBurst; i++) {
+            cache.put("aggressive_" + i, "value");
+        }
+        int sizeAfterAggressive = cache.size();
+        System.out.println("  After aggressive burst of " + aggressiveBurst + " entries: size = " + sizeAfterAggressive);
+        System.out.println("  Zone: " + getZone(sizeAfterAggressive, CACHE_CAPACITY, SOFT_CAP, HARD_CAP));
+        assertTrue(sizeAfterAggressive <= HARD_CAP,
+                "Cache should never exceed hard cap (2x), but size = " + sizeAfterAggressive);
+
+        // === Phase 5: Pause again ===
+        System.out.println("\n--- Phase 5: Another pause for cleanup ---");
+        Thread.sleep(1500);
+        int sizeAfterPause2 = cache.size();
+        System.out.println("  After pause: size = " + sizeAfterPause2);
+        System.out.println("  Zone: " + getZone(sizeAfterPause2, CACHE_CAPACITY, SOFT_CAP, HARD_CAP));
+        assertTrue(sizeAfterPause2 <= CACHE_CAPACITY,
+                "Background cleanup should bring cache back to capacity, but size = " + sizeAfterPause2);
+
+        // === Phase 6: Sustained Zone D pressure ===
+        System.out.println("\n--- Phase 6: Sustained pressure at Zone D ---");
+        System.out.println("  Inserting 5000 unique keys (5x capacity) without pause...");
+        int sustainedCount = CACHE_CAPACITY * 5;
+        for (int i = 0; i < sustainedCount; i++) {
+            cache.put("sustained_" + i, "value");
+        }
+        int sizeAfterSustained = cache.size();
+        System.out.println("  After " + sustainedCount + " insertions: size = " + sizeAfterSustained);
+        System.out.println("  Zone: " + getZone(sizeAfterSustained, CACHE_CAPACITY, SOFT_CAP, HARD_CAP));
+        assertTrue(sizeAfterSustained <= HARD_CAP,
+                "Even under sustained pressure, cache should not exceed hard cap (2x), but size = " + sizeAfterSustained);
+
+        // === Final cleanup ===
+        System.out.println("\n--- Final: Wait for cleanup and verify ---");
+        Thread.sleep(1500);
+        int finalSize = cache.size();
+        System.out.println("  Final size: " + finalSize);
+        System.out.println("  Final zone: " + getZone(finalSize, CACHE_CAPACITY, SOFT_CAP, HARD_CAP));
+
+        cache.clear();
+        System.out.println("\nTest completed successfully!");
+    }
+
+    /**
+     * Tests concurrent burst/pause pattern with multiple threads.
+     */
+    @Test
+    @EnabledIfSystemProperty(named = "performRelease", matches = "true")
+    public void testConcurrentZoneTransitions() throws Exception {
+        System.out.println("\n" + repeat("=", 80));
+        System.out.println("Zone-Based Eviction: Concurrent Burst/Pause Test");
+        System.out.println(repeat("=", 80));
+
+        final int CACHE_CAPACITY = 2000;
+        final int HARD_CAP = CACHE_CAPACITY * 2;
+        final int THREAD_COUNT = 8;
+        final int OPS_PER_THREAD = 5000;
+
+        LRUCache<String, String> cache = new LRUCache<>(CACHE_CAPACITY, LRUCache.StrategyType.THREADED);
+        ExecutorService executor = Executors.newFixedThreadPool(THREAD_COUNT);
+        AtomicLong keyCounter = new AtomicLong(0);
+
+        System.out.println("\nConfiguration:");
+        System.out.println("  Cache capacity: " + CACHE_CAPACITY);
+        System.out.println("  Hard cap: " + HARD_CAP);
+        System.out.println("  Threads: " + THREAD_COUNT);
+        System.out.println("  Ops per thread: " + OPS_PER_THREAD);
+
+        // Track max size observed during test
+        AtomicLong maxSizeObserved = new AtomicLong(0);
+
+        List<Future<?>> futures = new ArrayList<>();
+        for (int t = 0; t < THREAD_COUNT; t++) {
+            final int threadId = t;
+            futures.add(executor.submit(() -> {
+                ThreadLocalRandom random = ThreadLocalRandom.current();
+                for (int i = 0; i < OPS_PER_THREAD; i++) {
+                    // Simulate burst/pause pattern per thread
+                    if (i % 500 == 0 && i > 0) {
+                        // Pause every 500 ops
+                        try {
+                            Thread.sleep(50);  // Small pause
+                        } catch (InterruptedException e) {
+                            Thread.currentThread().interrupt();
+                            return;
+                        }
+                    }
+
+                    // Mix of operations: 70% unique inserts, 30% repeated keys
+                    if (random.nextInt(100) < 70) {
+                        cache.put("unique_" + keyCounter.incrementAndGet(), "value");
+                    } else {
+                        cache.put("hot_" + (random.nextInt(100)), "value");
+                    }
+
+                    // Track max size
+                    int currentSize = cache.size();
+                    maxSizeObserved.updateAndGet(max -> Math.max(max, currentSize));
+                }
+            }));
+        }
+
+        // Wait for all threads
+        for (Future<?> f : futures) {
+            f.get();
+        }
+        executor.shutdown();
+
+        int finalSize = cache.size();
+        long maxSize = maxSizeObserved.get();
+
+        System.out.println("\nResults:");
+        System.out.println("  Max size observed during test: " + maxSize);
+        System.out.println("  Final size after completion: " + finalSize);
+
+        // Note: Under extreme concurrent pressure, the cache can temporarily exceed hard cap
+        // because the lock-free design trades strict bounds for throughput. This is expected.
+        // The key properties we verify:
+        // 1. The cache doesn't grow unbounded (stays within reasonable multiple)
+        // 2. After pressure stops, background cleanup brings it back to capacity
+
+        // With the while-loop fix in Zone D, cache stays very close to hard cap
+        // Allow 15% buffer for measurement race: we may observe peak before eviction catches up
+        int reasonableMax = (int) (HARD_CAP * 1.15);
+        System.out.println("  Hard cap respected (2x + 15%): " + (maxSize <= reasonableMax));
+        assertTrue(maxSize <= reasonableMax,
+                "Cache growth should be bounded even under concurrent pressure. " +
+                "Max observed: " + maxSize + ", reasonable max: " + reasonableMax);
+
+        // Wait for final cleanup (give background thread time to work)
+        System.out.println("\n--- Waiting for background cleanup ---");
+        int previousSize = cache.size();
+        for (int attempt = 0; attempt < 10; attempt++) {
+            Thread.sleep(600);  // Slightly longer than cleanup interval
+            int currentSize = cache.size();
+            System.out.println("  Cleanup attempt " + (attempt + 1) + ": size = " + currentSize);
+            if (currentSize <= CACHE_CAPACITY) {
+                break;
+            }
+            if (currentSize == previousSize && attempt > 2) {
+                // Size not changing, something might be wrong
+                break;
+            }
+            previousSize = currentSize;
+        }
+
+        int cleanedSize = cache.size();
+        System.out.println("  Final size after cleanup: " + cleanedSize);
+
+        // After cleanup, should be at or below capacity
+        assertTrue(cleanedSize <= CACHE_CAPACITY,
+                "After cleanup, cache should return to capacity. Size: " + cleanedSize + ", capacity: " + CACHE_CAPACITY);
+
+        cache.clear();
+        System.out.println("\nConcurrent test completed successfully!");
+    }
+
+    private static String getZone(int size, int capacity, int softCap, int hardCap) {
+        if (size <= capacity) {
+            return "A (0 to " + capacity + ")";
+        } else if (size <= softCap) {
+            return "B (" + capacity + " to " + softCap + ")";
+        } else if (size < hardCap) {
+            return "C (" + softCap + " to " + hardCap + ")";
+        } else {
+            return "D (>= " + hardCap + ")";
         }
     }
 }

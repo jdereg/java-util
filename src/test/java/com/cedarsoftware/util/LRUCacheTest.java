@@ -12,6 +12,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -37,6 +38,18 @@ public class LRUCacheTest {
 
     void setUp(LRUCache.StrategyType strategyType) {
         lruCache = new LRUCache<>(3, strategyType);
+    }
+
+    @AfterEach
+    void tearDown() {
+        // Clear cache references to allow garbage collection
+        // This is critical for the large performance tests to avoid OOM
+        if (lruCache != null) {
+            lruCache.clear();
+            lruCache = null;
+        }
+        // Suggest GC after each test to free memory for subsequent tests
+        System.gc();
     }
 
     @ParameterizedTest
@@ -470,6 +483,8 @@ public class LRUCacheTest {
         }
 
         assertEquals(1000, lruCache.size());
+        // Explicitly clear to free memory before next test
+        lruCache.clear();
     }
 
     @ParameterizedTest
@@ -526,5 +541,7 @@ public class LRUCacheTest {
         }
         long endTime = System.currentTimeMillis();
         LOG.info(strategy + " speed: " + (endTime - startTime) + "ms");
+        // Explicitly clear to free memory (~800MB per cache) before next test
+        cache.clear();
     }
 }

@@ -14,6 +14,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.TreeMap;
 
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import static com.cedarsoftware.util.CompactMap.DEFAULT_COMPACT_SIZE;
@@ -25,7 +26,27 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 public class CompactMapMethodsTest {
 
+    /**
+     * DISABLED: This test was used to verify the custom JavaFileManager that captured bytecode
+     * during runtime Java compilation. The old TemplateGenerator used JavaCompiler to compile
+     * template classes at runtime.
+     * <p>
+     * The current implementation uses a pre-compiled bytecode template (BYTECODE_TEMPLATE in
+     * CompactMap.TemplateGenerator) that gets patched at runtime, eliminating the need for
+     * runtime compilation.
+     * <p>
+     * TO REGENERATE THE BYTECODE TEMPLATE:
+     * 1. Use StandaloneBytecodeGenerator (or similar tool) to compile a template class
+     * 2. The template class should be named: com.cedarsoftware.util.CompactMap$0000000000000000
+     * 3. It should extend CompactMap and override: isCaseInsensitive(), compactSize(),
+     *    getSingleValueKey(), getOrdering(), getNewMap()
+     * 4. Convert the compiled .class file to hex string for BYTECODE_TEMPLATE
+     * <p>
+     * This test is kept for historical reference in case the bytecode generation approach
+     * needs to be revisited or debugged.
+     */
     @Test
+    @Disabled("Old runtime compilation approach replaced with pre-compiled bytecode template")
     public void testGetJavaFileForOutputAndOpenOutputStream() throws Exception {
         JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
         assertNotNull(compiler, "JDK compiler required for test");

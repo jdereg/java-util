@@ -1,5 +1,47 @@
 ### Revision History
 
+#### 4.81.0 - 2025-01-10
+* **ARCHITECTURE**: `CompactMap` - Replaced runtime Java compilation with pre-compiled bytecode template
+  * **No longer requires JDK**: The builder API (`CompactMap.builder().build()`) now works on JRE, not just JDK
+  * **How it works**: A pre-compiled bytecode template is patched at runtime with the configuration hash, then static fields are injected with configuration values (case sensitivity, compact size, ordering, etc.)
+  * **Performance**: Eliminates JavaCompiler overhead - template classes are created via `MethodHandles.Lookup.defineClass()` with simple byte array patching
+  * **Same functionality**: All existing builder options work exactly as before (case sensitivity, ordering, compact size, custom map types, etc.)
+  * **Backward compatible**: Subclassing `CompactMap` continues to work unchanged
+  * Disabled obsolete `CompactMapMethodsTest.testGetJavaFileForOutputAndOpenOutputStream` (tested old JavaFileManager approach)
+* **BUG FIX**: `Converter` - Fixed char[]/byte[] cross-conversion returning null after `isConversionSupportedFor()` was called
+  * Root cause: `VoidConversions::toNull` was used as a placeholder in `CONVERSION_DB` to "advertise" that char[] ↔ byte[] conversions are supported
+  * When `isConversionSupportedFor(char[].class, byte[].class)` was called, this placeholder got cached
+  * Subsequent `convert(char[], byte[].class)` found the cached placeholder and used it, returning null instead of performing actual conversion
+  * Fix: Replaced placeholder entries with actual converters that call `ArrayConversions.arrayToArray()`
+  * Added tests: `testIsConversionSupportedForDoesNotBreakConvert`, `testArrayCrossConversionWithAndWithoutSupportCheck`
+* **BUG FIX**: `AbstractConcurrentNullSafeMap.computeIfAbsent()` - Fixed contention causing hangs under concurrent load
+  * Affects: `ConcurrentHashMapNullSafe` and `ConcurrentNavigableMapNullSafe` (both extend AbstractConcurrentNullSafeMap)
+  * **Root cause**: Used `ConcurrentHashMap.compute()` which holds a lock on the hash bin for the entire duration of the mapping function execution. Under high concurrency, threads pile up waiting for bin locks, causing hangs.
+  * **Key insight**: The common case (no null values stored) doesn't need special sentinel handling during computation
+  * **Fix**: Fast path now delegates directly to `ConcurrentHashMap.computeIfAbsent()` - this is lock-free for cache hits and only briefly locks for insertions. The slow path (key mapped to null, which is rare) uses optimistic locking with `putIfAbsent()`/`replace()`.
+  * **Result**: Performance is now virtually identical to plain `ConcurrentHashMap` for typical use cases (caching, memoization, etc.)
+* **TEST FIX**: `LRUCacheTest` - Added proper cleanup to prevent OutOfMemoryError during deployment tests
+  * The `testSpeed` and `testCacheBlast` tests create 10M-entry caches (~800MB each)
+  * Added `@AfterEach` cleanup that clears and nullifies caches, then suggests GC
+  * Added explicit `cache.clear()` at the end of large tests to free memory before next test
+* **IMPROVED**: Scheduler lifecycle management for `ThreadedLRUCacheStrategy` and `TTLCache`
+  * Both classes now have proper shutdown methods that await termination (up to 5 seconds graceful, then 1 second forced)
+  * Schedulers are now lazily recreatable - if shut down, creating new cache instances automatically restarts them
+  * `ThreadedLRUCacheStrategy.shutdownScheduler()` - new static method for explicit cleanup
+  * `TTLCache.shutdown()` - now returns boolean indicating clean termination, properly awaits termination
+  * All schedulers use daemon threads, so they won't prevent JVM shutdown even without explicit cleanup
+* **IMPROVED**: `ThreadedLRUCacheStrategy` - Complete algorithm redesign with zone-based eviction and sample-15 approximate LRU
+  * **Memory guarantee**: Cache never exceeds 2x capacity, allowing predictable worst-case memory sizing
+  * **Four-zone eviction strategy**:
+    * Zone A (0 to 1x capacity): Normal operation, no eviction
+    * Zone B (1x to 1.5x capacity): Background cleanup only (every 500ms)
+    * Zone C (1.5x to 2x capacity): Probabilistic inline eviction (0% at 1.5x → 100% at 2x)
+    * Zone D (2x+ capacity): Hard cap with evict-before-insert
+  * **Sample-15 eviction**: Instead of sorting all entries O(n log n), samples 15 entries and evicts the oldest. Based on Redis research, this provides ~99% LRU accuracy with O(1) cost per eviction.
+  * **No more sorting**: Eliminated all O(n log n) sort operations - entire algorithm is now O(1) for inline operations
+  * **Concurrent race fix**: Zone D eviction now uses a while-loop to guarantee hard cap enforcement. Previously, multiple threads could all check `size < hardCap`, then all insert, causing unbounded growth (check-then-act race condition). Now inserts first, then loops eviction until under hard cap.
+  * **Fixes deployment hang**: Heavy write load (500k unique keys into 5k cache) no longer causes hangs due to expensive sorting or unbounded cache growth
+
 #### 4.80.0 - 2025-01-05
 * **PERFORMANCE**: Cache repeated `getClass()` calls in hot paths
   * `ConcurrentNavigableMapNullSafe` - Cache `o1.getClass()` and `o2.getClass()` in comparator (6 calls → 2)

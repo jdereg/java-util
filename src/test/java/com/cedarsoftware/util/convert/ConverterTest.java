@@ -77,6 +77,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.within;
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -4640,6 +4641,55 @@ class ConverterTest
         File convertedFile = converter.convert(originalPath, File.class);
         Path roundTripPath = converter.convert(convertedFile, Path.class);
         assertEquals(originalPath, roundTripPath);
+    }
+
+    /**
+     * Tests that isConversionSupportedFor() does not break subsequent convert() calls.
+     *
+     * Bug scenario: When VoidConversions::toNull is used as a placeholder to "advertise"
+     * conversion capability (e.g., char[] to byte[]), calling isConversionSupportedFor()
+     * first causes it to cache this placeholder. Then convert() finds this cached entry
+     * and uses it, returning null instead of performing the actual conversion.
+     *
+     * The fix ensures that placeholder entries don't poison the cache.
+     */
+    @Test
+    void testIsConversionSupportedForDoesNotBreakConvert() {
+        // Create a fresh converter
+        Converter conv = new Converter(new DefaultConverterOptions());
+
+        char[] source = new char[] {'a', 'b', 'c'};
+
+        // First, call isConversionSupportedFor - this should NOT poison the cache
+        boolean supported = conv.isConversionSupportedFor(char[].class, byte[].class);
+        assertTrue(supported, "char[] to byte[] conversion should be supported");
+
+        // Now convert should still work correctly, not return null
+        byte[] result = conv.convert(source, byte[].class);
+
+        // The conversion should succeed, not return null
+        assertNotNull(result, "convert() should not return null after isConversionSupportedFor() was called");
+        assertArrayEquals(new byte[] {97, 98, 99}, result, "char[] should convert to byte[] correctly");
+    }
+
+    /**
+     * Tests array cross-conversions work both with and without prior isConversionSupportedFor() calls.
+     */
+    @Test
+    void testArrayCrossConversionWithAndWithoutSupportCheck() {
+        Converter conv = new Converter(new DefaultConverterOptions());
+
+        // Test 1: Convert without checking support first (this works)
+        byte[] bytes1 = conv.convert(new char[] {'x', 'y'}, byte[].class);
+        assertNotNull(bytes1);
+        assertArrayEquals(new byte[] {'x', 'y'}, bytes1);
+
+        // Test 2: Check support first, then convert (this was the bug)
+        boolean supported = conv.isConversionSupportedFor(byte[].class, char[].class);
+        assertTrue(supported);
+        char[] chars = conv.convert(new byte[] {65, 66}, char[].class);
+        assertNotNull(chars, "convert() should not return null after isConversionSupportedFor()");
+        assertArrayEquals(new char[] {'A', 'B'}, chars);
     }
 
 }

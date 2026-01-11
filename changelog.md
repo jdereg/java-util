@@ -1,6 +1,10 @@
 ### Revision History
 
 #### 4.81.0 - 2025-01-10
+* **PERFORMANCE**: `StringUtilities.equals(CharSequence, CharSequence)` - Optimized for CharSequence-to-String comparisons
+  * Now uses `String.contentEquals(CharSequence)` when either argument is a String
+  * `String.contentEquals()` is JVM-intrinsic optimized and handles StringBuilder efficiently (direct char array comparison)
+  * Previous implementation only optimized String-to-String comparisons, missing the common case of StringBuilder-to-String
 * **ARCHITECTURE**: `CompactMap` - Replaced runtime Java compilation with pre-compiled bytecode template
   * **No longer requires JDK**: The builder API (`CompactMap.builder().build()`) now works on JRE, not just JDK
   * **How it works**: A pre-compiled bytecode template is patched at runtime with the configuration hash, then static fields are injected with configuration values (case sensitivity, compact size, ordering, etc.)

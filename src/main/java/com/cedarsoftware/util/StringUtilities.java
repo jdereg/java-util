@@ -233,10 +233,14 @@ public final class StringUtilities {
         if (cs1.length() != cs2.length()) {
             return false;
         }
-        if (cs1 instanceof String && cs2 instanceof String) {
-            return cs1.equals(cs2);
+        // String.contentEquals() is JVM-optimized and handles StringBuilder efficiently
+        if (cs1 instanceof String) {
+            return ((String) cs1).contentEquals(cs2);
         }
-        // Step-wise comparison
+        if (cs2 instanceof String) {
+            return ((String) cs2).contentEquals(cs1);
+        }
+        // Step-wise comparison for non-String CharSequences
         int length = cs1.length();
         for (int i = 0; i < length; i++) {
             if (cs1.charAt(i) != cs2.charAt(i)) {

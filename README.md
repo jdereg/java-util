@@ -410,6 +410,10 @@ System.setProperty("io.debug.detailed.paths", "true");
 <td>Thread-safe <code>NavigableSet</code> supporting null elements.</td>
 </tr>
 <tr>
+<td><a href="userguide.md#identityset">IdentitySet</a></td>
+<td>High-performance Set using object identity (<code>==</code>) instead of <code>equals()</code>. Faster than <code>Collections.newSetFromMap(new IdentityHashMap<>())</code>.</td>
+</tr>
+<tr>
 <td><a href="userguide.md#classvalueset">ClassValueSet</a></td>
 <td>High-performance Set optimized for fast <code>Class</code> membership testing using JVM-optimized <code>ClassValue</code>.</td>
 </tr>

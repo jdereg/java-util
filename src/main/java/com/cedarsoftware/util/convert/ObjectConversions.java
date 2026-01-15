@@ -3,10 +3,8 @@ package com.cedarsoftware.util.convert;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.Deque;
 import java.util.HashMap;
-import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -17,6 +15,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import com.cedarsoftware.util.ArrayUtilities;
 import com.cedarsoftware.util.ClassUtilities;
+import com.cedarsoftware.util.IdentitySet;
 import com.cedarsoftware.util.MathUtilities;
 import com.cedarsoftware.util.ReflectionUtils;
 import com.cedarsoftware.util.SystemUtilities;
@@ -121,8 +120,8 @@ final class ObjectConversions {
             return null;
         }
         
-        // Use IdentityHashMap for visited tracking (object identity, not equals)
-        Set<Object> visited = Collections.newSetFromMap(new IdentityHashMap<>());
+        // Use IdentitySet for visited tracking (object identity, not equals)
+        Set<Object> visited = new IdentitySet<>();
         
         // Work queue for iterative processing
         Deque<WorkItem> workQueue = new LinkedList<>();

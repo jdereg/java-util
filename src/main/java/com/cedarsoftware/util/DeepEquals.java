@@ -19,7 +19,6 @@ import java.util.Date;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.IdentityHashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.ListIterator;
@@ -1569,7 +1568,7 @@ public class DeepEquals {
      */
     public static int deepHashCode(Object obj) {
         try {
-            Set<Object> visited = Collections.newSetFromMap(new IdentityHashMap<>());
+            Set<Object> visited = new IdentitySet<>();
             return deepHashCode(obj, visited);
         } finally {
             // Only remove formattingStack if empty (to support re-entrant calls)
@@ -2231,7 +2230,7 @@ public class DeepEquals {
 
         if (stackOfSets.isEmpty()) {
             // First formatValue call in this formatting session → create new Set
-            currentSet = Collections.newSetFromMap(new IdentityHashMap<>());
+            currentSet = new IdentitySet<>();
             stackOfSets.push(currentSet);
             pushedNewSet = true;
         } else {

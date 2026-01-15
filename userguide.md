@@ -428,6 +428,97 @@ Iterator<String> it = set.descendingIterator();
 - Maintains consistency during range-view operations
 
 ---
+## IdentitySet
+
+[View Source](/src/main/java/com/cedarsoftware/util/IdentitySet.java)
+
+A high-performance `Set` implementation that uses object identity (`==`) instead of `equals()` for element comparison. This is a lightweight, cache-friendly replacement for `Collections.newSetFromMap(new IdentityHashMap<>())`.
+
+### Key Features
+
+- **Identity comparison**: Uses `==` instead of `equals()` for element comparison
+- **High performance**: Open addressing with linear probing for excellent cache locality
+- **Minimal memory**: Single `Object[]` array, no Entry objects or Boolean values
+- **Simple API**: `add()`, `contains()`, `remove()`, `clear()`, `size()`, `isEmpty()`
+
+### Why Use IdentitySet?
+
+When you need to track objects by identity (not by content equality), `IdentitySet` provides:
+
+| Aspect | Collections.newSetFromMap(IdentityHashMap) | IdentitySet |
+|--------|-------------------------------------------|-------------|
+| **Structure** | Wrapper around IdentityHashMap | Direct implementation |
+| **Entry objects** | Creates Entry per element | None |
+| **Values stored** | Boolean.TRUE per entry | None |
+| **Memory per element** | ~40-48 bytes | ~8 bytes |
+| **Cache locality** | Poor (scattered Entry objects) | Excellent (contiguous array) |
+
+### Usage Examples
+
+**Basic Usage:**
+```java
+IdentitySet visited = new IdentitySet();
+
+Object obj1 = new Object();
+Object obj2 = new Object();
+
+visited.add(obj1);
+visited.add(obj2);
+
+visited.contains(obj1);  // true
+visited.contains(obj2);  // true
+visited.contains(new Object());  // false - different identity
+```
+
+**Cycle Detection:**
+```java
+// Perfect for tracking visited objects during graph traversal
+IdentitySet visited = new IdentitySet();
+
+void traverse(Object node) {
+    if (visited.contains(node)) {
+        return;  // Already visited - avoid infinite loop
+    }
+    visited.add(node);
+
+    // Process node and its children...
+}
+```
+
+**Identity vs Equality:**
+```java
+IdentitySet set = new IdentitySet();
+
+// Two strings with same content but different identity
+String s1 = new String("hello");
+String s2 = new String("hello");
+
+set.add(s1);
+set.add(s2);  // Both added - different objects
+
+set.size();  // 2 (not 1!)
+set.contains(s1);  // true
+set.contains(s2);  // true
+set.contains(new String("hello"));  // false - different object
+```
+
+### Performance Characteristics
+- All operations: O(1) average case
+- Space complexity: O(n)
+- Load factor: 0.5 for fast probing
+- Auto-resizes when threshold exceeded
+
+### Use Cases
+- Cycle detection in object graphs
+- Tracking visited objects during serialization/deserialization
+- Identity-based object membership tests
+- Any scenario where `==` comparison is needed instead of `equals()`
+
+### Thread Safety Notes
+- **Not thread-safe**: External synchronization required for concurrent access
+- Designed for single-threaded use cases like graph traversal
+
+---
 ## ClassValueSet
 
 [View Source](/src/main/java/com/cedarsoftware/util/ClassValueSet.java)

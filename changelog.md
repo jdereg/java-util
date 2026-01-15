@@ -1,5 +1,21 @@
 ### Revision History
 
+#### 4.82.0 (Unreleased)
+* **NEW**: `IdentitySet<T>` - High-performance generic Set using object identity (`==`) instead of `equals()`
+  * Lightweight replacement for `Collections.newSetFromMap(new IdentityHashMap<>())`
+  * Extends `AbstractSet<T>` and implements full `Set<T>` interface including `iterator()`
+  * Uses open addressing with linear probing for excellent cache locality
+  * Single `Object[]` array - no Entry objects, no Boolean values
+  * ~8 bytes per element vs ~40-48 bytes for IdentityHashMap-backed Set
+  * Generic type safety: `IdentitySet<Object>`, `IdentitySet<Class<?>>`, `IdentitySet<Map<?,?>>`, etc.
+  * Ideal for cycle detection, visited tracking, and identity-based membership tests
+* **PERFORMANCE**: Replaced `Collections.newSetFromMap(new IdentityHashMap<>())` with `IdentitySet<T>` in:
+  * `Traverser` - object graph traversal visited tracking (`IdentitySet<Object>`)
+  * `MapUtilities` - map structure cycle detection (`IdentitySet<Map<?,?>>`)
+  * `ObjectConversions` - object-to-map conversion visited tracking (`IdentitySet<Object>`)
+  * `DeepEquals` - deep hash code and format value cycle detection (`IdentitySet<Object>`)
+  * `ClassUtilities` - inheritance chain traversal visited tracking (`IdentitySet<Class<?>>`)
+
 #### 4.81.0 - 2025-01-10
 * **PERFORMANCE**: `StringUtilities.equals(CharSequence, CharSequence)` - Optimized for CharSequence-to-String comparisons
   * Now uses `String.contentEquals(CharSequence)` when either argument is a String

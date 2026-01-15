@@ -5,7 +5,6 @@ import java.util.Collections;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.IdentityHashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -296,7 +295,7 @@ public class MapUtilities {
 
         // Use identity semantics to avoid false cycle detection when wrapper
         // maps implement equals() by delegating to their wrapped map.
-        Set<Map<?, ?>> seen = Collections.newSetFromMap(new IdentityHashMap<>());
+        Set<Map<?, ?>> seen = new IdentitySet<>();
         Map<?, ?> current = map;
         List<String> path = new ArrayList<>();
         path.add(current.getClass().getSimpleName());
@@ -356,7 +355,7 @@ public class MapUtilities {
         List<String> structure = new ArrayList<>();
         // Use identity semantics so wrapper maps that compare equal to their
         // wrapped map do not trigger false cycles.
-        Set<Map<?, ?>> seen = Collections.newSetFromMap(new IdentityHashMap<Map<?, ?>, Boolean>());
+        Set<Map<?, ?>> seen = new IdentitySet<>();
         Map<?, ?> current = map;
 
         while (true) {

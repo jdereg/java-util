@@ -4,18 +4,17 @@ import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.IdentityHashMap;
 import java.util.ArrayDeque;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import com.cedarsoftware.util.LoggingConfig;
 
 /**
  * A Java Object Graph traverser that visits all object reference fields and invokes a
@@ -313,7 +312,7 @@ public class Traverser {
         void process(Object o);
     }
 
-    private final Set<Object> objVisited = Collections.newSetFromMap(new IdentityHashMap<>());
+    private final IdentitySet<Object> objVisited = new IdentitySet<>();
     private final Consumer<NodeVisit> nodeVisitor;
     private final boolean collectFields;
     private int objectsVisited = 0;

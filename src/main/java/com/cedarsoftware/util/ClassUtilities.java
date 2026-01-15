@@ -2104,7 +2104,7 @@ public class ClassUtilities {
         if (LOG.isLoggable(Level.FINER)) {
             LOG.log(Level.FINER, "Using positional argument matching for {0}", c.getName());
         }
-        Set<Class<?>> visited = Collections.newSetFromMap(new IdentityHashMap<>());
+        Set<Class<?>> visited = new IdentitySet<>();
 
         try {
             return newInstance(converter, c, normalizedArgs, visited);

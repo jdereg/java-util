@@ -3597,18 +3597,26 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      */
     public V computeIfAbsent(Object key, Function<? super Object, ? extends V> mappingFunction) {
         Objects.requireNonNull(mappingFunction);
-        V v = get(key);
-        if (v != null) return v;
-        
+
+        // Normalize key once upfront - avoid double normalization that get() + flattenKey() would cause
         MultiKey<V> norm = flattenKey(key);
         Object normalizedKey = norm.keys;
         int hash = norm.hash;
+
+        // Fast path: check if value exists without locking (lock-free read)
+        // Per ConcurrentMap contract, computeIfAbsent treats null values as "absent"
+        MultiKey<V> existing = findEntryWithPrecomputedHash(normalizedKey, hash);
+        if (existing != null && existing.value != null) {
+            return existing.value;
+        }
+
         ReentrantLock lock = getStripeLock(hash);
         boolean resize = false;
-        
+        V v;
+
         lock.lock();
         try {
-            // Create lookup key for checking existence
+            // Double-check under lock
             MultiKey<V> lookupKey = new MultiKey<>(normalizedKey, hash, null);
             v = getNoLock(lookupKey);
             if (v == null) {
@@ -3620,7 +3628,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                     resize = atomicSize.get() > buckets.length() * loadFactor;
                 }
             }
-        } finally {                  
+        } finally {
             lock.unlock();
         }
         // Handle resize outside the lock
@@ -3641,20 +3649,26 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      */
     public V computeIfPresent(Object key, BiFunction<? super Object, ? super V, ? extends V> remappingFunction) {
         Objects.requireNonNull(remappingFunction);
-        V old = get(key);
-        if (old == null) return null;
 
+        // Normalize key once upfront - avoid double normalization that get() + flattenKey() would cause
         MultiKey<V> norm = flattenKey(key);
         Object normalizedKey = norm.keys;
         int hash = norm.hash;
+
+        // Fast path: check if value exists without locking (lock-free read)
+        MultiKey<V> existing = findEntryWithPrecomputedHash(normalizedKey, hash);
+        if (existing == null) {
+            return null;
+        }
+
         ReentrantLock lock = getStripeLock(hash);
         boolean resize = false;
-
         V result = null;
+
         lock.lock();
         try {
             MultiKey<V> lookupKey = new MultiKey<>(normalizedKey, hash, null);
-            old = getNoLock(lookupKey);
+            V old = getNoLock(lookupKey);
             if (old != null) {
                 V newV = remappingFunction.apply(key, old);
                 if (newV != null) {

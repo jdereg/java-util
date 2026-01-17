@@ -62,9 +62,9 @@ class MultiKeyMapDebugSentinelTest {
         if (expandAndHashMethod != null) {
             expandAndHashMethod.setAccessible(true);
             List<Object> expanded = new ArrayList<>();
-            IdentityHashMap<Object, Boolean> visited = new IdentityHashMap<>();
+            IdentitySet<Object> visited = new IdentitySet<>();
             int runningHash = 1;
-            
+
             int resultHash = (int) expandAndHashMethod.invoke(null, arrayWithNull, expanded, visited, runningHash, false, true);
             
             log.info("\nExpanded list contents:");

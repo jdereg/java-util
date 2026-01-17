@@ -285,8 +285,8 @@ public class ClassValueSet extends AbstractSet<Class<?>> {
             modified = true;
         }
 
-        // Create a set of classes to remove
-        Set<Class<?>> toRemove = new HashSet<>();
+        // Create a set of classes to remove - use IdentitySet for Class objects
+        Set<Class<?>> toRemove = new IdentitySet<>();
         for (Class<?> cls : backingSet) {
             if (!c.contains(cls)) {
                 toRemove.add(cls);
@@ -307,7 +307,8 @@ public class ClassValueSet extends AbstractSet<Class<?>> {
     public Iterator<Class<?>> iterator() {
         final boolean hasNull = containsNull.get();
         // Make a snapshot of the backing set to avoid ConcurrentModificationException
-        final Iterator<Class<?>> backingIterator = new HashSet<>(backingSet).iterator();
+        // Use IdentitySet for Class objects for faster contains/add operations
+        final Iterator<Class<?>> backingIterator = new IdentitySet<>(backingSet).iterator();
 
         return new Iterator<Class<?>>() {
             private boolean nullReturned = !hasNull;
@@ -358,6 +359,7 @@ public class ClassValueSet extends AbstractSet<Class<?>> {
      * @return a new set containing the same elements
      */
     public Set<Class<?>> toSet() {
+        // Use HashSet here since it needs to support null elements
         Set<Class<?>> result = new HashSet<>(backingSet);
         if (containsNull.get()) {
             result.add(null);

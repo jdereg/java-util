@@ -25,6 +25,12 @@
   * `ObjectConversions` - object-to-map conversion visited tracking (`IdentitySet<Object>`)
   * `DeepEquals` - deep hash code and format value cycle detection (`IdentitySet<Object>`)
   * `ClassUtilities` - inheritance chain traversal visited tracking (`IdentitySet<Class<?>>`)
+* **PERFORMANCE**: Replaced `HashSet<Class<?>>` with `IdentitySet<Class<?>>` for faster identity-based lookups:
+  * `ReflectionUtils` - Class hierarchy traversal in `findClassAnnotation()`, `getMethodAnnotation()`, interface graph BFS, and method lookup (4 locations)
+  * `DeepEquals` - Custom equals class ignore set
+  * `CaseInsensitiveMap` - Registry duplicate Class check
+  * `ClassValueSet` - `retainAll()` removal tracking and iterator snapshot
+  * `Converter` - Type variations tracking
 
 #### 4.81.0 - 2025-01-10
 * **PERFORMANCE**: `StringUtilities.equals(CharSequence, CharSequence)` - Optimized for CharSequence-to-String comparisons

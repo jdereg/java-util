@@ -772,7 +772,7 @@ public final class ReflectionUtils {
     }
 
     private static <T extends Annotation> T findClassAnnotation(Class<?> classToCheck, Class<T> annoClass) {
-        final Set<Class<?>> visited = new HashSet<>();
+        final Set<Class<?>> visited = new IdentitySet<>();
         final LinkedList<Class<?>> stack = new LinkedList<>();
         stack.add(classToCheck);
 
@@ -845,7 +845,7 @@ public final class ReflectionUtils {
         // Atomically retrieve or compute the annotation from the cache
         Annotation annotation = METHOD_ANNOTATION_CACHE.get().computeIfAbsent(key, k -> {
             // Search the entire class and interface hierarchy
-            Set<Class<?>> visited = new HashSet<>();
+            Set<Class<?>> visited = new IdentitySet<>();
             Deque<Class<?>> toVisit = new ArrayDeque<>();
             toVisit.add(method.getDeclaringClass());
             
@@ -1450,7 +1450,7 @@ public final class ReflectionUtils {
             }
             
             // 2) Walk interface graph (BFS) for default methods
-            Set<Class<?>> seen = new HashSet<>();
+            Set<Class<?>> seen = new IdentitySet<>();
             Deque<Class<?>> toVisit = new ArrayDeque<>();
             toVisit.add(c);
             
@@ -1550,7 +1550,7 @@ public final class ReflectionUtils {
         return METHOD_CACHE.get().computeIfAbsent(key, k -> {
             // Collect all matching methods from class hierarchy and interfaces
             List<Method> candidates = new ArrayList<>();
-            Set<Class<?>> visited = new HashSet<>();
+            Set<Class<?>> visited = new IdentitySet<>();
             Deque<Class<?>> toVisit = new ArrayDeque<>();
             toVisit.add(beanClass);
             

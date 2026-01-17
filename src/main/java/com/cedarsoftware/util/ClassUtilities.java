@@ -2903,7 +2903,8 @@ public class ClassUtilities {
 
         // 4) Identify "lowest" types
         Set<Class<?>> lowest = new LinkedHashSet<>();
-        Set<Class<?>> unionOfAncestors = new HashSet<>();
+        // Use IdentitySet for Class objects - identity-based comparison is faster
+        Set<Class<?>> unionOfAncestors = new IdentitySet<>();
 
         for (Class<?> type : candidates) {
             if (unionOfAncestors.contains(type)) {

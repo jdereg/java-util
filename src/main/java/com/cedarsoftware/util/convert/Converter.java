@@ -44,7 +44,8 @@ import java.util.Comparator;
 import java.util.Currency;
 import java.util.Date;
 import java.util.EnumSet;
-import java.util.HashSet;
+// HashSet import removed - using IdentitySet for Class objects
+import com.cedarsoftware.util.IdentitySet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -2687,7 +2688,7 @@ public final class Converter {
      * Helper method to get all type variations (primitive and wrapper) for a given class.
      */
     private static Set<Class<?>> getTypeVariations(Class<?> clazz) {
-        Set<Class<?>> types = new HashSet<>();
+        Set<Class<?>> types = new IdentitySet<>();
         types.add(clazz);
         
         if (clazz.isPrimitive()) {

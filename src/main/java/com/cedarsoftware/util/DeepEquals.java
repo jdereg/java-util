@@ -18,7 +18,7 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.Deque;
 import java.util.HashMap;
-import java.util.HashSet;
+// HashSet import removed - using IdentitySet for Class-based set
 import java.util.Iterator;
 import java.util.List;
 import java.util.ListIterator;
@@ -711,7 +711,7 @@ public class DeepEquals {
                         newOptions.put("recursive_call", true);
 
                         // Create new ignore set preserving existing ignored classes
-                        Set<Class<?>> ignoreSet = new HashSet<>();
+                        Set<Class<?>> ignoreSet = new IdentitySet<>();
                         if (ignoreCustomEquals != null) {
                             ignoreSet.addAll(ignoreCustomEquals);
                         }

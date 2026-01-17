@@ -234,8 +234,8 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
             Objects.requireNonNull(entry.getValue(), "Registry entry value (Function) cannot be null");
         }
 
-        // Check for duplicate Class types
-        Set<Class<?>> seen = new HashSet<>();
+        // Check for duplicate Class types - use IdentitySet for Class objects (identity-based)
+        Set<Class<?>> seen = new IdentitySet<>();
         for (Entry<Class<?>, Function<Integer, ? extends Map<?, ?>>> entry : newRegistry) {
             if (!seen.add(entry.getKey())) {
                 throw new IllegalArgumentException("Duplicate map type in registry: " + entry.getKey());

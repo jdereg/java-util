@@ -1146,9 +1146,9 @@ public final class Converter {
         CONVERSION_DB.put(pair(Character.class, Map.class), UniversalConversions::toMap);
         CONVERSION_DB.put(pair(BigInteger.class, Map.class), UniversalConversions::toMap);
         CONVERSION_DB.put(pair(BigDecimal.class, Map.class), UniversalConversions::toMap);
-        CONVERSION_DB.put(pair(AtomicBoolean.class, Map.class), UniversalConversions::toMap);
-        CONVERSION_DB.put(pair(AtomicInteger.class, Map.class), UniversalConversions::toMap);
-        CONVERSION_DB.put(pair(AtomicLong.class, Map.class), UniversalConversions::toMap);
+        CONVERSION_DB.put(pair(AtomicBoolean.class, Map.class), UniversalConversions::atomicBooleanToMap);
+        CONVERSION_DB.put(pair(AtomicInteger.class, Map.class), UniversalConversions::atomicIntegerToMap);
+        CONVERSION_DB.put(pair(AtomicLong.class, Map.class), UniversalConversions::atomicLongToMap);
         CONVERSION_DB.put(pair(Date.class, Map.class), DateConversions::toMap);
         CONVERSION_DB.put(pair(java.sql.Date.class, Map.class), SqlDateConversions::toMap);
         CONVERSION_DB.put(pair(Timestamp.class, Map.class), TimestampConversions::toMap);

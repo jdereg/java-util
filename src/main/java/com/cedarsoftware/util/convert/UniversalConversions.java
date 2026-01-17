@@ -83,6 +83,36 @@ final class UniversalConversions {
         return target;
     }
 
+    /**
+     * AtomicBoolean → Map conversion.
+     * Creates a Map with the boolean value (not the AtomicBoolean wrapper).
+     */
+    static Map<String, Object> atomicBooleanToMap(Object from, Converter converter) {
+        Map<String, Object> target = new LinkedHashMap<>();
+        target.put(MapConversions.V, ((AtomicBoolean) from).get());
+        return target;
+    }
+
+    /**
+     * AtomicInteger → Map conversion.
+     * Creates a Map with the int value (not the AtomicInteger wrapper).
+     */
+    static Map<String, Object> atomicIntegerToMap(Object from, Converter converter) {
+        Map<String, Object> target = new LinkedHashMap<>();
+        target.put(MapConversions.V, ((AtomicInteger) from).get());
+        return target;
+    }
+
+    /**
+     * AtomicLong → Map conversion.
+     * Creates a Map with the long value (not the AtomicLong wrapper).
+     */
+    static Map<String, Object> atomicLongToMap(Object from, Converter converter) {
+        Map<String, Object> target = new LinkedHashMap<>();
+        target.put(MapConversions.V, ((AtomicLong) from).get());
+        return target;
+    }
+
     // ========================================
     // String Builder → String Bridge Methods
     // ========================================

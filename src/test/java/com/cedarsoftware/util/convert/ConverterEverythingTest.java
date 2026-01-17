@@ -5219,10 +5219,9 @@ class ConverterEverythingTest {
         return className + "{" + value + "}";
     }
 
-    // Rare pairings that cannot be tested without drilling into the class - Atomic's require .get() to be called,
-    // so an Atomic inside a Map is a hard-case.
     private static boolean isHardCase(Class<?> sourceClass, Class<?> targetClass) {
-        return targetClass.equals(Map.class) && (sourceClass.equals(AtomicBoolean.class) || sourceClass.equals(AtomicInteger.class) || sourceClass.equals(AtomicLong.class));
+        // No hard cases currently - all conversions should be testable
+        return false;
     }
 
     private static boolean shouldSkipTest(Class<?> sourceClass, Class<?> targetClass, TestMode testMode) {
@@ -6551,6 +6550,34 @@ class ConverterEverythingTest {
                 {new AtomicLong(0L), LocalTime.of(0, 0, 0)},
                 {new AtomicLong(3661000L), LocalTime.of(1, 1, 1)}, // 1h 1m 1s in milliseconds
                 {new AtomicLong(86399000L), LocalTime.of(23, 59, 59)}, // 23h 59m 59s in milliseconds
+        });
+
+        // Atomic types to Map conversions
+        Map<String, Object> mapTrue = new LinkedHashMap<>();
+        mapTrue.put(V, true);
+        Map<String, Object> mapFalse = new LinkedHashMap<>();
+        mapFalse.put(V, false);
+        TEST_DB.put(pair(AtomicBoolean.class, Map.class), new Object[][]{
+                {new AtomicBoolean(true), mapTrue},
+                {new AtomicBoolean(false), mapFalse},
+        });
+
+        Map<String, Object> map42 = new LinkedHashMap<>();
+        map42.put(V, 42);
+        Map<String, Object> map0 = new LinkedHashMap<>();
+        map0.put(V, 0);
+        TEST_DB.put(pair(AtomicInteger.class, Map.class), new Object[][]{
+                {new AtomicInteger(42), map42},
+                {new AtomicInteger(0), map0},
+        });
+
+        Map<String, Object> map42L = new LinkedHashMap<>();
+        map42L.put(V, 42L);
+        Map<String, Object> map0L = new LinkedHashMap<>();
+        map0L.put(V, 0L);
+        TEST_DB.put(pair(AtomicLong.class, Map.class), new Object[][]{
+                {new AtomicLong(42L), map42L},
+                {new AtomicLong(0L), map0L},
         });
     }
 

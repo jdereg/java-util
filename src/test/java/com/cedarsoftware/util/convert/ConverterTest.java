@@ -3635,8 +3635,8 @@ class ConverterTest
         AtomicBoolean ab = new AtomicBoolean(true);
         Map<?, ?> map = this.converter.convert(ab, Map.class);
         assert map.size() == 1;
-        assertEquals(map.get(V), ab);
-        assert map.get(V).getClass().equals(AtomicBoolean.class);
+        assertEquals(true, map.get(V));  // Primitive value, not AtomicBoolean wrapper
+        assert map.get(V).getClass().equals(Boolean.class);
     }
 
     @Test
@@ -3645,8 +3645,8 @@ class ConverterTest
         AtomicInteger ai = new AtomicInteger(123456789);
         Map<?, ?> map = this.converter.convert(ai, Map.class);
         assert map.size() == 1;
-        assertEquals(map.get(VALUE), ai);
-        assert map.get(VALUE).getClass().equals(AtomicInteger.class);
+        assertEquals(123456789, map.get(VALUE));  // Primitive value, not AtomicInteger wrapper
+        assert map.get(VALUE).getClass().equals(Integer.class);
     }
 
     @Test
@@ -3655,8 +3655,8 @@ class ConverterTest
         AtomicLong al = new AtomicLong(12345678901234567L);
         Map<?, ?> map = this.converter.convert(al, Map.class);
         assert map.size() == 1;
-        assertEquals(map.get(V), al);
-        assert map.get(V).getClass().equals(AtomicLong.class);
+        assertEquals(12345678901234567L, map.get(V));  // Primitive value, not AtomicLong wrapper
+        assert map.get(V).getClass().equals(Long.class);
     }
 
     @Test

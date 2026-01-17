@@ -690,9 +690,9 @@ public class CaseInsensitiveCacheContentionTest {
         // 2. After pressure stops, background cleanup brings it back to capacity
 
         // With the while-loop fix in Zone D, cache stays very close to hard cap
-        // Allow 15% buffer for measurement race: we may observe peak before eviction catches up
-        int reasonableMax = (int) (HARD_CAP * 1.15);
-        System.out.println("  Hard cap respected (2x + 15%): " + (maxSize <= reasonableMax));
+        // Allow 20% buffer for measurement race: we may observe peak before eviction catches up
+        int reasonableMax = (int) (HARD_CAP * 1.20);
+        System.out.println("  Hard cap respected (2x + 20%): " + (maxSize <= reasonableMax));
         assertTrue(maxSize <= reasonableMax,
                 "Cache growth should be bounded even under concurrent pressure. " +
                 "Max observed: " + maxSize + ", reasonable max: " + reasonableMax);

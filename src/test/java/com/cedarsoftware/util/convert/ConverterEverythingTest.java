@@ -45,6 +45,7 @@ import java.util.Calendar;
 import java.util.Collection;
 import java.util.Currency;
 import java.util.Date;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -288,6 +289,7 @@ class ConverterEverythingTest {
         loadDoubleArrayTests();
         loadDurationConversionTests();
         loadEnumConversionTests();
+        loadCollectionArrayTests();
         loadTimeOffsetTests();
         loadSqlDateConversionTests();
         loadLocalDateTimeNumericTests();
@@ -358,7 +360,49 @@ class ConverterEverythingTest {
         TEST_DB.put(pair(Map.class, Enum.class), new Object[][]{
                 { mapOf("name", "funky bunch"), new IllegalArgumentException("Unsupported conversion, source type [UnmodifiableMap ({name=funky bunch})] target type 'Enum'")},
         });
-        
+
+        // String → Enum (by name) - fails for abstract Enum.class target
+        TEST_DB.put(pair(String.class, Enum.class), new Object[][]{
+                { "FRIDAY", new IllegalArgumentException("Cannot convert String to abstract Enum.class")},
+        });
+
+        // Number → Enum (by ordinal) - fails for abstract Enum.class target
+        TEST_DB.put(pair(int.class, Enum.class), new Object[][]{
+                { 0, new IllegalArgumentException("Cannot convert Integer to abstract Enum.class")},
+        });
+        TEST_DB.put(pair(Integer.class, Enum.class), new Object[][]{
+                { 0, new IllegalArgumentException("Cannot convert Integer to abstract Enum.class")},
+        });
+        TEST_DB.put(pair(Number.class, Enum.class), new Object[][]{
+                { 0L, new IllegalArgumentException("Cannot convert Integer to abstract Enum.class")},
+        });
+        TEST_DB.put(pair(AtomicInteger.class, Enum.class), new Object[][]{
+                { new AtomicInteger(0), new IllegalArgumentException("Cannot convert Integer to abstract Enum.class")},
+        });
+
+        // Enum → Integer/int (ordinal)
+        TEST_DB.put(pair(Enum.class, Integer.class), new Object[][]{
+                { DayOfWeek.MONDAY, 0},
+                { DayOfWeek.FRIDAY, 4},
+        });
+        TEST_DB.put(pair(Enum.class, int.class), new Object[][]{
+                { DayOfWeek.MONDAY, 0},
+                { DayOfWeek.SUNDAY, 6},
+        });
+
+        // Collection/Array → Enum creates EnumSet (tested elsewhere), but for Enum.class target it fails
+        TEST_DB.put(pair(Collection.class, Enum.class), new Object[][]{
+                { Arrays.asList("MONDAY"), new IllegalArgumentException("Unsupported conversion")},
+        });
+        TEST_DB.put(pair(Object[].class, Enum.class), new Object[][]{
+                { new Object[]{"MONDAY"}, new IllegalArgumentException("Unsupported conversion")},
+        });
+
+        // CharSequence → Enum (via String inheritance)
+        TEST_DB.put(pair(CharSequence.class, Enum.class), new Object[][]{
+                { new StringBuilder("FRIDAY"), new IllegalArgumentException("Cannot convert String to abstract Enum.class")},
+        });
+
         // String to Map conversion tests (for enum-like strings)
         TEST_DB.put(pair(String.class, Map.class), new Object[][]{
                 { "FRIDAY", mapOf("name", "FRIDAY")},
@@ -367,7 +411,7 @@ class ConverterEverythingTest {
                 { "hello", new IllegalArgumentException("Unsupported conversion, source type [String (hello)] target type 'Map'")},
                 { "camelCase", new IllegalArgumentException("Unsupported conversion, source type [String (camelCase)] target type 'Map'")},
         });
-        
+
         // Note: CustomType conversion tests removed since static addConversion() is no longer available
     }
 
@@ -4973,6 +5017,7 @@ class ConverterEverythingTest {
                 }
                 assert e.getMessage().contains(t.getMessage());
                 assert e.getClass().equals(t.getClass());
+                updateStat(pair(sourceClass, targetClass), true);
             }
         } else {
             // Assert values are equals
@@ -5186,6 +5231,11 @@ class ConverterEverythingTest {
             return true;
         }
 
+        // Skip Record tests - requires JDK 14+ and a concrete Record class to create test instances
+        if (sourceClass.getName().equals("java.lang.Record")) {
+            return true;
+        }
+
         // JsonIo-specific skips
         if (testMode == TestMode.JSON_IO_ROUND_TRIP) {
             // Conversions that don't fail as anticipated
@@ -5257,7 +5307,6 @@ class ConverterEverythingTest {
                 sourceClass.getName().contains("ShortBuffer") || targetClass.getName().contains("ShortBuffer")) {
                 return true;
             }
-            
             // Skip Stream conversions for JsonIo - they cannot be serialized 
             if (sourceClass.getName().contains("Stream")) {
                 return true;
@@ -5270,6 +5319,15 @@ class ConverterEverythingTest {
                 sourceClass.equals(URL.class) || targetClass.equals(URL.class)) {
                 return true;
             }
+
+            // Skip Enum → Integer/int/AtomicInteger - JsonIo serializes enums as names (e.g., "MONDAY"),
+            // and deserialization to Integer cannot determine the ordinal without knowing the enum type
+            if (sourceClass.equals(Enum.class) &&
+                (targetClass.equals(Integer.class) || targetClass.equals(int.class) ||
+                 targetClass.equals(AtomicInteger.class))) {
+                return true;
+            }
+
         }
 
         // Basic conversion skips - these conversions don't have direct registrations
@@ -6051,8 +6109,9 @@ class ConverterEverythingTest {
      * Record
      */
     private static void loadRecordTests() {
-        // Note: Record to Map conversion pair exists in CONVERSION_DB but is not tested here
-        // due to Record type requiring JDK 14+ support which is not available in all environments
+        // Record to Map conversion requires JDK 14+ and a concrete Record class to test.
+        // Since we can't easily create a Record instance dynamically without a concrete
+        // record class, this conversion is skipped in shouldSkipTest().
     }
 
     /**
@@ -9187,17 +9246,68 @@ class ConverterEverythingTest {
                 {DayOfWeek.MONDAY, "MONDAY"},
                 {Month.JANUARY, "JANUARY"},
         });
-        
+
         // Enum → StringBuffer
         TEST_DB.put(pair(Enum.class, StringBuffer.class), new Object[][]{
                 {DayOfWeek.MONDAY, new StringBuffer("MONDAY")},
                 {Month.JANUARY, new StringBuffer("JANUARY")},
         });
-        
+
         // Enum → StringBuilder
         TEST_DB.put(pair(Enum.class, StringBuilder.class), new Object[][]{
                 {DayOfWeek.MONDAY, new StringBuilder("MONDAY")},
                 {Month.JANUARY, new StringBuilder("JANUARY")},
+        });
+
+        // Enum → AtomicInteger (ordinal)
+        TEST_DB.put(pair(Enum.class, AtomicInteger.class), new Object[][]{
+                {DayOfWeek.MONDAY, new AtomicInteger(0)},
+                {DayOfWeek.FRIDAY, new AtomicInteger(4)},
+        });
+
+        // EnumSet → Collection (EnumSet IS a Collection, so it's returned as-is)
+        TEST_DB.put(pair(EnumSet.class, Collection.class), new Object[][]{
+                {EnumSet.of(DayOfWeek.MONDAY, DayOfWeek.FRIDAY), EnumSet.of(DayOfWeek.MONDAY, DayOfWeek.FRIDAY)},
+        });
+
+        // EnumSet → Set (EnumSet IS a Set, so it's returned as-is)
+        TEST_DB.put(pair(EnumSet.class, Set.class), new Object[][]{
+                {EnumSet.of(DayOfWeek.MONDAY, DayOfWeek.FRIDAY), EnumSet.of(DayOfWeek.MONDAY, DayOfWeek.FRIDAY)},
+        });
+
+        // EnumSet → EnumSet (identity - same instance returned)
+        TEST_DB.put(pair(EnumSet.class, EnumSet.class), new Object[][]{
+                {EnumSet.of(DayOfWeek.MONDAY, DayOfWeek.FRIDAY), EnumSet.of(DayOfWeek.MONDAY, DayOfWeek.FRIDAY)},
+        });
+
+        // EnumSet → ArrayList (explicit concrete type request creates new ArrayList)
+        TEST_DB.put(pair(EnumSet.class, ArrayList.class), new Object[][]{
+                {EnumSet.of(DayOfWeek.MONDAY, DayOfWeek.FRIDAY), new ArrayList<>(Arrays.asList(DayOfWeek.MONDAY, DayOfWeek.FRIDAY))},
+        });
+
+        // EnumSet → Object[]
+        TEST_DB.put(pair(EnumSet.class, Object[].class), new Object[][]{
+                {EnumSet.of(DayOfWeek.MONDAY), new Object[]{DayOfWeek.MONDAY}},
+        });
+    }
+
+    private static void loadCollectionArrayTests() {
+        // Collection → Object[]
+        TEST_DB.put(pair(Collection.class, Object[].class), new Object[][]{
+                {Arrays.asList("a", "b", "c"), new Object[]{"a", "b", "c"}},
+                {Arrays.asList(1, 2, 3), new Object[]{1, 2, 3}},
+        });
+
+        // Object[] → Collection
+        TEST_DB.put(pair(Object[].class, Collection.class), new Object[][]{
+                {new Object[]{"a", "b"}, Arrays.asList("a", "b")},
+                {new Object[]{1, 2}, Arrays.asList(1, 2)},
+        });
+
+        // Object[] → Object[]
+        TEST_DB.put(pair(Object[].class, Object[].class), new Object[][]{
+                {new Object[]{"x", "y"}, new Object[]{"x", "y"}},
+                {new Object[]{}, new Object[]{}},
         });
     }
 

@@ -29,6 +29,87 @@ final class EnumConversions {
 
     private EnumConversions() {}
 
+    /**
+     * Convert a String to an Enum constant by name.
+     * The string must exactly match an enum constant name (case-sensitive).
+     *
+     * @param from      the String value (enum constant name)
+     * @param converter the Converter instance (used for options)
+     * @param target    the target Enum class
+     * @return the corresponding Enum constant
+     * @throws IllegalArgumentException if the string doesn't match any enum constant,
+     *         target is abstract Enum.class, or the string exceeds maxEnumNameLength
+     */
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    static Enum<?> stringToEnum(Object from, Converter converter, Class<?> target) {
+        if (target == Enum.class) {
+            throw new IllegalArgumentException("Cannot convert String to abstract Enum.class - a concrete enum type is required");
+        }
+        String enumName = ((String) from).trim();
+        if (enumName.isEmpty()) {
+            throw new IllegalArgumentException("Cannot convert empty String to enum " + target.getName());
+        }
+        int maxLength = converter.getOptions().getMaxEnumNameLength();
+        if (enumName.length() > maxLength) {
+            throw new IllegalArgumentException("Enum name too long (" + enumName.length() + " chars, max " + maxLength + ") for enum " + target.getName());
+        }
+        return Enum.valueOf((Class<Enum>) target, enumName);
+    }
+
+    /**
+     * Convert an int/Integer (ordinal) to an Enum constant.
+     * This is the base conversion for ordinal-to-enum.
+     *
+     * @param from      the int/Integer value (enum ordinal)
+     * @param converter the Converter instance (unused)
+     * @param target    the target Enum class
+     * @return the corresponding Enum constant
+     * @throws IllegalArgumentException if the ordinal is out of range or target is abstract Enum.class
+     */
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    static Enum<?> intToEnum(Object from, Converter converter, Class<?> target) {
+        Enum<?>[] enumConstants = ((Class<Enum>) target).getEnumConstants();
+
+        if (enumConstants == null) {
+            throw new IllegalArgumentException("Cannot convert " + from.getClass().getSimpleName() + " to abstract Enum.class - a concrete enum type is required");
+        }
+
+        int ordinal = ((Number) from).intValue();
+        if (ordinal < 0 || ordinal >= enumConstants.length) {
+            throw new IllegalArgumentException(
+                    String.format("Invalid ordinal value %d for enum %s. Must be between 0 and %d",
+                            ordinal, target.getName(), enumConstants.length - 1));
+        }
+        return enumConstants[ordinal];
+    }
+
+    /**
+     * Convert any Number (ordinal) to an Enum constant.
+     * Handles all Number subclasses (BigInteger, BigDecimal, AtomicLong, etc.)
+     * by converting to int first, then delegating to intToEnum.
+     *
+     * @param from      the Number value (enum ordinal)
+     * @param converter the Converter instance used to convert Number to int
+     * @param target    the target Enum class
+     * @return the corresponding Enum constant
+     * @throws IllegalArgumentException if the ordinal is out of range
+     */
+    static Enum<?> numberToEnum(Object from, Converter converter, Class<?> target) {
+        int ordinal = converter.convert(from, int.class);
+        return intToEnum(ordinal, converter, target);
+    }
+
+    /**
+     * Convert an Enum constant to its ordinal value.
+     *
+     * @param from      the Enum constant
+     * @param converter the Converter instance (unused)
+     * @return the ordinal value of the enum constant
+     */
+    static int enumToOrdinal(Object from, Converter converter) {
+        return ((Enum<?>) from).ordinal();
+    }
+
     static Map<String, Object> toMap(Object from, Converter converter) {
         Enum<?> enumInstance = (Enum<?>) from;
         Map<String, Object> target = new LinkedHashMap<>();

@@ -122,4 +122,11 @@ public interface ConverterOptions {
      * @return The Map of overrides.
      */
     default Map<Converter.ConversionPair, Convert<?>> getConverterOverrides() { return new HashMap<>(); }
+
+    /**
+     * Maximum length allowed for enum constant names during String to Enum conversion.
+     * This is a security measure to prevent DoS attacks with excessively long strings.
+     * @return the maximum allowed length for enum names (default 1000)
+     */
+    default int getMaxEnumNameLength() { return 1000; }
 }

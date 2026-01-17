@@ -909,6 +909,11 @@ public final class Converter {
         CONVERSION_DB.put(pair(Insets.class, String.class), InsetsConversions::toString);
         CONVERSION_DB.put(pair(Map.class, String.class), MapConversions::toString);
         CONVERSION_DB.put(pair(Enum.class, String.class), StringConversions::enumToString);
+        CONVERSION_DB.put(pair(Enum.class, Integer.class), EnumConversions::enumToOrdinal);
+        CONVERSION_DB.put(pair(String.class, Enum.class), (ConvertWithTarget<Enum<?>>) EnumConversions::stringToEnum);
+        CONVERSION_DB.put(pair(int.class, Enum.class), (ConvertWithTarget<Enum<?>>) EnumConversions::intToEnum);
+        CONVERSION_DB.put(pair(Integer.class, Enum.class), (ConvertWithTarget<Enum<?>>) EnumConversions::intToEnum);
+        CONVERSION_DB.put(pair(Number.class, Enum.class), (ConvertWithTarget<Enum<?>>) EnumConversions::numberToEnum);
         CONVERSION_DB.put(pair(String.class, String.class), Converter::identity);
         CONVERSION_DB.put(pair(Duration.class, String.class), UniversalConversions::toString);
         CONVERSION_DB.put(pair(Instant.class, String.class), UniversalConversions::toString);
@@ -1347,7 +1352,7 @@ public final class Converter {
     /**
      * List 2: PRIMARY → SURROGATE (everythingThatCanReachPrimaryCanAlsoReachSurrogate)
      * These pairs let callers land on the surrogate instead of the primary when they
-     * are travelling into the ecosystem. They do not guarantee the reverse trip is
+     * are traveling into the ecosystem. They do not guarantee the reverse trip is
      * perfect, so they only belong in this reverse list.
      */
     private static List<SurrogatePrimaryPair> getPrimaryToSurrogatePairs() {
@@ -1509,11 +1514,12 @@ public final class Converter {
             throw new IllegalArgumentException("No surrogate→primary conversion found for: " + config.surrogateClass);
         }
 
-        return (from, converter) -> {
+        // Return ConvertWithTarget to pass target type through (works for both Convert and ConvertWithTarget)
+        return (ConvertWithTarget<?>) (from, converter, target) -> {
             // First: Convert surrogate to primary (e.g., int → Integer, AtomicInteger → Integer)
             Object primaryValue = surrogateToPrimaryConversion.convert(from, converter);
-            // Second: Convert primary to target using existing conversion
-            return primaryToTargetConversion.convert(primaryValue, converter);
+            // Second: Convert primary to target using existing conversion, passing target type
+            return primaryToTargetConversion.convert(primaryValue, converter, target);
         };
     }
 
@@ -1527,11 +1533,12 @@ public final class Converter {
             throw new IllegalArgumentException("No primary→surrogate conversion found for: " + config.primaryClass);
         }
 
-        return (from, converter) -> {
+        // Return ConvertWithTarget to pass target type through (works for both Convert and ConvertWithTarget)
+        return (ConvertWithTarget<?>) (from, converter, target) -> {
             // First: Convert a source to primary using existing conversion
-            Object primaryValue = sourceToPrimaryConversion.convert(from, converter);
+            Object primaryValue = sourceToPrimaryConversion.convert(from, converter, target);
             // Second: Convert primary to surrogate (e.g., Integer → int, Integer → AtomicInteger)
-            return primaryToSurrogateConversion.convert(primaryValue, converter);
+            return primaryToSurrogateConversion.convert(primaryValue, converter, target);
         };
     }
 
@@ -1797,6 +1804,12 @@ public final class Converter {
         // Validate source type is a container type (Array, Collection, or Map)
         if (!(from.getClass().isArray() || from instanceof Collection || from instanceof Map)) {
             return null;
+        }
+
+        // If source is already an EnumSet and target is a compatible type (superclass/interface),
+        // return as-is - no conversion needed. This preserves EnumSet when asked for Collection/Set.
+        if (from instanceof EnumSet && toType.isAssignableFrom(sourceType)) {
+            return (T) from;
         }
 
         // Check for EnumSet target first

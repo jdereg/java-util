@@ -5268,14 +5268,8 @@ class ConverterEverythingTest {
                  targetClass.equals(Insets.class))) {
                 return true;
             }
-            // Skip BitSet conversions that don't round-trip through JsonIO (empty BitSet serialization issue)
-            if (sourceClass.equals(BitSet.class) || targetClass.equals(BitSet.class)) {
-                return true;
-            }
-            // Skip AtomicArray conversions that don't round-trip through JsonIO (serialization issue)
-            if (sourceClass.equals(AtomicIntegerArray.class) || targetClass.equals(AtomicIntegerArray.class) ||
-                sourceClass.equals(AtomicLongArray.class) || targetClass.equals(AtomicLongArray.class) ||
-                sourceClass.equals(AtomicReferenceArray.class) || targetClass.equals(AtomicReferenceArray.class)) {
+            // Skip AtomicReferenceArray conversions that don't round-trip through JsonIO (serialization issue)
+            if (sourceClass.equals(AtomicReferenceArray.class) || targetClass.equals(AtomicReferenceArray.class)) {
                 return true;
             }
             // Skip LocalTime to integer conversions (explicitly marked as UNSUPPORTED with IllegalArgumentException)
@@ -5312,13 +5306,6 @@ class ConverterEverythingTest {
                 return true;
             }
             
-            // Skip File, Path, URI, and URL conversions for JsonIo - serialization issues with filesystem/network objects
-            if (sourceClass.equals(File.class) || targetClass.equals(File.class) ||
-                sourceClass.equals(Path.class) || targetClass.equals(Path.class) ||
-                sourceClass.equals(URI.class) || targetClass.equals(URI.class) ||
-                sourceClass.equals(URL.class) || targetClass.equals(URL.class)) {
-                return true;
-            }
 
             // Skip Enum → Integer/int/AtomicInteger - JsonIo serializes enums as names (e.g., "MONDAY"),
             // and deserialization to Integer cannot determine the ordinal without knowing the enum type

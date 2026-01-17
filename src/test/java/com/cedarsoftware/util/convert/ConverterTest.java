@@ -3615,8 +3615,8 @@ class ConverterTest
         BigInteger bi = BigInteger.valueOf(1234567890123456L);
         Map<?, ?> map = this.converter.convert(bi, Map.class);
         assert map.size() == 1;
-        assertEquals(map.get(VALUE), bi);
-        assert map.get(VALUE).getClass().equals(BigInteger.class);
+        assertEquals("1234567890123456", map.get(VALUE));  // String representation for JSON compatibility
+        assert map.get(VALUE).getClass().equals(String.class);
     }
 
     @Test
@@ -3625,8 +3625,8 @@ class ConverterTest
         BigDecimal bd = new BigDecimal("3.1415926535897932384626433");
         Map<?, ?> map = this.converter.convert(bd, Map.class);
         assert map.size() == 1;
-        assertEquals(map.get(VALUE), bd);
-        assert map.get(VALUE).getClass().equals(BigDecimal.class);
+        assertEquals("3.1415926535897932384626433", map.get(VALUE));  // String representation for JSON compatibility
+        assert map.get(VALUE).getClass().equals(String.class);
     }
 
     @Test

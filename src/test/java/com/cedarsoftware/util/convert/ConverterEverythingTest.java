@@ -3138,9 +3138,10 @@ class ConverterEverythingTest {
                 {"1.gf.781", new IllegalArgumentException("not parseable")},
         });
         TEST_DB.put(pair(Map.class, BigDecimal.class), new Object[][]{
-                {mapOf("_v", "0"), BigDecimal.ZERO},
-                {mapOf("_v", BigDecimal.valueOf(0)), BigDecimal.ZERO, true},
-                {mapOf("_v", BigDecimal.valueOf(1.1)), BigDecimal.valueOf(1.1), true},
+                {mapOf("_v", "0"), BigDecimal.ZERO, true},  // String value for JSON compatibility
+                {mapOf("_v", "1.1"), BigDecimal.valueOf(1.1), true},
+                {mapOf("_v", BigDecimal.valueOf(0)), BigDecimal.ZERO},  // Also accepts BigDecimal in Map
+                {mapOf("_v", BigDecimal.valueOf(1.1)), BigDecimal.valueOf(1.1)},
         });
         
         // BigDecimal to AWT classes
@@ -3264,9 +3265,11 @@ class ConverterEverythingTest {
                 {cal(1), BigInteger.valueOf(1), true},
         });
         TEST_DB.put(pair(Map.class, BigInteger.class), new Object[][]{
-                {mapOf("_v", 0), BigInteger.ZERO},
-                {mapOf("_v", BigInteger.valueOf(0)), BigInteger.ZERO, true},
-                {mapOf("_v", BigInteger.valueOf(1)), BigInteger.valueOf(1), true},
+                {mapOf("_v", "0"), BigInteger.ZERO, true},  // String value for JSON compatibility
+                {mapOf("_v", "1"), BigInteger.valueOf(1), true},
+                {mapOf("_v", 0), BigInteger.ZERO},  // Also accepts numeric in Map
+                {mapOf("_v", BigInteger.valueOf(0)), BigInteger.ZERO},
+                {mapOf("_v", BigInteger.valueOf(1)), BigInteger.valueOf(1)},
         });
         TEST_DB.put(pair(String.class, BigInteger.class), new Object[][]{
                 {"0", BigInteger.ZERO},

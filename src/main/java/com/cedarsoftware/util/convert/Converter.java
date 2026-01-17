@@ -1144,8 +1144,8 @@ public final class Converter {
         CONVERSION_DB.put(pair(Double.class, Map.class), UniversalConversions::toMap);
         CONVERSION_DB.put(pair(Boolean.class, Map.class), UniversalConversions::toMap);
         CONVERSION_DB.put(pair(Character.class, Map.class), UniversalConversions::toMap);
-        CONVERSION_DB.put(pair(BigInteger.class, Map.class), UniversalConversions::toMap);
-        CONVERSION_DB.put(pair(BigDecimal.class, Map.class), UniversalConversions::toMap);
+        CONVERSION_DB.put(pair(BigInteger.class, Map.class), UniversalConversions::bigIntegerToMap);
+        CONVERSION_DB.put(pair(BigDecimal.class, Map.class), UniversalConversions::bigDecimalToMap);
         CONVERSION_DB.put(pair(AtomicBoolean.class, Map.class), UniversalConversions::atomicBooleanToMap);
         CONVERSION_DB.put(pair(AtomicInteger.class, Map.class), UniversalConversions::atomicIntegerToMap);
         CONVERSION_DB.put(pair(AtomicLong.class, Map.class), UniversalConversions::atomicLongToMap);

@@ -84,6 +84,27 @@ final class UniversalConversions {
     }
 
     /**
+     * BigInteger → Map conversion.
+     * Creates a Map with the string representation for JSON compatibility.
+     */
+    static Map<String, Object> bigIntegerToMap(Object from, Converter converter) {
+        Map<String, Object> target = new LinkedHashMap<>();
+        target.put(MapConversions.V, ((BigInteger) from).toString(10));
+        return target;
+    }
+
+    /**
+     * BigDecimal → Map conversion.
+     * Creates a Map with the string representation for JSON compatibility.
+     * Uses toPlainString() to avoid scientific notation (e.g., "12300000000" not "1.23E+10").
+     */
+    static Map<String, Object> bigDecimalToMap(Object from, Converter converter) {
+        Map<String, Object> target = new LinkedHashMap<>();
+        target.put(MapConversions.V, ((BigDecimal) from).toPlainString());
+        return target;
+    }
+
+    /**
      * AtomicBoolean → Map conversion.
      * Creates a Map with the boolean value (not the AtomicBoolean wrapper).
      */

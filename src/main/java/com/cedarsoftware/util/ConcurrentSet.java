@@ -164,6 +164,7 @@ public class ConcurrentSet<T> implements Set<T>, Serializable {
         return array;
     }
 
+    @SuppressWarnings("unchecked")
     @Override
     public <T1> T1[] toArray(T1[] a) {
         Object[] internalArray = set.toArray();

@@ -3107,7 +3107,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         }
         return null;
     }
-    
+
+    @SuppressWarnings("unchecked")
     private V putNoLock(MultiKey<V> newKey) {
         int hash = newKey.hash;
         final AtomicReferenceArray<MultiKey<V>[]> table = buckets;  // Volatile read of buckets
@@ -3302,6 +3303,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         return old;
     }
 
+    @SuppressWarnings("unchecked")
     private V removeNoLock(MultiKey<V> removeKey) {
         int hash = removeKey.hash;
         final AtomicReferenceArray<MultiKey<V>[]> table = buckets;  // Volatile read of buckets
@@ -3359,6 +3361,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         });
     }
 
+    @SuppressWarnings("unchecked")
     private int rehashEntry(MultiKey<V> entry, AtomicReferenceArray<MultiKey<V>[]> target) {
         int index = entry.hash & (target.length() - 1);
         MultiKey<V>[] chain = target.get(index);

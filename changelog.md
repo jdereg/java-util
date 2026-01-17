@@ -1,6 +1,25 @@
 ### Revision History
 
 #### 4.82.0 (Unreleased)
+* **BUG FIX**: `TypeUtilities` - Fixed WildcardType bounds array mutation bug
+  * External `WildcardType` implementations return internal arrays from `getUpperBounds()`/`getLowerBounds()`
+  * These arrays were being modified in-place during resolution, corrupting the original type
+  * Fix: Clone arrays from external implementations before modification; skip cloning for internal `WildcardTypeImpl`
+* **BUG FIX**: `TypeUtilities` - Fixed unsafe cast for method-level TypeVariables
+  * `TypeVariable` can be declared on `Method` or `Constructor`, not just `Class`
+  * Casting `getGenericDeclaration()` to `Class` would throw `ClassCastException` for method-level type variables
+  * Fix: Check declaration type and return first bound for non-class type variables
+* **PERFORMANCE**: `TypeUtilities` - Added array class cache to avoid repeated `Array.newInstance()` allocations in `getRawClass()`
+* **PERFORMANCE**: `TypeUtilities` - Use `IdentitySet` instead of `HashSet` for cycle detection (reference equality is sufficient and faster)
+* **IMPROVED**: `TypeUtilities` - Simplified `hashCode()` implementations using standard `31 * result` pattern instead of `EncryptionUtilities.finalizeHash()`
+* **IMPROVED**: `TypeUtilities.WildcardTypeImpl` - Constructor now takes ownership of arrays without cloning (internal class only)
+* **IMPROVED**: `DeepEquals` - Fixed Javadoc formatting using `{@code}` blocks for proper HTML rendering of generic types
+* **DEPRECATED**: `LRUCache(int capacity, int cleanupDelayMillis)` - The `cleanupDelayMillis` parameter is no longer used; use `LRUCache(int)` instead
+* **BUILD**: Added `@SuppressWarnings` annotations to eliminate compile warnings across multiple classes:
+  * `CaseInsensitiveMap`, `ClassUtilities`, `ConcurrentNavigableSetNullSafe`, `ConcurrentSet`
+  * `MultiKeyMap`, `ReflectionUtils`, `TTLCache`, `UrlUtilities`, `MapConversions`
+* **BUILD**: Removed unused regex timeout methods from `DateUtilities`
+* **BUILD**: Cleaned up unused code in `ObjectConversions`
 * **PERFORMANCE**: `MultiKeyMap` - Significant hot path optimizations using Class identity checks
   * `valueHashCode()` - Reordered type checks to handle Integer/Long/Double first; uses Class identity (`==`) instead of `instanceof` for common types (55% CPU reduction in JFR profiling)
   * `computeElementHash()` - Added Class identity fast path for String/Integer/Long/Double, skipping 4+ instanceof checks for 75% of typical key elements

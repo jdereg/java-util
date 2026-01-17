@@ -841,6 +841,7 @@ public final class UrlUtilities {
      * @param allowAllCerts override certificate validation?
      * @return byte[] of content fetched from URL.
      */
+    @SuppressWarnings("unchecked")
     public static byte[] getContentFromUrl(URL url, Map inCookies, Map outCookies, boolean allowAllCerts) {
         URLConnection c = null;
         try {
@@ -961,6 +962,7 @@ public final class UrlUtilities {
      * @return URLConnection established URL connection.
      * @throws IOException if an I/O error occurs (thrown as unchecked)
      */
+    @SuppressWarnings("unchecked")
     public static URLConnection getConnection(URL url, Map inCookies, boolean input, boolean output, boolean cache, boolean allowAllCerts) {
         URLConnection c = null;
         try {

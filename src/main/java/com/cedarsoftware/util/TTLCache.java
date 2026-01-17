@@ -325,6 +325,7 @@ public class TTLCache<K, V> implements Map<K, V>, AutoCloseable {
      * Returns the value to which the specified key is mapped, or {@code null}
      * if this cache contains no mapping for the key or if the entry has expired.
      */
+    @SuppressWarnings("unchecked")
     @Override
     public V get(Object key) {
         CacheEntry<K, V> entry = cacheMap.get(key);
@@ -410,6 +411,7 @@ public class TTLCache<K, V> implements Map<K, V>, AutoCloseable {
      * Returns {@code true} if this cache contains a mapping for the specified key
      * and it has not expired.
      */
+    @SuppressWarnings("unchecked")
     @Override
     public boolean containsKey(Object key) {
         CacheEntry<K, V> entry = cacheMap.get(key);

@@ -78,7 +78,7 @@ import static com.cedarsoftware.util.Converter.convert2boolean;
  *  <li>If the root is not a container (Collection, Map, Array, or Object), no shorthand description is displayed</li>
  *  </ul>
  * <p><strong>Example usage:</strong></p>
- * <pre><code>
+ * <pre>{@code
  * Map<String, Object> options = new HashMap<>();
  * options.put(IGNORE_CUSTOM_EQUALS, Set.of(MyClass.class, OtherClass.class));
  * options.put(ALLOW_STRINGS_TO_MATCH_NUMBERS, true);
@@ -86,13 +86,15 @@ import static com.cedarsoftware.util.Converter.convert2boolean;
  * if (!DeepEquals.deepEquals(obj1, obj2, options)) {
  *     String diff = (String) options.get(DeepEquals.DIFF);  // Get difference description
  *     // Handle or log 'diff'
- *
- * Example output:
+ * }
+ * }</pre>
+ * <p><strong>Example output:</strong></p>
+ * <pre>{@code
  * // Simple object difference
  * [field value mismatch] ▶ Person {name: "Jim Bob", age: 27} ▶ .age
  *   Expected: 27
  *   Found: 34
- *   
+ *
  * // Array element mismatch within an object that has an array
  * [array element mismatch] ▶ Person {id: 173679590720000287, first: "John", last: "Smith", favoritePet: {..}, pets: Pet[0..1]} ▶ .pets[0].nickNames[0]
  *   Expected: "Edward"
@@ -102,8 +104,7 @@ import static com.cedarsoftware.util.Converter.convert2boolean;
  * [map value mismatch] ▶ LinkedHashMap(0..0) ▶ 《"key" ⇨ "value1"》
  *   Expected: "value1"
  *   Found: "value2"
- *   
- * </code></pre>
+ * }</pre>
  *
  * <p><strong>Security and Performance Configuration:</strong></p>
  * <p>DeepEquals provides configurable security and performance options through system properties.
@@ -352,7 +353,7 @@ public class DeepEquals {
      * Performs a deep comparison between two objects, going beyond a simple {@code equals()} check.
      * <p>
      * This method is functionally equivalent to calling
-     * {@link #deepEquals(Object, Object, Map) deepEquals(a, b, new HashMap<>())},
+     * {@link #deepEquals(Object, Object, Map)} with an empty options map,
      * which means it uses no additional comparison options. In other words:
      * <ul>
      *   <li>{@code IGNORE_CUSTOM_EQUALS} is not set (all custom {@code equals()} methods are used)</li>

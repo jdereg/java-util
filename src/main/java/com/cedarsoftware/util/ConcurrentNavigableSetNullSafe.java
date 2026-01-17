@@ -122,6 +122,7 @@ public class ConcurrentNavigableSetNullSafe<E> extends AbstractSet<E> implements
      * @param comparator the user-provided comparator
      * @return a comparator that handles the sentinel value
      */
+    @SuppressWarnings("unchecked")
     private Comparator<Object> wrapComparator(Comparator<? super E> comparator) {
         return (o1, o2) -> {
             // Handle the sentinel values
@@ -305,6 +306,7 @@ public class ConcurrentNavigableSetNullSafe<E> extends AbstractSet<E> implements
         return internalSet.isEmpty();
     }
 
+    @SuppressWarnings("unchecked")
     @Override
     public boolean contains(Object o) {
         return internalSet.contains(maskNull((E) o));
@@ -315,6 +317,7 @@ public class ConcurrentNavigableSetNullSafe<E> extends AbstractSet<E> implements
         return internalSet.add(maskNull(e));
     }
 
+    @SuppressWarnings("unchecked")
     @Override
     public boolean remove(Object o) {
         return internalSet.remove(maskNull((E) o));

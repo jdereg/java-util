@@ -480,6 +480,7 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
      * <p>String keys are stored case-insensitively.</p>
      * <p>When backing map is MultiKeyMap, this method supports 1D Collections and Arrays with case-insensitive String handling.</p>
      */
+    @SuppressWarnings("unchecked")
     @Override
     public V put(K key, V value) {
         if (isMultiKeyMapBacking) {
@@ -1641,9 +1642,10 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
      * For arrays/collections, converts to Object[] with String elements wrapped in CaseInsensitiveString.
      * For other keys, returns the original key after standard conversion.
      *
-     * @param key the key to convert 
+     * @param key the key to convert
      * @return Object[] for 1D arrays/collections, or the original key for others
      */
+    @SuppressWarnings("unchecked")
     private Object convertKeyForMultiKeyMap(Object key) {
         if (key == null) {
             return null;

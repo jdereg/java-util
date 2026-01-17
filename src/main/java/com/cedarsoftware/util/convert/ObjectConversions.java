@@ -1,17 +1,16 @@
 package com.cedarsoftware.util.convert;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Deque;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.TreeMap;
-import java.util.concurrent.ConcurrentHashMap;
 
 import com.cedarsoftware.util.ArrayUtilities;
 import com.cedarsoftware.util.ClassUtilities;
@@ -42,39 +41,6 @@ import com.cedarsoftware.util.SystemUtilities;
  *         limitations under the License.
  */
 final class ObjectConversions {
-    
-    /**
-     * Converts any Object to a Map representation with deep field traversal.
-     * This method handles the generic object-to-map conversion logic while delegating
-     * to MapConversions for specific type handling and Record conversions.
-     * 
-     * @param from The Object to convert
-     * @param converter The Converter instance for type conversions  
-     * @return A Map representation of the object
-     */
-    static Map<String, Object> objectToMap(Object from, Converter converter) {
-        if (from == null) {
-            return null;
-        }
-        
-        // Handle Map objects specially - delegate to MapConversions for proper Map-to-Map conversion
-        if (from instanceof Map) {
-            // Use the universal Map converter with LinkedHashMap as default target
-            Map<?, ?> result = MapConversions.mapToMapWithTarget(from, converter, LinkedHashMap.class);
-            // Cast to expected return type - this is safe since we're returning LinkedHashMap
-            @SuppressWarnings("unchecked")
-            Map<String, Object> mapResult = (Map<String, Object>) result;
-            return mapResult;
-        }
-        
-        // For target-unaware conversions, continue with regular object processing
-        Map<?, ?> result = objectToMapWithTarget(from, converter, LinkedHashMap.class);
-        // Cast to expected return type - this is safe since we're returning LinkedHashMap
-        @SuppressWarnings("unchecked")
-        Map<String, Object> mapResult = (Map<String, Object>) result;
-        return mapResult;
-    }
-    
     /**
      * Converts any Object to a Map representation with target type awareness.
      * This method handles the generic object-to-map conversion logic while delegating
@@ -98,7 +64,7 @@ final class ObjectConversions {
         // Handle primitives and wrapper types
         if (isPrimitiveOrWrapper(from.getClass())) {
             Map<String, Object> result = new LinkedHashMap<>();
-            result.put(MapConversions.V, convertToJsonCompatible(from, converter));
+            result.put(MapConversions.V, convertToJsonCompatible(from));
             return result;
         }
         
@@ -170,7 +136,6 @@ final class ObjectConversions {
                         }
                     } catch (Exception e) {
                         // Skip fields that can't be accessed
-                        continue;
                     }
                 }
                 
@@ -218,7 +183,7 @@ final class ObjectConversions {
         
         // Handle primitives and wrappers
         if (isPrimitiveOrWrapper(valueClass)) {
-            return convertToJsonCompatible(value, converter);
+            return convertToJsonCompatible(value);
         }
         
         // Handle Strings
@@ -236,7 +201,7 @@ final class ObjectConversions {
                     // For now, convert them to string representation to avoid complexity
                     result.add(item.toString());
                 } else {
-                    result.add(convertToJsonCompatible(item, converter));
+                    result.add(convertToJsonCompatible(item));
                 }
             }
             return result;
@@ -254,7 +219,7 @@ final class ObjectConversions {
                         // For complex objects in maps, convert to string for simplicity
                         result.put(key, entryValue.toString());
                     } else {
-                        result.put(key, convertToJsonCompatible(entryValue, converter));
+                        result.put(key, convertToJsonCompatible(entryValue));
                     }
                 }
             }
@@ -271,7 +236,7 @@ final class ObjectConversions {
                     // For complex objects in arrays, convert to string for simplicity
                     result.add(item.toString());
                 } else {
-                    result.add(convertToJsonCompatible(item, converter));
+                    result.add(convertToJsonCompatible(item));
                 }
             }
             return result;
@@ -294,7 +259,7 @@ final class ObjectConversions {
     /**
      * Converts primitives and wrappers to JSON-compatible types using MathUtilities for optimal numeric types.
      */
-    private static Object convertToJsonCompatible(Object value, Converter converter) {
+    private static Object convertToJsonCompatible(Object value) {
         if (value == null) {
             return null;
         }
@@ -316,11 +281,6 @@ final class ObjectConversions {
             return value;
         }
         
-        // Character to String
-        if (value instanceof Character) {
-            return value.toString();
-        }
-        
         // Everything else to String representation
         return value.toString();
     }
@@ -330,8 +290,8 @@ final class ObjectConversions {
      */
     private static boolean shouldSkipField(java.lang.reflect.Field field) {
         int modifiers = field.getModifiers();
-        return java.lang.reflect.Modifier.isStatic(modifiers) ||
-               java.lang.reflect.Modifier.isTransient(modifiers) ||
+        return Modifier.isStatic(modifiers) ||
+               Modifier.isTransient(modifiers) ||
                field.isSynthetic();
     }
     
@@ -340,42 +300,6 @@ final class ObjectConversions {
      */
     private static boolean isPrimitiveOrWrapper(Class<?> clazz) {
         return ClassUtilities.isPrimitive(clazz);
-    }
-    
-    /**
-     * Determines if a Map object is suitable for simple Map-to-Map conversion
-     * vs. complex object traversal that preserves references and object structure.
-     */
-    private static boolean isSimpleMapConversion(Object from) {
-        if (!(from instanceof Map)) {
-            return false;
-        }
-        
-        // CompactMap and other complex Map implementations should use object traversal
-        // to preserve references, complex object graphs, etc.
-        Class<?> clazz = from.getClass();
-        String className = clazz.getName();
-        
-        // Exclude CompactMap and other complex java-util Maps
-        if (className.contains("CompactMap") || 
-            className.contains("CaseInsensitiveMap")) {
-            return false;
-        }
-        
-        // Allow standard JDK Map types for simple conversion
-        if (clazz == HashMap.class ||
-            clazz == LinkedHashMap.class ||
-            clazz == TreeMap.class ||
-            clazz == ConcurrentHashMap.class ||
-            className.contains("EmptyMap") ||
-            className.contains("SingletonMap") ||
-            className.contains("UnmodifiableMap") ||
-            className.contains("SynchronizedMap")) {
-            return true;
-        }
-        
-        // For other Map types, be conservative and use object traversal
-        return false;
     }
     
     /**
@@ -389,7 +313,7 @@ final class ObjectConversions {
         
         try {
             // Use ReflectionUtils to check for Record class (available in JDK 14+)
-            java.lang.reflect.Method isRecordMethod = ReflectionUtils.getMethod(Class.class, "isRecord");
+            Method isRecordMethod = ReflectionUtils.getMethod(Class.class, "isRecord");
             if (isRecordMethod != null) {
                 return (Boolean) ReflectionUtils.call(clazz, isRecordMethod);
             }
@@ -399,16 +323,5 @@ final class ObjectConversions {
             return false;
         }
     }
-    
-    /**
-     * ConvertWithTarget implementation for Object to Map conversions.
-     * This provides target-aware Object->Map conversion while properly delegating
-     * Map inputs to the Map-to-Map converter.
-     */
-    static final ConvertWithTarget<Map<?, ?>> OBJECT_TO_MAP_CONVERTER = new ConvertWithTarget<Map<?, ?>>() {
-        @Override
-        public Map<?, ?> convertWithTarget(Object from, Converter converter, Class<?> target) {
-            return objectToMapWithTarget(from, converter, target);
-        }
-    };
+
 }

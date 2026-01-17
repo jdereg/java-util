@@ -753,6 +753,7 @@ public final class ReflectionUtils {
      * @return The annotation if found, null if not found or if classToCheck is null
      * @throws IllegalArgumentException if annoClass is null
      */
+    @SuppressWarnings("unchecked")
     public static <T extends Annotation> T getClassAnnotation(final Class<?> classToCheck, final Class<T> annoClass) {
         if (classToCheck == null) {
             return null;
@@ -836,6 +837,7 @@ public final class ReflectionUtils {
      * @return The annotation if found, null otherwise
      * @throws IllegalArgumentException if either method or annoClass is null
      */
+    @SuppressWarnings("unchecked")
     public static <T extends Annotation> T getMethodAnnotation(final Method method, final Class<T> annoClass) {
         Convention.throwIfNull(method, "method cannot be null");
         Convention.throwIfNull(annoClass, "annotation class cannot be null");

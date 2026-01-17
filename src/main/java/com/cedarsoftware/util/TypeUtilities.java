@@ -7,12 +7,12 @@ import java.lang.reflect.Type;
 import java.lang.reflect.TypeVariable;
 import java.lang.reflect.WildcardType;
 import java.util.AbstractMap;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
 import java.util.Arrays;
+import java.util.Collection;
+import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Useful APIs for working with Java types, including resolving type variables and generic types.
@@ -36,10 +36,13 @@ import java.util.Objects;
 public class TypeUtilities {
     private static volatile Map<Map.Entry<Type, Type>, Type> TYPE_RESOLVE_CACHE = new LRUCache<>(2000);
 
+    // Cache for array class lookups to avoid Array.newInstance() allocations
+    private static final Map<Class<?>, Class<?>> ARRAY_CLASS_CACHE = new ConcurrentHashMap<>();
+
     /**
-     * Sets a custom cache implementation for holding results of getAllSuperTypes(). The Map implementation must be
+     * Sets a custom cache implementation for holding results of type resolution. The Map implementation must be
      * thread-safe, like ConcurrentHashMap, LRUCache, ConcurrentSkipListMap, etc.
-     * @param cache The custom cache implementation to use for storing results of getAllSuperTypes().
+     * @param cache The custom cache implementation to use for storing results of type resolution.
      *             Must be thread-safe and implement Map interface.
      */
     public static void setTypeResolveCache(Map<Map.Entry<Type, Type>, Type> cache) {
@@ -81,7 +84,7 @@ public class TypeUtilities {
             GenericArrayType arrayType = (GenericArrayType) type;
             Type componentType = arrayType.getGenericComponentType();
             Class<?> componentClass = getRawClass(componentType);
-            return Array.newInstance(componentClass, 0).getClass();
+            return getArrayClass(componentClass);
         } else if (type instanceof WildcardType) {
             // For wildcard types like "? extends Number", use the first upper bound.
             WildcardType wildcardType = (WildcardType) type;
@@ -189,7 +192,19 @@ public class TypeUtilities {
      */
     public static Type resolveType(Type rootContext, Type typeToResolve) {
         Map.Entry<Type, Type> key = new AbstractMap.SimpleImmutableEntry<>(rootContext, typeToResolve);
-        return TYPE_RESOLVE_CACHE.computeIfAbsent(key, k -> resolveType(rootContext, rootContext, typeToResolve, new HashSet<>()));
+        return TYPE_RESOLVE_CACHE.computeIfAbsent(key, k -> resolveType(rootContext, rootContext, typeToResolve, new IdentitySet<>()));
+    }
+
+    /**
+     * Returns the array class for a given component type, using a cache to avoid
+     * repeated Array.newInstance() allocations.
+     *
+     * @param componentClass the component type of the array
+     * @return the array class (e.g., String[].class for String.class)
+     */
+    private static Class<?> getArrayClass(Class<?> componentClass) {
+        return ARRAY_CLASS_CACHE.computeIfAbsent(componentClass,
+                c -> Array.newInstance(c, 0).getClass());
     }
 
     /**
@@ -231,16 +246,22 @@ public class TypeUtilities {
                 return result;
             } else if (typeToResolve instanceof WildcardType) {
                 WildcardType wt = (WildcardType) typeToResolve;
+                // Get bounds arrays. WildcardTypeImpl.getXxxBounds() already returns clones,
+                // so we only need to clone for external WildcardType implementations.
+                boolean needsClone = !(wt instanceof WildcardTypeImpl);
                 Type[] upperBounds = wt.getUpperBounds();
                 Type[] lowerBounds = wt.getLowerBounds();
+                if (needsClone) {
+                    upperBounds = upperBounds.clone();
+                    lowerBounds = lowerBounds.clone();
+                }
                 for (int i = 0; i < upperBounds.length; i++) {
                     upperBounds[i] = resolveType(rootContext, currentContext, upperBounds[i], visited);
                 }
                 for (int i = 0; i < lowerBounds.length; i++) {
                     lowerBounds[i] = resolveType(rootContext, currentContext, lowerBounds[i], visited);
                 }
-                WildcardTypeImpl result = new WildcardTypeImpl(upperBounds, lowerBounds);
-                return result;
+                return new WildcardTypeImpl(upperBounds, lowerBounds);
             } else {
                 return typeToResolve;
             }
@@ -256,8 +277,14 @@ public class TypeUtilities {
         visited.add(typeVar);
 
         try {
+            // TypeVariable can be declared on Method or Constructor, not just Class.
+            // For method-level type variables, we cannot resolve via class hierarchy.
+            if (!(typeVar.getGenericDeclaration() instanceof Class)) {
+                return firstBound(typeVar);
+            }
+
             Type resolved = null;
-            
+
             if (currentContext instanceof ParameterizedType) {
                 resolved = resolveTypeVariableFromParentType(currentContext, typeVar);
                 if (resolved == typeVar) {
@@ -451,8 +478,9 @@ public class TypeUtilities {
                 if (typeArgs.length >= 1) {
                     fieldGenericType = typeArgs[0];
                 }
-            } else if (raw != null && raw.isArray()) {
-                // For arrays, expect one type argument.
+            } else if (raw.isArray()) {
+                // For custom ParameterizedType implementations with array raw types.
+                // Standard Java arrays cannot be parameterized, but custom implementations may use this.
                 if (typeArgs.length >= 1) {
                     fieldGenericType = typeArgs[0];
                 }
@@ -528,7 +556,10 @@ public class TypeUtilities {
 
         @Override
         public int hashCode() {
-            return EncryptionUtilities.finalizeHash(Arrays.hashCode(args) ^ Objects.hashCode(raw) ^ Objects.hashCode(owner));
+            int result = Arrays.hashCode(args);
+            result = 31 * result + Objects.hashCode(raw);
+            result = 31 * result + Objects.hashCode(owner);
+            return result;
         }
     }
 
@@ -577,9 +608,14 @@ public class TypeUtilities {
         private final Type[] upperBounds;
         private final Type[] lowerBounds;
 
-        public WildcardTypeImpl(Type[] upperBounds, Type[] lowerBounds) {
-            this.upperBounds = upperBounds != null ? upperBounds.clone() : new Type[]{Object.class};
-            this.lowerBounds = lowerBounds != null ? lowerBounds.clone() : new Type[0];
+        /**
+         * Constructor takes ownership of arrays without cloning.
+         * Since this is a private inner class, all callers are within TypeUtilities
+         * and are responsible for not modifying the arrays after passing them.
+         */
+        WildcardTypeImpl(Type[] upperBounds, Type[] lowerBounds) {
+            this.upperBounds = upperBounds != null ? upperBounds : new Type[]{Object.class};
+            this.lowerBounds = lowerBounds != null ? lowerBounds : new Type[0];
         }
 
         @Override
@@ -627,7 +663,9 @@ public class TypeUtilities {
 
         @Override
         public int hashCode() {
-            return EncryptionUtilities.finalizeHash(Arrays.hashCode(upperBounds) ^ Arrays.hashCode(lowerBounds));
+            int result = Arrays.hashCode(upperBounds);
+            result = 31 * result + Arrays.hashCode(lowerBounds);
+            return result;
         }
     }
 }

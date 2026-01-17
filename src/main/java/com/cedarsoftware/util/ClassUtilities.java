@@ -1243,6 +1243,7 @@ public class ClassUtilities {
      * When no security manager is present, this method performs no checks.
      * </p>
      */
+    @SuppressWarnings("removal")
     private static void checkSecurityAccess() {
         // SecurityManager is deprecated in Java 17+ and removed in Java 21+
         try {
@@ -2004,6 +2005,7 @@ public class ClassUtilities {
      * @return A new instance of the specified class
      * @throws IllegalArgumentException if the class cannot be instantiated or arguments are invalid
      */
+    @SuppressWarnings("unchecked")
     public static Object newInstance(Converter converter, Class<?> c, Object arguments) {
         Convention.throwIfNull(c, "Class cannot be null");
         Convention.throwIfNull(converter, "Converter cannot be null");
@@ -2628,6 +2630,7 @@ public class ClassUtilities {
      * @param state boolean true = on, false = off (for the current thread only)
      * @throws SecurityException if a security manager exists and denies the required permissions
      */
+    @SuppressWarnings("removal")
     public static void setUseUnsafe(boolean state) {
         // Add security check for unsafe instantiation access
         SecurityManager sm = System.getSecurityManager();

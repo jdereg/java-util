@@ -146,6 +146,7 @@ final class MapConversions {
      * and, if found, converts it to the target type. Otherwise, it calls fromMap()
      * to throw an exception.
      */
+    @SuppressWarnings("unchecked")
     private static <T> T dispatch(Object from, Converter converter, Class<T> clazz, String[] keys) {
         Object value = getValue((Map<String, Object>) from, keys);
         if (value != NO_MATCH) {
@@ -154,6 +155,7 @@ final class MapConversions {
         return fromMap(clazz, keys);
     }
 
+    @SuppressWarnings("unchecked")
     static Object toUUID(Object from, Converter converter) {
         Map<String, Object> map = (Map<String, Object>) from;
 
@@ -418,6 +420,7 @@ final class MapConversions {
         return dispatch(from, converter, CharBuffer.class, VALUE_KEYS);
     }
 
+    @SuppressWarnings("unchecked")
     static Throwable toThrowable(Object from, Converter converter, Class<?> target) {
         // Handle null input - return null rather than creating an empty exception
         if (from == null) {
@@ -755,6 +758,7 @@ final class MapConversions {
     /**
      * Analyzes source Map to determine its characteristics
      */
+    @SuppressWarnings("unchecked")
     private static SourceCharacteristics analyzeSource(Map<?, ?> sourceMap) {
         SourceCharacteristics source = new SourceCharacteristics();
         
@@ -807,6 +811,7 @@ final class MapConversions {
      * Routes conversion based on source characteristics and target requirements.
      * Only handles types that ClassUtilities.newInstance() cannot create.
      */
+    @SuppressWarnings("unchecked")
     private static Map<?, ?> routeConversion(Map<?, ?> sourceMap, SourceCharacteristics source, TargetCharacteristics target, Converter converter) {
         
         // ========== TYPES THAT ClassUtilities.newInstance() CANNOT HANDLE ==========

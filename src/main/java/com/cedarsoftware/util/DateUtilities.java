@@ -196,10 +196,6 @@ public final class DateUtilities {
         return Boolean.parseBoolean(System.getProperty("dateutilities.input.validation.enabled", "false"));
     }
     
-    private static boolean isRegexTimeoutEnabled() {
-        return Boolean.parseBoolean(System.getProperty("dateutilities.regex.timeout.enabled", "false"));
-    }
-    
     private static boolean isMalformedStringProtectionEnabled() {
         return Boolean.parseBoolean(System.getProperty("dateutilities.malformed.string.protection.enabled", "false"));
     }
@@ -227,19 +223,7 @@ public final class DateUtilities {
         }
         return isSecurityEnabled() ? DEFAULT_MAX_EPOCH_DIGITS : Integer.MAX_VALUE;
     }
-    
-    private static long getRegexTimeoutMilliseconds() {
-        String timeoutProp = System.getProperty("dateutilities.regex.timeout.milliseconds");
-        if (timeoutProp != null) {
-            try {
-                return Math.max(1, Long.parseLong(timeoutProp));
-            } catch (NumberFormatException e) {
-                // Fall through to default
-            }
-        }
-        return isSecurityEnabled() ? DEFAULT_REGEX_TIMEOUT_MILLISECONDS : Long.MAX_VALUE;
-    }
-    
+
     /**
      * Validates input for malformed patterns that could cause ReDoS attacks.
      * 

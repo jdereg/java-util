@@ -140,7 +140,9 @@ public class ClassValueSet extends AbstractSet<Class<?>> {
         if (o == null) {
             return containsNull.get();
         }
-        if (!(o instanceof Class)) {
+        // Fast path: identity check is faster than instanceof hierarchy check
+        // Class.class is loaded by bootstrap classloader, so identity comparison is safe
+        if (o.getClass() != Class.class) {
             return false;
         }
         return membershipCache.get((Class<?>) o);
@@ -165,7 +167,8 @@ public class ClassValueSet extends AbstractSet<Class<?>> {
         if (o == null) {
             return containsNull.getAndSet(false);
         }
-        if (!(o instanceof Class)) {
+        // Fast path: identity check is faster than instanceof
+        if (o.getClass() != Class.class) {
             return false;
         }
         Class<?> clazz = (Class<?>) o;
@@ -182,16 +185,13 @@ public class ClassValueSet extends AbstractSet<Class<?>> {
      */
     @Override
     public void clear() {
-        // Save keys for cache invalidation
-        Set<Class<?>> keysToInvalidate = new HashSet<>(backingSet);
-
-        backingSet.clear();
-        containsNull.set(false);
-
-        // Invalidate cache for all previous members
-        for (Class<?> cls : keysToInvalidate) {
+        // Invalidate cache entries before clearing the backing set.
+        // Iterate directly over backingSet (no copy needed) and invalidate each entry.
+        for (Class<?> cls : backingSet) {
             membershipCache.remove(cls);
         }
+        backingSet.clear();
+        containsNull.set(false);
     }
 
     @Override

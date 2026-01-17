@@ -9,7 +9,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashSet;
-import java.util.IdentityHashMap;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -313,7 +312,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
 
     // JDK DTO array types that are guaranteed to be 1D (elements can't be arrays/collections)
     // Using ConcurrentHashMap-backed Set for thread-safe, high-performance lookups
-    private static final Set<Class<?>> SIMPLE_ARRAY_TYPES = Collections.newSetFromMap(new ConcurrentHashMap<>());
+    private static final Set<Class<?>> SIMPLE_ARRAY_TYPES = new ClassValueSet();
     static {
         // Wrapper types
         SIMPLE_ARRAY_TYPES.add(String[].class);
@@ -862,33 +861,44 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      */
     private static int valueHashCode(Object o) {
         if (o == null) return 0;
-        
-        // Booleans & chars: use their standard hash (including AtomicBoolean)
-        if (o instanceof Boolean) return Boolean.hashCode((Boolean) o);
-        if (o instanceof AtomicBoolean) return Boolean.hashCode(((AtomicBoolean) o).get());
-        
-        // Integrals: hash by long so all integral wrappers collide when values match
-        if (o instanceof Byte) return hashLong(((Byte) o).longValue());
-        if (o instanceof Short) return hashLong(((Short) o).longValue());
-        if (o instanceof Integer) return hashLong(((Integer) o).longValue());
-        if (o instanceof Long) return hashLong((Long) o);
-        if (o instanceof AtomicInteger) return hashLong(((AtomicInteger) o).get());
-        if (o instanceof AtomicLong) return hashLong(((AtomicLong) o).get());
-        
-        // Floating: promote to double, normalize -0.0, optionally align to long when exactly integer
-        if (o instanceof Float || o instanceof Double) {
-            double d = (o instanceof Double) ? (Double) o : ((Float) o).doubleValue();
-            
-            // Canonicalize -0.0 to +0.0 so it matches integral 0 and +0.0
-            if (d == 0.0d) d = 0.0d;
-            
+
+        // Fast path: Check most common types first using Class identity (faster than instanceof)
+        // Integer, Long, Double are by far the most common numeric types in practice
+        Class<?> clazz = o.getClass();
+
+        if (clazz == Integer.class) return hashLong(((Integer) o).longValue());
+        if (clazz == Long.class) return hashLong((Long) o);
+        if (clazz == Double.class) {
+            double d = (Double) o;
+            if (d == 0.0d) d = 0.0d; // Canonicalize -0.0 to +0.0
             if (Double.isFinite(d) && d == Math.rint(d) &&
                     d >= Long.MIN_VALUE && d <= Long.MAX_VALUE) {
                 return hashLong((long) d);
             }
             return hashDouble(d);
         }
-        
+
+        // Less common primitive wrappers
+        if (clazz == Float.class) {
+            double d = ((Float) o).doubleValue();
+            if (d == 0.0d) d = 0.0d; // Canonicalize -0.0 to +0.0
+            if (Double.isFinite(d) && d == Math.rint(d) &&
+                    d >= Long.MIN_VALUE && d <= Long.MAX_VALUE) {
+                return hashLong((long) d);
+            }
+            return hashDouble(d);
+        }
+        if (clazz == Short.class) return hashLong(((Short) o).longValue());
+        if (clazz == Byte.class) return hashLong(((Byte) o).longValue());
+
+        // Boolean types
+        if (clazz == Boolean.class) return Boolean.hashCode((Boolean) o);
+        if (clazz == AtomicBoolean.class) return Boolean.hashCode(((AtomicBoolean) o).get());
+
+        // Atomic numeric types
+        if (clazz == AtomicInteger.class) return hashLong(((AtomicInteger) o).get());
+        if (clazz == AtomicLong.class) return hashLong(((AtomicLong) o).get());
+
         // BigInteger/BigDecimal: convert to primitive type for consistent hashing
         if (o instanceof BigDecimal) {
             BigDecimal bd = (BigDecimal) o;
@@ -896,7 +906,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                 // Check if it can be represented as a long (whole number)
                 if (bd.scale() <= 0 || bd.remainder(BigDecimal.ONE).compareTo(BigDecimal.ZERO) == 0) {
                     // It's a whole number - try to convert to long
-                    if (bd.compareTo(new BigDecimal(Long.MAX_VALUE)) <= 0 && 
+                    if (bd.compareTo(new BigDecimal(Long.MAX_VALUE)) <= 0 &&
                         bd.compareTo(new BigDecimal(Long.MIN_VALUE)) >= 0) {
                         return hashLong(bd.longValue());
                     }
@@ -914,7 +924,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                 return bd.hashCode();
             }
         }
-        
+
         if (o instanceof BigInteger) {
             BigInteger bi = (BigInteger) o;
             try {
@@ -934,7 +944,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                 return bi.hashCode();
             }
         }
-        
+
         // Other Number types: use their hash
         return o.hashCode();
     }
@@ -1275,10 +1285,19 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      */
     @SuppressWarnings("unchecked")
     private <T> MultiKey<T> flattenKey(Object key) {
-        
+
         // Handle null case - use pre-created instance to avoid allocation
         if (key == null) {
             return NULL_NORMALIZED_KEY;
+        }
+
+        // === FAST PATH: Known common simple types ===
+        // Class identity check (==) is much faster than instanceof hierarchy traversal.
+        // These are the most common key types in practice - handle them first.
+        Class<?> keyClass = key.getClass();
+        if (keyClass == String.class || keyClass == Integer.class ||
+            keyClass == Long.class || keyClass == Double.class) {
+            return new MultiKey<>(key, computeElementHash(key, caseSensitive), null);
         }
 
         // === ATOMIC ARRAY CONVERSION ===
@@ -1314,9 +1333,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             return flattenKey(regularArr);
         }
 
-        // === OPTIMIZATION: Check instanceof Collection first (faster than getClass().isArray()) ===
-        // For simple keys (the common case), this avoids the expensive getClass() call when possible.
-        Class<?> keyClass;
+        // === Check for Collection or Array ===
+        // keyClass was already computed above for the fast path check
         boolean isKeyArray;
 
         if (key instanceof Collection) {
@@ -1326,16 +1344,14 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                 return new MultiKey<>(key, computeElementHash(key, caseSensitive), null);
             }
             // Collection needs expansion - set array flags for later processing
-            keyClass = key.getClass();
             isKeyArray = false;  // Collections are not arrays
         } else {
-            // Not a Collection - now check if it's an array
-            keyClass = key.getClass();
+            // Not a Collection - check if it's an array
             isKeyArray = keyClass.isArray();
 
             if (!isKeyArray) {
-                // === FAST PATH: Simple objects (not arrays or collections) ===
-                // This is the most common case (String, Integer, etc.) - return immediately
+                // Simple objects (not arrays or collections) - return immediately
+                // This handles types not covered by the fast path above (Float, Short, etc.)
                 return new MultiKey<>(key, computeElementHash(key, caseSensitive), null);
             }
             // Continue with array processing below
@@ -1599,7 +1615,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     }
 
     /**
-     * Parameterized version of Object[] flattening for sizes 6-10.
+     * Parameterized version of Object[] flattening for sizes 4-10.
      * Uses loops instead of unrolling to handle any size efficiently.
      */
     private <T> MultiKey<T> flattenObjectArrayN(Object[] array, int size) {
@@ -1613,11 +1629,19 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         } else {
             for (int i = 0; i < size; i++) {
                 Object elem = array[i];
-                boolean isArrayOrCollection = elem instanceof Collection || (elem != null && elem.getClass().isArray());
-                if (isArrayOrCollection) {
-                    // Found complex element - bail out
-                    if (flattenDimensions) return expandWithHash(array);
-                    return process1DObjectArray(array);
+                // Fast path: skip array/collection check for known simple types
+                // Class identity check (==) is faster than instanceof + isArray()
+                if (elem != null) {
+                    Class<?> ec = elem.getClass();
+                    if (ec != String.class && ec != Integer.class &&
+                        ec != Long.class && ec != Double.class) {
+                        // Not a known simple type - check if it's an array or collection
+                        if (elem instanceof Collection || ec.isArray()) {
+                            // Found complex element - bail out
+                            if (flattenDimensions) return expandWithHash(array);
+                            return process1DObjectArray(array);
+                        }
+                    }
                 }
                 h = h * 31 + computeElementHash(elem, caseSensitive);
             }
@@ -1897,8 +1921,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         }
         
         List<Object> expanded = new ArrayList<>(estimatedSize);
-        IdentityHashMap<Object, Boolean> visited = new IdentityHashMap<>();
-        
+        IdentitySet<Object> visited = new IdentitySet<>();
+
         int hash = expandAndHash(key, expanded, visited, 1, flattenDimensions, caseSensitive);
         
         // NO COLLAPSE - expanded results stay as lists
@@ -1908,7 +1932,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         return new MultiKey<>(expanded, hash, null);
     }
     
-    private static int expandAndHash(Object current, List<Object> result, IdentityHashMap<Object, Boolean> visited,
+    private static int expandAndHash(Object current, List<Object> result, IdentitySet<Object> visited,
                                       int runningHash, boolean useFlatten, boolean caseSensitive) {
         if (current == null) {
             result.add(NULL_SENTINEL);
@@ -1925,7 +1949,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             return runningHash * 31 + computeElementHash(current, caseSensitive);
         }
 
-        if (visited.containsKey(current)) {
+        if (visited.contains(current)) {
             Object cycle = EMOJI_CYCLE + System.identityHashCode(current);
             result.add(cycle);
             return runningHash * 31 + cycle.hashCode();
@@ -1933,7 +1957,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
 
         // Use getComponentType() != null instead of isArray() - slightly faster
         if (clazz.getComponentType() != null) {
-            visited.put(current, true);
+            visited.add(current);
             try {
                 if (!useFlatten) {
                     result.add(OPEN);
@@ -1953,7 +1977,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         } else if (current instanceof Collection) {
             Collection<?> coll = (Collection<?>) current;
             boolean isSet = current instanceof Set;
-            visited.put(current, true);
+            visited.add(current);
             try {
                 if (isSet) {
                     // Sets always use SET_OPEN/SET_CLOSE markers (even in flatten mode)
@@ -4547,7 +4571,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         }
 
         List<Object> expanded = new ArrayList<>();
-        IdentityHashMap<Object, Boolean> visited = new IdentityHashMap<>();
+        IdentitySet<Object> visited = new IdentitySet<>();
         // We don't need the hash for debug output, but the method returns it
         expandAndHash(key, expanded, visited, 1, false, true);  // For debug, always preserve structure (false for flatten, true for caseSensitive)
 

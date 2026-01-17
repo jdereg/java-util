@@ -1,5 +1,7 @@
 package com.cedarsoftware.util.convert;
 
+import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -733,6 +735,226 @@ final class UniversalConversions {
     static BitSet byteArrayToBitSet(Object from, Converter converter) {
         byte[] array = (byte[]) from;
         return BitSet.valueOf(array);
+    }
+
+    /**
+     * BitSet → long conversion.
+     * Interprets the BitSet as a bitmask and returns the long value.
+     * For BitSets with more than 64 bits, only the lower 64 bits are returned.
+     */
+    static long bitSetToLong(Object from, Converter converter) {
+        BitSet bitSet = (BitSet) from;
+        long[] longs = bitSet.toLongArray();
+        return longs.length == 0 ? 0L : longs[0];
+    }
+
+    /**
+     * long → BitSet conversion.
+     * Creates a BitSet from the long value interpreted as a bitmask.
+     */
+    static BitSet longToBitSet(Object from, Converter converter) {
+        long value = ((Number) from).longValue();
+        return BitSet.valueOf(new long[]{value});
+    }
+
+    /**
+     * BitSet → BigInteger conversion.
+     * Interprets the BitSet as a bitmask and returns the BigInteger value.
+     * Handles BitSets of any size.
+     */
+    static BigInteger bitSetToBigInteger(Object from, Converter converter) {
+        BitSet bitSet = (BitSet) from;
+        byte[] bytes = bitSet.toByteArray();
+        if (bytes.length == 0) {
+            return BigInteger.ZERO;
+        }
+        // BitSet.toByteArray() returns little-endian, BigInteger expects big-endian
+        // Reverse the byte array
+        byte[] reversed = new byte[bytes.length];
+        for (int i = 0; i < bytes.length; i++) {
+            reversed[i] = bytes[bytes.length - 1 - i];
+        }
+        return new BigInteger(1, reversed);
+    }
+
+    /**
+     * BigInteger → BitSet conversion.
+     * Creates a BitSet from the BigInteger value interpreted as a bitmask.
+     */
+    static BitSet bigIntegerToBitSet(Object from, Converter converter) {
+        BigInteger value = (BigInteger) from;
+        if (value.signum() < 0) {
+            throw new IllegalArgumentException("Cannot convert negative BigInteger to BitSet");
+        }
+        if (value.equals(BigInteger.ZERO)) {
+            return new BitSet();
+        }
+        byte[] bytes = value.toByteArray();
+        // BigInteger.toByteArray() returns big-endian, BitSet.valueOf() expects little-endian
+        // Reverse the byte array, and skip leading zero byte if present (sign byte)
+        int start = (bytes[0] == 0) ? 1 : 0;
+        byte[] reversed = new byte[bytes.length - start];
+        for (int i = start; i < bytes.length; i++) {
+            reversed[bytes.length - 1 - i] = bytes[i];
+        }
+        return BitSet.valueOf(reversed);
+    }
+
+    /**
+     * BitSet → int conversion.
+     * Returns the lower 32 bits of the BitSet as an int.
+     * For BitSets with more than 32 bits, only the lower 32 bits are returned.
+     */
+    static int bitSetToInt(Object from, Converter converter) {
+        BitSet bitSet = (BitSet) from;
+        long[] longs = bitSet.toLongArray();
+        return longs.length == 0 ? 0 : (int) longs[0];
+    }
+
+    /**
+     * int → BitSet conversion.
+     * Creates a BitSet from the int value interpreted as a bitmask.
+     */
+    static BitSet intToBitSet(Object from, Converter converter) {
+        int value = ((Number) from).intValue();
+        return BitSet.valueOf(new long[]{value & 0xFFFFFFFFL});
+    }
+
+    /**
+     * BitSet → short conversion.
+     * Returns the lower 16 bits of the BitSet as a short.
+     * For BitSets with more than 16 bits, only the lower 16 bits are returned.
+     */
+    static short bitSetToShort(Object from, Converter converter) {
+        BitSet bitSet = (BitSet) from;
+        long[] longs = bitSet.toLongArray();
+        return longs.length == 0 ? 0 : (short) longs[0];
+    }
+
+    /**
+     * short → BitSet conversion.
+     * Creates a BitSet from the short value interpreted as a bitmask.
+     */
+    static BitSet shortToBitSet(Object from, Converter converter) {
+        short value = ((Number) from).shortValue();
+        return BitSet.valueOf(new long[]{value & 0xFFFFL});
+    }
+
+    /**
+     * BitSet → byte conversion.
+     * Returns the lower 8 bits of the BitSet as a byte.
+     * For BitSets with more than 8 bits, only the lower 8 bits are returned.
+     */
+    static byte bitSetToByte(Object from, Converter converter) {
+        BitSet bitSet = (BitSet) from;
+        long[] longs = bitSet.toLongArray();
+        return longs.length == 0 ? 0 : (byte) longs[0];
+    }
+
+    /**
+     * byte → BitSet conversion.
+     * Creates a BitSet from the byte value interpreted as a bitmask.
+     */
+    static BitSet byteToBitSet(Object from, Converter converter) {
+        byte value = ((Number) from).byteValue();
+        return BitSet.valueOf(new long[]{value & 0xFFL});
+    }
+
+    /**
+     * BitSet → AtomicInteger conversion.
+     * Returns the lower 32 bits of the BitSet as an AtomicInteger.
+     */
+    static AtomicInteger bitSetToAtomicInteger(Object from, Converter converter) {
+        BitSet bitSet = (BitSet) from;
+        long[] longs = bitSet.toLongArray();
+        return new AtomicInteger(longs.length == 0 ? 0 : (int) longs[0]);
+    }
+
+    /**
+     * AtomicInteger → BitSet conversion.
+     * Creates a BitSet from the AtomicInteger value interpreted as a bitmask.
+     */
+    static BitSet atomicIntegerToBitSet(Object from, Converter converter) {
+        int value = ((AtomicInteger) from).get();
+        return BitSet.valueOf(new long[]{value & 0xFFFFFFFFL});
+    }
+
+    /**
+     * BitSet → BigDecimal conversion.
+     * Converts the BitSet to a BigInteger first, then to BigDecimal.
+     * Handles BitSets of any size.
+     */
+    static BigDecimal bitSetToBigDecimal(Object from, Converter converter) {
+        BigInteger bigInt = bitSetToBigInteger(from, converter);
+        return new BigDecimal(bigInt);
+    }
+
+    /**
+     * BigDecimal → BitSet conversion.
+     * Converts to BigInteger (truncating decimal part) then to BitSet.
+     */
+    static BitSet bigDecimalToBitSet(Object from, Converter converter) {
+        BigDecimal value = (BigDecimal) from;
+        return bigIntegerToBitSet(value.toBigInteger(), converter);
+    }
+
+    /**
+     * BitSet → AtomicBoolean conversion.
+     * Returns AtomicBoolean(true) if any bit is set, AtomicBoolean(false) if empty.
+     */
+    static AtomicBoolean bitSetToAtomicBoolean(Object from, Converter converter) {
+        BitSet bitSet = (BitSet) from;
+        return new AtomicBoolean(!bitSet.isEmpty());
+    }
+
+    /**
+     * AtomicBoolean → BitSet conversion.
+     * AtomicBoolean(true) = BitSet with bit 0 set.
+     * AtomicBoolean(false) = empty BitSet.
+     */
+    static BitSet atomicBooleanToBitSet(Object from, Converter converter) {
+        AtomicBoolean value = (AtomicBoolean) from;
+        BitSet bitSet = new BitSet();
+        if (value.get()) {
+            bitSet.set(0);
+        }
+        return bitSet;
+    }
+
+    /**
+     * BitSet → String conversion.
+     * Returns a binary string representation where rightmost character is bit 0.
+     * Example: BitSet with bits 1,3,5 set → "101010"
+     */
+    static String bitSetToString(Object from, Converter converter) {
+        BitSet bitSet = (BitSet) from;
+        int length = bitSet.length(); // highest set bit + 1, or 0 if empty
+        if (length == 0) {
+            return "";
+        }
+        StringBuilder sb = new StringBuilder(length);
+        for (int i = length - 1; i >= 0; i--) {
+            sb.append(bitSet.get(i) ? '1' : '0');
+        }
+        return sb.toString();
+    }
+
+    /**
+     * String → BitSet conversion.
+     * Parses a binary string where rightmost character is bit 0.
+     * Example: "101010" → BitSet with bits 1,3,5 set
+     */
+    static BitSet stringToBitSet(Object from, Converter converter) {
+        String binaryStr = ((String) from).trim();
+        BitSet bitSet = new BitSet();
+        int len = binaryStr.length();
+        for (int i = 0; i < len; i++) {
+            char ch = binaryStr.charAt(i);
+            if (ch == '1') {
+                bitSet.set(len - 1 - i);
+            }
+        }
+        return bitSet;
     }
 
     // ========================================

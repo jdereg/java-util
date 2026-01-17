@@ -1256,6 +1256,50 @@ public final class Converter {
         CONVERSION_DB.put(pair(BitSet.class, byte[].class), UniversalConversions::bitSetToByteArray);
         CONVERSION_DB.put(pair(byte[].class, BitSet.class), UniversalConversions::byteArrayToBitSet);
 
+        // BitSet ↔ long bridges (lower 64 bits)
+        CONVERSION_DB.put(pair(BitSet.class, Long.class), UniversalConversions::bitSetToLong);
+        CONVERSION_DB.put(pair(Long.class, BitSet.class), UniversalConversions::longToBitSet);
+        CONVERSION_DB.put(pair(BitSet.class, long.class), UniversalConversions::bitSetToLong);
+        CONVERSION_DB.put(pair(long.class, BitSet.class), UniversalConversions::longToBitSet);
+
+        // BitSet ↔ BigInteger bridges (arbitrary size)
+        CONVERSION_DB.put(pair(BitSet.class, BigInteger.class), UniversalConversions::bitSetToBigInteger);
+        CONVERSION_DB.put(pair(BigInteger.class, BitSet.class), UniversalConversions::bigIntegerToBitSet);
+
+        // BitSet ↔ int bridges (lower 32 bits)
+        CONVERSION_DB.put(pair(BitSet.class, Integer.class), UniversalConversions::bitSetToInt);
+        CONVERSION_DB.put(pair(Integer.class, BitSet.class), UniversalConversions::intToBitSet);
+        CONVERSION_DB.put(pair(BitSet.class, int.class), UniversalConversions::bitSetToInt);
+        CONVERSION_DB.put(pair(int.class, BitSet.class), UniversalConversions::intToBitSet);
+
+        // BitSet ↔ short bridges (lower 16 bits)
+        CONVERSION_DB.put(pair(BitSet.class, Short.class), UniversalConversions::bitSetToShort);
+        CONVERSION_DB.put(pair(Short.class, BitSet.class), UniversalConversions::shortToBitSet);
+        CONVERSION_DB.put(pair(BitSet.class, short.class), UniversalConversions::bitSetToShort);
+        CONVERSION_DB.put(pair(short.class, BitSet.class), UniversalConversions::shortToBitSet);
+
+        // BitSet ↔ byte bridges (lower 8 bits)
+        CONVERSION_DB.put(pair(BitSet.class, Byte.class), UniversalConversions::bitSetToByte);
+        CONVERSION_DB.put(pair(Byte.class, BitSet.class), UniversalConversions::byteToBitSet);
+        CONVERSION_DB.put(pair(BitSet.class, byte.class), UniversalConversions::bitSetToByte);
+        CONVERSION_DB.put(pair(byte.class, BitSet.class), UniversalConversions::byteToBitSet);
+
+        // BitSet ↔ AtomicInteger bridges (lower 32 bits)
+        CONVERSION_DB.put(pair(BitSet.class, AtomicInteger.class), UniversalConversions::bitSetToAtomicInteger);
+        CONVERSION_DB.put(pair(AtomicInteger.class, BitSet.class), UniversalConversions::atomicIntegerToBitSet);
+
+        // BitSet ↔ BigDecimal bridges (arbitrary size)
+        CONVERSION_DB.put(pair(BitSet.class, BigDecimal.class), UniversalConversions::bitSetToBigDecimal);
+        CONVERSION_DB.put(pair(BigDecimal.class, BitSet.class), UniversalConversions::bigDecimalToBitSet);
+
+        // BitSet ↔ AtomicBoolean bridges
+        CONVERSION_DB.put(pair(BitSet.class, AtomicBoolean.class), UniversalConversions::bitSetToAtomicBoolean);
+        CONVERSION_DB.put(pair(AtomicBoolean.class, BitSet.class), UniversalConversions::atomicBooleanToBitSet);
+
+        // BitSet ↔ String bridges (binary string format)
+        CONVERSION_DB.put(pair(BitSet.class, String.class), UniversalConversions::bitSetToString);
+        CONVERSION_DB.put(pair(String.class, BitSet.class), UniversalConversions::stringToBitSet);
+
         // ========================================
         // Stream Bridges
         // ========================================

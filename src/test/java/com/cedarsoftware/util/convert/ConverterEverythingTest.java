@@ -6180,6 +6180,136 @@ class ConverterEverythingTest {
                 {new byte[]{42}, bitSet123}, // byte 42 = binary 101010 = bits 1,3,5 set
                 {new byte[]{}, new BitSet()},
         });
+        TEST_DB.put(pair(BitSet.class, Long.class), new Object[][]{
+                {bitSet123, 42L}, // BitSet bits 1,3,5 = binary 101010 = decimal 42
+                {new BitSet(), 0L},
+        });
+        TEST_DB.put(pair(Long.class, BitSet.class), new Object[][]{
+                {42L, bitSet123}, // long 42 = binary 101010 = bits 1,3,5 set
+                {0L, new BitSet()},
+        });
+        TEST_DB.put(pair(BitSet.class, long.class), new Object[][]{
+                {bitSet123, 42L}, // BitSet bits 1,3,5 = binary 101010 = decimal 42
+                {new BitSet(), 0L},
+        });
+        TEST_DB.put(pair(long.class, BitSet.class), new Object[][]{
+                {42L, bitSet123}, // long 42 = binary 101010 = bits 1,3,5 set
+                {0L, new BitSet()},
+        });
+        TEST_DB.put(pair(BitSet.class, BigInteger.class), new Object[][]{
+                {bitSet123, BigInteger.valueOf(42)}, // BitSet bits 1,3,5 = binary 101010 = decimal 42
+                {new BitSet(), BigInteger.ZERO},
+        });
+        TEST_DB.put(pair(BigInteger.class, BitSet.class), new Object[][]{
+                {BigInteger.valueOf(42), bitSet123}, // BigInteger 42 = binary 101010 = bits 1,3,5 set
+                {BigInteger.ZERO, new BitSet()},
+        });
+        TEST_DB.put(pair(BitSet.class, AtomicLong.class), new Object[][]{
+                {bitSet123, new AtomicLong(42)}, // BitSet bits 1,3,5 = binary 101010 = decimal 42
+                {new BitSet(), new AtomicLong(0)},
+        });
+        TEST_DB.put(pair(AtomicLong.class, BitSet.class), new Object[][]{
+                {new AtomicLong(42), bitSet123}, // AtomicLong 42 = binary 101010 = bits 1,3,5 set
+                {new AtomicLong(0), new BitSet()},
+        });
+        TEST_DB.put(pair(BitSet.class, Integer.class), new Object[][]{
+                {bitSet123, 42}, // BitSet bits 1,3,5 = binary 101010 = decimal 42
+                {new BitSet(), 0},
+        });
+        TEST_DB.put(pair(Integer.class, BitSet.class), new Object[][]{
+                {42, bitSet123}, // int 42 = binary 101010 = bits 1,3,5 set
+                {0, new BitSet()},
+        });
+        TEST_DB.put(pair(BitSet.class, int.class), new Object[][]{
+                {bitSet123, 42}, // BitSet bits 1,3,5 = binary 101010 = decimal 42
+                {new BitSet(), 0},
+        });
+        TEST_DB.put(pair(int.class, BitSet.class), new Object[][]{
+                {42, bitSet123}, // int 42 = binary 101010 = bits 1,3,5 set
+                {0, new BitSet()},
+        });
+        TEST_DB.put(pair(BitSet.class, Short.class), new Object[][]{
+                {bitSet123, (short) 42}, // BitSet bits 1,3,5 = binary 101010 = decimal 42
+                {new BitSet(), (short) 0},
+        });
+        TEST_DB.put(pair(Short.class, BitSet.class), new Object[][]{
+                {(short) 42, bitSet123}, // short 42 = binary 101010 = bits 1,3,5 set
+                {(short) 0, new BitSet()},
+        });
+        TEST_DB.put(pair(BitSet.class, short.class), new Object[][]{
+                {bitSet123, (short) 42}, // BitSet bits 1,3,5 = binary 101010 = decimal 42
+                {new BitSet(), (short) 0},
+        });
+        TEST_DB.put(pair(short.class, BitSet.class), new Object[][]{
+                {(short) 42, bitSet123}, // short 42 = binary 101010 = bits 1,3,5 set
+                {(short) 0, new BitSet()},
+        });
+        TEST_DB.put(pair(BitSet.class, Byte.class), new Object[][]{
+                {bitSet123, (byte) 42}, // BitSet bits 1,3,5 = binary 101010 = decimal 42
+                {new BitSet(), (byte) 0},
+        });
+        TEST_DB.put(pair(Byte.class, BitSet.class), new Object[][]{
+                {(byte) 42, bitSet123}, // byte 42 = binary 101010 = bits 1,3,5 set
+                {(byte) 0, new BitSet()},
+        });
+        TEST_DB.put(pair(BitSet.class, byte.class), new Object[][]{
+                {bitSet123, (byte) 42}, // BitSet bits 1,3,5 = binary 101010 = decimal 42
+                {new BitSet(), (byte) 0},
+        });
+        TEST_DB.put(pair(byte.class, BitSet.class), new Object[][]{
+                {(byte) 42, bitSet123}, // byte 42 = binary 101010 = bits 1,3,5 set
+                {(byte) 0, new BitSet()},
+        });
+        TEST_DB.put(pair(BitSet.class, AtomicInteger.class), new Object[][]{
+                {bitSet123, new AtomicInteger(42)}, // BitSet bits 1,3,5 = binary 101010 = decimal 42
+                {new BitSet(), new AtomicInteger(0)},
+        });
+        TEST_DB.put(pair(AtomicInteger.class, BitSet.class), new Object[][]{
+                {new AtomicInteger(42), bitSet123}, // AtomicInteger 42 = binary 101010 = bits 1,3,5 set
+                {new AtomicInteger(0), new BitSet()},
+        });
+        TEST_DB.put(pair(BitSet.class, BigDecimal.class), new Object[][]{
+                {bitSet123, BigDecimal.valueOf(42)}, // BitSet bits 1,3,5 = binary 101010 = decimal 42
+                {new BitSet(), BigDecimal.ZERO},
+        });
+        TEST_DB.put(pair(BigDecimal.class, BitSet.class), new Object[][]{
+                {BigDecimal.valueOf(42), bitSet123}, // BigDecimal 42 = binary 101010 = bits 1,3,5 set
+                {BigDecimal.ZERO, new BitSet()},
+        });
+        TEST_DB.put(pair(BitSet.class, AtomicBoolean.class), new Object[][]{
+                {bitSet123, new AtomicBoolean(true)}, // Non-empty BitSet = true
+                {new BitSet(), new AtomicBoolean(false)}, // Empty BitSet = false
+        });
+        BitSet bitSet0 = new BitSet();
+        bitSet0.set(0);
+        TEST_DB.put(pair(AtomicBoolean.class, BitSet.class), new Object[][]{
+                {new AtomicBoolean(true), bitSet0}, // AtomicBoolean(true) = bit 0 set
+                {new AtomicBoolean(false), new BitSet()}, // AtomicBoolean(false) = empty
+        });
+        TEST_DB.put(pair(BitSet.class, String.class), new Object[][]{
+                {bitSet123, "101010"}, // BitSet bits 1,3,5 = binary 101010
+                {new BitSet(), ""}, // Empty BitSet = empty string
+        });
+        TEST_DB.put(pair(String.class, BitSet.class), new Object[][]{
+                {"101010", bitSet123}, // Binary string "101010" = bits 1,3,5 set
+                {"", new BitSet()}, // Empty string = empty BitSet
+        });
+        TEST_DB.put(pair(BitSet.class, StringBuffer.class), new Object[][]{
+                {bitSet123, new StringBuffer("101010")}, // BitSet bits 1,3,5 = binary 101010
+                {new BitSet(), new StringBuffer("")}, // Empty BitSet = empty string
+        });
+        TEST_DB.put(pair(BitSet.class, StringBuilder.class), new Object[][]{
+                {bitSet123, new StringBuilder("101010")}, // BitSet bits 1,3,5 = binary 101010
+                {new BitSet(), new StringBuilder("")}, // Empty BitSet = empty string
+        });
+        TEST_DB.put(pair(BitSet.class, CharSequence.class), new Object[][]{
+                {bitSet123, "101010"}, // BitSet bits 1,3,5 = binary 101010
+                {new BitSet(), ""}, // Empty BitSet = empty string
+        });
+        TEST_DB.put(pair(CharSequence.class, BitSet.class), new Object[][]{
+                {"101010", bitSet123}, // Binary string "101010" = bits 1,3,5 set
+                {"", new BitSet()}, // Empty string = empty BitSet
+        });
     }
 
     /**

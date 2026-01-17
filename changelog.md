@@ -1,6 +1,6 @@
 ### Revision History
 
-#### 4.82.0 (Unreleased)
+#### 4.82.0  - 2025-01-17
 * **BUG FIX**: `TypeUtilities` - Fixed WildcardType bounds array mutation bug
   * External `WildcardType` implementations return internal arrays from `getUpperBounds()`/`getLowerBounds()`
   * These arrays were being modified in-place during resolution, corrupting the original type

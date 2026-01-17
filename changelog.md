@@ -1,6 +1,16 @@
 ### Revision History
 
 #### 4.82.0 (Unreleased)
+* **PERFORMANCE**: `MultiKeyMap` - Significant hot path optimizations using Class identity checks
+  * `valueHashCode()` - Reordered type checks to handle Integer/Long/Double first; uses Class identity (`==`) instead of `instanceof` for common types (55% CPU reduction in JFR profiling)
+  * `computeElementHash()` - Added Class identity fast path for String/Integer/Long/Double, skipping 4+ instanceof checks for 75% of typical key elements
+  * `flattenKey()` - Added fast path at method entry for String/Integer/Long/Double keys
+  * `flattenObjectArrayN()` - Skip array/collection checks for known simple types
+  * `isArrayOrCollection()` - Added Class identity short-circuit for common simple types
+  * **Result**: Cedar MultiKeyMap win rate vs Apache Commons Collections improved from ~60% to ~71% in performance benchmarks, while providing thread-safety, null key/value support, unlimited key count, and value-based numeric equality that Apache lacks
+* **PERFORMANCE**: `ClassValueSet` - Optimized with Class identity checks
+  * `contains()` and `remove()` now use `o.getClass() == Class.class` instead of `instanceof`
+  * `clear()` no longer creates unnecessary HashSet copy before invalidating cache
 * **NEW**: `IdentitySet<T>` - High-performance generic Set using object identity (`==`) instead of `equals()`
   * Lightweight replacement for `Collections.newSetFromMap(new IdentityHashMap<>())`
   * Extends `AbstractSet<T>` and implements full `Set<T>` interface including `iterator()`

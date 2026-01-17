@@ -834,23 +834,35 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
 
     private static int computeElementHash(Object key, boolean caseSensitive) {
         if (key == null) return 0;
-        
-        // Use value-based numeric hashing for all Numbers and atomic types,
-        // plus Boolean/AtomicBoolean so that when valueBasedEquality is enabled the
-        // hash codes are already aligned across numeric wrapper types. This introduces no
-        // functional change for type-based equality (it may create extra collisions like
-        // Byte(1) vs Integer(1), which is acceptable) and removes redundant instanceof checks.
+
+        // Fast path: Class identity check for most common types
+        // This avoids multiple instanceof checks for the common case
+        Class<?> keyClass = key.getClass();
+
+        if (keyClass == String.class) {
+            return caseSensitive ? key.hashCode() : StringUtilities.hashCodeIgnoreCase((String) key);
+        }
+        if (keyClass == Integer.class) return hashLong(((Integer) key).longValue());
+        if (keyClass == Long.class) return hashLong((Long) key);
+        if (keyClass == Double.class) {
+            double d = (Double) key;
+            if (d == 0.0d) d = 0.0d; // Canonicalize -0.0
+            if (Double.isFinite(d) && d == Math.rint(d) && d >= Long.MIN_VALUE && d <= Long.MAX_VALUE) {
+                return hashLong((long) d);
+            }
+            return hashDouble(d);
+        }
+
+        // Less common types - use instanceof checks
         if (key instanceof Number || key instanceof Boolean || key instanceof AtomicBoolean) {
             return valueHashCode(key); // align whole floats with integrals
         }
-        
+
         // Handle CharSequences with case sensitivity
         if (!caseSensitive && key instanceof CharSequence) {
-            // OPTIMIZATION: Use CharSequence version directly - no special casing needed
-            // This works efficiently for String, StringBuilder, StringBuffer, etc.
             return StringUtilities.hashCodeIgnoreCase((CharSequence) key);
         }
-        
+
         // Non-numeric, non-boolean, non-char types use their natural hashCode
         return key.hashCode();
     }
@@ -1260,11 +1272,16 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         if (simpleKeysMode) {
             return false;
         }
-        // Optimized check order for better performance
-        // 1. null check first (fastest)
-        // 2. instanceof Collection (faster than isArray)
-        // 3. isArray check last (requires getClass() call)
-        return o instanceof Collection || (o != null && o.getClass().isArray());
+        if (o == null) {
+            return false;
+        }
+        // Fast path: known simple types are never arrays or collections
+        Class<?> c = o.getClass();
+        if (c == String.class || c == Integer.class || c == Long.class || c == Double.class) {
+            return false;
+        }
+        // Check for Collection or array
+        return o instanceof Collection || c.isArray();
     }
     
     /**

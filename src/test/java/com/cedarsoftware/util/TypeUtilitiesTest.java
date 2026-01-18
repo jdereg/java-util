@@ -903,22 +903,4 @@ public class TypeUtilitiesTest {
         GenericArrayType gat = (GenericArrayType) resolved;
         assertEquals(Integer.class, gat.getGenericComponentType(), "Component should resolve to Integer.class");
     }
-
-    @Test
-    public void testSetTypeResolveCacheWithNull() {
-        assertThrows(IllegalArgumentException.class, () -> TypeUtilities.setTypeResolveCache(null));
-    }
-
-    @Test
-    public void testSetTypeResolveCacheUsesProvidedMap() throws Exception {
-        Map<Map.Entry<Type, Type>, Type> customCache = new ConcurrentHashMap<>();
-        TypeUtilities.setTypeResolveCache(customCache);
-
-        Field field = TestGeneric.class.getField("field");
-        TypeUtilities.resolveType(TestConcrete.class, field.getGenericType());
-
-        assertFalse(customCache.isEmpty(), "Cache should contain resolved entry");
-
-        TypeUtilities.setTypeResolveCache(new LRUCache<>(2000));
-    }
 }

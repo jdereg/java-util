@@ -17,6 +17,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.LockSupport;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -155,8 +156,7 @@ public class ThreadedLRUCacheStrategy<K, V> implements Map<K, V>, Closeable {
 
     // Logical clock for LRU ordering - faster than System.nanoTime() (~5ns vs ~25ns)
     // Higher values = more recently used
-    private static final java.util.concurrent.atomic.AtomicLong LOGICAL_CLOCK =
-            new java.util.concurrent.atomic.AtomicLong(0);
+    private static final AtomicLong LOGICAL_CLOCK = new AtomicLong(0);
 
     /**
      * Create a ThreadedLRUCacheStrategy with the specified capacity.

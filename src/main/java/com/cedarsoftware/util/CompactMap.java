@@ -2718,8 +2718,8 @@ public class CompactMap<K, V> implements Map<K, V> {
             "0207000807001C000107004400FF0012000107000800010700540003006C00000002006D006E" +
             "000000080001006F000100750077000000120002004F0002007800090079007B007D0019";
 
-        // Cached template bytecode (lazily initialized)
-        private static volatile byte[] templateBytecode;
+        // Cached template bytecode (eagerly initialized - avoids volatile/synchronized overhead)
+        private static final byte[] templateBytecode = ByteUtilities.decode(BYTECODE_TEMPLATE);
 
         /**
          * Returns an existing or creates a new template class for the specified configuration options.
@@ -2829,16 +2829,7 @@ public class CompactMap<K, V> implements Map<K, V> {
                 throw new IllegalArgumentException("Class name suffix must be exactly 16 characters: " + classNameSuffix);
             }
 
-            // Lazily parse template bytecode
-            if (templateBytecode == null) {
-                synchronized (TemplateGenerator.class) {
-                    if (templateBytecode == null) {
-                        templateBytecode = ByteUtilities.decode(BYTECODE_TEMPLATE);
-                    }
-                }
-            }
-
-            // Create a copy to patch
+            // Create a copy to patch (templateBytecode is eagerly initialized)
             byte[] patched = templateBytecode.clone();
             byte[] replacement = classNameSuffix.getBytes(StandardCharsets.UTF_8);
 

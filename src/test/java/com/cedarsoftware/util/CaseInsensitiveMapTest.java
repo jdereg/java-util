@@ -2526,7 +2526,7 @@ void testComputeIfAbsent() {
 
     @Test
     public void testReplaceCacheWithNull() {
-        assertThrows(NullPointerException.class, () -> CaseInsensitiveMap.replaceCache(null));
+        assertThrows(NullPointerException.class, () -> CaseInsensitiveMap.replaceCache((LRUCache<String, CaseInsensitiveMap.CaseInsensitiveString>) null));
     }
 
     @Test
@@ -2554,51 +2554,31 @@ void testComputeIfAbsent() {
     }
 
     @Test
-    public void testMaxCacheLengthStringBehavior() {
-        try {
-            CaseInsensitiveMap<String, String> map = new CaseInsensitiveMap<>();
+    public void testCachingBehavior() {
+        // Note: max cache length is now configured via system property at JVM startup
+        // -Dcaseinsensitive.max.string.length=100 (default is 100)
+        CaseInsensitiveMap<String, String> map = new CaseInsensitiveMap<>();
 
-            // Add a key < 100 chars
-            String originalKey = "TestString12";
-            map.put(originalKey, "value1");
+        // Add a key < 100 chars (default max length)
+        String originalKey = "TestString12";
+        map.put(originalKey, "value1");
 
-            // Get the CaseInsensitiveString wrapper
-            Map<String, String> wrapped = map.getWrappedMap();
-            Object originalWrapper = wrapped.keySet().iterator().next();
+        // Get the CaseInsensitiveString wrapper
+        Map<String, String> wrapped = map.getWrappedMap();
+        Object originalWrapper = wrapped.keySet().iterator().next();
 
-            // Remove using different case
-            map.remove("TESTSTRING12");
+        // Remove using different case
+        map.remove("TESTSTRING12");
 
-            // Put back with different value
-            map.put(originalKey, "value2");
+        // Put back with different value
+        map.put(originalKey, "value2");
 
-            // Get new wrapper
-            wrapped = map.getWrappedMap();
-            Object newWrapper = wrapped.keySet().iterator().next();
+        // Get new wrapper
+        wrapped = map.getWrappedMap();
+        Object newWrapper = wrapped.keySet().iterator().next();
 
-            // Assert same wrapper was reused from cache
-            assertSame(originalWrapper, newWrapper, "Cached CaseInsensitiveString instance should be reused");
-
-            // Now set max length to 10 (our test string is longer than 10)
-            CaseInsensitiveMap.setMaxCacheLengthString(10);
-
-            // Clear map and repeat process
-            map.clear();
-            map.put(originalKey, "value3");
-
-            Object firstWrapper = map.getWrappedMap().keySet().iterator().next();
-
-            map.remove("TESTstring12");
-            map.put(originalKey, "value4");
-
-            Object secondWrapper = map.getWrappedMap().keySet().iterator().next();
-
-            // Should be different instances now as string is > 10 chars
-            assertNotSame(firstWrapper, secondWrapper, "Strings exceeding max length should use different instances");
-        } finally {
-            // Reset to default
-            CaseInsensitiveMap.setMaxCacheLengthString(100);
-        }
+        // Assert same wrapper was reused from cache (string is under default max length of 100)
+        assertSame(originalWrapper, newWrapper, "Cached CaseInsensitiveString instance should be reused");
     }
 
     @Test
@@ -2625,8 +2605,12 @@ void testComputeIfAbsent() {
     }
     
     @Test
-    public void testInvalidMaxLength() {
-        assertThrows(IllegalArgumentException.class, () -> CaseInsensitiveMap.setMaxCacheLengthString(9));
+    public void testSetMaxCacheLengthStringIsDeprecatedNoOp() {
+        // setMaxCacheLengthString is now deprecated and has no effect
+        // Max length is configured via system property: -Dcaseinsensitive.max.string.length=100
+        // This should not throw - it's a no-op for backwards compatibility
+        CaseInsensitiveMap.setMaxCacheLengthString(9);
+        CaseInsensitiveMap.setMaxCacheLengthString(100);
     }
 
     @Test

@@ -265,7 +265,7 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
     public static void replaceCache(LRUCache<String, CaseInsensitiveString> lruCache) {
         Objects.requireNonNull(lruCache, "Cache cannot be null");
         Map<String, CaseInsensitiveString> oldCache = CaseInsensitiveString.COMMON_STRINGS_REF.getAndSet(lruCache);
-        CaseInsensitiveString.cacheCapacity = lruCache.getCapacity();
+        // Note: LRUCache tracks its own capacity internally via getCapacity()
         if (oldCache instanceof LRUCache) {
             ((LRUCache<String, CaseInsensitiveString>) oldCache).shutdown();
         }
@@ -279,19 +279,35 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
      * - Existing CaseInsensitiveString instances in maps remain valid
      * - The new cache will begin populating with strings as they are accessed
      * - Cache size is bounded by batch eviction when capacity is exceeded
+     * <p>
+     * Note: The capacity parameter is ignored. Cache capacity is configured via the system property
+     * {@code -Dcaseinsensitive.cache.size=5000} at JVM startup.
      *
      * @param cache the new ConcurrentHashMap instance to use for caching CaseInsensitiveString objects
-     * @param capacity the maximum capacity before batch eviction occurs
+     * @param capacity ignored - use system property {@code caseinsensitive.cache.size} instead
      * @throws NullPointerException if the provided cache is null
-     * @throws IllegalArgumentException if capacity is less than 100
+     * @deprecated Use {@link #replaceCache(ConcurrentHashMap)} instead. Capacity is now configured via system property.
      */
+    @Deprecated
     public static void replaceCache(ConcurrentHashMap<String, CaseInsensitiveString> cache, int capacity) {
+        replaceCache(cache);
+    }
+
+    /**
+     * Replaces the current cache used for CaseInsensitiveString instances with a new ConcurrentHashMap.
+     * This provides maximum performance by avoiding LRU tracking overhead.
+     * When replacing the cache:
+     * - The old cache is shut down to release scheduled cleanup resources (if LRUCache)
+     * - Existing CaseInsensitiveString instances in maps remain valid
+     * - The new cache will begin populating with strings as they are accessed
+     * - Cache size is bounded by batch eviction when default capacity is exceeded
+     *
+     * @param cache the new ConcurrentHashMap instance to use for caching CaseInsensitiveString objects
+     * @throws NullPointerException if the provided cache is null
+     */
+    public static void replaceCache(ConcurrentHashMap<String, CaseInsensitiveString> cache) {
         Objects.requireNonNull(cache, "Cache cannot be null");
-        if (capacity < 100) {
-            throw new IllegalArgumentException("Cache capacity must be at least 100");
-        }
         Map<String, CaseInsensitiveString> oldCache = CaseInsensitiveString.COMMON_STRINGS_REF.getAndSet(cache);
-        CaseInsensitiveString.cacheCapacity = capacity;
         if (oldCache instanceof LRUCache) {
             ((LRUCache<String, CaseInsensitiveString>) oldCache).shutdown();
         }
@@ -299,16 +315,19 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
 
     /**
      * Resets the CaseInsensitiveString cache to its default state: an LRUCache with
-     * 5000 capacity using the THREADED strategy. This is useful for testing to ensure
+     * default capacity using the THREADED strategy. This is useful for testing to ensure
      * a clean state between tests.
      * <p>
      * The default uses LRUCache for bounded memory with true LRU eviction.
+     * Cache size and max string length are configured via system properties at JVM startup:
+     * <ul>
+     *   <li>{@code -Dcaseinsensitive.cache.size=5000}</li>
+     *   <li>{@code -Dcaseinsensitive.max.string.length=100}</li>
+     * </ul>
      */
     public static void resetCacheToDefault() {
         Map<String, CaseInsensitiveString> oldCache = CaseInsensitiveString.COMMON_STRINGS_REF.getAndSet(
                 new LRUCache<>(CaseInsensitiveString.DEFAULT_CACHE_SIZE, LRUCache.StrategyType.THREADED));
-        CaseInsensitiveString.cacheCapacity = CaseInsensitiveString.DEFAULT_CACHE_SIZE;
-        CaseInsensitiveString.maxCacheLengthString = CaseInsensitiveString.DEFAULT_MAX_STRING_LENGTH;
         if (oldCache instanceof LRUCache) {
             ((LRUCache<String, CaseInsensitiveString>) oldCache).shutdown();
         }
@@ -316,17 +335,16 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
 
     /**
      * Sets the maximum string length for which CaseInsensitiveString instances will be cached.
-     * Strings longer than this length will not be cached but instead create new instances
-     * each time they are needed. This helps prevent memory exhaustion from very long strings.
+     * <p>
+     * Note: This method is deprecated and has no effect. Configure max string length via the
+     * system property {@code -Dcaseinsensitive.max.string.length=100} at JVM startup.
      *
-     * @param length the maximum length of strings to cache. Must be non-negative.
-     * @throws IllegalArgumentException if length is {@code < 10}.
+     * @param length ignored - use system property {@code caseinsensitive.max.string.length} instead
+     * @deprecated Use system property {@code -Dcaseinsensitive.max.string.length=100} instead.
      */
+    @Deprecated
     public static void setMaxCacheLengthString(int length) {
-        if (length < 10) {
-            throw new IllegalArgumentException("Max cache String length must be at least 10.");
-        }
-        CaseInsensitiveString.maxCacheLengthString = length;
+        // No-op: max string length is now configured via system property at startup
     }
 
     /**
@@ -1058,8 +1076,13 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
         // Using LRUCache for bounded memory with true LRU eviction
         private static final AtomicReference<Map<String, CaseInsensitiveString>> COMMON_STRINGS_REF =
             new AtomicReference<>(new LRUCache<>(DEFAULT_CACHE_SIZE, LRUCache.StrategyType.THREADED));
-        private static volatile int maxCacheLengthString = DEFAULT_MAX_STRING_LENGTH;
-        private static volatile int cacheCapacity = DEFAULT_CACHE_SIZE;
+
+        // Performance: Using final fields avoids volatile overhead in hot path (CaseInsensitiveString.of())
+        // Configurable via system properties at startup:
+        //   -Dcaseinsensitive.max.string.length=100
+        //   -Dcaseinsensitive.cache.size=5000
+        private static final int maxCacheLengthString = DEFAULT_MAX_STRING_LENGTH;
+        private static final int cacheCapacity = DEFAULT_CACHE_SIZE;
 
         // Pre-populate with common values
         static {

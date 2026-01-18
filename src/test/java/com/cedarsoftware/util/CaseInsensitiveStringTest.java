@@ -14,8 +14,7 @@ class CaseInsensitiveStringTest {
 
     @AfterEach
     public void cleanup() {
-        CaseInsensitiveMap.setMaxCacheLengthString(100);
-        CaseInsensitiveMap.replaceCache(new LRUCache<>(5000, LRUCache.StrategyType.THREADED));
+        CaseInsensitiveMap.resetCacheToDefault();
     }
 
     @Test

@@ -67,11 +67,8 @@ class CaseInsensitiveMapTest
     private static final Logger LOG = Logger.getLogger(CaseInsensitiveMapTest.class.getName());
     @AfterEach
     public void cleanup() {
-        // Reset to default for other tests
-        CaseInsensitiveMap.setMaxCacheLengthString(100);
-        // Restore the default CaseInsensitiveString cache to avoid
-        // interference between tests that modify the global cache.
-        CaseInsensitiveMap.replaceCache(new LRUCache<>(5000, LRUCache.StrategyType.THREADED));
+        // Reset cache to default for other tests
+        CaseInsensitiveMap.resetCacheToDefault();
     }
 
     @Test

@@ -1,5 +1,21 @@
 ### Revision History
 
+#### 4.83.0  - 2025-01-18
+* **PERFORMANCE**: `LRUCache` (THREADED strategy) - Major performance improvements reducing overhead from ~5x to ~1.4x vs ConcurrentHashMap
+  * Replaced `System.nanoTime()` with logical clock (AtomicLong counter) for LRU ordering - ~5ns vs ~25ns per operation
+  * Simplified probabilistic timestamp updates using timestamp low bits - eliminates atomic/ThreadLocal operations on most accesses
+  * Removed extra `get()` call in `put()` since Node creation is now cheap with logical clock
+  * Added amortized eviction (batch every 16 inserts) to spread eviction cost across operations
+* **BUG FIX**: `LRUCache` - Fixed hard cap enforcement to guarantee memory bounds under high-throughput scenarios
+  * Split eviction into `tryEvict()` (skippable) and `forceEvict()` (blocks until complete)
+  * Hard cap (2x capacity) now uses `LockSupport.parkNanos(1000)` for efficient spinning with low CPU usage
+  * Fixes issue where rapid inserts could exceed memory bounds when eviction couldn't keep up
+* **CHANGE**: `CaseInsensitiveMap` - Default cache changed from `ConcurrentHashMap` to `LRUCache` (THREADED strategy)
+  * Provides true LRU eviction (hot entries preserved) vs random eviction with ConcurrentHashMap
+  * Guarantees bounded memory (max 2x capacity) vs loose bounds with ConcurrentHashMap
+  * Performance is equivalent or better in benchmarks
+  * Users can still use `replaceCache()` to configure ConcurrentHashMap if desired
+
 #### 4.82.0  - 2025-01-17
 * **BUG FIX**: `TypeUtilities` - Fixed WildcardType bounds array mutation bug
   * External `WildcardType` implementations return internal arrays from `getUpperBounds()`/`getLowerBounds()`

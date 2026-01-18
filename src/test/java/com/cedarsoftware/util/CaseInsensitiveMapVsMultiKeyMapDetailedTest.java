@@ -64,7 +64,7 @@ public class CaseInsensitiveMapVsMultiKeyMapDetailedTest {
             
             // Create fresh maps for each round
             CaseInsensitiveMap<String, String> ciMap = new CaseInsensitiveMap<>(
-                Collections.emptyMap(), 
+                Collections.emptyMap(),
                 new ConcurrentHashMap<>(size)
             );
             MultiKeyMap<String> mkMap = MultiKeyMap.<String>builder()

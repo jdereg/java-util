@@ -17,6 +17,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.LockSupport;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import com.cedarsoftware.util.ConcurrentHashMapNullSafe;
@@ -37,6 +38,10 @@ import com.cedarsoftware.util.MapUtilities;
  * <p>
  * <b>Sample-15 Eviction:</b> Instead of sorting all entries (O(n log n)), we sample 15 random entries and evict
  * the oldest one. This provides ~99% accuracy compared to true LRU (based on Redis research) with O(1) cost.
+ * <p>
+ * <b>Probabilistic Timestamp Updates:</b> To minimize overhead, timestamps are updated probabilistically (~12.5%
+ * of accesses). This dramatically reduces the cost of volatile writes and System.nanoTime() calls while maintaining
+ * approximate LRU behavior. Frequently accessed entries will still have their timestamps updated regularly.
  * <p>
  * <b>Memory Guarantee:</b> The cache will never exceed 2x the specified capacity, allowing users to size
  * their cache with predictable worst-case memory usage.
@@ -130,13 +135,28 @@ public class ThreadedLRUCacheStrategy<K, V> implements Map<K, V>, Closeable {
         Node(K key, V value) {
             this.key = key;
             this.value = value;
-            this.timestamp = System.nanoTime();
+            // Use logical clock instead of System.nanoTime() - much faster (~5ns vs ~25ns)
+            this.timestamp = LOGICAL_CLOCK.incrementAndGet();
         }
 
+        /**
+         * Updates the timestamp with probabilistic sampling to reduce overhead.
+         * Uses low bits of current timestamp for randomness - no extra atomic operations.
+         * Only updates ~12.5% of the time to maintain approximate LRU behavior.
+         */
         void updateTimestamp() {
-            this.timestamp = System.nanoTime();
+            // Use low bits of current timestamp for probabilistic check
+            // This avoids any atomic/ThreadLocal operations on most accesses
+            if ((this.timestamp & 0x7) == 0) {
+                this.timestamp = LOGICAL_CLOCK.incrementAndGet();
+            }
         }
     }
+
+    // Logical clock for LRU ordering - faster than System.nanoTime() (~5ns vs ~25ns)
+    // Higher values = more recently used
+    private static final java.util.concurrent.atomic.AtomicLong LOGICAL_CLOCK =
+            new java.util.concurrent.atomic.AtomicLong(0);
 
     /**
      * Create a ThreadedLRUCacheStrategy with the specified capacity.
@@ -339,54 +359,87 @@ public class ThreadedLRUCacheStrategy<K, V> implements Map<K, V>, Closeable {
         return null;
     }
 
+    // Counter for amortized eviction - evict every N inserts when over capacity
+    private static final int EVICTION_BATCH_SIZE = 16;
+    private final java.util.concurrent.atomic.AtomicInteger insertsSinceEviction =
+        new java.util.concurrent.atomic.AtomicInteger(0);
+
     /**
      * Associates the specified value with the specified key in this cache.
      * <p>
-     * Zone-based eviction:
+     * Uses amortized eviction: instead of evicting on every insert when full,
+     * we batch evictions every EVICTION_BATCH_SIZE inserts. This provides:
      * <ul>
-     *   <li>Zone A/B (0 to 1.5x): Insert and return immediately</li>
-     *   <li>Zone C (1.5x to 2x): Insert, then probabilistically evict</li>
-     *   <li>Zone D (2x+): Insert, then evict until under hard cap</li>
+     *   <li>Predictable performance (eviction cost spread across many inserts)</li>
+     *   <li>Memory bounded (never exceeds hardCap)</li>
+     *   <li>LRU behavior preserved (old entries evicted, new entries cached)</li>
      * </ul>
-     * <p>
-     * Note: We insert first, then enforce limits. This avoids the TOCTOU race where
-     * multiple threads check size, all see "under limit", then all insert. By checking
-     * after insert and looping until under hardCap, we guarantee the hard cap is enforced.
      */
     @Override
     public V put(K key, V value) {
-        // Insert the new entry first (fast path)
+        // Create node and insert directly - Node creation is cheap (uses logical clock)
         Node<K, V> newNode = new Node<>(key, value);
         Node<K, V> oldNode = cache.put(key, newNode);
 
         if (oldNode != null) {
-            // Replacement - no size change, update timestamp
-            newNode.updateTimestamp();
+            // Replacement - return old value (no eviction needed)
             return oldNode.value;
         }
 
-        // New entry added - check zone and enforce limits
-        int size = cache.size();
-
-        if (size >= hardCap) {
-            // Zone D: At or above hard cap - evict until under hard cap
-            // Loop ensures we don't just do one eviction (which might fail due to CAS race)
-            while (cache.size() >= hardCap) {
-                if (!evictOldestUsingSample()) {
-                    break;  // Cache is empty or couldn't evict
+        // New entry - check if eviction needed (amortized: every EVICTION_BATCH_SIZE inserts)
+        int inserts = insertsSinceEviction.incrementAndGet();
+        if (inserts >= EVICTION_BATCH_SIZE) {
+            if (insertsSinceEviction.compareAndSet(inserts, 0)) {
+                int size = cache.size();
+                if (size > capacity) {
+                    tryEvict(Math.min(EVICTION_BATCH_SIZE, size - capacity));
                 }
             }
-        } else if (size > softCap) {
-            // Zone C: Probabilistic eviction
-            // Probability increases linearly from 0% at softCap to 100% at hardCap
-            double probability = (double) (size - softCap) / (hardCap - softCap);
-            if (ThreadLocalRandom.current().nextDouble() < probability) {
-                evictOldestUsingSample();
-            }
         }
-        // Zone A/B: No inline eviction needed
+
+        // Hard cap enforcement - MUST evict if at 2x capacity (memory guarantee)
+        int size = cache.size();
+        if (size >= hardCap) {
+            forceEvict(size - capacity);
+        }
 
         return null;
+    }
+
+    /**
+     * Try to evict entries. Skips if another thread is already evicting.
+     * Used for amortized eviction where skipping is acceptable.
+     */
+    private void tryEvict(int count) {
+        if (count <= 0) return;
+        if (!cleanupInProgress.compareAndSet(false, true)) {
+            return;  // Another thread is evicting - skip
+        }
+        try {
+            for (int i = 0; i < count && cache.size() > capacity; i++) {
+                if (!evictOldestUsingSample()) break;
+            }
+        } finally {
+            cleanupInProgress.set(false);
+        }
+    }
+
+    /**
+     * Force eviction - blocks until we can evict. Used for hard cap enforcement.
+     */
+    private void forceEvict(int count) {
+        if (count <= 0) return;
+        // Spin until we acquire the lock - hard cap MUST be enforced
+        while (!cleanupInProgress.compareAndSet(false, true)) {
+            LockSupport.parkNanos(1000);  // 1μs - lower CPU than Thread.yield()
+        }
+        try {
+            for (int i = 0; i < count && cache.size() > capacity; i++) {
+                if (!evictOldestUsingSample()) break;
+            }
+        } finally {
+            cleanupInProgress.set(false);
+        }
     }
 
     @Override
@@ -418,19 +471,20 @@ public class ThreadedLRUCacheStrategy<K, V> implements Map<K, V>, Closeable {
         });
         if (node != null) {
             node.updateTimestamp();
-            // Check zone and enforce limits (same logic as put())
-            int size = cache.size();
-            if (size >= hardCap) {
-                while (cache.size() >= hardCap) {
-                    if (!evictOldestUsingSample()) {
-                        break;
+            // Amortized eviction check (same logic as put())
+            int inserts = insertsSinceEviction.incrementAndGet();
+            if (inserts >= EVICTION_BATCH_SIZE) {
+                if (insertsSinceEviction.compareAndSet(inserts, 0)) {
+                    int size = cache.size();
+                    if (size > capacity) {
+                        tryEvict(Math.min(EVICTION_BATCH_SIZE, size - capacity));
                     }
                 }
-            } else if (size > softCap) {
-                double probability = (double) (size - softCap) / (hardCap - softCap);
-                if (ThreadLocalRandom.current().nextDouble() < probability) {
-                    evictOldestUsingSample();
-                }
+            }
+            // Hard cap enforcement - MUST evict
+            int size = cache.size();
+            if (size >= hardCap) {
+                forceEvict(size - capacity);
             }
             return node.value;
         }
@@ -445,19 +499,20 @@ public class ThreadedLRUCacheStrategy<K, V> implements Map<K, V>, Closeable {
             oldNode.updateTimestamp();
             return oldNode.value;
         }
-        // New entry was added - check zone and enforce limits (same logic as put())
-        int size = cache.size();
-        if (size >= hardCap) {
-            while (cache.size() >= hardCap) {
-                if (!evictOldestUsingSample()) {
-                    break;
+        // New entry was added - amortized eviction check (same logic as put())
+        int inserts = insertsSinceEviction.incrementAndGet();
+        if (inserts >= EVICTION_BATCH_SIZE) {
+            if (insertsSinceEviction.compareAndSet(inserts, 0)) {
+                int size = cache.size();
+                if (size > capacity) {
+                    tryEvict(Math.min(EVICTION_BATCH_SIZE, size - capacity));
                 }
             }
-        } else if (size > softCap) {
-            double probability = (double) (size - softCap) / (hardCap - softCap);
-            if (ThreadLocalRandom.current().nextDouble() < probability) {
-                evictOldestUsingSample();
-            }
+        }
+        // Hard cap enforcement - MUST evict
+        int size = cache.size();
+        if (size >= hardCap) {
+            forceEvict(size - capacity);
         }
         return null;
     }

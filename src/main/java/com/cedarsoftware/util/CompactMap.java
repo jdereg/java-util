@@ -2718,7 +2718,7 @@ public class CompactMap<K, V> implements Map<K, V> {
             "0207000807001C000107004400FF0012000107000800010700540003006C00000002006D006E" +
             "000000080001006F000100750077000000120002004F0002007800090079007B007D0019";
 
-        // Cached template bytecode (eagerly initialized - avoids volatile/synchronized overhead)
+        // Cached template bytecode (eagerly initialized)
         private static final byte[] templateBytecode = ByteUtilities.decode(BYTECODE_TEMPLATE);
 
         /**

@@ -1,20 +1,58 @@
 ### Revision History
 
 #### 4.83.0  - 2025-01-18
+* **BUG FIX**: `ClassValueMap` - Fixed race condition in `putIfAbsent(null, value)` for null key handling
+  * Previously used separate `volatile boolean hasNullKeyMapping` + `AtomicReference<V> nullKeyValue` fields
+  * Race: thread A could see `hasNullKeyMapping=true` but read stale `nullKeyValue` before thread B's write completed
+  * Fix: Combined into single `AtomicReference<Object> nullKeyStore` with sentinel values (`NO_NULL_KEY_MAPPING`, `NULL_FOR_NULL_KEY`)
+  * Eliminates volatile read on common `get()` path - now pure AtomicReference.get()
+* **BUG FIX**: `TTLCache` - Fixed thread-safety issue in `put()` that could corrupt LRU chain
+  * Previously used `tryLock()` and skipped LRU updates if lock unavailable
+  * Under contention, cache map and LRU chain could become inconsistent
+  * Fix: Now acquires lock for entire put operation; moves cache map update inside lock
+  * Added safety check in `moveToTail()` to skip already-evicted nodes
+* **BUG FIX**: `UniversalConversions` - Fixed NPE in bridge methods when source value is null
+  * `integerToAtomicInteger()`, `longToAtomicLong()`, `booleanToAtomicBoolean()` now return null for null input
+  * Previously threw NullPointerException on `new AtomicXxx(null)`
 * **PERFORMANCE**: `LRUCache` (THREADED strategy) - Major performance improvements reducing overhead from ~5x to ~1.4x vs ConcurrentHashMap
   * Replaced `System.nanoTime()` with logical clock (AtomicLong counter) for LRU ordering - ~5ns vs ~25ns per operation
   * Simplified probabilistic timestamp updates using timestamp low bits - eliminates atomic/ThreadLocal operations on most accesses
   * Removed extra `get()` call in `put()` since Node creation is now cheap with logical clock
   * Added amortized eviction (batch every 16 inserts) to spread eviction cost across operations
+* **PERFORMANCE**: `LRUCache` (THREADED strategy) - Removed unnecessary volatile from `Node.value` and `Node.timestamp`
+  * `value` is never modified after construction
+  * `timestamp` is used for approximate LRU only - stale reads acceptable given existing approximations
+  * ConcurrentHashMap publish provides necessary memory barriers for initial visibility
+* **PERFORMANCE**: `LRUCache` (LOCKING strategy) - GC improvements
+  * Made `Node.key` final
+  * Null out `node.prev`/`node.next` links on removal to avoid GC nepotism
+  * Null out `node.value` on eviction to release value reference promptly
+* **PERFORMANCE**: `StringUtilities.hashCodeIgnoreCase()` - Single-pass algorithm optimization
+  * Previously made two passes: first to check ASCII, then to compute hash
+  * Now computes hash while checking for non-ASCII, falling back only when non-ASCII detected
+* **PERFORMANCE**: `Converter` - Removed ~50 redundant conversion entries now handled by surrogate system
+  * Entries like `Byte → AtomicBoolean`, `String → AtomicInteger`, etc. are now automatic via surrogate bridges
+  * Example: `String → AtomicInteger` now goes `String → Integer → AtomicInteger` via surrogate system
+  * Reduces CONVERSION_DB size and maintenance burden without losing any functionality
 * **BUG FIX**: `LRUCache` - Fixed hard cap enforcement to guarantee memory bounds under high-throughput scenarios
   * Split eviction into `tryEvict()` (skippable) and `forceEvict()` (blocks until complete)
   * Hard cap (2x capacity) now uses `LockSupport.parkNanos(1000)` for efficient spinning with low CPU usage
   * Fixes issue where rapid inserts could exceed memory bounds when eviction couldn't keep up
+* **IMPROVED**: `LRUCache` (THREADED strategy) - Fixed scheduler shutdown to properly clear reference
+  * `shutdownScheduler()` now sets `scheduler = null` after shutdown to allow recreation
+  * Previously, shutdown scheduler reference remained, preventing new cache instances from starting cleanup
+* **NEW**: `Converter` - Added `Boolean ↔ BitSet` conversions
+  * `BitSet → Boolean`: returns `true` if any bit set, `false` if empty
+  * `Boolean → BitSet`: `true` creates BitSet with bit 0 set, `false` creates empty BitSet
+  * Primitive `boolean ↔ BitSet` works automatically via surrogate system
 * **CHANGE**: `CaseInsensitiveMap` - Default cache changed from `ConcurrentHashMap` to `LRUCache` (THREADED strategy)
   * Provides true LRU eviction (hot entries preserved) vs random eviction with ConcurrentHashMap
   * Guarantees bounded memory (max 2x capacity) vs loose bounds with ConcurrentHashMap
   * Performance is equivalent or better in benchmarks
   * Users can still use `replaceCache()` to configure ConcurrentHashMap if desired
+* **BUILD**: Updated json-io test dependency from 4.81.0 to 4.83.0
+* **BUILD**: Re-enabled `ConverterEverythingTest` (was temporarily excluded)
+* **DOCS**: Updated README to reflect 1600+ conversions (was 1000+)
 
 #### 4.82.0  - 2025-01-17
 * **BUG FIX**: `TypeUtilities` - Fixed WildcardType bounds array mutation bug

@@ -36,7 +36,6 @@ import java.util.concurrent.ConcurrentHashMap;
 public class TypeUtilities {
     private static final int DEFAULT_TYPE_CACHE_SIZE = 2000;
 
-    // Performance: Using final field avoids volatile overhead in hot path (resolveType)
     // Size configurable via system property: -Dcedarsoftware.util.typeResolveCacheSize=5000
     private static final Map<Map.Entry<Type, Type>, Type> TYPE_RESOLVE_CACHE =
             new LRUCache<>(Integer.getInteger("cedarsoftware.util.typeResolveCacheSize", DEFAULT_TYPE_CACHE_SIZE));

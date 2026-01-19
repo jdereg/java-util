@@ -26,6 +26,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ConcurrentNavigableMap;
 import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
@@ -1077,12 +1078,15 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
         private static final AtomicReference<Map<String, CaseInsensitiveString>> COMMON_STRINGS_REF =
             new AtomicReference<>(new LRUCache<>(DEFAULT_CACHE_SIZE, LRUCache.StrategyType.THREADED));
 
-        // Performance: Using final fields avoids volatile overhead in hot path (CaseInsensitiveString.of())
         // Configurable via system properties at startup:
         //   -Dcaseinsensitive.max.string.length=100
         //   -Dcaseinsensitive.cache.size=5000
         private static final int maxCacheLengthString = DEFAULT_MAX_STRING_LENGTH;
         private static final int cacheCapacity = DEFAULT_CACHE_SIZE;
+
+        // Pre-computed flag to avoid instanceof check on every cache miss
+        // This is safe because the cache type is set at class initialization and never changes
+        private static final boolean isLruCache = COMMON_STRINGS_REF.get() instanceof LRUCache;
 
         // Pre-populate with common values
         static {
@@ -1129,12 +1133,12 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
             // For LRUCache, use probabilistic caching when at capacity
             // This allows the cache to slowly adapt to new working sets without
             // paying eviction cost on every miss
-            if (cache instanceof LRUCache) {
+            if (isLruCache) {
                 LRUCache<String, CaseInsensitiveString> lruCache = (LRUCache<String, CaseInsensitiveString>) cache;
-                if (lruCache.size() >= lruCache.getCapacity()) {
+                if (lruCache.size() >= cacheCapacity) {
                     // Cache is full - only try to cache ~12.5% of new entries
-                    // This allows slow adaptation while keeping overhead low
-                    if ((System.nanoTime() & 0x7) == 0) {
+                    // Use ThreadLocalRandom instead of System.nanoTime() to avoid syscall overhead
+                    if ((ThreadLocalRandom.current().nextInt() & 0x7) == 0) {
                         return cache.computeIfAbsent(s, CaseInsensitiveString::new);
                     }
                     // Skip caching this time to avoid eviction overhead

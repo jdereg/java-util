@@ -6288,6 +6288,22 @@ class ConverterEverythingTest {
                 {new AtomicBoolean(true), bitSet0}, // AtomicBoolean(true) = bit 0 set
                 {new AtomicBoolean(false), new BitSet()}, // AtomicBoolean(false) = empty
         });
+        TEST_DB.put(pair(BitSet.class, Boolean.class), new Object[][]{
+                {bitSet123, true}, // Non-empty BitSet = true
+                {new BitSet(), false}, // Empty BitSet = false
+        });
+        TEST_DB.put(pair(Boolean.class, BitSet.class), new Object[][]{
+                {true, bitSet0}, // Boolean(true) = bit 0 set
+                {false, new BitSet()}, // Boolean(false) = empty
+        });
+        TEST_DB.put(pair(BitSet.class, boolean.class), new Object[][]{
+                {bitSet123, true}, // Non-empty BitSet = true
+                {new BitSet(), false}, // Empty BitSet = false
+        });
+        TEST_DB.put(pair(boolean.class, BitSet.class), new Object[][]{
+                {true, bitSet0}, // boolean true = bit 0 set
+                {false, new BitSet()}, // boolean false = empty
+        });
         TEST_DB.put(pair(BitSet.class, String.class), new Object[][]{
                 {bitSet123, "101010"}, // BitSet bits 1,3,5 = binary 101010
                 {new BitSet(), ""}, // Empty BitSet = empty string

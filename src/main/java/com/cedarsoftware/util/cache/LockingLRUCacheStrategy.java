@@ -47,7 +47,7 @@ public class LockingLRUCacheStrategy<K, V> implements Map<K, V> {
     private final Lock lock = new ReentrantLock();
 
     private static class Node<K, V> {
-        K key;
+        final K key;
         V value;
         Node<K, V> prev;
         Node<K, V> next;
@@ -87,7 +87,10 @@ public class LockingLRUCacheStrategy<K, V> implements Map<K, V> {
             // Node has been evicted; skip reordering
             return;
         }
-        removeNode(node);
+        // Unlink from current position (don't null links since we're re-adding)
+        node.prev.next = node.next;
+        node.next.prev = node.prev;
+        // Re-add at head
         addToHead(node);
     }
 
@@ -105,7 +108,7 @@ public class LockingLRUCacheStrategy<K, V> implements Map<K, V> {
     }
 
     /**
-     * Removes a node from the doubly linked list.
+     * Removes a node from the doubly linked list and nulls out its links.
      * This operation must be performed under a lock.
      *
      * @param node the node to be removed
@@ -114,21 +117,22 @@ public class LockingLRUCacheStrategy<K, V> implements Map<K, V> {
         if (node.prev != null && node.next != null) {
             node.prev.next = node.next;
             node.next.prev = node.prev;
+            node.prev = null;  // Null out links to avoid GC nepotism
+            node.next = null;
         }
     }
 
     /**
      * Removes and returns the least recently used node from the tail of the list.
      * This operation must be performed under a lock.
+     * Note: The caller should null out node.value after using it to help GC.
      *
      * @return the removed node, or null if the list is empty
      */
     private Node<K, V> removeTail() {
         Node<K, V> node = tail.prev;
         if (node != head) {
-            removeNode(node);
-            node.prev = null; // Null out links to avoid GC nepotism
-            node.next = null; // Null out links to avoid GC nepotism
+            removeNode(node);  // This nulls out prev/next links
         }
         return node;
     }
@@ -192,6 +196,7 @@ public class LockingLRUCacheStrategy<K, V> implements Map<K, V> {
                 if (cache.size() > capacity) {
                     Node<K, V> tailToRemove = removeTail();
                     cache.remove(tailToRemove.key);
+                    tailToRemove.value = null;  // Help GC by releasing value reference
                 }
                 return null;
             }
@@ -230,8 +235,10 @@ public class LockingLRUCacheStrategy<K, V> implements Map<K, V> {
         try {
             Node<K, V> node = cache.remove(key);
             if (node != null) {
+                V value = node.value;  // Get value before cleanup
                 removeNode(node);
-                return node.value;
+                node.value = null;     // Help GC by releasing value reference
+                return value;
             }
             return null;
         } finally {

@@ -22,7 +22,7 @@ import com.cedarsoftware.util.SafeSimpleDateFormat;
 public final class LoggingConfig {
     private static final String DATE_FORMAT_PROP = "ju.log.dateFormat";
     private static final String DEFAULT_PATTERN = "yyyy-MM-dd HH:mm:ss.SSS";
-    private static volatile boolean initialized = false;
+    private static boolean initialized = false;
 
     private LoggingConfig() {
     }

@@ -6120,9 +6120,18 @@ private static final Map<FieldsCacheKey, Collection<Field>> FIELDS_CACHE =
 
 **Thread Safety:**
 ```java
-// All caches are thread-safe
-private static volatile Map<ConstructorCacheKey, Constructor<?>> CONSTRUCTOR_CACHE;
-private static volatile Map<MethodCacheKey, Method> METHOD_CACHE;
+// All caches use thread-safe LRUCache with AtomicReference for cache replacement
+private static final AtomicReference<Map<...>> CONSTRUCTOR_CACHE =
+    new AtomicReference<>(new LRUCache<>(CACHE_SIZE));
+private static final AtomicReference<Map<...>> METHOD_CACHE =
+    new AtomicReference<>(new LRUCache<>(CACHE_SIZE));
+
+// Record support uses holder class pattern for lock-free thread safety
+private static class RecordSupport {
+    static final Method IS_RECORD_METHOD;
+    static final boolean SUPPORTED;
+    static { /* one-time init guaranteed by JVM */ }
+}
 ```
 
 ### Best Practices

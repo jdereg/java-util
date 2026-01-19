@@ -17,6 +17,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.Function;
 
 /**
  * A cache that holds items for a specified Time-To-Live (TTL) duration.
@@ -253,10 +254,16 @@ public class TTLCache<K, V> implements Map<K, V>, AutoCloseable {
 
     /**
      * Moves a node to the tail of the list (most recently used position).
+     * Must be called under lock.
      *
      * @param node the node to move
      */
     private void moveToTail(Node<K, V> node) {
+        // Safety check: if node was already evicted, skip reordering
+        if (node.prev == null || node.next == null) {
+            return;
+        }
+
         // Unlink the node
         node.prev.next = node.next;
         node.next.prev = node.prev;
@@ -291,34 +298,30 @@ public class TTLCache<K, V> implements Map<K, V>, AutoCloseable {
         long expiryTime = System.currentTimeMillis() + ttlMillis;
         Node<K, V> node = new Node<>(key, value);
         CacheEntry<K, V> newEntry = new CacheEntry<>(node, expiryTime);
-        CacheEntry<K, V> oldEntry = cacheMap.put(key, newEntry);
 
-        boolean acquired = lock.tryLock();
+        lock.lock();
         try {
-            if (acquired) {
-                if (oldEntry != null) {
-                    // Remove the old node from the LRU chain
-                    unlink(oldEntry.node);
-                }
+            CacheEntry<K, V> oldEntry = cacheMap.put(key, newEntry);
 
-                insertAtTail(node);
+            if (oldEntry != null) {
+                // Remove the old node from the LRU chain
+                unlink(oldEntry.node);
+            }
 
-                if (maxSize > -1 && cacheMap.size() > maxSize) {
-                    // Evict the least recently used entry
-                    Node<K, V> lruNode = head.next;
-                    if (lruNode != tail) {
-                        removeEntry(lruNode.key);
-                    }
+            insertAtTail(node);
+
+            if (maxSize > -1 && cacheMap.size() > maxSize) {
+                // Evict the least recently used entry
+                Node<K, V> lruNode = head.next;
+                if (lruNode != tail) {
+                    removeEntry(lruNode.key);
                 }
             }
-            // If lock not acquired, skip LRU update for performance
+
+            return oldEntry != null ? oldEntry.node.value : null;
         } finally {
-            if (acquired) {
-                lock.unlock();
-            }
+            lock.unlock();
         }
-
-        return oldEntry != null ? oldEntry.node.value : null;
     }
 
     /**
@@ -354,6 +357,102 @@ public class TTLCache<K, V> implements Map<K, V>, AutoCloseable {
         }
 
         return value;
+    }
+
+    /**
+     * If the specified key is not already associated with a value (or is expired),
+     * attempts to compute its value using the given mapping function and enters it into this cache.
+     * The entry will expire after the configured TTL has elapsed.
+     *
+     * @param key the key with which the specified value is to be associated
+     * @param mappingFunction the function to compute a value
+     * @return the current (existing or computed) value associated with the specified key,
+     *         or null if the computed value is null
+     */
+    @Override
+    public V computeIfAbsent(K key, Function<? super K, ? extends V> mappingFunction) {
+        lock.lock();
+        try {
+            CacheEntry<K, V> entry = cacheMap.get(key);
+            long currentTime = System.currentTimeMillis();
+
+            // Check if entry exists and is not expired
+            if (entry != null && entry.expiryTime >= currentTime) {
+                moveToTail(entry.node);
+                return entry.node.value;
+            }
+
+            // Entry doesn't exist or is expired - compute new value
+            V value = mappingFunction.apply(key);
+            if (value != null) {
+                // Remove expired entry if present
+                if (entry != null) {
+                    unlink(entry.node);
+                }
+                // Use internal put logic
+                long expiryTime = currentTime + ttlMillis;
+                Node<K, V> node = new Node<>(key, value);
+                CacheEntry<K, V> newEntry = new CacheEntry<>(node, expiryTime);
+                cacheMap.put(key, newEntry);
+                insertAtTail(node);
+
+                if (maxSize > -1 && cacheMap.size() > maxSize) {
+                    Node<K, V> lruNode = head.next;
+                    if (lruNode != tail) {
+                        removeEntry(lruNode.key);
+                    }
+                }
+            }
+            return value;
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    /**
+     * If the specified key is not already associated with a value (or is expired),
+     * associates it with the given value.
+     * The entry will expire after the configured TTL has elapsed.
+     *
+     * @param key key with which the specified value is to be associated
+     * @param value value to be associated with the specified key
+     * @return the previous value associated with the specified key, or null if there was no mapping
+     */
+    @Override
+    public V putIfAbsent(K key, V value) {
+        lock.lock();
+        try {
+            CacheEntry<K, V> entry = cacheMap.get(key);
+            long currentTime = System.currentTimeMillis();
+
+            // Check if entry exists and is not expired
+            if (entry != null && entry.expiryTime >= currentTime) {
+                moveToTail(entry.node);
+                return entry.node.value;
+            }
+
+            // Entry doesn't exist or is expired - put new value
+            // Remove expired entry if present
+            if (entry != null) {
+                unlink(entry.node);
+            }
+
+            long expiryTime = currentTime + ttlMillis;
+            Node<K, V> node = new Node<>(key, value);
+            CacheEntry<K, V> newEntry = new CacheEntry<>(node, expiryTime);
+            cacheMap.put(key, newEntry);
+            insertAtTail(node);
+
+            if (maxSize > -1 && cacheMap.size() > maxSize) {
+                Node<K, V> lruNode = head.next;
+                if (lruNode != tail) {
+                    removeEntry(lruNode.key);
+                }
+            }
+            return null;
+        } finally {
+            lock.unlock();
+        }
     }
 
     /**

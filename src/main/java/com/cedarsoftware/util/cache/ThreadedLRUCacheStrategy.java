@@ -15,7 +15,6 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.LockSupport;
@@ -127,11 +126,20 @@ public class ThreadedLRUCacheStrategy<K, V> implements Map<K, V>, Closeable {
 
     /**
      * Inner class representing a cache node with a key, value, and timestamp for LRU tracking.
+     * <p>
+     * Neither field uses volatile because:
+     * <ul>
+     *   <li>{@code value} is never modified after construction</li>
+     *   <li>{@code timestamp} is used for approximate LRU ordering only - stale reads are acceptable
+     *       given the existing approximations (sample-15 eviction, probabilistic updates)</li>
+     * </ul>
+     * The initial write in the constructor is visible to other threads after the Node reference
+     * is published through ConcurrentHashMap (which provides the necessary memory barriers).
      */
     private static class Node<K, V> {
         final K key;
-        volatile V value;
-        volatile long timestamp;
+        final V value;
+        long timestamp;
 
         Node(K key, V value) {
             this.key = key;
@@ -311,6 +319,7 @@ public class ThreadedLRUCacheStrategy<K, V> implements Map<K, V>, Closeable {
     public static boolean shutdownScheduler() {
         synchronized (schedulerLock) {
             if (scheduler == null || scheduler.isShutdown()) {
+                scheduler = null;  // Ensure null if already shutdown
                 return true;
             }
             if (cleanupTask != null) {
@@ -324,9 +333,11 @@ public class ThreadedLRUCacheStrategy<K, V> implements Map<K, V>, Closeable {
                     scheduler.shutdownNow();
                     terminated = scheduler.awaitTermination(1, TimeUnit.SECONDS);
                 }
+                scheduler = null;  // Clear reference to allow recreation
                 return terminated;
             } catch (InterruptedException e) {
                 scheduler.shutdownNow();
+                scheduler = null;  // Clear reference to allow recreation
                 Thread.currentThread().interrupt();
                 return false;
             }

@@ -426,9 +426,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     private static final float DEFAULT_LOAD_FACTOR = 0.75f;
 
     // Cached hashCode for performance (invalidated on mutations)
+    // Volatile ensures visibility when mutations set to null; no lock needed since computation is idempotent
     private transient volatile Integer cachedHashCode;
-    // Lock for hashCode computation to prevent race conditions
-    private final Object hashCodeLock = new Object();
 
     private static final int STRIPE_COUNT = calculateOptimalStripeCount();
     private static final int STRIPE_MASK = STRIPE_COUNT - 1;
@@ -975,7 +974,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         // GPT5 optimization: Use bucket index for stripe selection to reduce false contention
         // between independent buckets that happen to have same low-order hash bits
         final AtomicReferenceArray<MultiKey<V>[]> table = buckets;  // Volatile read of buckets
-        final int mask = table.length() - 1;  // Array length is immutable (not a volatile read)
+        final int mask = table.length() - 1;  // Array length is immutable
         int bucketIndex = hash & mask;
         return stripeLocks[bucketIndex & STRIPE_MASK];
     }
@@ -2044,7 +2043,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      */
     private MultiKey<V> findEntryWithPrecomputedHash(final Object normalizedKey, final int hash) {
         final AtomicReferenceArray<MultiKey<V>[]> table = buckets;  // Volatile read of buckets
-        final int mask = table.length() - 1;  // Array length is immutable (not a volatile read)
+        final int mask = table.length() - 1;  // Array length is immutable
         final int index = hash & mask;
 
         final MultiKey<V>[] chain = table.get(index);
@@ -3094,7 +3093,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     private V getNoLock(MultiKey<V> lookupKey) {
         int hash = lookupKey.hash;
         final AtomicReferenceArray<MultiKey<V>[]> table = buckets;  // Volatile read of buckets
-        final int mask = table.length() - 1;  // Array length is immutable (not a volatile read)
+        final int mask = table.length() - 1;  // Array length is immutable
         int index = hash & mask;
         MultiKey<V>[] chain = table.get(index);
 
@@ -3112,7 +3111,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     private V putNoLock(MultiKey<V> newKey) {
         int hash = newKey.hash;
         final AtomicReferenceArray<MultiKey<V>[]> table = buckets;  // Volatile read of buckets
-        final int mask = table.length() - 1;  // Array length is immutable (not a volatile read)
+        final int mask = table.length() - 1;  // Array length is immutable
         int index = hash & mask;
         MultiKey<V>[] chain = table.get(index);
 
@@ -3307,7 +3306,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     private V removeNoLock(MultiKey<V> removeKey) {
         int hash = removeKey.hash;
         final AtomicReferenceArray<MultiKey<V>[]> table = buckets;  // Volatile read of buckets
-        final int mask = table.length() - 1;  // Array length is immutable (not a volatile read)
+        final int mask = table.length() - 1;  // Array length is immutable
         int index = hash & mask;
         MultiKey<V>[] chain = table.get(index);
 
@@ -3384,7 +3383,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      * @param resize whether to perform resize
      */
     private void resizeRequest(boolean resize) {
-        // Quick exit if no resize needed or already in progress (fast volatile read)
+        // Quick exit if no resize needed or already in progress
         if (!resize || resizeInProgress.get()) {
             return;
         }
@@ -3968,32 +3967,24 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      * @return the hash code value for this map
      */
     public int hashCode() {
-        // First check (outside lock) - fast path for cached value
+        // Fast path: return cached value if available
         Integer cached = cachedHashCode;
         if (cached != null) {
             return cached;
         }
 
-        // Double-checked locking to ensure only one thread computes hashCode
-        synchronized (hashCodeLock) {
-            // Second check (inside lock) - another thread may have computed it
-            cached = cachedHashCode;
-            if (cached != null) {
-                return cached;
-            }
-
-            // Compute hashCode (requires reconstruction for HashMap compatibility)
-            int h = 0;
-            for (Map.Entry<Object, V> e : entrySet()) {
-                // Use Objects.hashCode() - List/Set have proper content-based hashCode implementations
-                int keyHash = Objects.hashCode(e.getKey());
-                h += keyHash ^ Objects.hashCode(e.getValue());
-            }
-
-            // Cache the result (volatile write ensures visibility to all threads)
-            cachedHashCode = h;
-            return h;
+        // Compute hashCode (no lock needed - computation is idempotent)
+        // Multiple threads may compute simultaneously, but all produce the same result
+        int h = 0;
+        for (Map.Entry<Object, V> e : entrySet()) {
+            // Use Objects.hashCode() - List/Set have proper content-based hashCode implementations
+            int keyHash = Objects.hashCode(e.getKey());
+            h += keyHash ^ Objects.hashCode(e.getValue());
         }
+
+        // Cache the result (volatile write ensures visibility to all threads)
+        cachedHashCode = h;
+        return h;
     }
 
     /**

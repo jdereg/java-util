@@ -5,13 +5,11 @@ import java.io.DataInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.annotation.Annotation;
-import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
-import java.lang.reflect.ReflectPermission;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -19,7 +17,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Deque;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -29,8 +26,8 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Predicate;
-import java.util.logging.Logger;
 import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Utilities to simplify writing reflective code as well as improve performance of reflective operations like
@@ -2000,49 +1997,52 @@ public final class ReflectionUtils {
         return loader.getClass().getName() + '@' + Integer.toHexString(System.identityHashCode(loader));
     }
     
-    // Record support (Java 14+) - using reflection to maintain Java 8 compatibility
-    private static volatile Method isRecordMethod = null;
-    private static volatile Method getRecordComponentsMethod = null;
-    private static volatile boolean recordSupportChecked = false;
-    
+    // Record support (Java 14+) - using holder class for thread-safe lazy initialization
+    // with zero synchronization overhead after init
+    private static class RecordSupport {
+        static final Method IS_RECORD_METHOD;
+        static final Method GET_RECORD_COMPONENTS_METHOD;
+        static final boolean SUPPORTED;
+
+        static {
+            Method isRecord = null;
+            Method getComponents = null;
+            boolean supported = false;
+            try {
+                isRecord = Class.class.getMethod("isRecord");
+                getComponents = Class.class.getMethod("getRecordComponents");
+                supported = true;
+            } catch (NoSuchMethodException e) {
+                // Running on Java < 14
+            }
+            IS_RECORD_METHOD = isRecord;
+            GET_RECORD_COMPONENTS_METHOD = getComponents;
+            SUPPORTED = supported;
+        }
+    }
+
     /**
      * Check if a class is a Record (Java 14+).
      * Uses reflection to maintain compatibility with Java 8.
-     * 
+     *
      * @param clazz The class to check
      * @return true if the class is a Record, false otherwise or if running on Java {@code < 14}
      */
     public static boolean isRecord(Class<?> clazz) {
-        if (clazz == null) {
+        if (clazz == null || !RecordSupport.SUPPORTED) {
             return false;
         }
-        
-        if (!recordSupportChecked) {
-            try {
-                isRecordMethod = Class.class.getMethod("isRecord");
-                recordSupportChecked = true;
-            } catch (NoSuchMethodException e) {
-                // Running on Java < 14
-                recordSupportChecked = true;
-                return false;
-            }
-        }
-        
-        if (isRecordMethod == null) {
-            return false;
-        }
-        
         try {
-            return (Boolean) isRecordMethod.invoke(clazz);
+            return (Boolean) RecordSupport.IS_RECORD_METHOD.invoke(clazz);
         } catch (Exception e) {
             return false;
         }
     }
-    
+
     /**
      * Get the record components of a Record class (Java 14+).
      * Uses reflection to maintain compatibility with Java 8.
-     * 
+     *
      * @param clazz The Record class
      * @return Array of RecordComponent objects, or null if not a Record or running on Java {@code < 14}
      */
@@ -2050,18 +2050,8 @@ public final class ReflectionUtils {
         if (!isRecord(clazz)) {
             return null;
         }
-        
-        if (getRecordComponentsMethod == null) {
-            try {
-                getRecordComponentsMethod = Class.class.getMethod("getRecordComponents");
-            } catch (NoSuchMethodException e) {
-                // Running on Java < 14
-                return null;
-            }
-        }
-        
         try {
-            return (Object[]) getRecordComponentsMethod.invoke(clazz);
+            return (Object[]) RecordSupport.GET_RECORD_COMPONENTS_METHOD.invoke(clazz);
         } catch (Exception e) {
             return null;
         }

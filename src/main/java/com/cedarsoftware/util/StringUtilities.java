@@ -935,38 +935,28 @@ public final class StringUtilities {
      */
     public static int hashCodeIgnoreCase(CharSequence cs) {
         if (cs == null) return 0;
-        
+
         // For String, delegate to the optimized String-specific version
         if (cs instanceof String) {
             return hashCodeIgnoreCase((String) cs);
         }
 
-        // Check if CharSequence is pure ASCII for fast path
-        boolean isPureAscii = true;
+        // Single-pass optimization: compute hash while checking for non-ASCII
         final int n = cs.length();
+        int h = 0;
         for (int i = 0; i < n; i++) {
-            if (cs.charAt(i) >= 128) {
-                isPureAscii = false;
-                break;
+            char c = cs.charAt(i);
+            if (c >= 128) {
+                // Non-ASCII detected - fall back to locale-aware toLowerCase()
+                return cs.toString().toLowerCase().hashCode();
             }
-        }
-        
-        if (isPureAscii) {
-            // Fast path for pure ASCII: compute hash directly without allocation
-            int h = 0;
-            for (int i = 0; i < n; i++) {
-                char c = cs.charAt(i);
-                // Convert A-Z to a-z
-                if (c >= 'A' && c <= 'Z') {
-                    c = (char) (c + 32);
-                }
-                h = 31 * h + c;
+            // Convert A-Z to a-z for ASCII
+            if (c >= 'A' && c <= 'Z') {
+                c = (char) (c + 32);
             }
-            return h;
-        } else {
-            // For non-ASCII, we must use toLowerCase() to maintain compatibility
-            return cs.toString().toLowerCase().hashCode();
+            h = 31 * h + c;
         }
+        return h;
     }
 
     /**
@@ -980,37 +970,24 @@ public final class StringUtilities {
     public static int hashCodeIgnoreCase(String s) {
         if (s == null) return 0;
 
-        // To maintain compatibility with existing code that relies on specific hash collisions,
-        // we need to produce the same hash as s.toLowerCase().hashCode()
-        // The optimized version below computes hash differently and breaks some tests
-        
-        // Check if string is pure ASCII for fast path
-        boolean isPureAscii = true;
+        // Single-pass optimization: compute hash while checking for non-ASCII
+        // If non-ASCII found, fall back to toLowerCase().hashCode() for compatibility
         final int n = s.length();
+        int h = 0;
         for (int i = 0; i < n; i++) {
-            if (s.charAt(i) >= 128) {
-                isPureAscii = false;
-                break;
+            char c = s.charAt(i);
+            if (c >= 128) {
+                // Non-ASCII detected - fall back to locale-aware toLowerCase()
+                // This ensures compatibility with existing code
+                return s.toLowerCase().hashCode();
             }
-        }
-        
-        if (isPureAscii) {
-            // Fast path for pure ASCII: compute hash directly without allocation
-            int h = 0;
-            for (int i = 0; i < n; i++) {
-                char c = s.charAt(i);
-                // Convert A-Z to a-z
-                if (c >= 'A' && c <= 'Z') {
-                    c = (char) (c + 32);
-                }
-                h = 31 * h + c;
+            // Convert A-Z to a-z for ASCII
+            if (c >= 'A' && c <= 'Z') {
+                c = (char) (c + 32);
             }
-            return h;
-        } else {
-            // For non-ASCII, we must use toLowerCase() to maintain compatibility
-            // This ensures we get the exact same hash codes as before
-            return s.toLowerCase().hashCode();
+            h = 31 * h + c;
         }
+        return h;
     }
 
     /**

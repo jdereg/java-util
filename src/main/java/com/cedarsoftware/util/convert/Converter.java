@@ -552,72 +552,26 @@ public final class Converter {
         CONVERSION_DB.put(pair(Year.class, BigDecimal.class), YearConversions::toBigDecimal);
 
         // AtomicBoolean conversions supported
+        // Most X → AtomicBoolean handled by surrogate system via X → Boolean → AtomicBoolean
         CONVERSION_DB.put(pair(Void.class, AtomicBoolean.class), VoidConversions::toNull);
-        CONVERSION_DB.put(pair(Duration.class, AtomicBoolean.class), DurationConversions::toAtomicBoolean);
-        CONVERSION_DB.put(pair(Byte.class, AtomicBoolean.class), NumberConversions::toAtomicBoolean);
-        CONVERSION_DB.put(pair(Short.class, AtomicBoolean.class), NumberConversions::toAtomicBoolean);
-        CONVERSION_DB.put(pair(Integer.class, AtomicBoolean.class), NumberConversions::toAtomicBoolean);
-        CONVERSION_DB.put(pair(Long.class, AtomicBoolean.class), NumberConversions::toAtomicBoolean);
-        CONVERSION_DB.put(pair(Float.class, AtomicBoolean.class), NumberConversions::toAtomicBoolean);
-        CONVERSION_DB.put(pair(Double.class, AtomicBoolean.class), NumberConversions::toAtomicBoolean);
-        CONVERSION_DB.put(pair(Boolean.class, AtomicBoolean.class), BooleanConversions::toAtomicBoolean);
-        CONVERSION_DB.put(pair(Character.class, AtomicBoolean.class), CharacterConversions::toAtomicBoolean);
-        CONVERSION_DB.put(pair(BigInteger.class, AtomicBoolean.class), NumberConversions::toAtomicBoolean);
-        CONVERSION_DB.put(pair(BigDecimal.class, AtomicBoolean.class), NumberConversions::toAtomicBoolean);
+        CONVERSION_DB.put(pair(Boolean.class, AtomicBoolean.class), BooleanConversions::toAtomicBoolean);  // Bridge
         CONVERSION_DB.put(pair(AtomicBoolean.class, AtomicBoolean.class), AtomicBooleanConversions::toAtomicBoolean);
-        CONVERSION_DB.put(pair(Map.class, AtomicBoolean.class), MapConversions::toAtomicBoolean);
-        CONVERSION_DB.put(pair(String.class, AtomicBoolean.class), StringConversions::toAtomicBoolean);
-        CONVERSION_DB.put(pair(Dimension.class, AtomicBoolean.class), DimensionConversions::toAtomicBoolean);
-        CONVERSION_DB.put(pair(Point.class, AtomicBoolean.class), PointConversions::toAtomicBoolean);
-        CONVERSION_DB.put(pair(Rectangle.class, AtomicBoolean.class), RectangleConversions::toAtomicBoolean);
-        CONVERSION_DB.put(pair(Insets.class, AtomicBoolean.class), InsetsConversions::toAtomicBoolean);
-        CONVERSION_DB.put(pair(Year.class, AtomicBoolean.class), YearConversions::toAtomicBoolean);
+        CONVERSION_DB.put(pair(Year.class, AtomicBoolean.class), YearConversions::toAtomicBoolean);  // No Year → Boolean
+        CONVERSION_DB.put(pair(Map.class, AtomicBoolean.class), MapConversions::toAtomicBoolean);  // Better error messages
 
         // AtomicInteger conversions supported
+        // Most X → AtomicInteger handled by surrogate system via X → Integer → AtomicInteger
         CONVERSION_DB.put(pair(Void.class, AtomicInteger.class), VoidConversions::toNull);
-        CONVERSION_DB.put(pair(Byte.class, AtomicInteger.class), NumberConversions::toAtomicInteger);
-        CONVERSION_DB.put(pair(Short.class, AtomicInteger.class), NumberConversions::toAtomicInteger);
-        CONVERSION_DB.put(pair(Integer.class, AtomicInteger.class), NumberConversions::toAtomicInteger);
-        CONVERSION_DB.put(pair(Long.class, AtomicInteger.class), NumberConversions::toAtomicInteger);
-        CONVERSION_DB.put(pair(Float.class, AtomicInteger.class), NumberConversions::toAtomicInteger);
-        CONVERSION_DB.put(pair(Double.class, AtomicInteger.class), NumberConversions::toAtomicInteger);
-        CONVERSION_DB.put(pair(Boolean.class, AtomicInteger.class), BooleanConversions::toAtomicInteger);
-        CONVERSION_DB.put(pair(Character.class, AtomicInteger.class), CharacterConversions::toAtomicInteger);
-        CONVERSION_DB.put(pair(BigInteger.class, AtomicInteger.class), NumberConversions::toAtomicInteger);
-        CONVERSION_DB.put(pair(BigDecimal.class, AtomicInteger.class), NumberConversions::toAtomicInteger);
+        CONVERSION_DB.put(pair(Integer.class, AtomicInteger.class), NumberConversions::toAtomicInteger);  // Bridge
         CONVERSION_DB.put(pair(AtomicInteger.class, AtomicInteger.class), AtomicIntegerConversions::toAtomicInteger);
-        CONVERSION_DB.put(pair(Map.class, AtomicInteger.class), MapConversions::toAtomicInteger);
-        CONVERSION_DB.put(pair(String.class, AtomicInteger.class), StringConversions::toAtomicInteger);
-        CONVERSION_DB.put(pair(Year.class, AtomicInteger.class), YearConversions::toAtomicInteger);
+        CONVERSION_DB.put(pair(Map.class, AtomicInteger.class), MapConversions::toAtomicInteger);  // Better error messages
 
         // AtomicLong conversions supported
+        // Most X → AtomicLong handled by surrogate system via X → Long → AtomicLong
         CONVERSION_DB.put(pair(Void.class, AtomicLong.class), VoidConversions::toNull);
-        CONVERSION_DB.put(pair(Byte.class, AtomicLong.class), NumberConversions::toAtomicLong);
-        CONVERSION_DB.put(pair(Short.class, AtomicLong.class), NumberConversions::toAtomicLong);
-        CONVERSION_DB.put(pair(Integer.class, AtomicLong.class), NumberConversions::toAtomicLong);
-        CONVERSION_DB.put(pair(Long.class, AtomicLong.class), NumberConversions::toAtomicLong);
-        CONVERSION_DB.put(pair(Float.class, AtomicLong.class), NumberConversions::toAtomicLong);
-        CONVERSION_DB.put(pair(Double.class, AtomicLong.class), NumberConversions::toAtomicLong);
-        CONVERSION_DB.put(pair(Boolean.class, AtomicLong.class), BooleanConversions::toAtomicLong);
-        CONVERSION_DB.put(pair(Character.class, AtomicLong.class), CharacterConversions::toAtomicLong);
-        CONVERSION_DB.put(pair(BigInteger.class, AtomicLong.class), NumberConversions::toAtomicLong);
-        CONVERSION_DB.put(pair(BigDecimal.class, AtomicLong.class), NumberConversions::toAtomicLong);
+        CONVERSION_DB.put(pair(Long.class, AtomicLong.class), NumberConversions::toAtomicLong);  // Bridge
         CONVERSION_DB.put(pair(AtomicLong.class, AtomicLong.class), AtomicLongConversions::toAtomicLong);
-        CONVERSION_DB.put(pair(Date.class, AtomicLong.class), DateConversions::toAtomicLong);
-        CONVERSION_DB.put(pair(java.sql.Date.class, AtomicLong.class), SqlDateConversions::toAtomicLong);
-        CONVERSION_DB.put(pair(Timestamp.class, AtomicLong.class), DateConversions::toAtomicLong);
-        CONVERSION_DB.put(pair(Instant.class, AtomicLong.class), InstantConversions::toAtomicLong);
-        CONVERSION_DB.put(pair(Duration.class, AtomicLong.class), DurationConversions::toAtomicLong);
-        CONVERSION_DB.put(pair(LocalDate.class, AtomicLong.class), LocalDateConversions::toAtomicLong);
-        CONVERSION_DB.put(pair(LocalTime.class, AtomicLong.class), LocalTimeConversions::toAtomicLong);
-        CONVERSION_DB.put(pair(LocalDateTime.class, AtomicLong.class), LocalDateTimeConversions::toAtomicLong);
-        CONVERSION_DB.put(pair(ZonedDateTime.class, AtomicLong.class), ZonedDateTimeConversions::toAtomicLong);
-        CONVERSION_DB.put(pair(OffsetTime.class, AtomicLong.class), OffsetTimeConversions::toAtomicLong);
-        CONVERSION_DB.put(pair(OffsetTime.class, AtomicLong.class), OffsetTimeConversions::toAtomicLong);
-        CONVERSION_DB.put(pair(OffsetDateTime.class, AtomicLong.class), OffsetDateTimeConversions::toAtomicLong);
-        CONVERSION_DB.put(pair(Map.class, AtomicLong.class), MapConversions::toAtomicLong);
-        CONVERSION_DB.put(pair(String.class, AtomicLong.class), StringConversions::toAtomicLong);
-        CONVERSION_DB.put(pair(Year.class, AtomicLong.class), YearConversions::toAtomicLong);
+        CONVERSION_DB.put(pair(Map.class, AtomicLong.class), MapConversions::toAtomicLong);  // Better error messages
 
         // Date conversions supported
         CONVERSION_DB.put(pair(Void.class, Date.class), VoidConversions::toNull);
@@ -1037,8 +991,7 @@ public final class Converter {
         CONVERSION_DB.put(pair(Long.class, MonthDay.class), NumberConversions::toMonthDay);
         CONVERSION_DB.put(pair(Float.class, MonthDay.class), NumberConversions::toMonthDay);
         CONVERSION_DB.put(pair(Double.class, MonthDay.class), NumberConversions::toMonthDay);
-        CONVERSION_DB.put(pair(AtomicInteger.class, MonthDay.class), NumberConversions::toMonthDay);
-        CONVERSION_DB.put(pair(AtomicLong.class, MonthDay.class), NumberConversions::toMonthDay);
+        // AtomicInteger/AtomicLong → MonthDay handled by surrogate system via Integer/Long
         CONVERSION_DB.put(pair(BigInteger.class, MonthDay.class), NumberConversions::toMonthDay);
 
         // YearMonth conversions supported
@@ -1146,9 +1099,7 @@ public final class Converter {
         CONVERSION_DB.put(pair(Character.class, Map.class), UniversalConversions::toMap);
         CONVERSION_DB.put(pair(BigInteger.class, Map.class), UniversalConversions::bigIntegerToMap);
         CONVERSION_DB.put(pair(BigDecimal.class, Map.class), UniversalConversions::bigDecimalToMap);
-        CONVERSION_DB.put(pair(AtomicBoolean.class, Map.class), UniversalConversions::atomicBooleanToMap);
-        CONVERSION_DB.put(pair(AtomicInteger.class, Map.class), UniversalConversions::atomicIntegerToMap);
-        CONVERSION_DB.put(pair(AtomicLong.class, Map.class), UniversalConversions::atomicLongToMap);
+        // AtomicBoolean/AtomicInteger/AtomicLong → Map handled by surrogate system via Boolean/Integer/Long
         CONVERSION_DB.put(pair(Date.class, Map.class), DateConversions::toMap);
         CONVERSION_DB.put(pair(java.sql.Date.class, Map.class), SqlDateConversions::toMap);
         CONVERSION_DB.put(pair(Timestamp.class, Map.class), TimestampConversions::toMap);
@@ -1284,17 +1235,17 @@ public final class Converter {
         CONVERSION_DB.put(pair(BitSet.class, byte.class), UniversalConversions::bitSetToByte);
         CONVERSION_DB.put(pair(byte.class, BitSet.class), UniversalConversions::byteToBitSet);
 
-        // BitSet ↔ AtomicInteger bridges (lower 32 bits)
-        CONVERSION_DB.put(pair(BitSet.class, AtomicInteger.class), UniversalConversions::bitSetToAtomicInteger);
-        CONVERSION_DB.put(pair(AtomicInteger.class, BitSet.class), UniversalConversions::atomicIntegerToBitSet);
+        // BitSet ↔ AtomicInteger handled by surrogate system via Integer
 
         // BitSet ↔ BigDecimal bridges (arbitrary size)
         CONVERSION_DB.put(pair(BitSet.class, BigDecimal.class), UniversalConversions::bitSetToBigDecimal);
         CONVERSION_DB.put(pair(BigDecimal.class, BitSet.class), UniversalConversions::bigDecimalToBitSet);
 
-        // BitSet ↔ AtomicBoolean bridges
-        CONVERSION_DB.put(pair(BitSet.class, AtomicBoolean.class), UniversalConversions::bitSetToAtomicBoolean);
-        CONVERSION_DB.put(pair(AtomicBoolean.class, BitSet.class), UniversalConversions::atomicBooleanToBitSet);
+        // BitSet ↔ Boolean bridges
+        CONVERSION_DB.put(pair(BitSet.class, Boolean.class), UniversalConversions::bitSetToBoolean);
+        CONVERSION_DB.put(pair(Boolean.class, BitSet.class), UniversalConversions::booleanToBitSet);
+
+        // BitSet ↔ AtomicBoolean handled by surrogate system via Boolean
 
         // BitSet ↔ String bridges (binary string format)
         CONVERSION_DB.put(pair(BitSet.class, String.class), UniversalConversions::bitSetToString);
@@ -1368,26 +1319,10 @@ public final class Converter {
                     // Resource identifiers → URI (lossless via URL.toURI())
                     new SurrogatePrimaryPair(URL.class, URI.class,
                             UrlConversions::toURI, null),
-
-//                    // Year → Long (maximum reach for data pipelines)
-//                    new SurrogatePrimaryPair(Year.class, Long.class,
-//                            YearConversions::toLong, null),
-//
-//                    // YearMonth → String (maximum reach for temporal formatting)
-//                    new SurrogatePrimaryPair(YearMonth.class, String.class,
-//                            UniversalConversions::toString, null),
-//
-//                    // Duration → Long (numeric reach for time calculations)
-//                    new SurrogatePrimaryPair(Duration.class, Long.class,
-//                            DurationConversions::toLong, null),
-//
-//                    // OffsetTime → String (maximum reach preserving offset info)
-//                    new SurrogatePrimaryPair(OffsetTime.class, String.class,
-//                            OffsetTimeConversions::toString, null),
-
+                    
                     // Date & Time
-                    new SurrogatePrimaryPair(Calendar.class, ZonedDateTime.class, 
-                            UniversalConversions::calendarToZonedDateTime, null)
+                    new SurrogatePrimaryPair(Calendar.class, ZonedDateTime.class,
+                            CalendarConversions::toZonedDateTime, null)
             );
         }
         return SURROGATE_TO_PRIMARY_PAIRS;

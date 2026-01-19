@@ -124,7 +124,7 @@ if (!same) {
 **What**: Convert between many Java types with a single API - no more scattered conversion logic.
 
 **Why use it**:
-- ✅ 1000+ type conversions out of the box (use `.allAllSupportedConversions()` to list them out)
+- ✅ 1600+ type conversions out of the box (use `.allAllSupportedConversions()` to list them out)
 - ✅ Extensible - add your own custom conversions
 - ✅ Handles complex types including temporal, arrays, and collections
 
@@ -252,22 +252,22 @@ From reflection helpers to graph traversal, concurrent collections to date utili
 
 ## How java-util Compares
 
-| Feature | JDK Collections | Google Guava | Eclipse Collections | Apache Commons | **java-util**    |
-|---------|----------------|--------------|---------------------|----------------|------------------|
-| **Dependencies** | None | 3+ libraries | 2+ libraries | Multiple | None             |
-| **Jar Size** | N/A | ~2.7MB | ~2.8MB | ~500KB each | ~600KB total     |
-| **JDK Compatibility** | 8+ | 11+ (latest) | 11+ | 8+ | 8+               |
-| **Null-Safe Concurrent** | ❌ | ❌ | ❌ | ❌ | ✅ ConcurrentMapNullSafe |
-| **Memory-Adaptive Collections** | ❌ | ❌ | ✅ | ❌ | ✅ CompactMap/Set |
-| **Case-Preserving Maps** | ❌ | ❌ | ❌ | Limited | ✅ Retains original case |
-| **Universal Type Conversion** | ❌ | Limited | ❌ | Limited | ✅ 1000+ conversions |
+| Feature | JDK Collections | Google Guava | Eclipse Collections | Apache Commons | **java-util**                 |
+|---------|----------------|--------------|---------------------|----------------|-------------------------------|
+| **Dependencies** | None | 3+ libraries | 2+ libraries | Multiple | None                          |
+| **Jar Size** | N/A | ~2.7MB | ~2.8MB | ~500KB each | ~700KB total                  |
+| **JDK Compatibility** | 8+ | 11+ (latest) | 11+ | 8+ | 8+                            |
+| **Null-Safe Concurrent** | ❌ | ❌ | ❌ | ❌ | ✅ ConcurrentMapNullSafe       |
+| **Memory-Adaptive Collections** | ❌ | ❌ | ✅ | ❌ | ✅ CompactMap/Set              |
+| **Case-Preserving Maps** | ❌ | ❌ | ❌ | Limited | ✅ Retains original case       |
+| **Universal Type Conversion** | ❌ | Limited | ❌ | Limited | ✅ 1600+ conversions           |
 | **N-Dimensional Mapping** | ❌ | ⚠️ Table (2D only) | ❌ | ⚠️ Limited | ✅ MultiKeyMap (unlimited N-D) |
-| **Deep Object Comparison** | ❌ | Limited | ❌ | ❌ | ✅ Handles cycles |
-| **Runtime Configuration** | ❌ | ❌ | ❌ | ❌ | ✅ 70+ feature options |
-| **TTL Caching** | ❌ | ✅ | ❌ | ❌ | ✅ + LRU combo    |
-| **Thread-Safe with Nulls** | ❌ | ❌ | ❌ | ❌ | ✅ All concurrent types |
-| **JPMS/OSGi Ready** | ✅ | ⚠️ | ✅ | ⚠️ | ✅ Pre-configured |
-| **Security Controls** | ❌ | ❌ | ❌ | ❌ | ✅ Input validation |
+| **Deep Object Comparison** | ❌ | Limited | ❌ | ❌ | ✅ Handles cycles              |
+| **Runtime Configuration** | ❌ | ❌ | ❌ | ❌ | ✅ 70+ feature options         |
+| **TTL Caching** | ❌ | ✅ | ❌ | ❌ | ✅ + LRU combo                 |
+| **Thread-Safe with Nulls** | ❌ | ❌ | ❌ | ❌ | ✅ All concurrent types        |
+| **JPMS/OSGi Ready** | ✅ | ⚠️ | ✅ | ⚠️ | ✅ Pre-configured              |
+| **Security Controls** | ❌ | ❌ | ❌ | ❌ | ✅ Input validation            |
 
 ### Key Differentiators
 

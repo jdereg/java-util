@@ -136,11 +136,18 @@ public class ClassValueMap<V> extends AbstractMap<Class<?>, V> implements Concur
     // Note: We use Object as value type to allow storing NULL_VALUE sentinel.
     private final ConcurrentHashMap<Class<?>, Object> backingMap = new ConcurrentHashMap<>();
 
-    // Storage for the null key (since ClassValue cannot handle null keys)
-    private final AtomicReference<V> nullKeyValue = new AtomicReference<>();
+    // Sentinel for "no mapping exists for null key"
+    private static final Object NO_NULL_KEY_MAPPING = new Object();
 
-    // Track whether a null value has been explicitly stored for null key
-    private volatile boolean hasNullKeyMapping = false;
+    // Sentinel for "null key maps to null value" (distinct from "no mapping")
+    private static final Object NULL_FOR_NULL_KEY = new Object();
+
+    // Single atomic field for null key storage - eliminates race conditions between
+    // separate flag and value fields. Uses sentinels to distinguish:
+    // - NO_NULL_KEY_MAPPING: no mapping for null key
+    // - NULL_FOR_NULL_KEY: null key explicitly maps to null value
+    // - any other value: null key maps to that value
+    private final AtomicReference<Object> nullKeyStore = new AtomicReference<>(NO_NULL_KEY_MAPPING);
 
     // A ClassValue cache for extremely fast lookups on non-null Class keys.
     // When a key is missing from backingMap, we return NO_VALUE.
@@ -168,6 +175,35 @@ public class ClassValueMap<V> extends AbstractMap<Class<?>, V> implements Concur
         return value == NULL_VALUE ? null : (V) value;
     }
 
+    // Helper to check if null key has a mapping
+    private boolean hasNullKeyMapping() {
+        return nullKeyStore.get() != NO_NULL_KEY_MAPPING;
+    }
+
+    // Helper to get the value for null key (returns null if no mapping)
+    @SuppressWarnings("unchecked")
+    private V getNullKeyValue() {
+        Object stored = nullKeyStore.get();
+        if (stored == NO_NULL_KEY_MAPPING) {
+            return null;
+        }
+        return stored == NULL_FOR_NULL_KEY ? null : (V) stored;
+    }
+
+    // Helper to mask value for null key storage
+    private Object maskNullKeyValue(V value) {
+        return value == null ? NULL_FOR_NULL_KEY : value;
+    }
+
+    // Helper to unmask value from null key storage
+    @SuppressWarnings("unchecked")
+    private V unmaskNullKeyValue(Object stored) {
+        if (stored == NO_NULL_KEY_MAPPING) {
+            return null;
+        }
+        return stored == NULL_FOR_NULL_KEY ? null : (V) stored;
+    }
+
     /**
      * Creates a ClassValueMap
      */
@@ -189,8 +225,7 @@ public class ClassValueMap<V> extends AbstractMap<Class<?>, V> implements Concur
         for (Map.Entry<? extends Class<?>, ? extends V> entry : map.entrySet()) {
             Class<?> key = entry.getKey();
             if (key == null) {
-                nullKeyValue.set(entry.getValue());
-                hasNullKeyMapping = true;
+                nullKeyStore.set(maskNullKeyValue(entry.getValue()));
             } else {
                 backingMap.put(key, maskNull(entry.getValue()));
             }
@@ -201,7 +236,7 @@ public class ClassValueMap<V> extends AbstractMap<Class<?>, V> implements Concur
     @SuppressWarnings("unchecked")
     public V get(Object key) {
         if (key == null) {
-            return nullKeyValue.get();
+            return getNullKeyValue();
         }
         // Fast path: identity check is faster than instanceof hierarchy check
         // Class.class is loaded by bootstrap classloader, so identity comparison is safe
@@ -215,9 +250,8 @@ public class ClassValueMap<V> extends AbstractMap<Class<?>, V> implements Concur
     @Override
     public V put(Class<?> key, V value) {
         if (key == null) {
-            V old = nullKeyValue.getAndSet(value);
-            hasNullKeyMapping = true;
-            return old;
+            Object old = nullKeyStore.getAndSet(maskNullKeyValue(value));
+            return unmaskNullKeyValue(old);
         }
         Object old = backingMap.put(key, maskNull(value));
         cache.remove(key); // Invalidate cached value for this key.
@@ -227,9 +261,8 @@ public class ClassValueMap<V> extends AbstractMap<Class<?>, V> implements Concur
     @Override
     public V remove(Object key) {
         if (key == null) {
-            V old = nullKeyValue.getAndSet(null);
-            hasNullKeyMapping = false;
-            return old;
+            Object old = nullKeyStore.getAndSet(NO_NULL_KEY_MAPPING);
+            return unmaskNullKeyValue(old);
         }
         // Fast path: identity check is faster than instanceof
         if (key.getClass() != Class.class) {
@@ -246,7 +279,7 @@ public class ClassValueMap<V> extends AbstractMap<Class<?>, V> implements Concur
     @Override
     public boolean containsKey(Object key) {
         if (key == null) {
-            return hasNullKeyMapping;
+            return hasNullKeyMapping();
         }
         // Fast path: identity check is faster than instanceof
         if (key.getClass() != Class.class) {
@@ -265,14 +298,13 @@ public class ClassValueMap<V> extends AbstractMap<Class<?>, V> implements Concur
             cache.remove(key);
         }
         backingMap.clear();
-        nullKeyValue.set(null);
-        hasNullKeyMapping = false;
+        nullKeyStore.set(NO_NULL_KEY_MAPPING);
     }
 
     @Override
     public int size() {
         // Size is the backingMap size plus 1 if a null-key mapping exists.
-        return backingMap.size() + (hasNullKeyMapping ? 1 : 0);
+        return backingMap.size() + (hasNullKeyMapping() ? 1 : 0);
     }
 
     @Override
@@ -283,9 +315,10 @@ public class ClassValueMap<V> extends AbstractMap<Class<?>, V> implements Concur
             public Iterator<Entry<Class<?>, V>> iterator() {
                 // First, create an iterator over the backing map entries.
                 final Iterator<Entry<Class<?>, Object>> backingIterator = backingMap.entrySet().iterator();
-                // Check if null-key mapping exists using the flag (avoids volatile read in loop)
-                final boolean hasNullEntry = hasNullKeyMapping;
-                final V nullValue = hasNullEntry ? nullKeyValue.get() : null;
+                // Snapshot the null key state at iterator creation time
+                final Object nullKeyStored = nullKeyStore.get();
+                final boolean hasNullEntry = nullKeyStored != NO_NULL_KEY_MAPPING;
+                final V nullValue = hasNullEntry ? unmaskNullKeyValue(nullKeyStored) : null;
 
                 return new Iterator<Entry<Class<?>, V>>() {
                     private boolean nullEntryReturned = !hasNullEntry;
@@ -325,14 +358,20 @@ public class ClassValueMap<V> extends AbstractMap<Class<?>, V> implements Concur
     @Override
     public V putIfAbsent(Class<?> key, V value) {
         if (key == null) {
-            if (hasNullKeyMapping) {
-                return nullKeyValue.get();
+            // Atomic putIfAbsent using single CAS - no race conditions
+            Object masked = maskNullKeyValue(value);
+            while (true) {
+                Object current = nullKeyStore.get();
+                if (current != NO_NULL_KEY_MAPPING) {
+                    // Mapping exists, return current value
+                    return unmaskNullKeyValue(current);
+                }
+                // No mapping, try to add
+                if (nullKeyStore.compareAndSet(NO_NULL_KEY_MAPPING, masked)) {
+                    return null;  // Successfully added
+                }
+                // CAS failed, retry (another thread added a mapping)
             }
-            if (nullKeyValue.compareAndSet(null, value)) {
-                hasNullKeyMapping = true;
-                return null;
-            }
-            return nullKeyValue.get();
         }
         Object prev = backingMap.putIfAbsent(key, maskNull(value));
         if (prev == null) {
@@ -346,11 +385,9 @@ public class ClassValueMap<V> extends AbstractMap<Class<?>, V> implements Concur
     @SuppressWarnings("unchecked")
     public boolean remove(Object key, Object value) {
         if (key == null) {
-            if (nullKeyValue.compareAndSet((V) value, null)) {
-                hasNullKeyMapping = false;
-                return true;
-            }
-            return false;
+            // Atomic remove if value matches - uses CAS on single field
+            Object expected = maskNullKeyValue((V) value);
+            return nullKeyStore.compareAndSet(expected, NO_NULL_KEY_MAPPING);
         }
         // Fast path: identity check is faster than instanceof
         if (key.getClass() != Class.class) {
@@ -368,7 +405,10 @@ public class ClassValueMap<V> extends AbstractMap<Class<?>, V> implements Concur
     @Override
     public boolean replace(Class<?> key, V oldValue, V newValue) {
         if (key == null) {
-            return nullKeyValue.compareAndSet(oldValue, newValue);
+            // Atomic replace if value matches - uses CAS on single field
+            Object expected = maskNullKeyValue(oldValue);
+            Object replacement = maskNullKeyValue(newValue);
+            return nullKeyStore.compareAndSet(expected, replacement);
         }
         // Mask both values for comparison/storage since backingMap stores masked values
         boolean replaced = backingMap.replace(key, maskNull(oldValue), maskNull(newValue));
@@ -382,10 +422,18 @@ public class ClassValueMap<V> extends AbstractMap<Class<?>, V> implements Concur
     @Override
     public V replace(Class<?> key, V value) {
         if (key == null) {
-            if (!hasNullKeyMapping) {
-                return null;
+            // Atomic replace only if mapping exists - uses CAS loop on single field
+            Object masked = maskNullKeyValue(value);
+            while (true) {
+                Object current = nullKeyStore.get();
+                if (current == NO_NULL_KEY_MAPPING) {
+                    return null;  // No mapping exists, can't replace
+                }
+                if (nullKeyStore.compareAndSet(current, masked)) {
+                    return unmaskNullKeyValue(current);
+                }
+                // CAS failed, retry
             }
-            return nullKeyValue.getAndSet(value);
         }
         Object replaced = backingMap.replace(key, maskNull(value));
         if (replaced != null) {
@@ -403,8 +451,10 @@ public class ClassValueMap<V> extends AbstractMap<Class<?>, V> implements Concur
             @Override
             public Iterator<V> iterator() {
                 final Iterator<Object> backingIterator = backingMap.values().iterator();
-                final boolean hasNullEntry = hasNullKeyMapping;
-                final V nullValue = hasNullEntry ? nullKeyValue.get() : null;
+                // Snapshot the null key state at iterator creation time
+                final Object nullKeyStored = nullKeyStore.get();
+                final boolean hasNullEntry = nullKeyStored != NO_NULL_KEY_MAPPING;
+                final V nullValue = hasNullEntry ? unmaskNullKeyValue(nullKeyStored) : null;
 
                 return new Iterator<V>() {
                     private boolean nullReturned = !hasNullEntry;
@@ -433,8 +483,12 @@ public class ClassValueMap<V> extends AbstractMap<Class<?>, V> implements Concur
             @Override
             @SuppressWarnings("unchecked")
             public boolean contains(Object o) {
-                if (hasNullKeyMapping && java.util.Objects.equals(nullKeyValue.get(), o)) {
-                    return true;
+                Object nullKeyStored = nullKeyStore.get();
+                if (nullKeyStored != NO_NULL_KEY_MAPPING) {
+                    V nullKeyVal = unmaskNullKeyValue(nullKeyStored);
+                    if (java.util.Objects.equals(nullKeyVal, o)) {
+                        return true;
+                    }
                 }
                 // Need to mask the value for comparison since backingMap stores masked values
                 return backingMap.containsValue(o == null ? NULL_VALUE : o);

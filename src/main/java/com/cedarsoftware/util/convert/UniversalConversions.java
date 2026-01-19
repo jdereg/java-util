@@ -206,7 +206,7 @@ final class UniversalConversions {
      */
     static AtomicInteger integerToAtomicInteger(Object from, Converter converter) {
         Integer value = (Integer) from;
-        return new AtomicInteger(value);
+        return value == null ? null : new AtomicInteger(value);
     }
 
     /**
@@ -215,7 +215,7 @@ final class UniversalConversions {
      */
     static AtomicLong longToAtomicLong(Object from, Converter converter) {
         Long value = (Long) from;
-        return new AtomicLong(value);
+        return value == null ? null : new AtomicLong(value);
     }
 
     /**
@@ -224,7 +224,7 @@ final class UniversalConversions {
      */
     static AtomicBoolean booleanToAtomicBoolean(Object from, Converter converter) {
         Boolean value = (Boolean) from;
-        return new AtomicBoolean(value);
+        return value == null ? null : new AtomicBoolean(value);
     }
 
     /**
@@ -973,6 +973,29 @@ final class UniversalConversions {
     }
 
     /**
+     * BitSet → Boolean conversion.
+     * Returns true if any bit is set, false if empty.
+     */
+    static Boolean bitSetToBoolean(Object from, Converter converter) {
+        BitSet bitSet = (BitSet) from;
+        return !bitSet.isEmpty();
+    }
+
+    /**
+     * Boolean → BitSet conversion.
+     * true = BitSet with bit 0 set.
+     * false = empty BitSet.
+     */
+    static BitSet booleanToBitSet(Object from, Converter converter) {
+        Boolean value = (Boolean) from;
+        BitSet bitSet = new BitSet();
+        if (value) {
+            bitSet.set(0);
+        }
+        return bitSet;
+    }
+
+    /**
      * BitSet → String conversion.
      * Returns a binary string representation where rightmost character is bit 0.
      * Example: BitSet with bits 1,3,5 set → "101010"
@@ -1037,49 +1060,5 @@ final class UniversalConversions {
     static DoubleStream doubleArrayToDoubleStream(Object from, Converter converter) {
         double[] array = (double[]) from;
         return DoubleStream.of(array);
-    }
-
-    // ========================================
-    // Date/Time Bridge Methods (placeholders for now)
-    // ========================================
-
-    static Object sqlDateToLocalDate(Object from, Converter converter) {
-        // TODO: Implement using existing SqlDateConversions
-        throw new UnsupportedOperationException("Not yet implemented");
-    }
-
-    static Object timestampToInstant(Object from, Converter converter) {
-        // TODO: Implement using existing TimestampConversions
-        throw new UnsupportedOperationException("Not yet implemented");
-    }
-
-    static ZonedDateTime calendarToZonedDateTime(Object from, Converter converter) {
-        Calendar calendar = (Calendar) from;
-        return calendar.toInstant().atZone(calendar.getTimeZone().toZoneId());
-    }
-
-    static Object timeZoneToZoneId(Object from, Converter converter) {
-        // TODO: Implement using existing TimeZoneConversions
-        throw new UnsupportedOperationException("Not yet implemented");
-    }
-
-    static Object instantToTimestamp(Object from, Converter converter) {
-        // TODO: Implement using existing InstantConversions
-        throw new UnsupportedOperationException("Not yet implemented");
-    }
-
-    static Object localDateToSqlDate(Object from, Converter converter) {
-        // TODO: Implement using existing LocalDateConversions
-        throw new UnsupportedOperationException("Not yet implemented");
-    }
-
-    static Object zonedDateTimeToCalendar(Object from, Converter converter) {
-        // TODO: Implement using existing ZonedDateTimeConversions
-        throw new UnsupportedOperationException("Not yet implemented");
-    }
-
-    static Object zoneIdToTimeZone(Object from, Converter converter) {
-        // TODO: Implement using existing ZoneIdConversions
-        throw new UnsupportedOperationException("Not yet implemented");
     }
 }

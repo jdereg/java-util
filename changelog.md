@@ -1,6 +1,6 @@
 ### Revision History
 
-#### 4.85.0 (Unreleased)
+#### 4.85.0  - 2025-01-24
 * **PERFORMANCE**: `ClassUtilities` - Lock-free cache operations using CAS-based removal
   * Replaced synchronized blocks in `fromCache()`, `toCache()`, and `drainQueue()` with `ConcurrentHashMap.remove(key, value)`
   * CAS-based removal only removes if the exact WeakReference is still present, preventing race conditions
@@ -13,6 +13,19 @@
   * Added `isSyntheticArgName()` method using efficient string operations instead of regex
   * Avoids `Pattern.matcher().matches()` overhead for checking "arg0", "arg1", etc. patterns
   * Used in constructor parameter resolution to detect compiler-generated names
+* **PERFORMANCE**: `DeepEquals` - Replace O(n²) visited set copying with O(1) ScopedSet for unordered collections
+  * Previously, comparing unordered collections copied the entire visited set for each probe element (O(n × k))
+  * New `ScopedSet` wrapper creates a lightweight view with O(1) creation time
+  * Tracks local additions separately and discards them when probe completes
+  * Significant improvement for comparing large unordered collections/maps with cycles
+* **PERFORMANCE**: `DeepEquals` - Multiple optimizations reducing per-comparison overhead
+  * Replaced `ConcurrentSet` with `HashSet` for visited tracking - no concurrent access occurs
+  * Cache system properties at class load time instead of parsing on every call
+  * Simplified `hashCode()` by removing unnecessary `finalizeHash()` call
+* **IMPROVED**: `ConcurrentNavigableSetNullSafe` - Changed sentinel from String to Object instance
+  * Previous `"null_" + UUID.randomUUID()` String could theoretically collide with user data
+  * New `new Object()` sentinel is guaranteed unique and cannot collide
+  * Also changed from `.equals()` to identity comparison (`==`) for sentinel detection
 * **BUG FIX**: `ClassValueMap` - Fixed `clear()` race condition that could leave permanently stale cache entries
   * Previous order: invalidate cache → clear backingMap (allowed concurrent `get()` to repopulate cache from still-populated backingMap)
   * Fixed order: snapshot keys → clear backingMap → invalidate cache (ensures any `computeValue` after clear sees empty map)
@@ -25,10 +38,6 @@
   * Comparators like `String.CASE_INSENSITIVE_ORDER` would throw NPE when comparing null elements
   * Wrapper now gracefully falls back to default null ordering (nulls > non-nulls) if comparator throws NPE
   * User comparators that handle nulls (via `Comparator.nullsFirst/nullsLast` or custom handling) still control null ordering
-* **IMPROVED**: `ConcurrentNavigableSetNullSafe` - Changed sentinel from String to Object instance
-  * Previous `"null_" + UUID.randomUUID()` String could theoretically collide with user data
-  * New `new Object()` sentinel is guaranteed unique and cannot collide
-  * Also changed from `.equals()` to identity comparison (`==`) for sentinel detection
 * **BUILD**: Updated json-io test dependency from 4.83.0 to 4.84.0
 
 #### 4.84.0  - 2025-01-19

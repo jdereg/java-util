@@ -57,6 +57,8 @@ public class DeepEqualsSecurityTest {
         restoreProperty("deepequals.max.map.size", originalMaxMapSize);
         restoreProperty("deepequals.max.object.fields", originalMaxObjectFields);
         restoreProperty("deepequals.max.recursion.depth", originalMaxRecursionDepth);
+        // Reload cached values so other tests see defaults
+        DeepEquals.reloadSecurityProperties();
     }
     
     private void restoreProperty(String key, String value) {
@@ -76,7 +78,8 @@ public class DeepEqualsSecurityTest {
         System.clearProperty("deepequals.max.map.size");
         System.clearProperty("deepequals.max.object.fields");
         System.clearProperty("deepequals.max.recursion.depth");
-        
+        DeepEquals.reloadSecurityProperties();
+
         // Create large structures that would normally trigger limits
         List<Integer> largeList1 = createLargeList(1000);
         List<Integer> largeList2 = createLargeList(1000);
@@ -92,7 +95,8 @@ public class DeepEqualsSecurityTest {
     void testCollectionSizeLimiting() {
         // Enable collection size limit
         System.setProperty("deepequals.max.collection.size", "10");
-        
+        DeepEquals.reloadSecurityProperties();
+
         // Create collections that exceed the limit
         List<Integer> largeList1 = createLargeList(15);
         List<Integer> largeList2 = createLargeList(15);
@@ -110,7 +114,8 @@ public class DeepEqualsSecurityTest {
     void testArraySizeLimiting() {
         // Enable array size limit
         System.setProperty("deepequals.max.array.size", "5");
-        
+        DeepEquals.reloadSecurityProperties();
+
         // Create arrays that exceed the limit
         int[] largeArray1 = createLargeArray(10);
         int[] largeArray2 = createLargeArray(10);
@@ -128,7 +133,8 @@ public class DeepEqualsSecurityTest {
     void testMapSizeLimiting() {
         // Enable map size limit
         System.setProperty("deepequals.max.map.size", "3");
-        
+        DeepEquals.reloadSecurityProperties();
+
         // Create maps that exceed the limit
         Map<String, Integer> largeMap1 = createLargeMap(5);
         Map<String, Integer> largeMap2 = createLargeMap(5);
@@ -146,7 +152,8 @@ public class DeepEqualsSecurityTest {
     void testObjectFieldCountLimiting() {
         // Enable object field count limit
         System.setProperty("deepequals.max.object.fields", "2");
-        
+        DeepEquals.reloadSecurityProperties();
+
         // Create objects with many fields that exceed the limit
         LargeFieldObject obj1 = new LargeFieldObject();
         LargeFieldObject obj2 = new LargeFieldObject();
@@ -164,7 +171,8 @@ public class DeepEqualsSecurityTest {
     void testRecursionDepthLimitingConfiguration() {
         // Enable recursion depth limit
         System.setProperty("deepequals.max.recursion.depth", "5");
-        
+        DeepEquals.reloadSecurityProperties();
+
         // Note: The current DeepEquals implementation uses an iterative algorithm 
         // rather than true recursion, so the depth limiting is checked only at 
         // the entry point. This test verifies the configuration is available.
@@ -193,7 +201,8 @@ public class DeepEqualsSecurityTest {
         System.setProperty("deepequals.max.map.size", "0");
         System.setProperty("deepequals.max.object.fields", "0");
         System.setProperty("deepequals.max.recursion.depth", "0");
-        
+        DeepEquals.reloadSecurityProperties();
+
         // Create large structures that would normally trigger limits
         List<Integer> largeList1 = createLargeList(1000);
         List<Integer> largeList2 = createLargeList(1000);
@@ -211,7 +220,8 @@ public class DeepEqualsSecurityTest {
         System.setProperty("deepequals.max.collection.size", "-1");
         System.setProperty("deepequals.max.array.size", "-5");
         System.setProperty("deepequals.max.map.size", "-10");
-        
+        DeepEquals.reloadSecurityProperties();
+
         // Create structures that would trigger positive limits
         List<Integer> list1 = createLargeList(100);
         List<Integer> list2 = createLargeList(100);
@@ -229,7 +239,8 @@ public class DeepEqualsSecurityTest {
         System.setProperty("deepequals.max.collection.size", "invalid");
         System.setProperty("deepequals.max.array.size", "not_a_number");
         System.setProperty("deepequals.max.map.size", "");
-        
+        DeepEquals.reloadSecurityProperties();
+
         // Create structures that are small and should work with defaults
         List<Integer> list1 = createLargeList(10);
         List<Integer> list2 = createLargeList(10);
@@ -247,7 +258,8 @@ public class DeepEqualsSecurityTest {
         System.setProperty("deepequals.max.collection.size", "100");
         System.setProperty("deepequals.max.array.size", "50");
         System.setProperty("deepequals.max.map.size", "20");
-        
+        DeepEquals.reloadSecurityProperties();
+
         // Create structure that could trigger multiple limits
         ComplexObject obj1 = new ComplexObject();
         ComplexObject obj2 = new ComplexObject();
@@ -268,7 +280,8 @@ public class DeepEqualsSecurityTest {
         System.setProperty("deepequals.max.map.size", "100");
         System.setProperty("deepequals.max.object.fields", "50");
         System.setProperty("deepequals.max.recursion.depth", "20");
-        
+        DeepEquals.reloadSecurityProperties();
+
         // Create small structures that are well within limits
         List<String> smallList1 = Arrays.asList("a", "b", "c");
         List<String> smallList2 = Arrays.asList("a", "b", "c");
@@ -289,7 +302,8 @@ public class DeepEqualsSecurityTest {
         System.clearProperty("deepequals.max.map.size");
         System.clearProperty("deepequals.max.object.fields");
         System.clearProperty("deepequals.max.recursion.depth");
-        
+        DeepEquals.reloadSecurityProperties();
+
         // Create reasonably large structures
         List<Integer> list1 = createLargeList(1000);
         List<Integer> list2 = createLargeList(1000);
@@ -306,7 +320,8 @@ public class DeepEqualsSecurityTest {
         // Enable secure error messages
         System.setProperty("deepequals.secure.errors", "true");
         System.setProperty("deepequals.max.collection.size", "5");
-        
+        DeepEquals.reloadSecurityProperties();
+
         // Create object with sensitive field names that would appear in error
         SensitiveObject obj1 = new SensitiveObject();
         obj1.password = "secret123";
@@ -332,7 +347,8 @@ public class DeepEqualsSecurityTest {
     void testRegularErrorMessagesWhenDisabled() {
         // Disable secure error messages (default)
         System.setProperty("deepequals.secure.errors", "false");
-        
+        DeepEquals.reloadSecurityProperties();
+
         // Create objects with different values
         SimpleObject obj1 = new SimpleObject();
         obj1.name = "test1";
@@ -355,7 +371,8 @@ public class DeepEqualsSecurityTest {
     void testRecursionDepthLimitingWithDeeplyNestedObjects() {
         // Enable recursion depth limit to 1000
         System.setProperty("deepequals.max.recursion.depth", "1000");
-        
+        DeepEquals.reloadSecurityProperties();
+
         // Create deeply nested objects that exceed the limit
         NestedObject obj1 = createDeeplyNestedObject(1001);
         NestedObject obj2 = createDeeplyNestedObject(1001);
@@ -373,7 +390,8 @@ public class DeepEqualsSecurityTest {
     void testOneMillionDepthLimitForHeapBasedTraversal() {
         // Test with 1 million depth limit (should work fine for heap-based traversal)
         System.setProperty("deepequals.max.recursion.depth", "1000000");
-        
+        DeepEquals.reloadSecurityProperties();
+
         // Create objects that are just within the limit
         NestedObject obj1 = createDeeplyNestedObject(1000);
         NestedObject obj2 = createDeeplyNestedObject(1000);
@@ -387,7 +405,8 @@ public class DeepEqualsSecurityTest {
         // Create objects that exceed 1M depth - this would be too expensive to test in practice
         // but we can test the validation logic with a smaller limit
         System.setProperty("deepequals.max.recursion.depth", "500");
-        
+        DeepEquals.reloadSecurityProperties();
+
         NestedObject obj3 = createDeeplyNestedObject(501);
         NestedObject obj4 = createDeeplyNestedObject(501);
         

@@ -18,7 +18,7 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.Deque;
 import java.util.HashMap;
-// HashSet import removed - using IdentitySet for Class-based set
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.ListIterator;
@@ -203,77 +203,70 @@ public class DeepEquals {
     private static final int DEFAULT_MAX_MAP_SIZE = 100000;
     private static final int DEFAULT_MAX_OBJECT_FIELDS = 1000;
     private static final int DEFAULT_MAX_RECURSION_DEPTH = 1000000;  // 1M depth for heap-based traversal
-    
-    
-    // Security configuration methods
-    
+
+    // Cached security configuration values (parsed once at class load, reloadable for testing)
+    private static boolean secureErrorsEnabled;
+    private static int maxCollectionSize;
+    private static int maxArraySize;
+    private static int maxMapSize;
+    private static int maxObjectFields;
+    private static int maxRecursionDepth;
+
+    static {
+        reloadSecurityProperties();
+    }
+
+    /**
+     * Reloads security configuration from system properties.
+     * Package-private for testing purposes - allows tests to change system properties
+     * and have the changes take effect.
+     */
+    static void reloadSecurityProperties() {
+        secureErrorsEnabled = Boolean.parseBoolean(System.getProperty("deepequals.secure.errors", "false"));
+        maxCollectionSize = parseIntProperty("deepequals.max.collection.size", DEFAULT_MAX_COLLECTION_SIZE);
+        maxArraySize = parseIntProperty("deepequals.max.array.size", DEFAULT_MAX_ARRAY_SIZE);
+        maxMapSize = parseIntProperty("deepequals.max.map.size", DEFAULT_MAX_MAP_SIZE);
+        maxObjectFields = parseIntProperty("deepequals.max.object.fields", DEFAULT_MAX_OBJECT_FIELDS);
+        maxRecursionDepth = parseIntProperty("deepequals.max.recursion.depth", DEFAULT_MAX_RECURSION_DEPTH);
+    }
+
+    private static int parseIntProperty(String propertyName, int defaultValue) {
+        String prop = System.getProperty(propertyName);
+        if (prop != null) {
+            try {
+                int value = Integer.parseInt(prop);
+                return Math.max(0, value); // 0 means disabled
+            } catch (NumberFormatException e) {
+                // Fall through to default
+            }
+        }
+        return defaultValue;
+    }
+
+    // Security configuration accessor methods (return cached values)
+
     private static boolean isSecureErrorsEnabled() {
-        return Boolean.parseBoolean(System.getProperty("deepequals.secure.errors", "false"));
+        return secureErrorsEnabled;
     }
-    
+
     private static int getMaxCollectionSize() {
-        String maxSizeProp = System.getProperty("deepequals.max.collection.size");
-        if (maxSizeProp != null) {
-            try {
-                int value = Integer.parseInt(maxSizeProp);
-                return Math.max(0, value); // 0 means disabled
-            } catch (NumberFormatException e) {
-                // Fall through to default
-            }
-        }
-        return DEFAULT_MAX_COLLECTION_SIZE;
+        return maxCollectionSize;
     }
-    
+
     private static int getMaxArraySize() {
-        String maxSizeProp = System.getProperty("deepequals.max.array.size");
-        if (maxSizeProp != null) {
-            try {
-                int value = Integer.parseInt(maxSizeProp);
-                return Math.max(0, value); // 0 means disabled
-            } catch (NumberFormatException e) {
-                // Fall through to default
-            }
-        }
-        return DEFAULT_MAX_ARRAY_SIZE;
+        return maxArraySize;
     }
-    
+
     private static int getMaxMapSize() {
-        String maxSizeProp = System.getProperty("deepequals.max.map.size");
-        if (maxSizeProp != null) {
-            try {
-                int value = Integer.parseInt(maxSizeProp);
-                return Math.max(0, value); // 0 means disabled
-            } catch (NumberFormatException e) {
-                // Fall through to default
-            }
-        }
-        return DEFAULT_MAX_MAP_SIZE;
+        return maxMapSize;
     }
-    
+
     private static int getMaxObjectFields() {
-        String maxFieldsProp = System.getProperty("deepequals.max.object.fields");
-        if (maxFieldsProp != null) {
-            try {
-                int value = Integer.parseInt(maxFieldsProp);
-                return Math.max(0, value); // 0 means disabled
-            } catch (NumberFormatException e) {
-                // Fall through to default
-            }
-        }
-        return DEFAULT_MAX_OBJECT_FIELDS;
+        return maxObjectFields;
     }
-    
+
     private static int getMaxRecursionDepth() {
-        String maxDepthProp = System.getProperty("deepequals.max.recursion.depth");
-        if (maxDepthProp != null) {
-            try {
-                int value = Integer.parseInt(maxDepthProp);
-                return Math.max(0, value); // 0 means disabled
-            } catch (NumberFormatException e) {
-                // Fall through to default
-            }
-        }
-        return DEFAULT_MAX_RECURSION_DEPTH;
+        return maxRecursionDepth;
     }
     
     /**
@@ -345,7 +338,8 @@ public class DeepEquals {
 
         @Override
         public int hashCode() {
-            return EncryptionUtilities.finalizeHash(System.identityHashCode(_key1) * 31 + System.identityHashCode(_key2));
+            // Simple hash combining - identity hashcodes already have good distribution
+            return System.identityHashCode(_key1) * 31 + System.identityHashCode(_key2);
         }
     }
 
@@ -430,7 +424,7 @@ public class DeepEquals {
         depthStack.push(maxDepth);
 
         try {
-            Set<ItemsToCompare> visited = new ConcurrentSet<>();
+            Set<ItemsToCompare> visited = new HashSet<>();
             return deepEquals(a, b, options, visited);
         } finally {
             depthStack.pop();
@@ -907,7 +901,7 @@ public class DeepEquals {
             for (Iterator<Object> it = candidates.iterator(); it.hasNext();) {
                 Object item2 = it.next();
                 // Use a copy of visited set to avoid polluting it with failed comparisons
-                Set<ItemsToCompare> visitedCopy = new ConcurrentSet<>(visited);
+                Set<ItemsToCompare> visitedCopy = new HashSet<>(visited);
                 // Call 5-arg overload directly to bypass diff generation entirely
                 Deque<ItemsToCompare> probeStack = new ArrayDeque<>();
                 if (deepEquals(item1, item2, probeStack, childOptions, visitedCopy)) {
@@ -954,7 +948,7 @@ public class DeepEquals {
             for (Iterator<Object> li = list.iterator(); li.hasNext();) {
                 Object cand = li.next();
                 // Use a copy of visited set to avoid polluting it with failed comparisons
-                Set<ItemsToCompare> visitedCopy = new ConcurrentSet<>(visited);
+                Set<ItemsToCompare> visitedCopy = new HashSet<>(visited);
                 // Call 5-arg overload directly to bypass diff generation entirely
                 Deque<ItemsToCompare> probeStack = new ArrayDeque<>();
                 if (deepEquals(probe, cand, probeStack, options, visitedCopy)) {
@@ -982,7 +976,7 @@ public class DeepEquals {
             for (Iterator<Object> li = list.iterator(); li.hasNext();) {
                 Object cand = li.next();
                 // Use a copy of visited set to avoid polluting it with failed comparisons
-                Set<ItemsToCompare> visitedCopy = new ConcurrentSet<>(visited);
+                Set<ItemsToCompare> visitedCopy = new HashSet<>(visited);
                 // Call 5-arg overload directly to bypass diff generation entirely
                 Deque<ItemsToCompare> probeStack = new ArrayDeque<>();
                 if (deepEquals(probe, cand, probeStack, options, visitedCopy)) {
@@ -1073,7 +1067,7 @@ public class DeepEquals {
 
                 // Check if keys are equal
                 // Use a copy of visited set to avoid polluting it with failed comparisons
-                Set<ItemsToCompare> visitedCopy = new ConcurrentSet<>(visited);
+                Set<ItemsToCompare> visitedCopy = new HashSet<>(visited);
                 // Call 5-arg overload directly to bypass diff generation for key probes
                 Deque<ItemsToCompare> probeStack = new ArrayDeque<>();
                 if (deepEquals(entry.getKey(), otherEntry.getKey(), probeStack, childOptions, visitedCopy)) {
@@ -1132,7 +1126,7 @@ public class DeepEquals {
             for (Iterator<Map.Entry<?, ?>> ci = c.iterator(); ci.hasNext();) {
                 Map.Entry<?, ?> e = ci.next();
                 // Use a copy of visited set to avoid polluting it with failed comparisons
-                Set<ItemsToCompare> visitedCopy = new ConcurrentSet<>(visited);
+                Set<ItemsToCompare> visitedCopy = new HashSet<>(visited);
                 // Call 5-arg overload directly to bypass diff generation for key probes
                 Deque<ItemsToCompare> probeStack = new ArrayDeque<>();
                 if (deepEquals(key, e.getKey(), probeStack, options, visitedCopy)) {
@@ -1160,7 +1154,7 @@ public class DeepEquals {
             for (Iterator<Map.Entry<?, ?>> ci = c.iterator(); ci.hasNext();) {
                 Map.Entry<?, ?> e = ci.next();
                 // Use a copy of visited set to avoid polluting it with failed comparisons
-                Set<ItemsToCompare> visitedCopy = new ConcurrentSet<>(visited);
+                Set<ItemsToCompare> visitedCopy = new HashSet<>(visited);
                 // Call 5-arg overload directly to bypass diff generation for key probes
                 Deque<ItemsToCompare> probeStack = new ArrayDeque<>();
                 if (deepEquals(key, e.getKey(), probeStack, options, visitedCopy)) {

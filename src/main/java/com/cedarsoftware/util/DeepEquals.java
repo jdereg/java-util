@@ -344,6 +344,55 @@ public class DeepEquals {
     }
 
     /**
+     * A lightweight set wrapper for probing operations in unordered collection/map comparison.
+     * Instead of copying the entire visited set (O(n)), this creates a view that tracks local
+     * additions (O(1) creation). When the probe completes, the local additions are discarded
+     * without affecting the original base set.
+     *
+     * This eliminates the O(n²) overhead from repeated visited set copying during
+     * unordered collection comparison probing.
+     */
+    private static final class ScopedSet extends java.util.AbstractSet<ItemsToCompare> {
+        private final Set<ItemsToCompare> base;
+        private Set<ItemsToCompare> local;
+
+        ScopedSet(Set<ItemsToCompare> base) {
+            this.base = base;
+        }
+
+        @Override
+        public boolean contains(Object o) {
+            return base.contains(o) || (local != null && local.contains(o));
+        }
+
+        @Override
+        public boolean add(ItemsToCompare item) {
+            if (base.contains(item)) {
+                return false;
+            }
+            if (local == null) {
+                local = new HashSet<>();
+            }
+            return local.add(item);
+        }
+
+        @Override
+        public Iterator<ItemsToCompare> iterator() {
+            // Not needed for probing operations
+            throw new UnsupportedOperationException("ScopedSet does not support iteration");
+        }
+
+        @Override
+        public int size() {
+            int size = base.size();
+            if (local != null) {
+                size += local.size();
+            }
+            return size;
+        }
+    }
+
+    /**
      * Performs a deep comparison between two objects, going beyond a simple {@code equals()} check.
      * <p>
      * This method is functionally equivalent to calling
@@ -901,7 +950,7 @@ public class DeepEquals {
             for (Iterator<Object> it = candidates.iterator(); it.hasNext();) {
                 Object item2 = it.next();
                 // Use a copy of visited set to avoid polluting it with failed comparisons
-                Set<ItemsToCompare> visitedCopy = new HashSet<>(visited);
+                Set<ItemsToCompare> visitedCopy = new ScopedSet(visited);
                 // Call 5-arg overload directly to bypass diff generation entirely
                 Deque<ItemsToCompare> probeStack = new ArrayDeque<>();
                 if (deepEquals(item1, item2, probeStack, childOptions, visitedCopy)) {
@@ -948,7 +997,7 @@ public class DeepEquals {
             for (Iterator<Object> li = list.iterator(); li.hasNext();) {
                 Object cand = li.next();
                 // Use a copy of visited set to avoid polluting it with failed comparisons
-                Set<ItemsToCompare> visitedCopy = new HashSet<>(visited);
+                Set<ItemsToCompare> visitedCopy = new ScopedSet(visited);
                 // Call 5-arg overload directly to bypass diff generation entirely
                 Deque<ItemsToCompare> probeStack = new ArrayDeque<>();
                 if (deepEquals(probe, cand, probeStack, options, visitedCopy)) {
@@ -976,7 +1025,7 @@ public class DeepEquals {
             for (Iterator<Object> li = list.iterator(); li.hasNext();) {
                 Object cand = li.next();
                 // Use a copy of visited set to avoid polluting it with failed comparisons
-                Set<ItemsToCompare> visitedCopy = new HashSet<>(visited);
+                Set<ItemsToCompare> visitedCopy = new ScopedSet(visited);
                 // Call 5-arg overload directly to bypass diff generation entirely
                 Deque<ItemsToCompare> probeStack = new ArrayDeque<>();
                 if (deepEquals(probe, cand, probeStack, options, visitedCopy)) {
@@ -1067,7 +1116,7 @@ public class DeepEquals {
 
                 // Check if keys are equal
                 // Use a copy of visited set to avoid polluting it with failed comparisons
-                Set<ItemsToCompare> visitedCopy = new HashSet<>(visited);
+                Set<ItemsToCompare> visitedCopy = new ScopedSet(visited);
                 // Call 5-arg overload directly to bypass diff generation for key probes
                 Deque<ItemsToCompare> probeStack = new ArrayDeque<>();
                 if (deepEquals(entry.getKey(), otherEntry.getKey(), probeStack, childOptions, visitedCopy)) {
@@ -1126,7 +1175,7 @@ public class DeepEquals {
             for (Iterator<Map.Entry<?, ?>> ci = c.iterator(); ci.hasNext();) {
                 Map.Entry<?, ?> e = ci.next();
                 // Use a copy of visited set to avoid polluting it with failed comparisons
-                Set<ItemsToCompare> visitedCopy = new HashSet<>(visited);
+                Set<ItemsToCompare> visitedCopy = new ScopedSet(visited);
                 // Call 5-arg overload directly to bypass diff generation for key probes
                 Deque<ItemsToCompare> probeStack = new ArrayDeque<>();
                 if (deepEquals(key, e.getKey(), probeStack, options, visitedCopy)) {
@@ -1154,7 +1203,7 @@ public class DeepEquals {
             for (Iterator<Map.Entry<?, ?>> ci = c.iterator(); ci.hasNext();) {
                 Map.Entry<?, ?> e = ci.next();
                 // Use a copy of visited set to avoid polluting it with failed comparisons
-                Set<ItemsToCompare> visitedCopy = new HashSet<>(visited);
+                Set<ItemsToCompare> visitedCopy = new ScopedSet(visited);
                 // Call 5-arg overload directly to bypass diff generation for key probes
                 Deque<ItemsToCompare> probeStack = new ArrayDeque<>();
                 if (deepEquals(key, e.getKey(), probeStack, options, visitedCopy)) {

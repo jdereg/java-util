@@ -209,63 +209,63 @@ public class ConcurrentNavigableMapNullSafe<K, V> extends AbstractConcurrentNull
 
     @Override
     public Entry<K, V> lowerEntry(K key) {
-        Entry<Object, Object> entry = ((ConcurrentSkipListMap<Object, Object>) internalMap).lowerEntry(maskNullKey(key));
+        Entry<Object, Object> entry = ((ConcurrentNavigableMap<Object, Object>) internalMap).lowerEntry(maskNullKey(key));
         return wrapEntry(entry);
     }
 
     @Override
     public K lowerKey(K key) {
-        return unmaskNullKey(((ConcurrentSkipListMap<Object, Object>) internalMap).lowerKey(maskNullKey(key)));
+        return unmaskNullKey(((ConcurrentNavigableMap<Object, Object>) internalMap).lowerKey(maskNullKey(key)));
     }
 
     @Override
     public Entry<K, V> floorEntry(K key) {
-        Entry<Object, Object> entry = ((ConcurrentSkipListMap<Object, Object>) internalMap).floorEntry(maskNullKey(key));
+        Entry<Object, Object> entry = ((ConcurrentNavigableMap<Object, Object>) internalMap).floorEntry(maskNullKey(key));
         return wrapEntry(entry);
     }
 
     @Override
     public K floorKey(K key) {
-        return unmaskNullKey(((ConcurrentSkipListMap<Object, Object>) internalMap).floorKey(maskNullKey(key)));
+        return unmaskNullKey(((ConcurrentNavigableMap<Object, Object>) internalMap).floorKey(maskNullKey(key)));
     }
 
     @Override
     public Entry<K, V> ceilingEntry(K key) {
-        Entry<Object, Object> entry = ((ConcurrentSkipListMap<Object, Object>) internalMap).ceilingEntry(maskNullKey(key));
+        Entry<Object, Object> entry = ((ConcurrentNavigableMap<Object, Object>) internalMap).ceilingEntry(maskNullKey(key));
         return wrapEntry(entry);
     }
 
     @Override
     public K ceilingKey(K key) {
-        return unmaskNullKey(((ConcurrentSkipListMap<Object, Object>) internalMap).ceilingKey(maskNullKey(key)));
+        return unmaskNullKey(((ConcurrentNavigableMap<Object, Object>) internalMap).ceilingKey(maskNullKey(key)));
     }
 
     @Override
     public Entry<K, V> higherEntry(K key) {
-        Entry<Object, Object> entry = ((ConcurrentSkipListMap<Object, Object>) internalMap).higherEntry(maskNullKey(key));
+        Entry<Object, Object> entry = ((ConcurrentNavigableMap<Object, Object>) internalMap).higherEntry(maskNullKey(key));
         return wrapEntry(entry);
     }
 
     @Override
     public K higherKey(K key) {
-        return unmaskNullKey(((ConcurrentSkipListMap<Object, Object>) internalMap).higherKey(maskNullKey(key)));
+        return unmaskNullKey(((ConcurrentNavigableMap<Object, Object>) internalMap).higherKey(maskNullKey(key)));
     }
 
     @Override
     public Entry<K, V> firstEntry() {
-        Entry<Object, Object> entry = ((ConcurrentSkipListMap<Object, Object>) internalMap).firstEntry();
+        Entry<Object, Object> entry = ((ConcurrentNavigableMap<Object, Object>) internalMap).firstEntry();
         return wrapEntry(entry);
     }
 
     @Override
     public Entry<K, V> lastEntry() {
-        Entry<Object, Object> entry = ((ConcurrentSkipListMap<Object, Object>) internalMap).lastEntry();
+        Entry<Object, Object> entry = ((ConcurrentNavigableMap<Object, Object>) internalMap).lastEntry();
         return wrapEntry(entry);
     }
 
     @Override
     public Entry<K, V> pollFirstEntry() {
-        Entry<Object, Object> entry = ((ConcurrentSkipListMap<Object, Object>) internalMap).pollFirstEntry();
+        Entry<Object, Object> entry = ((ConcurrentNavigableMap<Object, Object>) internalMap).pollFirstEntry();
         if (entry == null) {
             return null;
         }
@@ -276,7 +276,7 @@ public class ConcurrentNavigableMapNullSafe<K, V> extends AbstractConcurrentNull
 
     @Override
     public Entry<K, V> pollLastEntry() {
-        Entry<Object, Object> entry = ((ConcurrentSkipListMap<Object, Object>) internalMap).pollLastEntry();
+        Entry<Object, Object> entry = ((ConcurrentNavigableMap<Object, Object>) internalMap).pollLastEntry();
         if (entry == null) {
             return null;
         }
@@ -287,12 +287,12 @@ public class ConcurrentNavigableMapNullSafe<K, V> extends AbstractConcurrentNull
 
     @Override
     public K firstKey() {
-        return unmaskNullKey(((ConcurrentSkipListMap<Object, Object>) internalMap).firstKey());
+        return unmaskNullKey(((ConcurrentNavigableMap<Object, Object>) internalMap).firstKey());
     }
 
     @Override
     public K lastKey() {
-        return unmaskNullKey(((ConcurrentSkipListMap<Object, Object>) internalMap).lastKey());
+        return unmaskNullKey(((ConcurrentNavigableMap<Object, Object>) internalMap).lastKey());
     }
 
     @Override
@@ -372,33 +372,33 @@ public class ConcurrentNavigableMapNullSafe<K, V> extends AbstractConcurrentNull
 
         @Override
         public K lower(K k) {
-            return owner.unmaskNullKey(((ConcurrentSkipListMap<Object, Object>) owner.internalMap).lowerKey(owner.maskNullKey(k)));
+            return owner.unmaskNullKey(((ConcurrentNavigableMap<Object, Object>) owner.internalMap).lowerKey(owner.maskNullKey(k)));
         }
 
         @Override
         public K floor(K k) {
-            return owner.unmaskNullKey(((ConcurrentSkipListMap<Object, Object>) owner.internalMap).floorKey(owner.maskNullKey(k)));
+            return owner.unmaskNullKey(((ConcurrentNavigableMap<Object, Object>) owner.internalMap).floorKey(owner.maskNullKey(k)));
         }
 
         @Override
         public K ceiling(K k) {
-            return owner.unmaskNullKey(((ConcurrentSkipListMap<Object, Object>) owner.internalMap).ceilingKey(owner.maskNullKey(k)));
+            return owner.unmaskNullKey(((ConcurrentNavigableMap<Object, Object>) owner.internalMap).ceilingKey(owner.maskNullKey(k)));
         }
 
         @Override
         public K higher(K k) {
-            return owner.unmaskNullKey(((ConcurrentSkipListMap<Object, Object>) owner.internalMap).higherKey(owner.maskNullKey(k)));
+            return owner.unmaskNullKey(((ConcurrentNavigableMap<Object, Object>) owner.internalMap).higherKey(owner.maskNullKey(k)));
         }
 
         @Override
         public K pollFirst() {
-            Entry<Object, Object> entry = ((ConcurrentSkipListMap<Object, Object>) owner.internalMap).pollFirstEntry();
+            Entry<Object, Object> entry = ((ConcurrentNavigableMap<Object, Object>) owner.internalMap).pollFirstEntry();
             return (entry == null) ? null : owner.unmaskNullKey(entry.getKey());
         }
 
         @Override
         public K pollLast() {
-            Entry<Object, Object> entry = ((ConcurrentSkipListMap<Object, Object>) owner.internalMap).pollLastEntry();
+            Entry<Object, Object> entry = ((ConcurrentNavigableMap<Object, Object>) owner.internalMap).pollLastEntry();
             return (entry == null) ? null : owner.unmaskNullKey(entry.getKey());
         }
 
@@ -409,12 +409,12 @@ public class ConcurrentNavigableMapNullSafe<K, V> extends AbstractConcurrentNull
 
         @Override
         public K first() {
-            return owner.unmaskNullKey(((ConcurrentSkipListMap<Object, Object>) owner.internalMap).firstKey());
+            return owner.unmaskNullKey(((ConcurrentNavigableMap<Object, Object>) owner.internalMap).firstKey());
         }
 
         @Override
         public K last() {
-            return owner.unmaskNullKey(((ConcurrentSkipListMap<Object, Object>) owner.internalMap).lastKey());
+            return owner.unmaskNullKey(((ConcurrentNavigableMap<Object, Object>) owner.internalMap).lastKey());
         }
 
         @Override
@@ -424,7 +424,7 @@ public class ConcurrentNavigableMapNullSafe<K, V> extends AbstractConcurrentNull
 
         @Override
         public Iterator<K> descendingIterator() {
-            Iterator<Object> it = ((ConcurrentSkipListMap<Object, Object>) owner.internalMap).descendingKeySet().iterator();
+            Iterator<Object> it = ((ConcurrentNavigableMap<Object, Object>) owner.internalMap).descendingKeySet().iterator();
             return new Iterator<K>() {
                 @Override
                 public boolean hasNext() {

@@ -17,6 +17,10 @@
   * Previous order: invalidate cache → clear backingMap (allowed concurrent `get()` to repopulate cache from still-populated backingMap)
   * Fixed order: snapshot keys → clear backingMap → invalidate cache (ensures any `computeValue` after clear sees empty map)
   * After `clear()` completes, all subsequent `get()` calls now see correct state
+* **BUG FIX**: `ConcurrentNavigableMapNullSafe` - Fixed `ClassCastException` on sub-map views
+  * Navigational methods (`lowerKey`, `floorKey`, `ceilingKey`, `higherKey`, etc.) incorrectly cast to `ConcurrentSkipListMap`
+  * Sub-map, head-map, tail-map, and descending-map views are not `ConcurrentSkipListMap` instances
+  * Fixed by casting to `ConcurrentNavigableMap` instead (the interface that defines these methods)
 
 #### 4.84.0  - 2025-01-19
 * **BUG FIX**: `ClassValueMap` - Fixed race condition in `putIfAbsent(null, value)` for null key handling

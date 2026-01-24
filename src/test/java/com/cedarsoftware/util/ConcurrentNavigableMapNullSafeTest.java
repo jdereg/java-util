@@ -831,4 +831,76 @@ class ConcurrentNavigableMapNullSafeTest {
         map.put(null, 50);
         assertEquals(50, map.getOrDefault(null, 60));
     }
+
+    /**
+     * Test that navigational methods work correctly on sub-map views.
+     * This test would have failed before the fix that changed casts from
+     * ConcurrentSkipListMap to ConcurrentNavigableMap, because sub-map views
+     * are not instances of ConcurrentSkipListMap.
+     */
+    @Test
+    void testNavigationalMethodsOnSubMapViews() {
+        // Setup: populate the map with several entries
+        map.put("a", 1);
+        map.put("b", 2);
+        map.put("c", 3);
+        map.put("d", 4);
+        map.put("e", 5);
+
+        // Create a sub-map view
+        ConcurrentNavigableMap<String, Integer> subMap = map.subMap("b", true, "e", false);
+
+        // These methods would throw ClassCastException if internalMap was cast to ConcurrentSkipListMap
+        assertEquals("b", subMap.firstKey());
+        assertEquals("d", subMap.lastKey());
+        assertEquals("c", subMap.lowerKey("d"));
+        assertEquals("c", subMap.floorKey("c"));
+        assertEquals("d", subMap.ceilingKey("d"));
+        assertEquals("d", subMap.higherKey("c"));
+
+        // Test entry methods
+        Map.Entry<String, Integer> firstEntry = subMap.firstEntry();
+        assertEquals("b", firstEntry.getKey());
+        assertEquals(2, firstEntry.getValue());
+
+        Map.Entry<String, Integer> lastEntry = subMap.lastEntry();
+        assertEquals("d", lastEntry.getKey());
+        assertEquals(4, lastEntry.getValue());
+
+        // Test on head-map view
+        ConcurrentNavigableMap<String, Integer> headMap = map.headMap("d", false);
+        assertEquals("a", headMap.firstKey());
+        assertEquals("c", headMap.lastKey());
+        assertEquals("b", headMap.higherKey("a"));
+
+        // Test on tail-map view
+        ConcurrentNavigableMap<String, Integer> tailMap = map.tailMap("c", true);
+        assertEquals("c", tailMap.firstKey());
+        assertEquals("e", tailMap.lastKey());
+        assertEquals("d", tailMap.lowerKey("e"));
+
+        // Test on descending-map view
+        // In descending order: e, d, c, b, a (e is "first"/smallest, a is "last"/greatest)
+        ConcurrentNavigableMap<String, Integer> descMap = map.descendingMap();
+        assertEquals("e", descMap.firstKey());
+        assertEquals("a", descMap.lastKey());
+        // lowerKey returns the greatest key < given key in descending order
+        // "e" is the smallest in descending order, so there's nothing lower
+        assertNull(descMap.lowerKey("e"));
+        // higherKey returns the least key > given key in descending order
+        // "a" is the greatest in descending order, so there's nothing higher
+        assertNull(descMap.higherKey("a"));
+        // But these should work:
+        assertEquals("d", descMap.higherKey("e"));  // next after "e" in descending order
+        assertEquals("b", descMap.lowerKey("a"));   // previous before "a" in descending order
+
+        // Test navigableKeySet on sub-map
+        NavigableSet<String> subKeySet = subMap.navigableKeySet();
+        assertEquals("b", subKeySet.first());
+        assertEquals("d", subKeySet.last());
+        assertEquals("c", subKeySet.lower("d"));
+        assertEquals("c", subKeySet.floor("c"));
+        assertEquals("d", subKeySet.ceiling("d"));
+        assertEquals("d", subKeySet.higher("c"));
+    }
 }

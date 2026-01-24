@@ -6,7 +6,6 @@ import java.util.Comparator;
 import java.util.Iterator;
 import java.util.NavigableSet;
 import java.util.SortedSet;
-import java.util.UUID;
 import java.util.concurrent.ConcurrentSkipListSet;
 
 /**
@@ -35,7 +34,9 @@ public class ConcurrentNavigableSetNullSafe<E> extends AbstractSet<E> implements
 
     private final NavigableSet<Object> internalSet;
     private final Comparator<? super E> originalComparator;
-    private static final String NULL_ELEMENT_SENTINEL = "null_" + UUID.randomUUID();
+    // Use a unique Object instance as sentinel - cannot collide with user data
+    // and identity comparison (==) is used for detection
+    private static final Object NULL_ELEMENT_SENTINEL = new Object();
 
     /**
      * Constructs a new, empty ConcurrentNavigableSetNullSafe with natural ordering of its elements.
@@ -107,6 +108,7 @@ public class ConcurrentNavigableSetNullSafe<E> extends AbstractSet<E> implements
 
     /**
      * Unmasks elements, converting the sentinel value back to null.
+     * Uses identity comparison (==) since sentinel is a unique Object instance.
      *
      * @param maskedElement the masked element
      * @return the unmasked element
@@ -118,6 +120,9 @@ public class ConcurrentNavigableSetNullSafe<E> extends AbstractSet<E> implements
 
     /**
      * Wraps the user-provided comparator to handle the sentinel value and ensure proper ordering of null elements.
+     * User comparators that handle nulls (via Comparator.nullsFirst/nullsLast or custom null handling) will
+     * have their null ordering respected. User comparators that don't handle nulls will gracefully fall back
+     * to default null ordering (nulls greater than non-nulls).
      *
      * @param comparator the user-provided comparator
      * @return a comparator that handles the sentinel value
@@ -125,20 +130,30 @@ public class ConcurrentNavigableSetNullSafe<E> extends AbstractSet<E> implements
     @SuppressWarnings("unchecked")
     private Comparator<Object> wrapComparator(Comparator<? super E> comparator) {
         return (o1, o2) -> {
-            // Handle the sentinel values
-            boolean o1IsNullSentinel = NULL_ELEMENT_SENTINEL.equals(o1);
-            boolean o2IsNullSentinel = NULL_ELEMENT_SENTINEL.equals(o2);
+            // Handle the sentinel values - use identity comparison since sentinel is a unique object
+            boolean o1IsNullSentinel = o1 == NULL_ELEMENT_SENTINEL;
+            boolean o2IsNullSentinel = o2 == NULL_ELEMENT_SENTINEL;
 
             // Unmask the sentinels back to null
             E e1 = o1IsNullSentinel ? null : (E) o1;
             E e2 = o2IsNullSentinel ? null : (E) o2;
 
-            // Use the custom comparator if provided
+            // If user provided a comparator, try it first - many comparators handle nulls correctly
+            // via Comparator.nullsFirst/nullsLast or custom null handling
             if (comparator != null) {
-                return comparator.compare(e1, e2);
+                if (!o1IsNullSentinel && !o2IsNullSentinel) {
+                    // Both non-null - safe to use comparator directly
+                    return comparator.compare(e1, e2);
+                }
+                // At least one null - try comparator, but catch NPE for comparators that don't handle nulls
+                try {
+                    return comparator.compare(e1, e2);
+                } catch (NullPointerException npe) {
+                    // User comparator doesn't handle nulls - fall through to default null handling
+                }
             }
 
-            // Handle nulls with natural ordering
+            // Default null handling (for natural ordering, or if user comparator threw NPE on nulls)
             if (e1 == null && e2 == null) {
                 return 0;
             }
@@ -149,7 +164,7 @@ public class ConcurrentNavigableSetNullSafe<E> extends AbstractSet<E> implements
                 return -1;
             }
 
-            // Both elements are non-null
+            // Both elements are non-null - use natural ordering
             return ((Comparable<E>) e1).compareTo(e2);
         };
     }

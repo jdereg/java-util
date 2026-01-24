@@ -597,4 +597,43 @@ class ConcurrentNavigableSetNullSafeTest {
         tailSet.add("date");
         assertTrue(set.contains("date"));
     }
+
+    /**
+     * Test that user comparators that don't handle nulls work correctly.
+     * This exposes a bug where the user comparator would receive null values
+     * (from the sentinel) and throw NPE if it doesn't handle nulls.
+     * The wrapper should handle nulls BEFORE delegating to the user comparator.
+     */
+    @Test
+    void testComparatorThatDoesNotHandleNulls() {
+        // String.CASE_INSENSITIVE_ORDER does NOT handle nulls - it will throw NPE
+        NavigableSet<String> set = new ConcurrentNavigableSetNullSafe<>(String.CASE_INSENSITIVE_ORDER);
+
+        // These should work - the wrapper should handle nulls before delegating
+        set.add("Apple");
+        set.add("banana");
+        set.add(null);
+        set.add("CHERRY");
+
+        // Verify the set contains all elements
+        assertEquals(4, set.size());
+        assertTrue(set.contains("Apple"));
+        assertTrue(set.contains("banana"));
+        assertTrue(set.contains("CHERRY"));
+        assertTrue(set.contains(null));
+
+        // Verify case-insensitive ordering (null sorts last with default null handling)
+        Iterator<String> it = set.iterator();
+        assertEquals("Apple", it.next());
+        assertEquals("banana", it.next());
+        assertEquals("CHERRY", it.next());
+        assertEquals(null, it.next());
+        assertFalse(it.hasNext());
+
+        // Test navigational methods
+        assertEquals("Apple", set.first());
+        assertEquals(null, set.last());
+        assertEquals("banana", set.higher("apple")); // case-insensitive
+        assertEquals("CHERRY", set.lower(null));
+    }
 }

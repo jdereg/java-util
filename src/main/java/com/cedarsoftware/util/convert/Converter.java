@@ -1762,8 +1762,8 @@ public final class Converter {
     }
 
     private Convert<?> getCachedConverter(Class<?> source, Class<?> target) {
-        // Use MultiKeyMap's optimized getMultiKey which uses internal ThreadLocal for zero allocation
-        // First check instance-specific cache
+        // Check instance-specific cache first, then fall back to shared conversions.
+        // ConversionPair allocation is very cheap (~4ns) - benchmarking showed it's faster than caching pairs.
         Convert<?> converter = FULL_CONVERSION_CACHE.get(pair(source, target, this.instanceId));
         if (converter != null) {
             return converter;

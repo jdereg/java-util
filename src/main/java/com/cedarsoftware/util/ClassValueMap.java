@@ -290,15 +290,24 @@ public class ClassValueMap<V> extends AbstractMap<Class<?>, V> implements Concur
 
     @Override
     public void clear() {
-        // Iterate and invalidate cache entries before clearing the backing map.
-        // We iterate directly over keySet (no copy needed) and invalidate each entry.
-        // This is O(n) but necessary for correctness - cached entries would otherwise
-        // return stale values after clear().
-        for (Class<?> key : backingMap.keySet()) {
-            cache.remove(key);
-        }
+        // Snapshot keys while they exist (needed for cache invalidation).
+        // We must clear backingMap BEFORE invalidating cache to prevent a race condition:
+        // If we invalidate cache first, a concurrent get() could repopulate the cache
+        // from the still-populated backingMap, leaving permanently stale entries.
+        Set<Class<?>> keys = new java.util.HashSet<>(backingMap.keySet());
+
+        // Clear backing stores first - any concurrent get() will now see empty state
         backingMap.clear();
         nullKeyStore.set(NO_NULL_KEY_MAPPING);
+
+        // Then invalidate all cached entries. Any get() that runs after backingMap.clear()
+        // but before cache invalidation will either:
+        // - Hit the cache (temporary stale read during clear operation)
+        // - Miss the cache and call computeValue, which sees empty backingMap → returns NO_VALUE
+        // After clear() completes, all subsequent get() calls see correct state.
+        for (Class<?> key : keys) {
+            cache.remove(key);
+        }
     }
 
     @Override

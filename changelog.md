@@ -13,6 +13,10 @@
   * Added `isSyntheticArgName()` method using efficient string operations instead of regex
   * Avoids `Pattern.matcher().matches()` overhead for checking "arg0", "arg1", etc. patterns
   * Used in constructor parameter resolution to detect compiler-generated names
+* **BUG FIX**: `ClassValueMap` - Fixed `clear()` race condition that could leave permanently stale cache entries
+  * Previous order: invalidate cache → clear backingMap (allowed concurrent `get()` to repopulate cache from still-populated backingMap)
+  * Fixed order: snapshot keys → clear backingMap → invalidate cache (ensures any `computeValue` after clear sees empty map)
+  * After `clear()` completes, all subsequent `get()` calls now see correct state
 
 #### 4.84.0  - 2025-01-19
 * **BUG FIX**: `ClassValueMap` - Fixed race condition in `putIfAbsent(null, value)` for null key handling

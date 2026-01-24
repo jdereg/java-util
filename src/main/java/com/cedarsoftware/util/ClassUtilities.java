@@ -233,26 +233,26 @@ public class ClassUtilities {
         if (globalAlias != null) {
             return globalAlias;
         }
-        
+
         // Then check classloader-specific cache using consistent resolution
         final ClassLoader key = resolveLoader(cl);
         LoaderCache holder = NAME_CACHE.get(key);
         if (holder == null) {
             return null;
         }
-        
-        // Synchronize access to prevent race conditions during queue draining and cache access
-        synchronized (holder) {
-            // Opportunistically drain dead references before lookup
-            drainQueue(holder);
-            
-            WeakReference<Class<?>> ref = holder.cache.get(name);
-            Class<?> cls = (ref == null) ? null : ref.get();
-            if (ref != null && cls == null) {
-                holder.cache.remove(name);  // Clean up cleared entry
-            }
-            return cls;
+
+        // Opportunistically drain dead references (lock-free, uses CAS-based removal)
+        drainQueue(holder);
+
+        // Lock-free cache access using ConcurrentHashMap
+        WeakReference<Class<?>> ref = holder.cache.get(name);
+        Class<?> cls = (ref == null) ? null : ref.get();
+        if (ref != null && cls == null) {
+            // Use remove(key, value) to only remove if the exact same WeakReference is still present.
+            // This prevents race conditions where another thread added a new entry with the same name.
+            holder.cache.remove(name, ref);
         }
+        return cls;
     }
     
     // Helper to get or create loader cache holder with proper synchronization
@@ -270,24 +270,26 @@ public class ClassUtilities {
     private static void toCache(String name, ClassLoader cl, Class<?> c) {
         final ClassLoader key = resolveLoader(cl);
         final LoaderCache holder = getLoaderCacheHolder(key);
-        
-        // Synchronize access to prevent race conditions during queue draining and cache update
-        synchronized (holder) {
-            // Opportunistically drain dead references before adding new one
-            drainQueue(holder);
-            
-            holder.cache.put(name, new NamedWeakRef(name, c, holder.queue));
-        }
+
+        // Opportunistically drain dead references (lock-free, uses CAS-based removal)
+        drainQueue(holder);
+
+        // Lock-free cache update using ConcurrentHashMap
+        holder.cache.put(name, new NamedWeakRef(name, c, holder.queue));
     }
     
     /**
-     * Drains the ReferenceQueue, removing dead entries from the cache
+     * Drains the ReferenceQueue, removing dead entries from the cache.
+     * Uses CAS-based removal to safely handle concurrent modifications.
      */
     private static void drainQueue(LoaderCache holder) {
         Reference<? extends Class<?>> ref;
         while ((ref = holder.queue.poll()) != null) {
             if (ref instanceof NamedWeakRef) {
-                holder.cache.remove(((NamedWeakRef) ref).name);
+                NamedWeakRef namedRef = (NamedWeakRef) ref;
+                // Use remove(key, value) to only remove if the exact same WeakReference is still present.
+                // This prevents race conditions where another thread added a new entry with the same name.
+                holder.cache.remove(namedRef.name, namedRef);
             }
         }
     }
@@ -374,6 +376,9 @@ public class ClassUtilities {
     }
     private static final Map<Class<?>, Supplier<Object>> DIRECT_CLASS_MAPPING = new ClassValueMap<>();
     private static final Map<Class<?>, Supplier<Object>> ASSIGNABLE_CLASS_MAPPING = new LinkedHashMap<>();
+    // Cache for assignable type lookups to avoid repeated O(n) scans of ASSIGNABLE_CLASS_MAPPING.
+    // Uses Optional to distinguish "no match" (Optional.empty()) from "not cached" (null).
+    private static final Map<Class<?>, Optional<Supplier<Object>>> ASSIGNABLE_TYPE_CACHE = new ClassValueMap<>();
     /**
      * A cache that maps a Class<?> to its associated enum type (if any).
      */
@@ -1510,11 +1515,23 @@ public class ClassUtilities {
             return directClassMapping.get();
         }
 
+        // Check cache first to avoid repeated O(n) scans of ASSIGNABLE_CLASS_MAPPING
+        Optional<Supplier<Object>> cached = ASSIGNABLE_TYPE_CACHE.get(argType);
+        if (cached != null) {
+            // Cache hit - return cached result (may be empty for "no match")
+            return cached.map(Supplier::get).orElse(null);
+        }
+
+        // Cache miss - search ASSIGNABLE_CLASS_MAPPING and cache the result
         for (Map.Entry<Class<?>, Supplier<Object>> entry : ASSIGNABLE_CLASS_MAPPING.entrySet()) {
             if (entry.getKey().isAssignableFrom(argType)) {
+                ASSIGNABLE_TYPE_CACHE.put(argType, Optional.of(entry.getValue()));
                 return entry.getValue().get();
             }
         }
+
+        // No match found - cache the negative result
+        ASSIGNABLE_TYPE_CACHE.put(argType, Optional.empty());
 
         if (argType.isArray()) {
             return Array.newInstance(argType.getComponentType(), 0);
@@ -2152,7 +2169,7 @@ public class ClassUtilities {
                 // Check that ALL parameters have real names (not just the first)
                 boolean allParamsHaveRealNames = true;
                 for (Parameter param : parameters) {
-                    if (ARG_PATTERN.matcher(param.getName()).matches()) {
+                    if (isSyntheticArgName(param.getName())) {
                         allParamsHaveRealNames = false;
                         break;
                     }
@@ -2216,7 +2233,7 @@ public class ClassUtilities {
                 }
 
                 // Check if we have real parameter names or just arg0, arg1, etc.
-                if (ARG_PATTERN.matcher(paramNames[i]).matches()) {
+                if (isSyntheticArgName(paramNames[i])) {
                     hasRealNames = false;
                 }
             }
@@ -2327,6 +2344,23 @@ public class ClassUtilities {
     private static final Pattern ARG_PATTERN = Pattern.compile("arg\\d+");
 
     /**
+     * Checks if a parameter name is a synthetic name like "arg0", "arg1", etc.
+     * This is more efficient than using ARG_PATTERN.matcher().matches() as it
+     * avoids creating Matcher objects.
+     */
+    private static boolean isSyntheticArgName(String name) {
+        if (name == null || name.length() < 4 || !name.startsWith("arg")) {
+            return false;
+        }
+        for (int i = 3; i < name.length(); i++) {
+            if (!Character.isDigit(name.charAt(i))) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
      * Check if the map has generated keys (arg0, arg1, etc.)
      */
     private static boolean hasGeneratedKeys(Map<String, Object> map) {
@@ -2335,7 +2369,7 @@ public class ClassUtilities {
         }
         // Check if all keys match the pattern arg0, arg1, etc.
         for (String key : map.keySet()) {
-            if (!ARG_PATTERN.matcher(key).matches()) {
+            if (!isSyntheticArgName(key)) {
                 return false;
             }
         }

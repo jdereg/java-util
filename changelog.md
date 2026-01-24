@@ -1,5 +1,19 @@
 ### Revision History
 
+#### 4.85.0 (Unreleased)
+* **PERFORMANCE**: `ClassUtilities` - Lock-free cache operations using CAS-based removal
+  * Replaced synchronized blocks in `fromCache()`, `toCache()`, and `drainQueue()` with `ConcurrentHashMap.remove(key, value)`
+  * CAS-based removal only removes if the exact WeakReference is still present, preventing race conditions
+  * Eliminates lock contention in high-throughput class loading scenarios
+* **PERFORMANCE**: `ClassUtilities` - Added cache for assignable type lookups in `getArgForType()`
+  * New `ASSIGNABLE_TYPE_CACHE` using `ClassValueMap<Optional<Supplier<Object>>>` avoids repeated O(n) scans of `ASSIGNABLE_CLASS_MAPPING`
+  * Uses `Optional` to distinguish "no match found" (`Optional.empty()`) from "not yet cached" (`null`)
+  * Improves constructor parameter resolution performance for repeated type lookups
+* **PERFORMANCE**: `ClassUtilities` - Optimized synthetic parameter name detection
+  * Added `isSyntheticArgName()` method using efficient string operations instead of regex
+  * Avoids `Pattern.matcher().matches()` overhead for checking "arg0", "arg1", etc. patterns
+  * Used in constructor parameter resolution to detect compiler-generated names
+
 #### 4.84.0  - 2025-01-19
 * **BUG FIX**: `ClassValueMap` - Fixed race condition in `putIfAbsent(null, value)` for null key handling
   * Previously used separate `volatile boolean hasNullKeyMapping` + `AtomicReference<V> nullKeyValue` fields

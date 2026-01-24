@@ -21,6 +21,15 @@
   * Navigational methods (`lowerKey`, `floorKey`, `ceilingKey`, `higherKey`, etc.) incorrectly cast to `ConcurrentSkipListMap`
   * Sub-map, head-map, tail-map, and descending-map views are not `ConcurrentSkipListMap` instances
   * Fixed by casting to `ConcurrentNavigableMap` instead (the interface that defines these methods)
+* **BUG FIX**: `ConcurrentNavigableSetNullSafe` - Fixed user comparators that don't handle nulls throwing NPE
+  * Comparators like `String.CASE_INSENSITIVE_ORDER` would throw NPE when comparing null elements
+  * Wrapper now gracefully falls back to default null ordering (nulls > non-nulls) if comparator throws NPE
+  * User comparators that handle nulls (via `Comparator.nullsFirst/nullsLast` or custom handling) still control null ordering
+* **IMPROVED**: `ConcurrentNavigableSetNullSafe` - Changed sentinel from String to Object instance
+  * Previous `"null_" + UUID.randomUUID()` String could theoretically collide with user data
+  * New `new Object()` sentinel is guaranteed unique and cannot collide
+  * Also changed from `.equals()` to identity comparison (`==`) for sentinel detection
+* **BUILD**: Updated json-io test dependency from 4.83.0 to 4.84.0
 
 #### 4.84.0  - 2025-01-19
 * **BUG FIX**: `ClassValueMap` - Fixed race condition in `putIfAbsent(null, value)` for null key handling

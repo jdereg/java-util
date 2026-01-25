@@ -21,6 +21,8 @@
     <text x="85" y="108" font-family="Courier New, monospace" font-size="10" fill="#64B5F6">return efficiency;</text>
 
     <!-- Logo text -->
-    <text x="150" y="155" text-anchor="middle" font-family="Arial, sans-serif" font-size="36" font-weight="bold" fill="#FF8C00">java-util</text>
+    <text x="150" y="155" text-anchor="middle" font-family="Arial, sans-serif" font-size="36" font-weight="bold">
+        <tspan fill="#4a90d9">java-</tspan><tspan fill="#FF8C00">util</tspan>
+    </text>
     <text x="150" y="178" text-anchor="middle" font-family="Arial, sans-serif" font-size="13" fill="#666666">Code Smarter, Not Harder</text>
 </svg>

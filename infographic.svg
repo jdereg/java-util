@@ -1,9 +1,9 @@
-<svg width="1200" height="900" viewBox="0 0 1200 900" xmlns="http://www.w3.org/2000/svg">
+<svg width="1200" height="820" viewBox="0 0 1200 820" xmlns="http://www.w3.org/2000/svg">
   <defs>
   </defs>
 
   <!-- Background -->
-  <rect width="1200" height="900" fill="#ffffff"/>
+  <rect width="1200" height="820" fill="#ffffff"/>
 
   <!-- Header - matching box widths -->
   <rect x="40" y="15" width="1120" height="110" fill="#DFEDF6" rx="10" ry="10"/>

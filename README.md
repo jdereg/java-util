@@ -1,7 +1,6 @@
 <p align="center">
   <img src="infographic.svg?v=2" alt="java-util infographic - Essential Java Toolkit" width="100%" />
 </p>
-
 <div align="center">
   <p>
     <a href="https://central.sonatype.com/search?q=java-util&namespace=com.cedarsoftware">

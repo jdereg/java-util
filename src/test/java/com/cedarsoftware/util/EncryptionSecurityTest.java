@@ -254,13 +254,39 @@ public class EncryptionSecurityTest {
         System.setProperty("encryptionutilities.max.file.size", "invalid");
         System.setProperty("encryptionutilities.max.buffer.size", "not-a-number");
         System.setProperty("encryptionutilities.min.pbkdf2.iterations", "abc");
-        
+
         // Should still work with default values
         assertNotNull(EncryptionUtilities.fastMD5(testFile));
-        
+
         String encrypted = EncryptionUtilities.encrypt("testKey", "test data");
         assertNotNull(encrypted);
         assertEquals("test data", EncryptionUtilities.decrypt("testKey", encrypted));
+    }
+
+    @Test
+    void testInvalidSaltAndIvPropertyValuesHandledGracefully() {
+        // Test with invalid salt/IV size values - should fall back to defaults
+        // These properties are used in encrypt/encryptBytes and deriveKey
+        System.setProperty("encryptionutilities.min.salt.size", "invalid");
+        System.setProperty("encryptionutilities.max.salt.size", "not-a-number");
+        System.setProperty("encryptionutilities.min.iv.size", "abc");
+        System.setProperty("encryptionutilities.max.iv.size", "xyz");
+
+        // Should still work with default values (security disabled by default)
+        String encrypted = EncryptionUtilities.encrypt("testKey", "test data");
+        assertNotNull(encrypted);
+        assertEquals("test data", EncryptionUtilities.decrypt("testKey", encrypted));
+
+        // Byte encryption should also work
+        String encryptedBytes = EncryptionUtilities.encryptBytes("testKey", "test data".getBytes());
+        assertNotNull(encryptedBytes);
+        assertArrayEquals("test data".getBytes(), EncryptionUtilities.decryptBytes("testKey", encryptedBytes));
+
+        // deriveKey should also work
+        byte[] salt = new byte[16];
+        byte[] key = EncryptionUtilities.deriveKey("password", salt, 128);
+        assertNotNull(key);
+        assertEquals(16, key.length);
     }
     
     @Test

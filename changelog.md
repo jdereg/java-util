@@ -32,6 +32,23 @@
   * `toArray()` builds result array directly instead of via ArrayList
   * `contains()`, `indexOf()`, `lastIndexOf()` use direct index access instead of iterator
   * Simplified `getBucket()` to direct lookup (buckets always exist for valid indices)
+* **BUG FIX**: `EncryptionUtilities` - Fixed NumberFormatException on malformed salt/IV size properties
+  * Created `getMinSaltSize()`, `getMaxSaltSize()`, `getMinIvSize()`, `getMaxIvSize()` helper methods
+  * These methods handle NumberFormatException gracefully like existing property getters
+  * Previously, invalid property values caused uncaught exceptions in encrypt/decrypt operations
+* **SECURITY**: `EncryptionUtilities` - Clear PBEKeySpec password from memory after key derivation
+  * Added `finally` block to call `spec.clearPassword()` after `deriveKey()` operations
+  * Follows security best practice to minimize password exposure in memory
+* **IMPROVED**: `EncryptionUtilities` - Replaced magic numbers in decrypt methods with constants
+  * Decrypt methods now use `STANDARD_SALT_SIZE` and `STANDARD_IV_SIZE` to compute offsets
+  * Makes code self-documenting and prevents silent breakage if constants change
+* **PERFORMANCE**: `EncryptionUtilities` - Multiple optimizations reducing allocations
+  * Cached `SecureRandom` instance as static final field (thread-safe, avoids repeated instantiation)
+  * Cached `SecretKeyFactory` instance for PBKDF2 (thread-safe, avoids `getInstance()` per call)
+  * Use `ByteBuffer` for cleaner output assembly in encrypt methods
+* **CLEANUP**: `EncryptionUtilities` - Removed system property pollution in static initializer
+  * Previously set default values into global System.properties namespace
+  * Getter methods already handle missing properties by returning defaults
 * **BUILD**: Version alignment with json-io 4.87.0
   * Keeping java-util and json-io version numbers synchronized simplifies dependency management and ensures compatibility
 

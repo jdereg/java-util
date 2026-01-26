@@ -171,40 +171,21 @@ public class EncryptionUtilities {
     private static final int STANDARD_SALT_SIZE = 16;
     private static final int STANDARD_IV_SIZE = 12;
     private static final int STANDARD_BUFFER_SIZE = 64 * 1024; // 64KB
-    
+
+    // Cached SecureRandom instance (thread-safe)
+    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
+
+    // Cached SecretKeyFactory instance (thread-safe)
+    private static final SecretKeyFactory PBKDF2_FACTORY;
+
     static {
-        // Initialize system properties with defaults if not already set (backward compatibility)
-        initializeSystemPropertyDefaults();
-    }
-    
-    private static void initializeSystemPropertyDefaults() {
-        // Set default values if not explicitly configured
-        if (System.getProperty("encryptionutilities.max.file.size") == null) {
-            System.setProperty("encryptionutilities.max.file.size", String.valueOf(DEFAULT_MAX_FILE_SIZE));
-        }
-        if (System.getProperty("encryptionutilities.max.buffer.size") == null) {
-            System.setProperty("encryptionutilities.max.buffer.size", String.valueOf(DEFAULT_MAX_BUFFER_SIZE));
-        }
-        if (System.getProperty("encryptionutilities.min.pbkdf2.iterations") == null) {
-            System.setProperty("encryptionutilities.min.pbkdf2.iterations", String.valueOf(DEFAULT_MIN_PBKDF2_ITERATIONS));
-        }
-        if (System.getProperty("encryptionutilities.max.pbkdf2.iterations") == null) {
-            System.setProperty("encryptionutilities.max.pbkdf2.iterations", String.valueOf(DEFAULT_MAX_PBKDF2_ITERATIONS));
-        }
-        if (System.getProperty("encryptionutilities.min.salt.size") == null) {
-            System.setProperty("encryptionutilities.min.salt.size", String.valueOf(DEFAULT_MIN_SALT_SIZE));
-        }
-        if (System.getProperty("encryptionutilities.max.salt.size") == null) {
-            System.setProperty("encryptionutilities.max.salt.size", String.valueOf(DEFAULT_MAX_SALT_SIZE));
-        }
-        if (System.getProperty("encryptionutilities.min.iv.size") == null) {
-            System.setProperty("encryptionutilities.min.iv.size", String.valueOf(DEFAULT_MIN_IV_SIZE));
-        }
-        if (System.getProperty("encryptionutilities.max.iv.size") == null) {
-            System.setProperty("encryptionutilities.max.iv.size", String.valueOf(DEFAULT_MAX_IV_SIZE));
+        try {
+            PBKDF2_FACTORY = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256");
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("PBKDF2WithHmacSHA256 algorithm not available", e);
         }
     }
-    
+
     // Security configuration methods
     
     private static boolean isSecurityEnabled() {
@@ -288,7 +269,55 @@ public class EncryptionUtilities {
         }
         return DEFAULT_MAX_PBKDF2_ITERATIONS;
     }
-    
+
+    private static int getMinSaltSize() {
+        String minSaltSizeProp = System.getProperty("encryptionutilities.min.salt.size");
+        if (minSaltSizeProp != null) {
+            try {
+                return Math.max(1, Integer.parseInt(minSaltSizeProp));
+            } catch (NumberFormatException e) {
+                // Fall through to default
+            }
+        }
+        return DEFAULT_MIN_SALT_SIZE;
+    }
+
+    private static int getMaxSaltSize() {
+        String maxSaltSizeProp = System.getProperty("encryptionutilities.max.salt.size");
+        if (maxSaltSizeProp != null) {
+            try {
+                return Integer.parseInt(maxSaltSizeProp);
+            } catch (NumberFormatException e) {
+                // Fall through to default
+            }
+        }
+        return DEFAULT_MAX_SALT_SIZE;
+    }
+
+    private static int getMinIvSize() {
+        String minIvSizeProp = System.getProperty("encryptionutilities.min.iv.size");
+        if (minIvSizeProp != null) {
+            try {
+                return Math.max(1, Integer.parseInt(minIvSizeProp));
+            } catch (NumberFormatException e) {
+                // Fall through to default
+            }
+        }
+        return DEFAULT_MIN_IV_SIZE;
+    }
+
+    private static int getMaxIvSize() {
+        String maxIvSizeProp = System.getProperty("encryptionutilities.max.iv.size");
+        if (maxIvSizeProp != null) {
+            try {
+                return Integer.parseInt(maxIvSizeProp);
+            } catch (NumberFormatException e) {
+                // Fall through to default
+            }
+        }
+        return DEFAULT_MAX_IV_SIZE;
+    }
+
     private static int getValidatedBufferSize(int requestedSize) {
         if (!isSecurityEnabled() || !isBufferSizeValidationEnabled()) {
             return requestedSize; // Use as-is when security disabled
@@ -778,16 +807,19 @@ public class EncryptionUtilities {
     public static byte[] deriveKey(String password, byte[] salt, int bitsNeeded) {
         // Security: Validate iteration count and salt size
         int iterations = getValidatedPBKDF2Iterations(STANDARD_PBKDF2_ITERATIONS);
-        validateCryptoParameterSize(salt.length, "Salt", 
-            Integer.parseInt(System.getProperty("encryptionutilities.min.salt.size", String.valueOf(DEFAULT_MIN_SALT_SIZE))),
-            Integer.parseInt(System.getProperty("encryptionutilities.max.salt.size", String.valueOf(DEFAULT_MAX_SALT_SIZE))));
-        
+        validateCryptoParameterSize(salt.length, "Salt", getMinSaltSize(), getMaxSaltSize());
+
+        PBEKeySpec spec = null;
         try {
-            SecretKeyFactory factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256");
-            KeySpec spec = new PBEKeySpec(password.toCharArray(), salt, iterations, bitsNeeded);
-            return factory.generateSecret(spec).getEncoded();
+            spec = new PBEKeySpec(password.toCharArray(), salt, iterations, bitsNeeded);
+            return PBKDF2_FACTORY.generateSecret(spec).getEncoded();
         } catch (Exception e) {
             throw new IllegalStateException("Unable to derive key", e);
+        } finally {
+            // Clear password from memory for security
+            if (spec != null) {
+                spec.clearPassword();
+            }
         }
     }
 
@@ -890,22 +922,16 @@ public class EncryptionUtilities {
             throw new IllegalArgumentException("key and content cannot be null");
         }
         try {
-            SecureRandom random = new SecureRandom();
-            
             // Security: Use configurable salt and IV sizes with validation
             int saltSize = STANDARD_SALT_SIZE;
             int ivSize = STANDARD_IV_SIZE;
-            validateCryptoParameterSize(saltSize, "Salt", 
-                Integer.parseInt(System.getProperty("encryptionutilities.min.salt.size", String.valueOf(DEFAULT_MIN_SALT_SIZE))),
-                Integer.parseInt(System.getProperty("encryptionutilities.max.salt.size", String.valueOf(DEFAULT_MAX_SALT_SIZE))));
-            validateCryptoParameterSize(ivSize, "IV", 
-                Integer.parseInt(System.getProperty("encryptionutilities.min.iv.size", String.valueOf(DEFAULT_MIN_IV_SIZE))),
-                Integer.parseInt(System.getProperty("encryptionutilities.max.iv.size", String.valueOf(DEFAULT_MAX_IV_SIZE))));
-            
+            validateCryptoParameterSize(saltSize, "Salt", getMinSaltSize(), getMaxSaltSize());
+            validateCryptoParameterSize(ivSize, "IV", getMinIvSize(), getMaxIvSize());
+
             byte[] salt = new byte[saltSize];
-            random.nextBytes(salt);
+            SECURE_RANDOM.nextBytes(salt);
             byte[] iv = new byte[ivSize];
-            random.nextBytes(iv);
+            SECURE_RANDOM.nextBytes(iv);
 
             SecretKeySpec sKey = new SecretKeySpec(deriveKey(key, salt, 128), "AES");
             Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
@@ -913,12 +939,13 @@ public class EncryptionUtilities {
 
             byte[] encrypted = cipher.doFinal(content.getBytes(StandardCharsets.UTF_8));
 
-            byte[] out = new byte[1 + salt.length + iv.length + encrypted.length];
-            out[0] = 1; // version
-            System.arraycopy(salt, 0, out, 1, salt.length);
-            System.arraycopy(iv, 0, out, 1 + salt.length, iv.length);
-            System.arraycopy(encrypted, 0, out, 1 + salt.length + iv.length, encrypted.length);
-            return ByteUtilities.encode(out);
+            // Use ByteBuffer for cleaner assembly of output
+            ByteBuffer buffer = ByteBuffer.allocate(1 + salt.length + iv.length + encrypted.length);
+            buffer.put((byte) 1);  // version
+            buffer.put(salt);
+            buffer.put(iv);
+            buffer.put(encrypted);
+            return ByteUtilities.encode(buffer.array());
         } catch (Exception e) {
             throw new IllegalStateException("Error occurred encrypting data", e);
         }
@@ -937,34 +964,29 @@ public class EncryptionUtilities {
             throw new IllegalArgumentException("key and content cannot be null");
         }
         try {
-            SecureRandom random = new SecureRandom();
-            
             // Security: Use configurable salt and IV sizes with validation
             int saltSize = STANDARD_SALT_SIZE;
             int ivSize = STANDARD_IV_SIZE;
-            validateCryptoParameterSize(saltSize, "Salt", 
-                Integer.parseInt(System.getProperty("encryptionutilities.min.salt.size", String.valueOf(DEFAULT_MIN_SALT_SIZE))),
-                Integer.parseInt(System.getProperty("encryptionutilities.max.salt.size", String.valueOf(DEFAULT_MAX_SALT_SIZE))));
-            validateCryptoParameterSize(ivSize, "IV", 
-                Integer.parseInt(System.getProperty("encryptionutilities.min.iv.size", String.valueOf(DEFAULT_MIN_IV_SIZE))),
-                Integer.parseInt(System.getProperty("encryptionutilities.max.iv.size", String.valueOf(DEFAULT_MAX_IV_SIZE))));
-            
+            validateCryptoParameterSize(saltSize, "Salt", getMinSaltSize(), getMaxSaltSize());
+            validateCryptoParameterSize(ivSize, "IV", getMinIvSize(), getMaxIvSize());
+
             byte[] salt = new byte[saltSize];
-            random.nextBytes(salt);
+            SECURE_RANDOM.nextBytes(salt);
             byte[] iv = new byte[ivSize];
-            random.nextBytes(iv);
+            SECURE_RANDOM.nextBytes(iv);
 
             SecretKeySpec sKey = new SecretKeySpec(deriveKey(key, salt, 128), "AES");
             Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
             cipher.init(Cipher.ENCRYPT_MODE, sKey, new GCMParameterSpec(128, iv));
             byte[] encrypted = cipher.doFinal(content);
 
-            byte[] out = new byte[1 + salt.length + iv.length + encrypted.length];
-            out[0] = 1;
-            System.arraycopy(salt, 0, out, 1, salt.length);
-            System.arraycopy(iv, 0, out, 1 + salt.length, iv.length);
-            System.arraycopy(encrypted, 0, out, 1 + salt.length + iv.length, encrypted.length);
-            return ByteUtilities.encode(out);
+            // Use ByteBuffer for cleaner assembly of output
+            ByteBuffer buffer = ByteBuffer.allocate(1 + salt.length + iv.length + encrypted.length);
+            buffer.put((byte) 1);  // version
+            buffer.put(salt);
+            buffer.put(iv);
+            buffer.put(encrypted);
+            return ByteUtilities.encode(buffer.array());
         } catch (Exception e) {
             throw new IllegalStateException("Error occurred encrypting data", e);
         }
@@ -987,10 +1009,15 @@ public class EncryptionUtilities {
             throw new IllegalArgumentException("Invalid hexadecimal input");
         }
         try {
-            if (data[0] == 1 && data.length > 29) {
-                byte[] salt = Arrays.copyOfRange(data, 1, 17);
-                byte[] iv = Arrays.copyOfRange(data, 17, 29);
-                byte[] cipherText = Arrays.copyOfRange(data, 29, data.length);
+            // Header: 1 byte version + salt + iv
+            int saltStart = 1;
+            int ivStart = saltStart + STANDARD_SALT_SIZE;
+            int cipherStart = ivStart + STANDARD_IV_SIZE;
+
+            if (data[0] == 1 && data.length > cipherStart) {
+                byte[] salt = Arrays.copyOfRange(data, saltStart, ivStart);
+                byte[] iv = Arrays.copyOfRange(data, ivStart, cipherStart);
+                byte[] cipherText = Arrays.copyOfRange(data, cipherStart, data.length);
 
                 SecretKeySpec sKey = new SecretKeySpec(deriveKey(key, salt, 128), "AES");
                 Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
@@ -1020,10 +1047,15 @@ public class EncryptionUtilities {
             throw new IllegalArgumentException("Invalid hexadecimal input");
         }
         try {
-            if (data[0] == 1 && data.length > 29) {
-                byte[] salt = Arrays.copyOfRange(data, 1, 17);
-                byte[] iv = Arrays.copyOfRange(data, 17, 29);
-                byte[] cipherText = Arrays.copyOfRange(data, 29, data.length);
+            // Header: 1 byte version + salt + iv
+            int saltStart = 1;
+            int ivStart = saltStart + STANDARD_SALT_SIZE;
+            int cipherStart = ivStart + STANDARD_IV_SIZE;
+
+            if (data[0] == 1 && data.length > cipherStart) {
+                byte[] salt = Arrays.copyOfRange(data, saltStart, ivStart);
+                byte[] iv = Arrays.copyOfRange(data, ivStart, cipherStart);
+                byte[] cipherText = Arrays.copyOfRange(data, cipherStart, data.length);
 
                 SecretKeySpec sKey = new SecretKeySpec(deriveKey(key, salt, 128), "AES");
                 Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");

@@ -733,9 +733,8 @@ public class ClassUtilities {
         // prevent stale per-loader mappings for this alias
         synchronized (NAME_CACHE) {
             for (LoaderCache holder : NAME_CACHE.values()) {
-                synchronized (holder) {
-                    holder.cache.remove(alias);
-                }
+                // ConcurrentHashMap.remove() is thread-safe, no additional sync needed
+                holder.cache.remove(alias);
             }
         }
     }
@@ -755,9 +754,8 @@ public class ClassUtilities {
         }
         synchronized (NAME_CACHE) {
             for (LoaderCache holder : NAME_CACHE.values()) {
-                synchronized (holder) {
-                    holder.cache.remove(alias);
-                }
+                // ConcurrentHashMap.remove() is thread-safe, no additional sync needed
+                holder.cache.remove(alias);
             }
         }
     }
@@ -2340,9 +2338,6 @@ public class ClassUtilities {
         return null; // Indicate failure to create with named parameters
     }
     
-    // Add this as a static field near the top of ClassUtilities
-    private static final Pattern ARG_PATTERN = Pattern.compile("arg\\d+");
-
     /**
      * Checks if a parameter name is a synthetic name like "arg0", "arg1", etc.
      * This is more efficient than using ARG_PATTERN.matcher().matches() as it

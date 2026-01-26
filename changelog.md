@@ -1,5 +1,9 @@
 ### Revision History
 
+#### 4.87.0  - 2026-01-26
+* **BUILD**: Version alignment with json-io 4.87.0
+  * Keeping java-util and json-io version numbers synchronized simplifies dependency management and ensures compatibility
+
 #### 4.86.0  - 2025-01-26
 * **PERFORMANCE**: `CompactMap` - Multiple optimizations reducing memory allocation and improving iteration performance
   * Fixed redundant `get()` call in `entrySet().contains()` - now reuses the result instead of calling both `get()` and `containsKey()`

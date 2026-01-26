@@ -1,15 +1,14 @@
 package com.cedarsoftware.util;
 
-import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.Collections;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.TimeZone;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Pattern;
 
 /**
@@ -162,84 +161,74 @@ public final class DateUtilities {
     // Default security limits
     private static final int DEFAULT_MAX_INPUT_LENGTH = 1000;
     private static final int DEFAULT_MAX_EPOCH_DIGITS = 19;
-    private static final long DEFAULT_REGEX_TIMEOUT_MILLISECONDS = 1000;
-    
-    static {
-        // Initialize system properties with defaults if not already set (backward compatibility)
-        initializeSystemPropertyDefaults();
-    }
-    
-    private static void initializeSystemPropertyDefaults() {
-        // Set max input length if not explicitly configured
-        if (System.getProperty("dateutilities.max.input.length") == null) {
-            System.setProperty("dateutilities.max.input.length", String.valueOf(DEFAULT_MAX_INPUT_LENGTH));
-        }
-        
-        // Set max epoch digits if not explicitly configured
-        if (System.getProperty("dateutilities.max.epoch.digits") == null) {
-            System.setProperty("dateutilities.max.epoch.digits", String.valueOf(DEFAULT_MAX_EPOCH_DIGITS));
-        }
-        
-        // Set regex timeout if not explicitly configured
-        if (System.getProperty("dateutilities.regex.timeout.milliseconds") == null) {
-            System.setProperty("dateutilities.regex.timeout.milliseconds", String.valueOf(DEFAULT_REGEX_TIMEOUT_MILLISECONDS));
-        }
-    }
-    
-    // Security configuration methods
-    
+
+    // Security configuration accessor methods - read dynamically to allow runtime configuration
+    // Note: System.getProperty() is efficient (HashMap lookup) and keeping these dynamic allows:
+    // 1. Runtime configuration changes
+    // 2. Test flexibility
+    // 3. Framework compatibility (properties set after class loading)
     private static boolean isSecurityEnabled() {
         return Boolean.parseBoolean(System.getProperty("dateutilities.security.enabled", "false"));
     }
-    
+
     private static boolean isInputValidationEnabled() {
         return Boolean.parseBoolean(System.getProperty("dateutilities.input.validation.enabled", "false"));
     }
-    
+
     private static boolean isMalformedStringProtectionEnabled() {
         return Boolean.parseBoolean(System.getProperty("dateutilities.malformed.string.protection.enabled", "false"));
     }
-    
+
     private static int getMaxInputLength() {
+        if (!isSecurityEnabled()) {
+            return Integer.MAX_VALUE;
+        }
         String maxLengthProp = System.getProperty("dateutilities.max.input.length");
         if (maxLengthProp != null) {
             try {
                 return Math.max(1, Integer.parseInt(maxLengthProp));
-            } catch (NumberFormatException e) {
-                // Fall through to default
+            } catch (NumberFormatException ignored) {
+                // Use default
             }
         }
-        return isSecurityEnabled() ? DEFAULT_MAX_INPUT_LENGTH : Integer.MAX_VALUE;
+        return DEFAULT_MAX_INPUT_LENGTH;
     }
-    
+
     private static int getMaxEpochDigits() {
+        if (!isSecurityEnabled()) {
+            return Integer.MAX_VALUE;
+        }
         String maxDigitsProp = System.getProperty("dateutilities.max.epoch.digits");
         if (maxDigitsProp != null) {
             try {
                 return Math.max(1, Integer.parseInt(maxDigitsProp));
-            } catch (NumberFormatException e) {
-                // Fall through to default
+            } catch (NumberFormatException ignored) {
+                // Use default
             }
         }
-        return isSecurityEnabled() ? DEFAULT_MAX_EPOCH_DIGITS : Integer.MAX_VALUE;
+        return DEFAULT_MAX_EPOCH_DIGITS;
     }
+
+    // Pre-compiled pattern for invalid characters check (avoids creating Pattern on each call)
+    private static final Pattern INVALID_CHARS_PATTERN = Pattern.compile("[<>&\"'\\x00-\\x08\\x0B\\x0C\\x0E-\\x1F\\x7F]");
 
     /**
      * Validates input for malformed patterns that could cause ReDoS attacks.
-     * 
+     *
      * @param input the input string to validate
      * @throws SecurityException if malformed patterns are detected
      */
     private static void validateMalformedInput(String input) {
-        // Check for excessive repetition that could cause catastrophic backtracking
-        if (input.matches(".*(.{10,})\\1{5,}.*")) {
+        // Check for excessive repetition using simple algorithmic approach (avoids ReDoS-vulnerable regex)
+        if (hasExcessiveRepetition(input, 10, 5)) {
             throw new SecurityException("Input contains excessive repetition patterns that could cause ReDoS");
         }
-        
+
         // Check for excessive nested grouping
         int openParens = 0;
         int maxNesting = 0;
-        for (char c : input.toCharArray()) {
+        for (int i = 0; i < input.length(); i++) {
+            char c = input.charAt(i);
             if (c == '(') {
                 openParens++;
                 maxNesting = Math.max(maxNesting, openParens);
@@ -250,11 +239,45 @@ public final class DateUtilities {
         if (maxNesting > 20) {
             throw new SecurityException("Input contains excessive nesting that could cause parsing issues");
         }
-        
+
         // Check for suspicious characters that don't belong in date strings
-        if (input.matches(".*[<>&\"'\\x00-\\x08\\x0B\\x0C\\x0E-\\x1F\\x7F].*")) {
+        if (INVALID_CHARS_PATTERN.matcher(input).find()) {
             throw new SecurityException("Input contains invalid characters for date parsing");
         }
+    }
+
+    /**
+     * Detects excessive repetition of substrings without using vulnerable regex.
+     * Checks if any substring of at least minLength characters repeats at least minRepeats times consecutively.
+     *
+     * @param input the input string to check
+     * @param minLength minimum length of repeated substring
+     * @param minRepeats minimum number of consecutive repeats
+     * @return true if excessive repetition is detected
+     */
+    private static boolean hasExcessiveRepetition(String input, int minLength, int minRepeats) {
+        int len = input.length();
+        if (len < minLength * minRepeats) {
+            return false;
+        }
+
+        // Check for repeated substrings of various lengths
+        for (int subLen = minLength; subLen <= len / minRepeats; subLen++) {
+            for (int start = 0; start <= len - subLen * minRepeats; start++) {
+                String sub = input.substring(start, start + subLen);
+                int repeats = 1;
+                int pos = start + subLen;
+
+                while (pos + subLen <= len && input.substring(pos, pos + subLen).equals(sub)) {
+                    repeats++;
+                    pos += subLen;
+                    if (repeats >= minRepeats) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
     }
 
     // Performance optimized: Added UNICODE_CHARACTER_CLASS for better digit matching across locales
@@ -313,40 +336,42 @@ public final class DateUtilities {
             Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CHARACTER_CLASS);
 
     // Performance optimized: Added UNICODE_CHARACTER_CLASS for consistent Unicode handling
-    private static final Pattern dayPattern = Pattern.compile("\\b(" + days + ")\\b", 
+    private static final Pattern dayPattern = Pattern.compile("\\b(" + days + ")\\b",
             Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CHARACTER_CLASS);
-    private static final Map<String, Integer> months = new ConcurrentHashMap<>();
+    private static final Map<String, Integer> months;
     public static final Map<String, String> ABBREVIATION_TO_TIMEZONE;
 
     static {
-        // Month name to number map
-        months.put("jan", 1);
-        months.put("january", 1);
-        months.put("feb", 2);
-        months.put("february", 2);
-        months.put("mar", 3);
-        months.put("march", 3);
-        months.put("apr", 4);
-        months.put("april", 4);
-        months.put("may", 5);
-        months.put("jun", 6);
-        months.put("june", 6);
-        months.put("jul", 7);
-        months.put("july", 7);
-        months.put("aug", 8);
-        months.put("august", 8);
-        months.put("sep", 9);
-        months.put("sept", 9);
-        months.put("september", 9);
-        months.put("oct", 10);
-        months.put("october", 10);
-        months.put("nov", 11);
-        months.put("november", 11);
-        months.put("dec", 12);
-        months.put("december", 12);
+        // Month name to number map - use HashMap since it's never modified after initialization
+        Map<String, Integer> monthBuilder = new HashMap<>();
+        monthBuilder.put("jan", 1);
+        monthBuilder.put("january", 1);
+        monthBuilder.put("feb", 2);
+        monthBuilder.put("february", 2);
+        monthBuilder.put("mar", 3);
+        monthBuilder.put("march", 3);
+        monthBuilder.put("apr", 4);
+        monthBuilder.put("april", 4);
+        monthBuilder.put("may", 5);
+        monthBuilder.put("jun", 6);
+        monthBuilder.put("june", 6);
+        monthBuilder.put("jul", 7);
+        monthBuilder.put("july", 7);
+        monthBuilder.put("aug", 8);
+        monthBuilder.put("august", 8);
+        monthBuilder.put("sep", 9);
+        monthBuilder.put("sept", 9);
+        monthBuilder.put("september", 9);
+        monthBuilder.put("oct", 10);
+        monthBuilder.put("october", 10);
+        monthBuilder.put("nov", 11);
+        monthBuilder.put("november", 11);
+        monthBuilder.put("dec", 12);
+        monthBuilder.put("december", 12);
+        months = Collections.unmodifiableMap(monthBuilder);
 
-        // Build timezone abbreviation map - thread-safe and immutable after initialization
-        Map<String, String> timezoneBuilder = new ConcurrentHashMap<>();
+        // Build timezone abbreviation map - use HashMap since it's only used during initialization
+        Map<String, String> timezoneBuilder = new HashMap<>();
         
         // North American Time Zones
         timezoneBuilder.put("EST", "America/New_York");    // Eastern Standard Time
@@ -387,8 +412,8 @@ public final class DateUtilities {
         timezoneBuilder.put("CET", "Europe/Berlin");       // Central European Time
         timezoneBuilder.put("CEST", "Europe/Berlin");      // Central European summer
 
-        timezoneBuilder.put("EET", "Europe/Kiev");         // Eastern European Time
-        timezoneBuilder.put("EEST", "Europe/Kiev");        // Eastern European summer
+        timezoneBuilder.put("EET", "Europe/Kyiv");         // Eastern European Time
+        timezoneBuilder.put("EEST", "Europe/Kyiv");        // Eastern European summer
 
         // Australia and New Zealand Time Zones
         timezoneBuilder.put("AEST", "Australia/Brisbane"); // Australian Eastern Standard Time
@@ -722,13 +747,51 @@ public final class DateUtilities {
         if (StringUtilities.isEmpty(fracSec)) {
             return 0;
         }
-        BigDecimal fractional = new BigDecimal(fracSec);
-        BigDecimal nanos = fractional.movePointRight(9);
-        if (nanos.compareTo(BigDecimal.ZERO) < 0
-                || nanos.compareTo(BigDecimal.valueOf(1_000_000_000L)) >= 0) {
+
+        // fracSec is in format "0.digits" (e.g., "0.123456") or "0" (default)
+        int dotIndex = fracSec.indexOf('.');
+        if (dotIndex < 0) {
+            // No decimal point - must be "0" or invalid
+            if ("0".equals(fracSec)) {
+                return 0;
+            }
             throw new IllegalArgumentException("Invalid fractional second: " + fracSec);
         }
-        return nanos.longValue();
+
+        // Extract digits after the decimal point
+        String digits = fracSec.substring(dotIndex + 1);
+        int len = digits.length();
+
+        // Validate all characters are digits
+        for (int i = 0; i < len; i++) {
+            char c = digits.charAt(i);
+            if (c < '0' || c > '9') {
+                throw new IllegalArgumentException("Invalid fractional second: " + fracSec);
+            }
+        }
+
+        // Pad or truncate to 9 digits for nanosecond precision
+        long nanos;
+        if (len < 9) {
+            // Pad with zeros on the right: .123 -> 123000000
+            nanos = Long.parseLong(digits);
+            for (int i = len; i < 9; i++) {
+                nanos *= 10;
+            }
+        } else if (len > 9) {
+            // Truncate to 9 digits: .1234567890 -> 123456789
+            nanos = Long.parseLong(digits.substring(0, 9));
+        } else {
+            // Exactly 9 digits
+            nanos = Long.parseLong(digits);
+        }
+
+        // Validate range (should always be valid if input is correct, but check anyway)
+        if (nanos < 0 || nanos >= 1_000_000_000L) {
+            throw new IllegalArgumentException("Invalid fractional second: " + fracSec);
+        }
+
+        return nanos;
     }
 
     private static ZoneId getTimeZone(String tz) {

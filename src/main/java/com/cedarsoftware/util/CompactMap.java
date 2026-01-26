@@ -446,7 +446,7 @@ public class CompactMap<K, V> implements Map<K, V> {
             Object[] entries = (Object[]) val;
             String ordering = getOrdering();
             if (SORTED.equals(ordering) || REVERSE.equals(ordering)) {
-                Comparator<Object> comp = new CompactMapComparator(isCaseInsensitive(), REVERSE.equals(ordering));
+                Comparator<Object> comp = CompactMapComparator.get(isCaseInsensitive(), REVERSE.equals(ordering));
                 return pairBinarySearch(entries, key, comp) >= 0;
             }
             final int len = entries.length;
@@ -511,7 +511,7 @@ public class CompactMap<K, V> implements Map<K, V> {
             Object[] entries = (Object[]) val;
             String ordering = getOrdering();
             if (SORTED.equals(ordering) || REVERSE.equals(ordering)) {
-                Comparator<Object> comp = new CompactMapComparator(isCaseInsensitive(), REVERSE.equals(ordering));
+                Comparator<Object> comp = CompactMapComparator.get(isCaseInsensitive(), REVERSE.equals(ordering));
                 int pairIdx = pairBinarySearch(entries, key, comp);
                 return pairIdx >= 0 ? (V) entries[pairIdx * 2 + 1] : null;
             }
@@ -639,7 +639,7 @@ public class CompactMap<K, V> implements Map<K, V> {
         int pairIndex = -1;
 
         if (binary) {
-            comp = new CompactMapComparator(isCaseInsensitive(), REVERSE.equals(ordering));
+            comp = CompactMapComparator.get(isCaseInsensitive(), REVERSE.equals(ordering));
             pairIndex = pairBinarySearch(entries, key, comp);
             if (pairIndex >= 0) {
                 int vIdx = pairIndex * 2 + 1;
@@ -703,7 +703,7 @@ public class CompactMap<K, V> implements Map<K, V> {
         int idx = -1;
 
         if (binary) {
-            Comparator<Object> comp = new CompactMapComparator(isCaseInsensitive(), REVERSE.equals(ordering));
+            Comparator<Object> comp = CompactMapComparator.get(isCaseInsensitive(), REVERSE.equals(ordering));
             int pairIdx = pairBinarySearch(entries, key, comp);
             if (pairIdx < 0) {
                 return null;
@@ -770,7 +770,7 @@ public class CompactMap<K, V> implements Map<K, V> {
                     }
                 }
 
-                Comparator<Object> comparator = new CompactMapComparator(isCaseInsensitive(), reverse);
+                Comparator<Object> comparator = CompactMapComparator.get(isCaseInsensitive(), reverse);
                 quickSort(array, 0, pairCount - 1, comparator);
             }
             return;
@@ -782,9 +782,31 @@ public class CompactMap<K, V> implements Map<K, V> {
             return;
         }
 
-        Comparator<Object> comparator = new CompactMapComparator(isCaseInsensitive(),
-                REVERSE.equals(ordering));
+        Comparator<Object> comparator = CompactMapComparator.get(isCaseInsensitive(), REVERSE.equals(ordering));
         quickSort(array, 0, pairCount - 1, comparator);
+    }
+
+    /**
+     * Checks if the compact array is already sorted according to the comparator.
+     * This is an O(n) check that can avoid an unnecessary O(n log n) sort.
+     *
+     * @param array the array of alternating keys and values to check
+     * @param comparator the comparator to use for key comparison
+     * @return true if the array is already sorted, false otherwise
+     */
+    private boolean isArraySorted(Object[] array, Comparator<Object> comparator) {
+        int pairCount = array.length / 2;
+        if (pairCount <= 1) {
+            return true;
+        }
+        for (int i = 0; i < pairCount - 1; i++) {
+            Object key1 = array[i * 2];
+            Object key2 = array[(i + 1) * 2];
+            if (comparator.compare(key1, key2) > 0) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /**
@@ -793,6 +815,10 @@ public class CompactMap<K, V> implements Map<K, V> {
      * Indices represent pair positions (i.e., lowPair=1 refers to array indices 2,3).
      * Uses recursion to sort subarrays around pivot points.
      * </p>
+     * <p>
+     * This method first checks if the array is already sorted to avoid unnecessary work,
+     * since put() operations maintain sorted order via binary insertion.
+     * </p>
      *
      * @param array the array of alternating keys and values to sort
      * @param lowPair starting pair index of the subarray
@@ -800,6 +826,10 @@ public class CompactMap<K, V> implements Map<K, V> {
      * @param comparator the comparator to use for key comparison
      */
     private void quickSort(Object[] array, int lowPair, int highPair, Comparator<Object> comparator) {
+        // Skip sorting if array is already sorted (common case due to binary insertion in put())
+        if (lowPair == 0 && highPair == (array.length / 2) - 1 && isArraySorted(array, comparator)) {
+            return;
+        }
         if (lowPair < highPair) {
             int pivotPair = partition(array, lowPair, highPair, comparator);
             quickSort(array, lowPair, pivotPair - 1, comparator);
@@ -1333,8 +1363,8 @@ public class CompactMap<K, V> implements Map<K, V> {
                     if (value != null) {   // Found non-null value with key, return true if values are equals()
                         return Objects.equals(value, entry.getValue());
                     } else if (CompactMap.this.containsKey(entryKey)) {
-                        value = CompactMap.this.get(entryKey);
-                        return Objects.equals(value, entry.getValue());
+                        // value is already null from get() above, just compare with entry's value
+                        return entry.getValue() == null;
                     }
                 }
                 return false;
@@ -1664,7 +1694,7 @@ public class CompactMap<K, V> implements Map<K, V> {
      */
     public Map<String, Object> getConfig() {
         Map<String, Object> config = new LinkedHashMap<>();
-        int compSize = isLegacyConstructed() ? DEFAULT_COMPACT_SIZE : compactSize();
+        int compSize = getCachedLegacyConstructed() ? DEFAULT_COMPACT_SIZE : compactSize();
         config.put(COMPACT_SIZE, compSize);
         config.put(CASE_SENSITIVE, !isCaseInsensitive());
         config.put(ORDERING, getOrdering());
@@ -3037,6 +3067,28 @@ public class CompactMap<K, V> implements Map<K, V> {
      * Used by sorted CompactMaps and during compact array sorting.
      */
     public static class CompactMapComparator implements Comparator<Object> {
+        // Static cache of all 4 possible comparator configurations
+        // Index: (caseInsensitive ? 2 : 0) + (reverse ? 1 : 0)
+        private static final CompactMapComparator[] CACHED_COMPARATORS = {
+            new CompactMapComparator(false, false),  // index 0: case-sensitive, natural order
+            new CompactMapComparator(false, true),   // index 1: case-sensitive, reverse order
+            new CompactMapComparator(true, false),   // index 2: case-insensitive, natural order
+            new CompactMapComparator(true, true)     // index 3: case-insensitive, reverse order
+        };
+
+        /**
+         * Returns a cached comparator instance for the specified configuration.
+         * Since there are only 4 possible combinations, all instances are pre-created.
+         *
+         * @param caseInsensitive true for case-insensitive String comparison
+         * @param reverse true for reverse ordering
+         * @return a cached CompactMapComparator instance
+         */
+        public static CompactMapComparator get(boolean caseInsensitive, boolean reverse) {
+            int index = (caseInsensitive ? 2 : 0) + (reverse ? 1 : 0);
+            return CACHED_COMPARATORS[index];
+        }
+
         private final boolean caseInsensitive;
         private final boolean reverse;
 

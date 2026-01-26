@@ -1,6 +1,8 @@
-<div align="center">
-  <img src="badge.svg" alt="java-util logo" width="320" height="200" />
+<p align="center">
+  <img src="infographic.svg" alt="java-util infographic - Essential Java Toolkit" width="100%" />
+</p>
 
+<div align="center">
   <p>
     <a href="https://central.sonatype.com/search?q=java-util&namespace=com.cedarsoftware">
       <img src="https://badgen.net/maven/v/maven-central/com.cedarsoftware/java-util" alt="Maven Central" height="20" />
@@ -23,10 +25,6 @@
     </a>
   </p>
 </div>
-
-<p align="center">
-  <img src="infographic.svg" alt="java-util infographic - Essential Java Toolkit" width="100%" />
-</p>
 
 A collection of high-performance Java utilities designed to enhance standard Java functionality. These utilities focus on:
 - Memory efficiency and performance optimization

@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="infographic.svg" alt="java-util infographic - Essential Java Toolkit" width="100%" />
+  <img src="infographic.svg?v=2" alt="java-util infographic - Essential Java Toolkit" width="100%" />
 </p>
 
 <div align="center">

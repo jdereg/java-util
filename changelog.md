@@ -1,5 +1,12 @@
 ### Revision History
 
+#### 4.86.0  - 2025-01-26
+* **PERFORMANCE**: `CompactMap` - Multiple optimizations reducing memory allocation and improving iteration performance
+  * Fixed redundant `get()` call in `entrySet().contains()` - now reuses the result instead of calling both `get()` and `containsKey()`
+  * Use `getCachedLegacyConstructed()` consistently in `switchBackingFromMapToArray()` instead of calling `getClass().getName().endsWith()`
+  * Cache `CompactMapComparator` instances statically - 4 pre-created comparators for all combinations of case-insensitive and reverse ordering
+  * Added `isArraySorted()` check in `quickSort()` to skip unnecessary sorting during iteration (common case since binary insertion in `put()` maintains order)
+
 #### 4.85.0  - 2025-01-24
 * **PERFORMANCE**: `ClassUtilities` - Lock-free cache operations using CAS-based removal
   * Replaced synchronized blocks in `fromCache()`, `toCache()`, and `drainQueue()` with `ConcurrentHashMap.remove(key, value)`

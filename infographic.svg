@@ -9,9 +9,9 @@
   <rect x="40" y="15" width="1120" height="110" fill="#DFEDF6" rx="10" ry="10"/>
   <!-- Logo on the left -->
   <!-- Orange dot for the j -->
-  <circle cx="68" cy="52" r="6" fill="#F28B2E"/>
+  <circle cx="88" cy="52" r="6" fill="#F28B2E"/>
   <!-- The j without its dot (using dotless j: ȷ), plus ava- -->
-  <text x="60" y="95" font-family="Arial, sans-serif" font-size="54" font-weight="bold">
+  <text x="80" y="95" font-family="Arial, sans-serif" font-size="54" font-weight="bold">
     <tspan fill="#306994">ȷava-</tspan><tspan fill="#F28B2E">util</tspan>
   </text>
   <!-- Title and subtitle on the right - centered vertically in header -->

@@ -194,7 +194,7 @@
   <text x="600" y="697" text-anchor="middle" font-family="Arial, sans-serif" font-size="20" font-weight="bold" fill="#000000">Key Benefits &amp; Other Useful Utilities</text>
 
   <!-- Benefits Column -->
-  <text x="60" y="730" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#F28B2E">Benefits</text>
+  <text x="60" y="730" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#346D98">Benefits</text>
   <text x="60" y="750" font-family="Arial, sans-serif" font-size="12" fill="#555">• Production Ready</text>
   <text x="60" y="766" font-family="Arial, sans-serif" font-size="12" fill="#555">• Thread-Safe Collections</text>
   <text x="60" y="782" font-family="Arial, sans-serif" font-size="12" fill="#555">• JPMS &amp; OSGi Modular</text>
@@ -204,7 +204,7 @@
   <line x1="215" y1="725" x2="215" y2="800" stroke="#e0e0e0" stroke-width="1"/>
 
   <!-- Utilities Column 1 -->
-  <text x="235" y="730" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#F28B2E">More Utilities</text>
+  <text x="235" y="730" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#346D98">More Utilities</text>
   <text x="235" y="750" font-family="Arial, sans-serif" font-size="12" fill="#555">• CaseInsensitiveMap/Set</text>
   <text x="235" y="766" font-family="Arial, sans-serif" font-size="12" fill="#555">• CompactSet</text>
   <text x="235" y="782" font-family="Arial, sans-serif" font-size="12" fill="#555">• TrackingMap</text>

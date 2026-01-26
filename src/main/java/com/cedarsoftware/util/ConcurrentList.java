@@ -190,11 +190,10 @@ public final class ConcurrentList<E> implements List<E>, Deque<E>, RandomAccess,
     }
 
     private AtomicReferenceArray<Object> getBucket(int index) {
-        AtomicReferenceArray<Object> bucket = buckets.get(index);
-        if (bucket == null) {
-            return ensureBucket(index);
-        }
-        return bucket;
+        // For valid indices (within head/tail range), bucket should always exist
+        // because add operations create buckets before updating head/tail.
+        // If bucket is null, it indicates a bug in the calling code.
+        return buckets.get(index);
     }
 
     @Override
@@ -212,24 +211,49 @@ public final class ConcurrentList<E> implements List<E>, Deque<E>, RandomAccess,
 
     @Override
     public boolean contains(Object o) {
-        for (Object element : this) {
-            if (Objects.equals(o, element)) {
-                return true;
+        lock.readLock().lock();
+        try {
+            int sz = size();
+            long h = head.get();
+            for (int i = 0; i < sz; i++) {
+                long pos = h + i;
+                AtomicReferenceArray<Object> bucket = getBucket(bucketIndex(pos));
+                Object element = bucket.get(bucketOffset(pos));
+                if (Objects.equals(o, element)) {
+                    return true;
+                }
             }
+            return false;
+        } finally {
+            lock.readLock().unlock();
         }
-        return false;
     }
 
     @Override
     public Iterator<E> iterator() {
         Object[] snapshot = toArray();
-        List<E> list = new ArrayList<>(snapshot.length);
-        for (Object obj : snapshot) {
+        return new Iterator<E>() {
+            private int index = 0;
+
+            @Override
+            public boolean hasNext() {
+                return index < snapshot.length;
+            }
+
+            @Override
             @SuppressWarnings("unchecked")
-            E e = (E) obj;
-            list.add(e);
-        }
-        return list.iterator();
+            public E next() {
+                if (index >= snapshot.length) {
+                    throw new NoSuchElementException();
+                }
+                return (E) snapshot[index++];
+            }
+
+            @Override
+            public void remove() {
+                throw new UnsupportedOperationException("remove not supported");
+            }
+        };
     }
 
     @Override
@@ -240,19 +264,16 @@ public final class ConcurrentList<E> implements List<E>, Deque<E>, RandomAccess,
             if (sz == 0) {
                 return new Object[0];
             }
-            
-            // Use best-effort approach: build what we can, never fail
-            List<Object> result = new ArrayList<>(sz);
+            // Build array directly - no intermediate ArrayList needed
+            // Read lock ensures size is stable during iteration
+            Object[] result = new Object[sz];
+            long h = head.get();
             for (int i = 0; i < sz; i++) {
-                try {
-                    Object element = get(i);
-                    result.add(element);  // Add element even if null (null is a valid value)
-                } catch (IndexOutOfBoundsException e) {
-                    // List shrunk during iteration - stop here and return what we have
-                    break;
-                }
+                long pos = h + i;
+                AtomicReferenceArray<Object> bucket = getBucket(bucketIndex(pos));
+                result[i] = bucket.get(bucketOffset(pos));
             }
-            return result.toArray();
+            return result;
         } finally {
             lock.readLock().unlock();
         }
@@ -270,33 +291,22 @@ public final class ConcurrentList<E> implements List<E>, Deque<E>, RandomAccess,
                 }
                 return a;
             }
-            
-            // Use best-effort approach: build what we can, never fail
-            List<T> result = new ArrayList<>(sz);
+            // Build array directly - no intermediate ArrayList needed
+            // Read lock ensures size is stable during iteration
+            T[] result = a.length >= sz ? a :
+                (T[]) java.lang.reflect.Array.newInstance(a.getClass().getComponentType(), sz);
+
+            long h = head.get();
             for (int i = 0; i < sz; i++) {
-                try {
-                    T element = (T) get(i);
-                    result.add(element);  // Add element even if null (null is a valid value)
-                } catch (IndexOutOfBoundsException e) {
-                    // List shrunk during iteration - stop here and return what we have
-                    break;
-                }
+                long pos = h + i;
+                AtomicReferenceArray<Object> bucket = getBucket(bucketIndex(pos));
+                result[i] = (T) bucket.get(bucketOffset(pos));
             }
-            
-            int actualSize = result.size();
-            if (a.length < actualSize) {
-                a = (T[]) java.lang.reflect.Array.newInstance(a.getClass().getComponentType(), actualSize);
+
+            if (result.length > sz) {
+                result[sz] = null;
             }
-            
-            for (int i = 0; i < actualSize; i++) {
-                a[i] = result.get(i);
-            }
-            
-            if (a.length > actualSize) {
-                a[actualSize] = null;
-            }
-            
-            return a;
+            return result;
         } finally {
             lock.readLock().unlock();
         }
@@ -487,28 +497,42 @@ public final class ConcurrentList<E> implements List<E>, Deque<E>, RandomAccess,
 
     @Override
     public int indexOf(Object o) {
-        int idx = 0;
-        for (E element : this) {
-            if (Objects.equals(o, element)) {
-                return idx;
+        lock.readLock().lock();
+        try {
+            int sz = size();
+            long h = head.get();
+            for (int i = 0; i < sz; i++) {
+                long pos = h + i;
+                AtomicReferenceArray<Object> bucket = getBucket(bucketIndex(pos));
+                Object element = bucket.get(bucketOffset(pos));
+                if (Objects.equals(o, element)) {
+                    return i;
+                }
             }
-            idx++;
+            return -1;
+        } finally {
+            lock.readLock().unlock();
         }
-        return -1;
     }
 
     @Override
     public int lastIndexOf(Object o) {
-        int idx = size() - 1;
-        ListIterator<E> it = listIterator(size());
-        while (it.hasPrevious()) {
-            E element = it.previous();
-            if (Objects.equals(o, element)) {
-                return idx;
+        lock.readLock().lock();
+        try {
+            int sz = size();
+            long h = head.get();
+            for (int i = sz - 1; i >= 0; i--) {
+                long pos = h + i;
+                AtomicReferenceArray<Object> bucket = getBucket(bucketIndex(pos));
+                Object element = bucket.get(bucketOffset(pos));
+                if (Objects.equals(o, element)) {
+                    return i;
+                }
             }
-            idx--;
+            return -1;
+        } finally {
+            lock.readLock().unlock();
         }
-        return -1;
     }
 
     @Override
@@ -519,13 +543,65 @@ public final class ConcurrentList<E> implements List<E>, Deque<E>, RandomAccess,
     @Override
     public ListIterator<E> listIterator(int index) {
         Object[] snapshot = toArray();
-        List<E> list = new ArrayList<>(snapshot.length);
-        for (Object obj : snapshot) {
-            @SuppressWarnings("unchecked")
-            E e = (E) obj;
-            list.add(e);
+        if (index < 0 || index > snapshot.length) {
+            throw new IndexOutOfBoundsException("Index: " + index + ", Size: " + snapshot.length);
         }
-        return list.listIterator(index);
+        return new ListIterator<E>() {
+            private int cursor = index;
+
+            @Override
+            public boolean hasNext() {
+                return cursor < snapshot.length;
+            }
+
+            @Override
+            @SuppressWarnings("unchecked")
+            public E next() {
+                if (cursor >= snapshot.length) {
+                    throw new NoSuchElementException();
+                }
+                return (E) snapshot[cursor++];
+            }
+
+            @Override
+            public boolean hasPrevious() {
+                return cursor > 0;
+            }
+
+            @Override
+            @SuppressWarnings("unchecked")
+            public E previous() {
+                if (cursor <= 0) {
+                    throw new NoSuchElementException();
+                }
+                return (E) snapshot[--cursor];
+            }
+
+            @Override
+            public int nextIndex() {
+                return cursor;
+            }
+
+            @Override
+            public int previousIndex() {
+                return cursor - 1;
+            }
+
+            @Override
+            public void remove() {
+                throw new UnsupportedOperationException("remove not supported");
+            }
+
+            @Override
+            public void set(E e) {
+                throw new UnsupportedOperationException("set not supported");
+            }
+
+            @Override
+            public void add(E e) {
+                throw new UnsupportedOperationException("add not supported");
+            }
+        };
     }
 
     @Override
@@ -537,27 +613,31 @@ public final class ConcurrentList<E> implements List<E>, Deque<E>, RandomAccess,
 
     @Override
     public void addFirst(E e) {
-        lock.readLock().lock();
+        // Use write lock to ensure atomic update of head counter + value
+        // This prevents readers from seeing updated head before value is written
+        lock.writeLock().lock();
         try {
             long pos = head.decrementAndGet();
             AtomicReferenceArray<Object> bucket = ensureBucket(bucketIndex(pos));
-            bucket.lazySet(bucketOffset(pos), e);
-            sizeCounter.incrementAndGet();  // Maintain size counter
+            bucket.set(bucketOffset(pos), e);
+            sizeCounter.incrementAndGet();
         } finally {
-            lock.readLock().unlock();
+            lock.writeLock().unlock();
         }
     }
 
     @Override
     public void addLast(E e) {
-        lock.readLock().lock();
+        // Use write lock to ensure atomic update of tail counter + value
+        // This prevents readers from seeing updated tail before value is written
+        lock.writeLock().lock();
         try {
             long pos = tail.getAndIncrement();
             AtomicReferenceArray<Object> bucket = ensureBucket(bucketIndex(pos));
-            bucket.lazySet(bucketOffset(pos), e);
-            sizeCounter.incrementAndGet();  // Maintain size counter
+            bucket.set(bucketOffset(pos), e);
+            sizeCounter.incrementAndGet();
         } finally {
-            lock.readLock().unlock();
+            lock.writeLock().unlock();
         }
     }
 
@@ -575,122 +655,188 @@ public final class ConcurrentList<E> implements List<E>, Deque<E>, RandomAccess,
 
     @Override
     public E removeFirst() {
-        E e = pollFirst();
-        if (e == null) {
-            throw new NoSuchElementException("List is empty");
+        lock.writeLock().lock();
+        try {
+            if (isEmpty()) {
+                throw new NoSuchElementException("List is empty");
+            }
+            return pollFirstInternal();
+        } finally {
+            lock.writeLock().unlock();
         }
-        return e;
     }
 
     @Override
     public E removeLast() {
-        E e = pollLast();
-        if (e == null) {
-            throw new NoSuchElementException("List is empty");
+        lock.writeLock().lock();
+        try {
+            if (isEmpty()) {
+                throw new NoSuchElementException("List is empty");
+            }
+            return pollLastInternal();
+        } finally {
+            lock.writeLock().unlock();
         }
-        return e;
     }
 
     @Override
     public E pollFirst() {
         lock.writeLock().lock();
         try {
-            while (true) {
-                long h = head.get();
-                long t = tail.get();
-                if (h >= t) {
-                    return null;
-                }
-                if (head.compareAndSet(h, h + 1)) {
-                    AtomicReferenceArray<Object> bucket = getBucket(bucketIndex(h));
-                    @SuppressWarnings("unchecked")
-                    E val = (E) bucket.getAndSet(bucketOffset(h), null);
-                    sizeCounter.decrementAndGet();  // Maintain size counter
-                    return val;
-                }
+            if (isEmpty()) {
+                return null;
             }
+            return pollFirstInternal();
         } finally {
             lock.writeLock().unlock();
         }
+    }
+
+    /**
+     * Internal pollFirst without lock acquisition - caller must hold write lock.
+     * Assumes list is not empty.
+     */
+    private E pollFirstInternal() {
+        long h = head.getAndIncrement();
+        int oldBucketIdx = bucketIndex(h);
+        AtomicReferenceArray<Object> bucket = getBucket(oldBucketIdx);
+        @SuppressWarnings("unchecked")
+        E val = (E) bucket.getAndSet(bucketOffset(h), null);
+        sizeCounter.decrementAndGet();
+
+        // Cleanup: remove bucket if it's now completely outside the valid range
+        long t = tail.get();
+        if (h + 1 >= t) {
+            // List is now empty, clean up all buckets
+            buckets.clear();
+        } else {
+            // Check if head crossed into a new bucket
+            int newBucketIdx = bucketIndex(h + 1);
+            if (oldBucketIdx != newBucketIdx) {
+                buckets.remove(oldBucketIdx);
+            }
+        }
+
+        return val;
     }
 
     @Override
     public E pollLast() {
         lock.writeLock().lock();
         try {
-            while (true) {
-                long t = tail.get();
-                long h = head.get();
-                if (t <= h) {
-                    return null;
-                }
-                long newTail = t - 1;
-                if (tail.compareAndSet(t, newTail)) {
-                    AtomicReferenceArray<Object> bucket = getBucket(bucketIndex(newTail));
-                    @SuppressWarnings("unchecked")
-                    E val = (E) bucket.getAndSet(bucketOffset(newTail), null);
-                    sizeCounter.decrementAndGet();  // Maintain size counter
-                    return val;
-                }
+            if (isEmpty()) {
+                return null;
             }
+            return pollLastInternal();
         } finally {
             lock.writeLock().unlock();
         }
     }
 
+    /**
+     * Internal pollLast without lock acquisition - caller must hold write lock.
+     * Assumes list is not empty.
+     */
+    private E pollLastInternal() {
+        long newTail = tail.decrementAndGet();
+        int removedBucketIdx = bucketIndex(newTail);
+        AtomicReferenceArray<Object> bucket = getBucket(removedBucketIdx);
+        @SuppressWarnings("unchecked")
+        E val = (E) bucket.getAndSet(bucketOffset(newTail), null);
+        sizeCounter.decrementAndGet();
+
+        // Cleanup: remove bucket if it's now completely outside the valid range
+        // This happens when the last valid position (newTail - 1) is in a different bucket
+        // Special case: if list is now empty, newTail == head, and we should clean up
+        long h = head.get();
+        if (newTail <= h) {
+            // List is empty, clean up all buckets
+            buckets.clear();
+        } else {
+            // Check if removed position's bucket is now outside valid range
+            int prevValidBucketIdx = bucketIndex(newTail - 1);
+            if (removedBucketIdx != prevValidBucketIdx) {
+                buckets.remove(removedBucketIdx);
+            }
+        }
+
+        return val;
+    }
+
     @Override
     public E getFirst() {
-        E e = peekFirst();
-        if (e == null) {
-            throw new NoSuchElementException("List is empty");
+        lock.readLock().lock();
+        try {
+            if (isEmpty()) {
+                throw new NoSuchElementException("List is empty");
+            }
+            return peekFirstInternal();
+        } finally {
+            lock.readLock().unlock();
         }
-        return e;
     }
 
     @Override
     public E getLast() {
-        E e = peekLast();
-        if (e == null) {
-            throw new NoSuchElementException("List is empty");
+        lock.readLock().lock();
+        try {
+            if (isEmpty()) {
+                throw new NoSuchElementException("List is empty");
+            }
+            return peekLastInternal();
+        } finally {
+            lock.readLock().unlock();
         }
-        return e;
     }
 
     @Override
     public E peekFirst() {
         lock.readLock().lock();
         try {
-            long h = head.get();
-            long t = tail.get();
-            if (h >= t) {
+            if (isEmpty()) {
                 return null;
             }
-            AtomicReferenceArray<Object> bucket = getBucket(bucketIndex(h));
-            @SuppressWarnings("unchecked")
-            E val = (E) bucket.get(bucketOffset(h));
-            return val;
+            return peekFirstInternal();
         } finally {
             lock.readLock().unlock();
         }
+    }
+
+    /**
+     * Internal peekFirst without lock acquisition - caller must hold read or write lock.
+     * Assumes list is not empty.
+     */
+    private E peekFirstInternal() {
+        long h = head.get();
+        AtomicReferenceArray<Object> bucket = getBucket(bucketIndex(h));
+        @SuppressWarnings("unchecked")
+        E val = (E) bucket.get(bucketOffset(h));
+        return val;
     }
 
     @Override
     public E peekLast() {
         lock.readLock().lock();
         try {
-            long t = tail.get();
-            long h = head.get();
-            if (t <= h) {
+            if (isEmpty()) {
                 return null;
             }
-            long pos = t - 1;
-            AtomicReferenceArray<Object> bucket = getBucket(bucketIndex(pos));
-            @SuppressWarnings("unchecked")
-            E val = (E) bucket.get(bucketOffset(pos));
-            return val;
+            return peekLastInternal();
         } finally {
             lock.readLock().unlock();
         }
+    }
+
+    /**
+     * Internal peekLast without lock acquisition - caller must hold read or write lock.
+     * Assumes list is not empty.
+     */
+    private E peekLastInternal() {
+        long pos = tail.get() - 1;
+        AtomicReferenceArray<Object> bucket = getBucket(bucketIndex(pos));
+        @SuppressWarnings("unchecked")
+        E val = (E) bucket.get(bucketOffset(pos));
+        return val;
     }
 
     @Override
@@ -811,11 +957,14 @@ public final class ConcurrentList<E> implements List<E>, Deque<E>, RandomAccess,
 
     @Override
     public int hashCode() {
+        // Per List.hashCode() contract (must match for equal lists):
+        // int hashCode = 1;
+        // for (E e : list) hashCode = 31*hashCode + (e==null ? 0 : e.hashCode());
         int hash = 1;
         for (E e : this) {
             hash = 31 * hash + (e == null ? 0 : e.hashCode());
         }
-        return EncryptionUtilities.finalizeHash(hash);
+        return hash;
     }
 
     @Override
@@ -838,12 +987,12 @@ public final class ConcurrentList<E> implements List<E>, Deque<E>, RandomAccess,
         buckets.clear();
         head.set(0);
         tail.set(0);
-        sizeCounter.set(0);  // Reset size counter before rebuilding
+        sizeCounter.set(0);
         for (E e : elements) {
             long pos = tail.getAndIncrement();
             AtomicReferenceArray<Object> bucket = ensureBucket(bucketIndex(pos));
-            bucket.lazySet(bucketOffset(pos), e);
-            sizeCounter.incrementAndGet();  // Maintain size counter during rebuild
+            bucket.set(bucketOffset(pos), e);  // Use set() for immediate visibility
+            sizeCounter.incrementAndGet();
         }
     }
 }

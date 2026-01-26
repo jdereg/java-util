@@ -315,4 +315,111 @@ class ConcurrentListTest {
         assertEquals(null, array4[1]);
         assertEquals(null, array4[2]);
     }
+
+    // ========== Null Element Handling Tests ==========
+
+    @Test
+    void testGetFirstWithNullElement() {
+        ConcurrentList<String> list = new ConcurrentList<>();
+        list.add(null);  // null is a valid element
+        list.add("second");
+
+        // getFirst() should return null (the element), not throw NoSuchElementException
+        assertEquals(null, list.getFirst(), "getFirst() should return null element, not throw");
+        assertEquals(2, list.size(), "Size should still be 2");
+    }
+
+    @Test
+    void testGetLastWithNullElement() {
+        ConcurrentList<String> list = new ConcurrentList<>();
+        list.add("first");
+        list.add(null);  // null is a valid element at the end
+
+        // getLast() should return null (the element), not throw NoSuchElementException
+        assertEquals(null, list.getLast(), "getLast() should return null element, not throw");
+        assertEquals(2, list.size(), "Size should still be 2");
+    }
+
+    @Test
+    void testRemoveFirstWithNullElement() {
+        ConcurrentList<String> list = new ConcurrentList<>();
+        list.add(null);  // null is a valid element
+        list.add("second");
+
+        // removeFirst() should return null (the removed element), not throw NoSuchElementException
+        assertEquals(null, list.removeFirst(), "removeFirst() should return null element, not throw");
+        assertEquals(1, list.size(), "Size should be 1 after removal");
+        assertEquals("second", list.getFirst(), "Remaining element should be 'second'");
+    }
+
+    @Test
+    void testRemoveLastWithNullElement() {
+        ConcurrentList<String> list = new ConcurrentList<>();
+        list.add("first");
+        list.add(null);  // null is a valid element at the end
+
+        // removeLast() should return null (the removed element), not throw NoSuchElementException
+        assertEquals(null, list.removeLast(), "removeLast() should return null element, not throw");
+        assertEquals(1, list.size(), "Size should be 1 after removal");
+        assertEquals("first", list.getLast(), "Remaining element should be 'first'");
+    }
+
+    @Test
+    void testListWithOnlyNullElement() {
+        ConcurrentList<String> list = new ConcurrentList<>();
+        list.add(null);  // Single null element
+
+        assertEquals(1, list.size(), "Size should be 1");
+        assertEquals(null, list.getFirst(), "getFirst() should return null");
+        assertEquals(null, list.getLast(), "getLast() should return null");
+        assertEquals(null, list.removeFirst(), "removeFirst() should return null");
+        assertTrue(list.isEmpty(), "List should be empty after removal");
+    }
+
+    // ========== List Contract Compliance Tests ==========
+
+    @Test
+    void testHashCodeMatchesArrayList() {
+        // Per List.hashCode() contract, hash code must be computed as:
+        // int hashCode = 1;
+        // for (E e : list) hashCode = 31*hashCode + (e==null ? 0 : e.hashCode());
+
+        ConcurrentList<String> concurrent = new ConcurrentList<>();
+        ArrayList<String> arrayList = new ArrayList<>();
+
+        // Empty lists
+        assertEquals(arrayList.hashCode(), concurrent.hashCode(),
+            "Empty list hashCode should match ArrayList");
+
+        // Add same elements to both
+        concurrent.add("hello");
+        concurrent.add("world");
+        concurrent.add(null);
+        concurrent.add("test");
+
+        arrayList.add("hello");
+        arrayList.add("world");
+        arrayList.add(null);
+        arrayList.add("test");
+
+        assertEquals(arrayList.hashCode(), concurrent.hashCode(),
+            "hashCode should match ArrayList for same elements (List contract)");
+    }
+
+    @Test
+    void testEqualsWithArrayList() {
+        ConcurrentList<Integer> concurrent = new ConcurrentList<>();
+        ArrayList<Integer> arrayList = new ArrayList<>();
+
+        concurrent.add(1);
+        concurrent.add(2);
+        concurrent.add(3);
+
+        arrayList.add(1);
+        arrayList.add(2);
+        arrayList.add(3);
+
+        assertEquals(concurrent, arrayList, "ConcurrentList should equal ArrayList with same elements");
+        assertEquals(arrayList, concurrent, "ArrayList should equal ConcurrentList with same elements");
+    }
 }

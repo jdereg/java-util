@@ -1,6 +1,37 @@
 ### Revision History
 
 #### 4.87.0  - 2026-01-26
+* **SECURITY**: `DateUtilities` - Fixed ReDoS vulnerability in malformed input validation
+  * Replaced vulnerable regex pattern `(.{10,})\1{4,}` with algorithmic `hasExcessiveRepetition()` method
+  * New method detects excessive repetition without catastrophic backtracking risk
+* **PERFORMANCE**: `DateUtilities` - Multiple optimizations reducing memory allocation
+  * Replaced `ConcurrentHashMap` with `HashMap` for months and timezone maps (immutable data)
+  * Replaced `BigDecimal` arithmetic in `convertFractionToNanos()` with string/long operations
+  * Removed unused `BigDecimal` import
+* **IMPROVED**: `DateUtilities` - Updated timezone name `Europe/Kiev` to `Europe/Kyiv`
+  * Reflects modern IANA timezone database naming (changed in 2022)
+* **CLEANUP**: `ClassUtilities` - Removed dead code and unnecessary synchronization
+  * Removed unused `ARG_PATTERN` field (pre-compiled regex that was never used)
+  * Removed unnecessary inner `synchronized(holder)` blocks in alias methods
+  * Outer synchronization on `ALIASES_TO_CLASS` already provides thread safety
+* **BUG FIX**: `ConcurrentList` - Fixed null element handling in Deque methods
+  * `getFirst()`, `getLast()`, `removeFirst()`, `removeLast()` now correctly handle null elements
+  * Previously threw `NoSuchElementException` when list contained null as a valid element
+* **BUG FIX**: `ConcurrentList` - Fixed visibility race condition in addFirst/addLast
+  * Changed from `lazySet()` to `set()` for immediate visibility
+  * Changed from read lock to write lock to prevent readers seeing updated counters before values written
+* **BUG FIX**: `ConcurrentList` - Fixed hashCode to comply with List contract
+  * Removed `EncryptionUtilities.finalizeHash()` which violated the standard List.hashCode() formula
+  * ConcurrentList.hashCode() now matches ArrayList.hashCode() for equal lists
+* **BUG FIX**: `ConcurrentList` - Added bucket cleanup to prevent memory leak
+  * Empty buckets outside head/tail range are now removed after poll operations
+  * Prevents unbounded memory growth during heavy addFirst/pollFirst or addLast/pollLast usage
+* **PERFORMANCE**: `ConcurrentList` - Multiple optimizations reducing allocations
+  * `iterator()` now uses direct array-backed iterator instead of ArrayList intermediary
+  * `listIterator()` now uses direct array-backed ListIterator
+  * `toArray()` builds result array directly instead of via ArrayList
+  * `contains()`, `indexOf()`, `lastIndexOf()` use direct index access instead of iterator
+  * Simplified `getBucket()` to direct lookup (buckets always exist for valid indices)
 * **BUILD**: Version alignment with json-io 4.87.0
   * Keeping java-util and json-io version numbers synchronized simplifies dependency management and ensures compatibility
 

@@ -472,5 +472,133 @@ class ConcurrentListConcurrencyTest {
 
         assertEquals(numThreads * incrementsPerThread, totalIncrements);
     }
+
+    /**
+     * Test that elements added via addLast are immediately visible to readers.
+     * This tests the visibility guarantee - values must be visible immediately after add returns.
+     */
+    @RepeatedTest(10)
+    void testAddLastVisibility() throws InterruptedException {
+        ConcurrentList<String> list = new ConcurrentList<>();
+        int numIterations = 1000;
+        CountDownLatch startLatch = new CountDownLatch(1);
+        AtomicInteger nullReadCount = new AtomicInteger(0);
+
+        // Writer thread
+        Thread writer = new Thread(() -> {
+            try {
+                startLatch.await();
+            } catch (InterruptedException e) {
+                return;
+            }
+            for (int i = 0; i < numIterations; i++) {
+                list.addLast("value-" + i);
+            }
+        });
+
+        // Reader thread - reads elements as they're added
+        Thread reader = new Thread(() -> {
+            try {
+                startLatch.await();
+            } catch (InterruptedException e) {
+                return;
+            }
+            int lastSize = 0;
+            int checksPerformed = 0;
+            while (checksPerformed < numIterations * 10) {
+                int currentSize = list.size();
+                if (currentSize > lastSize) {
+                    // New element was added, verify it's visible
+                    for (int i = lastSize; i < currentSize; i++) {
+                        try {
+                            String val = list.get(i);
+                            if (val == null) {
+                                nullReadCount.incrementAndGet();
+                            }
+                        } catch (IndexOutOfBoundsException e) {
+                            // Size changed between check and read, this is OK
+                        }
+                    }
+                    lastSize = currentSize;
+                }
+                checksPerformed++;
+                if (currentSize >= numIterations) {
+                    break;
+                }
+            }
+        });
+
+        writer.start();
+        reader.start();
+        startLatch.countDown();
+
+        writer.join(5000);
+        reader.join(5000);
+
+        // With proper visibility (set() instead of lazySet()), we should never read null
+        assertEquals(0, nullReadCount.get(),
+            "Should never read null for an element that was added - visibility bug detected");
+        assertEquals(numIterations, list.size());
+    }
+
+    /**
+     * Test that elements added via addFirst are immediately visible to readers.
+     */
+    @RepeatedTest(10)
+    void testAddFirstVisibility() throws InterruptedException {
+        ConcurrentList<String> list = new ConcurrentList<>();
+        int numIterations = 1000;
+        CountDownLatch startLatch = new CountDownLatch(1);
+        AtomicInteger nullReadCount = new AtomicInteger(0);
+
+        // Writer thread
+        Thread writer = new Thread(() -> {
+            try {
+                startLatch.await();
+            } catch (InterruptedException e) {
+                return;
+            }
+            for (int i = 0; i < numIterations; i++) {
+                list.addFirst("value-" + i);
+            }
+        });
+
+        // Reader thread - continuously reads first element
+        Thread reader = new Thread(() -> {
+            try {
+                startLatch.await();
+            } catch (InterruptedException e) {
+                return;
+            }
+            int checksPerformed = 0;
+            while (checksPerformed < numIterations * 10) {
+                if (!list.isEmpty()) {
+                    try {
+                        String val = list.getFirst();
+                        if (val == null) {
+                            nullReadCount.incrementAndGet();
+                        }
+                    } catch (Exception e) {
+                        // List became empty between check and read, this is OK
+                    }
+                }
+                checksPerformed++;
+                if (list.size() >= numIterations) {
+                    break;
+                }
+            }
+        });
+
+        writer.start();
+        reader.start();
+        startLatch.countDown();
+
+        writer.join(5000);
+        reader.join(5000);
+
+        assertEquals(0, nullReadCount.get(),
+            "Should never read null for first element - visibility bug detected");
+        assertEquals(numIterations, list.size());
+    }
 }
 

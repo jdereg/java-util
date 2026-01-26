@@ -1,0 +1,248 @@
+<svg width="1200" height="900" viewBox="0 0 1200 900" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1200" height="900" fill="#ffffff"/>
+
+  <!-- Header - matching box widths -->
+  <rect x="40" y="15" width="1120" height="110" fill="#DFEDF6" rx="10" ry="10"/>
+  <!-- Logo on the left -->
+  <!-- Orange dot for the j -->
+  <circle cx="68" cy="52" r="6" fill="#F28B2E"/>
+  <!-- The j without its dot (using dotless j: ȷ), plus ava- -->
+  <text x="60" y="95" font-family="Arial, sans-serif" font-size="54" font-weight="bold">
+    <tspan fill="#306994">ȷava-</tspan><tspan fill="#F28B2E">util</tspan>
+  </text>
+  <!-- Title and subtitle on the right - centered vertically in header -->
+  <text x="360" y="65" font-family="Arial, sans-serif" font-size="36" font-weight="bold" fill="#000000">Essential Java Toolkit</text>
+  <text x="360" y="99" font-family="Arial, sans-serif" font-size="22" fill="#000000">Code Smarter, Not Harder</text>
+
+  <!-- Row 1: Compact Collections, Type Conversion, Caching -->
+
+  <!-- DeepEquals Box -->
+  <rect x="40" y="145" width="360" height="200" fill="#EDF5F8" rx="10" ry="10"/>
+  <rect x="40" y="145" width="360" height="45" fill="#D4E7F5" rx="10" ry="10"/>
+  <rect x="40" y="175" width="360" height="15" fill="#D4E7F5"/>
+  <text x="220" y="177" text-anchor="middle" font-family="Arial, sans-serif" font-size="20" font-weight="bold" fill="#346D98">DeepEquals <tspan font-size="11" font-weight="normal" fill="#888">(Testing)</tspan></text>
+
+  <text x="60" y="205" font-family="Arial, sans-serif" font-size="12" fill="#555">Compare any objects — get exact path to differences</text>
+
+  <!-- Code snippet -->
+  <rect x="50" y="212" width="340" height="42" fill="#f5f5f5" rx="4" ry="4"/>
+  <text x="58" y="226" font-family="Courier New, monospace" font-size="10" fill="#333">Map options = new HashMap();</text>
+  <text x="58" y="238" font-family="Courier New, monospace" font-size="10" fill="#333">DeepEquals.deepEquals(obj1, obj2, options);</text>
+  <text x="58" y="250" font-family="Courier New, monospace" font-size="10" fill="#333">String diff = options.get(DeepEquals.DIFF);</text>
+
+  <!-- Output label -->
+  <text x="60" y="270" font-family="Arial, sans-serif" font-size="11" font-weight="bold" fill="#F28B2E">Breadcrumb Output:</text>
+
+  <!-- Output example -->
+  <rect x="50" y="276" width="340" height="58" fill="#fff8e1" rx="4" ry="4" stroke="#ffe082" stroke-width="1"/>
+  <text x="58" y="289" font-family="Courier New, monospace" font-size="9" fill="#333">[field mismatch] ▶ Person {name: "John",</text>
+  <text x="58" y="300" font-family="Courier New, monospace" font-size="9" fill="#333">  age: 27, pets: Pet[0..1]} ▶ .pets[0].name</text>
+  <text x="58" y="314" font-family="Courier New, monospace" font-size="9" fill="#555">  Expected: "Edward"</text>
+  <text x="58" y="326" font-family="Courier New, monospace" font-size="9" fill="#555">  Found: "Eddie"</text>
+
+  <!-- CompactMap Box -->
+  <rect x="420" y="145" width="360" height="200" fill="#EDF5F8" rx="10" ry="10"/>
+  <rect x="420" y="145" width="360" height="45" fill="#D4E7F5" rx="10" ry="10"/>
+  <rect x="420" y="175" width="360" height="15" fill="#D4E7F5"/>
+  <text x="600" y="177" text-anchor="middle" font-family="Arial, sans-serif" font-size="20" font-weight="bold" fill="#346D98">CompactMap <tspan font-size="11" font-weight="normal" fill="#888">(Memory)</tspan></text>
+
+  <text x="440" y="205" font-family="Arial, sans-serif" font-size="12" fill="#555">Memory-efficient Map — single field adapts to size</text>
+
+  <!-- Code snippet -->
+  <rect x="430" y="212" width="340" height="42" fill="#f5f5f5" rx="4" ry="4"/>
+  <text x="438" y="226" font-family="Courier New, monospace" font-size="10" fill="#333">// Drop-in HashMap replacement</text>
+  <text x="438" y="238" font-family="Courier New, monospace" font-size="10" fill="#333">Map&lt;String, Object&gt; map = new CompactMap&lt;&gt;();</text>
+  <text x="438" y="250" font-family="Courier New, monospace" font-size="10" fill="#333">map.put("key", value);  // Standard Map API</text>
+
+  <!-- Output label -->
+  <text x="440" y="270" font-family="Arial, sans-serif" font-size="11" font-weight="bold" fill="#F28B2E">Adaptive Storage:</text>
+
+  <!-- Output example -->
+  <rect x="430" y="276" width="340" height="58" fill="#e8f5e9" rx="4" ry="4" stroke="#a5d6a7" stroke-width="1"/>
+  <text x="438" y="290" font-family="Arial, sans-serif" font-size="10" fill="#333">• Empty → sentinel • 1 entry → Map.Entry or value</text>
+  <text x="438" y="306" font-family="Arial, sans-serif" font-size="10" fill="#333">• 2-n entries → Object[] with binary search</text>
+  <text x="438" y="322" font-family="Arial, sans-serif" font-size="10" fill="#333">• &gt;n entries → delegates to user-selected Map</text>
+
+  <!-- Converter Box -->
+  <rect x="800" y="145" width="360" height="200" fill="#EDF5F8" rx="10" ry="10"/>
+  <rect x="800" y="145" width="360" height="45" fill="#D4E7F5" rx="10" ry="10"/>
+  <rect x="800" y="175" width="360" height="15" fill="#D4E7F5"/>
+  <text x="980" y="177" text-anchor="middle" font-family="Arial, sans-serif" font-size="20" font-weight="bold" fill="#346D98">Converter <tspan font-size="11" font-weight="normal" fill="#888">(Types)</tspan></text>
+
+  <text x="820" y="205" font-family="Arial, sans-serif" font-size="12" fill="#555">1,600+ built-in type conversions — extensible</text>
+
+  <!-- Code snippet -->
+  <rect x="810" y="212" width="340" height="42" fill="#f5f5f5" rx="4" ry="4"/>
+  <text x="818" y="226" font-family="Courier New, monospace" font-size="10" fill="#333">// Legacy Calendar → modern java.time</text>
+  <text x="818" y="238" font-family="Courier New, monospace" font-size="10" fill="#333">ZonedDateTime z = convert(cal, ZonedDateTime.class);</text>
+  <text x="818" y="250" font-family="Courier New, monospace" font-size="10" fill="#333">LocalDate ld = convert("Jan 15, 2024", LocalDate.class);</text>
+
+  <!-- Output label -->
+  <text x="820" y="270" font-family="Arial, sans-serif" font-size="11" font-weight="bold" fill="#F28B2E">Hard Conversions Made Easy:</text>
+
+  <!-- Output example -->
+  <rect x="810" y="276" width="340" height="58" fill="#e3f2fd" rx="4" ry="4" stroke="#90caf9" stroke-width="1"/>
+  <text x="818" y="292" font-family="Arial, sans-serif" font-size="11" fill="#333">• Calendar ↔ ZonedDateTime, Instant, LocalDate...</text>
+  <text x="818" y="308" font-family="Arial, sans-serif" font-size="11" fill="#333">• String (40+ date formats) → any date type</text>
+  <text x="818" y="324" font-family="Arial, sans-serif" font-size="11" fill="#333">• Map → POJO, long → UUID, and much more</text>
+
+  <!-- Row 2: MultiKeyMap, LRUCache, UniqueIdGenerator -->
+
+  <!-- MultiKeyMap Box -->
+  <rect x="40" y="365" width="360" height="200" fill="#EDF5F8" rx="10" ry="10"/>
+  <rect x="40" y="365" width="360" height="45" fill="#D4E7F5" rx="10" ry="10"/>
+  <rect x="40" y="395" width="360" height="15" fill="#D4E7F5"/>
+  <text x="220" y="397" text-anchor="middle" font-family="Arial, sans-serif" font-size="20" font-weight="bold" fill="#346D98">MultiKeyMap <tspan font-size="11" font-weight="normal" fill="#888">(Lookup)</tspan></text>
+
+  <text x="60" y="425" font-family="Arial, sans-serif" font-size="12" fill="#555">Composite keys — unlimited dimensions, any type</text>
+
+  <!-- Code snippet -->
+  <rect x="50" y="432" width="340" height="42" fill="#f5f5f5" rx="4" ry="4"/>
+  <text x="58" y="446" font-family="Courier New, monospace" font-size="10" fill="#333">map.put(List.of("US","NC","27519"), "Smith home");</text>
+  <text x="58" y="458" font-family="Courier New, monospace" font-size="10" fill="#333">map.put(Set.of("a","b"), value); // order-insensitive</text>
+  <text x="58" y="470" font-family="Courier New, monospace" font-size="10" fill="#333">String v = map.get(List.of("US", "NC", "27519"));</text>
+
+  <!-- Output label -->
+  <text x="60" y="490" font-family="Arial, sans-serif" font-size="11" font-weight="bold" fill="#F28B2E">Advanced Features:</text>
+
+  <!-- Output example -->
+  <rect x="50" y="496" width="340" height="58" fill="#fff3e0" rx="4" ry="4" stroke="#ffcc80" stroke-width="1"/>
+  <text x="58" y="512" font-family="Arial, sans-serif" font-size="10" fill="#333">• Set keys match regardless of order, combine w/other keys</text>
+  <text x="58" y="528" font-family="Arial, sans-serif" font-size="10" fill="#333">• Auto-expand collections or store as-is (flag)</text>
+  <text x="58" y="544" font-family="Arial, sans-serif" font-size="10" fill="#333">• Case-insensitive strings, jagged or flat dimensions (flag)</text>
+
+  <!-- LRUCache Box -->
+  <rect x="420" y="365" width="360" height="200" fill="#EDF5F8" rx="10" ry="10"/>
+  <rect x="420" y="365" width="360" height="45" fill="#D4E7F5" rx="10" ry="10"/>
+  <rect x="420" y="395" width="360" height="15" fill="#D4E7F5"/>
+  <text x="600" y="397" text-anchor="middle" font-family="Arial, sans-serif" font-size="20" font-weight="bold" fill="#346D98">LRUCache <tspan font-size="11" font-weight="normal" fill="#888">(Caching)</tspan></text>
+
+  <text x="440" y="425" font-family="Arial, sans-serif" font-size="12" fill="#555">Thread-safe cache with automatic LRU eviction</text>
+
+  <!-- Code snippet -->
+  <rect x="430" y="432" width="340" height="42" fill="#f5f5f5" rx="4" ry="4"/>
+  <text x="438" y="446" font-family="Courier New, monospace" font-size="10" fill="#333">LRUCache&lt;String, User&gt; cache = new LRUCache&lt;&gt;(1000);</text>
+  <text x="438" y="458" font-family="Courier New, monospace" font-size="10" fill="#333">cache.put("user123", user);  // Store up to 1000</text>
+  <text x="438" y="470" font-family="Courier New, monospace" font-size="10" fill="#333">User cached = cache.get("user123");  // Fast lookup</text>
+
+  <!-- Output label -->
+  <text x="440" y="490" font-family="Arial, sans-serif" font-size="11" font-weight="bold" fill="#F28B2E">Two Strategies:</text>
+
+  <!-- Output example -->
+  <rect x="430" y="496" width="340" height="58" fill="#e8f5e9" rx="4" ry="4" stroke="#a5d6a7" stroke-width="1"/>
+  <text x="438" y="512" font-family="Arial, sans-serif" font-size="10" fill="#333">• Lock-based: tight memory, slightly slower</text>
+  <text x="438" y="528" font-family="Arial, sans-serif" font-size="10" fill="#333">• Threaded: better contention, may briefly exceed size</text>
+  <text x="438" y="544" font-family="Arial, sans-serif" font-size="10" fill="#333">• O(1) get/put, automatic LRU eviction</text>
+
+  <!-- UniqueIdGenerator Box -->
+  <rect x="800" y="365" width="360" height="200" fill="#EDF5F8" rx="10" ry="10"/>
+  <rect x="800" y="365" width="360" height="45" fill="#D4E7F5" rx="10" ry="10"/>
+  <rect x="800" y="395" width="360" height="15" fill="#D4E7F5"/>
+  <text x="980" y="397" text-anchor="middle" font-family="Arial, sans-serif" font-size="20" font-weight="bold" fill="#346D98">UniqueIdGenerator <tspan font-size="11" font-weight="normal" fill="#888">(Distributed)</tspan></text>
+
+  <text x="820" y="425" font-family="Arial, sans-serif" font-size="12" fill="#555">Generate unique IDs across threads and JVMs</text>
+
+  <!-- Code snippet -->
+  <rect x="810" y="432" width="340" height="42" fill="#f5f5f5" rx="4" ry="4"/>
+  <text x="818" y="446" font-family="Courier New, monospace" font-size="10" fill="#333">long id = UniqueIdGenerator.getUniqueId19();</text>
+  <text x="818" y="458" font-family="Courier New, monospace" font-size="10" fill="#333">// Returns: 1737820145123000001 (19 digits)</text>
+  <text x="818" y="470" font-family="Courier New, monospace" font-size="10" fill="#333">Date time = UniqueIdGenerator.getDate19(id);</text>
+
+  <!-- Output label -->
+  <text x="820" y="490" font-family="Arial, sans-serif" font-size="11" font-weight="bold" fill="#F28B2E">ID Structure:</text>
+
+  <!-- Output example -->
+  <rect x="810" y="496" width="340" height="58" fill="#e3f2fd" rx="4" ry="4" stroke="#90caf9" stroke-width="1"/>
+  <text x="818" y="512" font-family="Arial, sans-serif" font-size="11" fill="#333">• 19-digit ID: timestamp + server + sequence</text>
+  <text x="818" y="528" font-family="Arial, sans-serif" font-size="11" fill="#333">• Sortable, time-extractable, globally unique</text>
+  <text x="818" y="544" font-family="Arial, sans-serif" font-size="11" fill="#333">• No coordination needed between servers</text>
+
+  <!-- Stats Bar -->
+  <rect x="40" y="585" width="1120" height="60" fill="#f8f9fa" rx="8" ry="8" stroke="#e0e0e0" stroke-width="1"/>
+
+  <text x="152" y="622" text-anchor="middle" font-family="Arial, sans-serif" font-size="28" font-weight="bold" fill="#346D98">60+</text>
+  <text x="152" y="640" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" fill="#666">Utility Classes</text>
+
+  <line x1="264" y1="600" x2="264" y2="630" stroke="#e0e0e0" stroke-width="1"/>
+
+  <text x="376" y="622" text-anchor="middle" font-family="Arial, sans-serif" font-size="28" font-weight="bold" fill="#346D98">1,600+</text>
+  <text x="376" y="640" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" fill="#666">Conversions</text>
+
+  <line x1="488" y1="600" x2="488" y2="630" stroke="#e0e0e0" stroke-width="1"/>
+
+  <text x="600" y="622" text-anchor="middle" font-family="Arial, sans-serif" font-size="28" font-weight="bold" fill="#346D98">0</text>
+  <text x="600" y="640" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" fill="#666">Dependencies</text>
+
+  <line x1="712" y1="600" x2="712" y2="630" stroke="#e0e0e0" stroke-width="1"/>
+
+  <text x="824" y="622" text-anchor="middle" font-family="Arial, sans-serif" font-size="28" font-weight="bold" fill="#346D98">JDK 8-24</text>
+  <text x="824" y="640" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" fill="#666">Compatibility</text>
+
+  <line x1="936" y1="600" x2="936" y2="630" stroke="#e0e0e0" stroke-width="1"/>
+
+  <text x="1048" y="622" text-anchor="middle" font-family="Arial, sans-serif" font-size="28" font-weight="bold" fill="#346D98">~700K</text>
+  <text x="1048" y="640" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" fill="#666">JAR Size</text>
+
+  <!-- Key Benefits & Other Useful Utilities Box -->
+  <rect x="40" y="665" width="1120" height="150" fill="#EDF5F8" rx="10" ry="10"/>
+  <rect x="40" y="665" width="1120" height="45" fill="#D4E7F5" rx="10" ry="10"/>
+  <rect x="40" y="695" width="1120" height="15" fill="#D4E7F5"/>
+  <text x="600" y="697" text-anchor="middle" font-family="Arial, sans-serif" font-size="20" font-weight="bold" fill="#000000">Key Benefits &amp; Other Useful Utilities</text>
+
+  <!-- Benefits Column -->
+  <text x="60" y="730" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#F28B2E">Benefits</text>
+  <text x="60" y="750" font-family="Arial, sans-serif" font-size="12" fill="#555">• Production Ready</text>
+  <text x="60" y="766" font-family="Arial, sans-serif" font-size="12" fill="#555">• Thread-Safe Collections</text>
+  <text x="60" y="782" font-family="Arial, sans-serif" font-size="12" fill="#555">• JPMS &amp; OSGi Modular</text>
+  <text x="60" y="798" font-family="Arial, sans-serif" font-size="12" fill="#555">• Apache 2.0 Open Source</text>
+
+  <!-- Divider between Benefits and Utilities -->
+  <line x1="215" y1="725" x2="215" y2="800" stroke="#e0e0e0" stroke-width="1"/>
+
+  <!-- Utilities Column 1 -->
+  <text x="235" y="730" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#F28B2E">More Utilities</text>
+  <text x="235" y="750" font-family="Arial, sans-serif" font-size="12" fill="#555">• CaseInsensitiveMap/Set</text>
+  <text x="235" y="766" font-family="Arial, sans-serif" font-size="12" fill="#555">• CompactSet</text>
+  <text x="235" y="782" font-family="Arial, sans-serif" font-size="12" fill="#555">• TrackingMap</text>
+  <text x="235" y="798" font-family="Arial, sans-serif" font-size="12" fill="#555">• LockingMap</text>
+
+  <!-- Utilities Column 2 -->
+  <text x="390" y="730" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#346D98">&#160;</text>
+  <text x="390" y="750" font-family="Arial, sans-serif" font-size="12" fill="#555">• TTLCache</text>
+  <text x="390" y="766" font-family="Arial, sans-serif" font-size="12" fill="#555">• IntervalSet</text>
+  <text x="390" y="782" font-family="Arial, sans-serif" font-size="12" fill="#555">• ClassValueMap/Set</text>
+  <text x="390" y="798" font-family="Arial, sans-serif" font-size="12" fill="#555">• StringUtilities</text>
+
+  <!-- Utilities Column 3 -->
+  <text x="545" y="730" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#346D98">&#160;</text>
+  <text x="545" y="750" font-family="Arial, sans-serif" font-size="12" fill="#555">• ReflectionUtils</text>
+  <text x="545" y="766" font-family="Arial, sans-serif" font-size="12" fill="#555">• ClassUtilities</text>
+  <text x="545" y="782" font-family="Arial, sans-serif" font-size="12" fill="#555">• TypeUtilities</text>
+  <text x="545" y="798" font-family="Arial, sans-serif" font-size="12" fill="#555">• ExceptionUtilities</text>
+
+  <!-- Utilities Column 4 -->
+  <text x="700" y="730" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#346D98">&#160;</text>
+  <text x="700" y="750" font-family="Arial, sans-serif" font-size="12" fill="#555">• ByteUtilities</text>
+  <text x="700" y="766" font-family="Arial, sans-serif" font-size="12" fill="#555">• IOUtilities</text>
+  <text x="700" y="782" font-family="Arial, sans-serif" font-size="12" fill="#555">• DateUtilities</text>
+  <text x="700" y="798" font-family="Arial, sans-serif" font-size="12" fill="#555">• GraphComparator</text>
+
+  <!-- Utilities Column 5 -->
+  <text x="855" y="730" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#346D98">&#160;</text>
+  <text x="855" y="750" font-family="Arial, sans-serif" font-size="12" fill="#555">• MapUtilities</text>
+  <text x="855" y="766" font-family="Arial, sans-serif" font-size="12" fill="#555">• EncryptionUtilities</text>
+  <text x="855" y="782" font-family="Arial, sans-serif" font-size="12" fill="#555">• IdentitySet</text>
+  <text x="855" y="798" font-family="Arial, sans-serif" font-size="12" fill="#555">• ConcurrentList</text>
+
+  <!-- Utilities Column 6 -->
+  <text x="1010" y="730" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#346D98">&#160;</text>
+  <text x="1010" y="750" font-family="Arial, sans-serif" font-size="12" fill="#555">• ConcurrentSet</text>
+  <text x="1010" y="766" font-family="Arial, sans-serif" font-size="12" fill="#555">• ArrayUtilities</text>
+  <text x="1010" y="782" font-family="Arial, sans-serif" font-size="12" fill="#555">• FastReader/FastWriter</text>
+  <text x="1010" y="798" font-family="Arial, sans-serif" font-size="12" fill="#555">• ...</text>
+
+</svg>

@@ -24,6 +24,9 @@
   </p>
 </div>
 
+<p align="center">
+  <img src="infographic.svg" alt="java-util infographic - Essential Java Toolkit" width="100%" />
+</p>
 
 A collection of high-performance Java utilities designed to enhance standard Java functionality. These utilities focus on:
 - Memory efficiency and performance optimization

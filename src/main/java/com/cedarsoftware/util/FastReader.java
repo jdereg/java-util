@@ -42,7 +42,7 @@ public final class FastReader extends Reader {
     public FastReader(Reader in, int bufferSize, int pushbackBufferSize) {
         super(in);
         if (bufferSize <= 0 || pushbackBufferSize < 0) {
-            throw new IllegalArgumentException("Buffer sizes must be positive");
+            throw new IllegalArgumentException("bufferSize must be positive, pushbackBufferSize must be non-negative");
         }
         this.in = in;
         this.bufferSize = bufferSize;
@@ -101,6 +101,10 @@ public final class FastReader extends Reader {
     public int read(char[] cbuf, int off, int len) {
         if (in == null) {
             ExceptionUtilities.uncheckedThrow(new IOException("inputReader is null"));
+        }
+        if ((off < 0) || (off > cbuf.length) || (len < 0) ||
+                ((off + len) > cbuf.length) || ((off + len) < 0)) {
+            throw new IndexOutOfBoundsException();
         }
         if (len == 0) {
             return 0;
@@ -175,11 +179,7 @@ public final class FastReader extends Reader {
     }
 
     public String getLastSnippet() {
-        StringBuilder s = new StringBuilder(position);
-        for (int i = 0; i < position; i++) {
-            s.append(buf[i]);
-        }
-        return s.toString();
+        return new String(buf, 0, position);
     }
 
 }

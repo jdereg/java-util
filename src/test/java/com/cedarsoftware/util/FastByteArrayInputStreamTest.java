@@ -1,5 +1,6 @@
 package com.cedarsoftware.util;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 
 import org.junit.jupiter.api.Test;
@@ -324,5 +325,157 @@ class FastByteArrayInputStreamTest {
         byte[] data = {1, 2, 3, 4, 5};
         FastByteArrayInputStream stream = new FastByteArrayInputStream(data);
         assertTrue(stream.markSupported());
+    }
+
+    // ==================== New Tests ====================
+
+    @Test
+    void testConstructorWithNull() {
+        assertThrows(NullPointerException.class, () -> new FastByteArrayInputStream(null));
+    }
+
+    @Test
+    void testReadAllBytes() {
+        byte[] data = {1, 2, 3, 4, 5};
+        FastByteArrayInputStream stream = new FastByteArrayInputStream(data);
+
+        byte[] result = stream.readAllBytes();
+        assertArrayEquals(data, result);
+        assertEquals(-1, stream.read()); // Should be at EOF
+    }
+
+    @Test
+    void testReadAllBytesAfterPartialRead() {
+        byte[] data = {1, 2, 3, 4, 5};
+        FastByteArrayInputStream stream = new FastByteArrayInputStream(data);
+
+        // Read first two bytes
+        assertEquals(1, stream.read());
+        assertEquals(2, stream.read());
+
+        // Read remaining bytes
+        byte[] remaining = stream.readAllBytes();
+        assertArrayEquals(new byte[]{3, 4, 5}, remaining);
+        assertEquals(-1, stream.read());
+    }
+
+    @Test
+    void testReadAllBytesOnEmptyStream() {
+        FastByteArrayInputStream stream = new FastByteArrayInputStream(new byte[0]);
+        byte[] result = stream.readAllBytes();
+        assertEquals(0, result.length);
+    }
+
+    @Test
+    void testReadAllBytesAtEOF() {
+        byte[] data = {1, 2};
+        FastByteArrayInputStream stream = new FastByteArrayInputStream(data);
+
+        // Read to EOF
+        stream.read();
+        stream.read();
+
+        byte[] result = stream.readAllBytes();
+        assertEquals(0, result.length);
+    }
+
+    @Test
+    void testReadNBytes() {
+        byte[] data = {1, 2, 3, 4, 5};
+        FastByteArrayInputStream stream = new FastByteArrayInputStream(data);
+
+        byte[] result = stream.readNBytes(3);
+        assertArrayEquals(new byte[]{1, 2, 3}, result);
+        assertEquals(2, stream.available());
+    }
+
+    @Test
+    void testReadNBytesMoreThanAvailable() {
+        byte[] data = {1, 2, 3};
+        FastByteArrayInputStream stream = new FastByteArrayInputStream(data);
+
+        byte[] result = stream.readNBytes(10);
+        assertArrayEquals(data, result);
+        assertEquals(-1, stream.read());
+    }
+
+    @Test
+    void testReadNBytesZero() {
+        byte[] data = {1, 2, 3};
+        FastByteArrayInputStream stream = new FastByteArrayInputStream(data);
+
+        byte[] result = stream.readNBytes(0);
+        assertEquals(0, result.length);
+        assertEquals(3, stream.available()); // Position unchanged
+    }
+
+    @Test
+    void testReadNBytesNegative() {
+        byte[] data = {1, 2, 3};
+        FastByteArrayInputStream stream = new FastByteArrayInputStream(data);
+
+        assertThrows(IllegalArgumentException.class, () -> stream.readNBytes(-1));
+    }
+
+    @Test
+    void testTransferTo() throws IOException {
+        byte[] data = {1, 2, 3, 4, 5};
+        FastByteArrayInputStream stream = new FastByteArrayInputStream(data);
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+
+        long transferred = stream.transferTo(out);
+
+        assertEquals(5, transferred);
+        assertArrayEquals(data, out.toByteArray());
+        assertEquals(-1, stream.read()); // Should be at EOF
+    }
+
+    @Test
+    void testTransferToAfterPartialRead() throws IOException {
+        byte[] data = {1, 2, 3, 4, 5};
+        FastByteArrayInputStream stream = new FastByteArrayInputStream(data);
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+
+        // Read first two bytes
+        stream.read();
+        stream.read();
+
+        long transferred = stream.transferTo(out);
+
+        assertEquals(3, transferred);
+        assertArrayEquals(new byte[]{3, 4, 5}, out.toByteArray());
+    }
+
+    @Test
+    void testTransferToEmptyStream() throws IOException {
+        FastByteArrayInputStream stream = new FastByteArrayInputStream(new byte[0]);
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+
+        long transferred = stream.transferTo(out);
+
+        assertEquals(0, transferred);
+        assertEquals(0, out.size());
+    }
+
+    @Test
+    void testTransferToNull() {
+        byte[] data = {1, 2, 3};
+        FastByteArrayInputStream stream = new FastByteArrayInputStream(data);
+
+        assertThrows(NullPointerException.class, () -> stream.transferTo(null));
+    }
+
+    @Test
+    void testTransferToAtEOF() throws IOException {
+        byte[] data = {1, 2};
+        FastByteArrayInputStream stream = new FastByteArrayInputStream(data);
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+
+        // Read to EOF
+        stream.read();
+        stream.read();
+
+        long transferred = stream.transferTo(out);
+        assertEquals(0, transferred);
     }
 }

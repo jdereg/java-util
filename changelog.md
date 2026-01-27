@@ -1,5 +1,107 @@
 ### Revision History
 
+#### 4.88.0 - 2026-01-26
+* **BUG FIX**: `FastReader` - Added bounds validation in `read(char[], int, int)` method
+  * Now throws `IndexOutOfBoundsException` for invalid offset, length, or buffer overflow
+  * Matches standard `Reader` contract and `FastWriter` behavior
+* **BUG FIX**: `FastWriter` - Fixed NPE in `flush()` after `close()`
+  * `flush()` now returns safely when called after `close()` instead of throwing `NullPointerException`
+  * Matches `close()` behavior which already handles this case
+* **BUG FIX**: `FastWriter` - Added bounds validation in `write(String, int, int)` method
+  * Now throws `IndexOutOfBoundsException` for invalid offset/length parameters
+  * Matches validation in `write(char[], int, int)` method
+* **PERFORMANCE**: `FastWriter` - Improved buffer utilization in `write(int c)` method
+  * Now uses full buffer capacity before flushing (was wasting one slot)
+  * Buffer is flushed immediately when full to maintain invariants for other write methods
+* **PERFORMANCE**: `FastWriter` - Made class `final` for JVM optimizations
+  * Enables JIT compiler to inline method calls, matching `FastReader` which is already final
+* **BUG FIX**: `FastByteArrayOutputStream` - Fixed critical integer overflow in `grow()` method
+* **NEW**: `FastByteArrayInputStream` - Added JDK 9+ compatible methods
+  * `readAllBytes()` - Efficient single-copy implementation (auto-overrides on JDK 9+)
+  * `readNBytes(int len)` - Efficient partial read (auto-overrides on JDK 11+)
+  * `transferTo(OutputStream)` - Single write operation to output (auto-overrides on JDK 9+)
+  * All methods work on JDK 8 as regular methods and automatically become overrides on newer JDKs
+* **NEW**: `FastByteArrayOutputStream` - Added zero-copy buffer access methods
+  * `getInternalBuffer()` - Direct access to internal buffer without copying
+  * `getCount()` - Returns valid byte count for use with `getInternalBuffer()`
+  * `toInputStream()` - Creates `FastByteArrayInputStream` from current data
+* **NEW**: `FastByteArrayOutputStream` - Added `toString(Charset)` method
+  * Allows explicit charset specification instead of platform default encoding
+* **CLEANUP**: `FastByteArrayInputStream` - Added missing `@Override` on `read()` method
+* **CLEANUP**: `FastByteArrayInputStream` - Added explicit `(int)` cast in `skip()` method
+  * Makes the safe long-to-int conversion explicit with explanatory comment
+* **CLEANUP**: `FastByteArrayOutputStream` - Fixed Javadoc typo ("theoerical" → "theoretical")
+* **PERFORMANCE**: `FastByteArrayOutputStream` - Added early return optimization
+* `write(byte[], int, int)` now returns immediately when `len == 0`
+* Skips unnecessary bounds checks and capacity operations for zero-length writes
+* Previous 2x growth (`oldCapacity << 1`) overflowed for buffers > 1GB causing `NegativeArraySizeException`
+* Changed to 1.5x growth strategy (`oldCapacity + (oldCapacity >> 1)`) to reduce overflow risk
+* Added `MAX_ARRAY_SIZE` constant (`Integer.MAX_VALUE - 8`) following JDK best practices
+* Added `hugeCapacity()` method for safe handling of very large allocations
+* **BUG FIX**: `FastByteArrayOutputStream` - Fixed inconsistent null exception type
+  * `write(byte[], int, int)` now throws `NullPointerException` for null array (was `IndexOutOfBoundsException`)
+  * Matches JDK convention and `FastByteArrayInputStream` behavior
+* **BUG FIX**: `FastByteArrayInputStream` - Added null validation in constructor
+  * Constructor now throws `NullPointerException` with descriptive message for null input
+  * Previously threw `NullPointerException` on `buf.length` access with no message
+* **BUG FIX**: `StringUtilities` - Fixed `commaSeparatedStringToSet()` return type inconsistency
+  * Changed from `Collectors.toSet()` to `Collectors.toCollection(LinkedHashSet::new)`
+  * Now consistently returns `LinkedHashSet` as documented, maintaining insertion order
+* **BUG FIX**: `StringUtilities` - Fixed integer overflow in `repeat()` method
+  * Moved overflow check outside security block so it always runs
+  * Prevents `StringBuilder` from being created with negative capacity when `s.length() * count` overflows
+* **BUG FIX**: `StringUtilities` - Fixed integer overflow in `encode()` method
+  * Added overflow check for `bytes.length << 1` to handle very large byte arrays
+  * Added null check returning `null` for consistency with `decode()` method
+* **PERFORMANCE**: `FastReader` - Optimized `getLastSnippet()` implementation
+  * Replaced character-by-character `StringBuilder.append()` loop with `new String(buf, 0, position)`
+* **PERFORMANCE**: `StringUtilities` - Optimized `snakeToCamel()` to avoid array allocation
+  * Replaced `toCharArray()` iteration with `charAt()` loop
+  * Added `StringBuilder` initial capacity hint
+* **PERFORMANCE**: `StringUtilities` - Optimized `trimEmptyToDefault()` to avoid allocation
+  * Replaced `Optional.ofNullable().map().orElse()` with simple null check
+  * Removed unused `Optional` import
+* **PERFORMANCE**: `StringUtilities` - Optimized `repeat()` with O(log n) doubling algorithm
+  * Replaced O(n) loop with doubling algorithm for large repeat counts
+  * Added early return for empty string input
+* **PERFORMANCE**: `StringUtilities` - Optimized `padLeft()` and `padRight()` methods
+  * Replaced character-by-character loop with `Arrays.fill()` on char array
+* **PERFORMANCE**: `StringUtilities` - Optimized `encode()` hex encoding
+  * Replaced `StringBuilder` with direct char array manipulation
+  * Accesses `HEX_ARRAY` directly instead of calling `convertDigit()` method
+* **CLEANUP**: `FastReader` - Fixed misleading constructor error message
+  * Changed "Buffer sizes must be positive" to accurately state that `bufferSize` must be positive and `pushbackBufferSize` must be non-negative
+* **BUG FIX**: `UniqueIdGenerator` - Added validation to `getDate()` and `getDate19()` methods
+  * Both methods now throw `IllegalArgumentException` for negative IDs
+  * Matches existing validation in `getInstant()` and `getInstant19()`
+* **PERFORMANCE**: `UniqueIdGenerator` - Replaced reflection with MethodHandle for `onSpinWait()`
+  * Changed from `Method.invoke()` to `MethodHandle.invokeExact()` in spin-wait loop
+  * `MethodHandle.invokeExact()` can be inlined by JIT compiler; `Method.invoke()` cannot
+  * Estimated 10-50x faster spin-wait hint delivery after JIT warmup
+* **PERFORMANCE**: `UniqueIdGenerator` - Optimized `waitForNextMillis()` to reduce syscall overhead
+  * Reduced `currentTimeMillis()` calls by batching 8 spin-waits between time checks
+  * Previously called `currentTimeMillis()` after every single `onSpinWait()`
+* **PERFORMANCE**: `UniqueIdGenerator` - Optimized static initialization
+  * Cached hostname lookup to avoid duplicate `getExternalVariable("HOSTNAME")` calls
+  * Replaced SHA256 hash with simpler `String.hashCode()` for hostname-based server ID
+  * Both provide sufficient distribution for 0-99 range; hashCode is much faster
+* **CLEANUP**: `UniqueIdGenerator` - Removed unused `StandardCharsets` import
+  * No longer needed after switching from SHA256 to hashCode for hostname hashing
+* **PERFORMANCE**: `ReflectionUtils` - Cache parsed dangerous class and sensitive field patterns
+  * Added volatile caching with property change detection for `getDangerousClassPatterns()` and `getSensitiveFieldPatterns()`
+  * Patterns are now parsed once and cached until the system property value changes
+  * Pre-processes patterns (trim/toLowerCase) during cache population for efficient matching
+  * Reduces repeated string parsing overhead in security checks
+* **PERFORMANCE**: `ReflectionUtils` - Cache Method lookups for Record component operations
+  * Extended `RecordSupport` class to cache `RecordComponent.getName()` and `RecordComponent.getAccessor()` methods
+  * Avoids repeated reflection lookups when processing Record types
+* **SECURITY**: `ReflectionUtils` - Add bounds checking in `getClassNameFromByteCode()`
+  * Added validation for `this_class` index and string pool index before array access
+  * Prevents `ArrayIndexOutOfBoundsException` on malformed class files
+  * Returns clear `IllegalStateException` with descriptive message for invalid bytecode
+* **CLEANUP**: `ReflectionUtils` - Removed dead code `makeParamKey()` method
+  * Method was unused and has been removed
+
 #### 4.87.0  - 2026-01-26
 * **SECURITY**: `DateUtilities` - Fixed ReDoS vulnerability in malformed input validation
   * Replaced vulnerable regex pattern `(.{10,})\1{4,}` with algorithmic `hasExcessiveRepetition()` method

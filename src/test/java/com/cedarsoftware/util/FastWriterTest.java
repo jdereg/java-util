@@ -71,26 +71,26 @@ public class FastWriterTest {
     public void testWriteCharsToFillBuffer() throws IOException {
         fastWriter = new FastWriter(stringWriter, CUSTOM_BUFFER_SIZE);
 
-        // Write enough characters to fill buffer minus one
-        for (int i = 0; i < CUSTOM_BUFFER_SIZE - 1; i++) {
-            fastWriter.write('x');
-        }
-
-        // At this point, buffer should be filled but not flushed
-        assertEquals("", stringWriter.toString());
-
-        // Create a string of 'x' characters (CUSTOM_BUFFER_SIZE - 1) times
+        // Create expected string of 'x' characters
         StringBuilder expected = new StringBuilder();
-        for (int i = 0; i < CUSTOM_BUFFER_SIZE - 1; i++) {
+        for (int i = 0; i < CUSTOM_BUFFER_SIZE; i++) {
             expected.append('x');
         }
         String expectedString = expected.toString();
 
-        // This will trigger a flush due to buffer being full
+        // Write enough characters to fill buffer completely
+        for (int i = 0; i < CUSTOM_BUFFER_SIZE; i++) {
+            fastWriter.write('x');
+        }
+
+        // Buffer is flushed immediately when it becomes full
+        assertEquals(expectedString, stringWriter.toString());
+
+        // Write one more character - goes into empty buffer
         fastWriter.write('y');
         assertEquals(expectedString, stringWriter.toString());
 
-        // Final character should still be in buffer
+        // Final character should still be in buffer until flush
         fastWriter.flush();
         assertEquals(expectedString + 'y', stringWriter.toString());
     }
@@ -290,6 +290,42 @@ public class FastWriterTest {
         assertThrows(IOException.class, () -> fastWriter.write("test", 0, 4));
     }
 
+    @Test
+    public void testWriteStringWithNegativeOffset() {
+        fastWriter = new FastWriter(stringWriter);
+        assertThrows(IndexOutOfBoundsException.class,
+                () -> fastWriter.write("test", -1, 2));
+    }
+
+    @Test
+    public void testWriteStringWithNegativeLength() {
+        fastWriter = new FastWriter(stringWriter);
+        assertThrows(IndexOutOfBoundsException.class,
+                () -> fastWriter.write("test", 0, -1));
+    }
+
+    @Test
+    public void testWriteStringWithOffsetBeyondString() {
+        fastWriter = new FastWriter(stringWriter);
+        assertThrows(IndexOutOfBoundsException.class,
+                () -> fastWriter.write("test", 5, 1));
+    }
+
+    @Test
+    public void testWriteStringWithInvalidRange() {
+        fastWriter = new FastWriter(stringWriter);
+        assertThrows(IndexOutOfBoundsException.class,
+                () -> fastWriter.write("test", 2, 3));
+    }
+
+    @Test
+    public void testWriteStringWithIntegerOverflow() {
+        fastWriter = new FastWriter(stringWriter);
+        // off + len will overflow to negative
+        assertThrows(IndexOutOfBoundsException.class,
+                () -> fastWriter.write("test string for overflow check", 10, Integer.MAX_VALUE));
+    }
+
     // Flush Tests
     @Test
     public void testFlushEmptyBuffer() throws IOException {
@@ -325,6 +361,16 @@ public class FastWriterTest {
         fastWriter.write("test");
         fastWriter.close();
         fastWriter.close(); // Second close should be a no-op
+        assertEquals("test", stringWriter.toString());
+    }
+
+    @Test
+    public void testFlushAfterClose() throws IOException {
+        fastWriter = new FastWriter(stringWriter);
+        fastWriter.write("test");
+        fastWriter.close();
+        // flush() after close() should be a no-op, not throw NPE
+        fastWriter.flush();
         assertEquals("test", stringWriter.toString());
     }
 

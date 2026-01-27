@@ -24,6 +24,7 @@ import static com.cedarsoftware.util.UniqueIdGenerator.getUniqueId19;
 import static java.lang.Math.abs;
 import static java.lang.System.currentTimeMillis;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -86,6 +87,34 @@ public class UniqueIdGeneratorTest
         instant = getInstant19(id);
         currentTime = currentTimeMillis();
         assert abs(instant.toEpochMilli() - currentTime) <= 2;
+    }
+
+    @Test
+    void testGetDateWithNegativeId()
+    {
+        assertThrows(IllegalArgumentException.class, () -> getDate(-1L));
+        assertThrows(IllegalArgumentException.class, () -> getDate(Long.MIN_VALUE));
+    }
+
+    @Test
+    void testGetDate19WithNegativeId()
+    {
+        assertThrows(IllegalArgumentException.class, () -> getDate19(-1L));
+        assertThrows(IllegalArgumentException.class, () -> getDate19(Long.MIN_VALUE));
+    }
+
+    @Test
+    void testGetInstantWithNegativeId()
+    {
+        assertThrows(IllegalArgumentException.class, () -> getInstant(-1L));
+        assertThrows(IllegalArgumentException.class, () -> getInstant(Long.MIN_VALUE));
+    }
+
+    @Test
+    void testGetInstant19WithNegativeId()
+    {
+        assertThrows(IllegalArgumentException.class, () -> getInstant19(-1L));
+        assertThrows(IllegalArgumentException.class, () -> getInstant19(Long.MIN_VALUE));
     }
 
     @Test

@@ -2,6 +2,7 @@ package com.cedarsoftware.util;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 
 import org.junit.jupiter.api.Test;
 
@@ -9,7 +10,10 @@ import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Faster version of ByteArrayOutputStream that does not have synchronized methods and
@@ -158,7 +162,7 @@ class FastByteArrayOutputStreamTest {
     @Test
     void testWriteNull() {
         FastByteArrayOutputStream stream = new FastByteArrayOutputStream();
-        assertThrows(IndexOutOfBoundsException.class, () -> stream.write(null, 0, 5));
+        assertThrows(NullPointerException.class, () -> stream.write(null, 0, 5));
     }
 
     @Test
@@ -376,6 +380,178 @@ class FastByteArrayOutputStreamTest {
         // because offset + length will overflow to a negative number
         assertThrows(IndexOutOfBoundsException.class,
                 () -> stream.write(data, offset, length));
+    }
+
+    // ==================== New Tests ====================
+
+    @Test
+    void testGetInternalBuffer() {
+        FastByteArrayOutputStream stream = new FastByteArrayOutputStream(10);
+        stream.write(1);
+        stream.write(2);
+        stream.write(3);
+
+        byte[] internal = stream.getInternalBuffer();
+
+        // Internal buffer should be the actual buffer (not a copy)
+        // It may be larger than the written content
+        assertTrue(internal.length >= 3);
+        assertEquals(1, internal[0]);
+        assertEquals(2, internal[1]);
+        assertEquals(3, internal[2]);
+
+        // Verify it's the same instance on repeated calls
+        assertSame(internal, stream.getInternalBuffer());
+    }
+
+    @Test
+    void testGetCount() {
+        FastByteArrayOutputStream stream = new FastByteArrayOutputStream();
+        assertEquals(0, stream.getCount());
+
+        stream.write(1);
+        assertEquals(1, stream.getCount());
+
+        stream.write(new byte[]{2, 3, 4}, 0, 3);
+        assertEquals(4, stream.getCount());
+
+        stream.reset();
+        assertEquals(0, stream.getCount());
+    }
+
+    @Test
+    void testZeroCopyAccess() {
+        FastByteArrayOutputStream stream = new FastByteArrayOutputStream();
+        stream.write(10);
+        stream.write(20);
+        stream.write(30);
+
+        // Use zero-copy access
+        byte[] buf = stream.getInternalBuffer();
+        int count = stream.getCount();
+
+        // Verify we can read the data correctly
+        assertEquals(3, count);
+        assertEquals(10, buf[0]);
+        assertEquals(20, buf[1]);
+        assertEquals(30, buf[2]);
+
+        // Modifying the internal buffer affects the stream
+        buf[0] = 99;
+        assertEquals(99, stream.getInternalBuffer()[0]);
+    }
+
+    @Test
+    void testToInputStream() {
+        FastByteArrayOutputStream out = new FastByteArrayOutputStream();
+        out.write(1);
+        out.write(2);
+        out.write(3);
+
+        FastByteArrayInputStream in = out.toInputStream();
+
+        assertEquals(1, in.read());
+        assertEquals(2, in.read());
+        assertEquals(3, in.read());
+        assertEquals(-1, in.read());
+    }
+
+    @Test
+    void testToInputStreamIsCopy() {
+        FastByteArrayOutputStream out = new FastByteArrayOutputStream();
+        out.write(1);
+        out.write(2);
+
+        FastByteArrayInputStream in = out.toInputStream();
+
+        // Writing more to output stream should not affect input stream
+        out.write(3);
+
+        assertEquals(1, in.read());
+        assertEquals(2, in.read());
+        assertEquals(-1, in.read()); // Should still be EOF after original 2 bytes
+    }
+
+    @Test
+    void testToInputStreamEmpty() {
+        FastByteArrayOutputStream out = new FastByteArrayOutputStream();
+        FastByteArrayInputStream in = out.toInputStream();
+
+        assertEquals(-1, in.read());
+    }
+
+    @Test
+    void testToStringWithCharset() {
+        FastByteArrayOutputStream stream = new FastByteArrayOutputStream();
+        String original = "Hello, 世界!";
+        byte[] utf8Bytes = original.getBytes(StandardCharsets.UTF_8);
+        stream.write(utf8Bytes, 0, utf8Bytes.length);
+
+        String result = stream.toString(StandardCharsets.UTF_8);
+        assertEquals(original, result);
+    }
+
+    @Test
+    void testToStringWithDifferentCharsets() {
+        FastByteArrayOutputStream stream = new FastByteArrayOutputStream();
+        String original = "Héllo";
+
+        // Write as ISO-8859-1
+        byte[] isoBytes = original.getBytes(StandardCharsets.ISO_8859_1);
+        stream.write(isoBytes, 0, isoBytes.length);
+
+        // Read as ISO-8859-1 (should match)
+        assertEquals(original, stream.toString(StandardCharsets.ISO_8859_1));
+
+        // Read as UTF-8 (may not match if there are special chars)
+        // The é character is different in ISO-8859-1 vs UTF-8
+        assertNotSame(original, stream.toString(StandardCharsets.UTF_8));
+    }
+
+    @Test
+    void testWriteZeroLengthArray() {
+        FastByteArrayOutputStream stream = new FastByteArrayOutputStream();
+        stream.write(1);
+
+        // Write zero-length array (should be no-op)
+        stream.write(new byte[]{10, 20, 30}, 0, 0);
+
+        assertEquals(1, stream.size());
+        assertArrayEquals(new byte[]{1}, stream.toByteArray());
+    }
+
+    @Test
+    void testGrowthStrategyDoesNotOverflow() {
+        // Test that the new growth strategy (1.5x) works correctly
+        // and doesn't cause issues with moderately large buffers
+        FastByteArrayOutputStream stream = new FastByteArrayOutputStream(100);
+
+        // Fill to trigger multiple growths
+        byte[] data = new byte[1000];
+        for (int i = 0; i < data.length; i++) {
+            data[i] = (byte) (i % 256);
+        }
+
+        stream.write(data, 0, data.length);
+
+        assertEquals(1000, stream.size());
+        byte[] result = stream.toByteArray();
+        for (int i = 0; i < data.length; i++) {
+            assertEquals(data[i], result[i]);
+        }
+    }
+
+    @Test
+    void testWriteToFastByteArrayOutputStream() {
+        FastByteArrayOutputStream source = new FastByteArrayOutputStream();
+        source.write(1);
+        source.write(2);
+        source.write(3);
+
+        FastByteArrayOutputStream target = new FastByteArrayOutputStream();
+        source.writeTo(target);
+
+        assertArrayEquals(source.toByteArray(), target.toByteArray());
     }
 }
 

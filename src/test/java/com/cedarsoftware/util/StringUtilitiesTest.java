@@ -234,16 +234,10 @@ public class StringUtilitiesTest
         assertEquals("", StringUtilities.encode(new byte[]{}));
     }
 
-    void testEncodeWithNull()
-    {
-        try
-        {
-            StringUtilities.encode(null);
-            fail("should not make it here");
-        }
-        catch (NullPointerException e)
-        {
-        }
+    @Test
+    void testEncodeWithNull() {
+        // encode() returns null for null input, consistent with decode()
+        assertNull(StringUtilities.encode(null));
     }
 
     @Test
@@ -964,8 +958,15 @@ public class StringUtilitiesTest
     void testRepeat() {
         assertEquals("ababab", StringUtilities.repeat("ab", 3));
         assertEquals("", StringUtilities.repeat("x", 0));
+        assertEquals("", StringUtilities.repeat("", 1000));
         assertNull(StringUtilities.repeat(null, 2));
         assertThrows(IllegalArgumentException.class, () -> StringUtilities.repeat("x", -1));
+    }
+
+    @Test
+    void testRepeat_integerOverflow_throwsException() {
+        // This would overflow: "ab".length() * Integer.MAX_VALUE > Integer.MAX_VALUE
+        assertThrows(IllegalArgumentException.class, () -> StringUtilities.repeat("ab", Integer.MAX_VALUE));
     }
 
     @Test
@@ -1004,6 +1005,7 @@ public class StringUtilitiesTest
         Set<String> expected = new HashSet<>(Arrays.asList("a", "b", "c"));
         Set<String> result = StringUtilities.commaSeparatedStringToSet(" a ,b , c ,a,, ,b,");
         assertEquals(expected, result);
+        assertInstanceOf(LinkedHashSet.class, result);
     }
 
     @Test

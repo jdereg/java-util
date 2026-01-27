@@ -24,7 +24,7 @@ import java.io.Writer;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class FastWriter extends Writer {
+public final class FastWriter extends Writer {
     private static final int DEFAULT_BUFFER_SIZE = 8192;
 
     private Writer out;
@@ -62,10 +62,13 @@ public class FastWriter extends Writer {
         if (out == null) {
             ExceptionUtilities.uncheckedThrow(new IOException("FastWriter stream is closed"));
         }
-        if (nextChar + 1 >= cb.length) {
+        if (nextChar >= cb.length) {
             flushBuffer();
         }
         cb[nextChar++] = (char) c;
+        if (nextChar >= cb.length) {
+            flushBuffer();
+        }
     }
 
     @Override
@@ -101,6 +104,10 @@ public class FastWriter extends Writer {
     public void write(String str, int off, int len) {
         if (out == null) {
             ExceptionUtilities.uncheckedThrow(new IOException("FastWriter stream is closed"));
+        }
+        if ((off < 0) || (off > str.length()) || (len < 0) ||
+                ((off + len) > str.length()) || ((off + len) < 0)) {
+            throw new IndexOutOfBoundsException();
         }
 
         // Return early for empty strings
@@ -149,6 +156,9 @@ public class FastWriter extends Writer {
 
     @Override
     public void flush() {
+        if (out == null) {
+            return;
+        }
         flushBuffer();
         try {
             out.flush();

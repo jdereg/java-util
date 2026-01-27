@@ -130,14 +130,46 @@ public final class ReflectionUtils {
         return isSecurityEnabled() ? DEFAULT_MAX_CACHE_SIZE : Integer.MAX_VALUE;
     }
     
+    // Cached dangerous class patterns - parsed once per property value
+    private static volatile String cachedDangerousClassProperty = null;
+    private static volatile Set<String> cachedDangerousClassPatterns = null;
+
+    // Cached sensitive field patterns - parsed once per property value (pre-processed: trimmed and lowercased)
+    private static volatile String cachedSensitiveFieldProperty = null;
+    private static volatile Set<String> cachedSensitiveFieldPatterns = null;
+
     private static Set<String> getDangerousClassPatterns() {
-        String patterns = System.getProperty("reflectionutils.dangerous.class.patterns", DEFAULT_DANGEROUS_CLASS_PATTERNS);
-        return new HashSet<>(Arrays.asList(patterns.split(",")));
+        String currentProperty = System.getProperty("reflectionutils.dangerous.class.patterns", DEFAULT_DANGEROUS_CLASS_PATTERNS);
+        // Check if property changed (or first access)
+        if (!currentProperty.equals(cachedDangerousClassProperty)) {
+            Set<String> set = new HashSet<>();
+            for (String pattern : currentProperty.split(",")) {
+                String trimmed = pattern.trim();
+                if (!trimmed.isEmpty()) {
+                    set.add(trimmed);
+                }
+            }
+            cachedDangerousClassPatterns = Collections.unmodifiableSet(set);
+            cachedDangerousClassProperty = currentProperty;
+        }
+        return cachedDangerousClassPatterns;
     }
-    
+
     private static Set<String> getSensitiveFieldPatterns() {
-        String patterns = System.getProperty("reflectionutils.sensitive.field.patterns", DEFAULT_SENSITIVE_FIELD_PATTERNS);
-        return new HashSet<>(Arrays.asList(patterns.split(",")));
+        String currentProperty = System.getProperty("reflectionutils.sensitive.field.patterns", DEFAULT_SENSITIVE_FIELD_PATTERNS);
+        // Check if property changed (or first access)
+        if (!currentProperty.equals(cachedSensitiveFieldProperty)) {
+            Set<String> set = new HashSet<>();
+            for (String pattern : currentProperty.split(",")) {
+                String processed = pattern.trim().toLowerCase();
+                if (!processed.isEmpty()) {
+                    set.add(processed);
+                }
+            }
+            cachedSensitiveFieldPatterns = Collections.unmodifiableSet(set);
+            cachedSensitiveFieldProperty = currentProperty;
+        }
+        return cachedSensitiveFieldPatterns;
     }
     
     private static final int CACHE_SIZE = Math.max(1, Math.min(getMaxCacheSize(),
@@ -386,9 +418,9 @@ public final class ReflectionUtils {
         // Removed special case for "normal" prefix - all fields follow same validation rules
         
         // Check if the field name suggests sensitive content (only for user classes)
-        Set<String> sensitivePatterns = getSensitiveFieldPatterns();
-        for (String pattern : sensitivePatterns) {
-            if (fieldName.contains(pattern.trim().toLowerCase())) {
+        // Patterns are pre-processed (trimmed and lowercased) in getSensitiveFieldPatterns
+        for (String pattern : getSensitiveFieldPatterns()) {
+            if (fieldName.contains(pattern)) {
                 LOG.log(Level.WARNING, "Access to sensitive field blocked: " + sanitizeClassName(className) + "." + fieldName);
                 throw new SecurityException("Access denied: Sensitive field access not permitted");
             }
@@ -412,19 +444,9 @@ public final class ReflectionUtils {
         }
         
         String className = clazz.getName();
-        Set<String> dangerousPatterns = getDangerousClassPatterns();
-        
-        // Check if class name matches any dangerous patterns
-        boolean isDangerous = false;
-        for (String pattern : dangerousPatterns) {
-            pattern = pattern.trim();
-            if (className.equals(pattern)) {
-                isDangerous = true;
-                break;
-            }
-        }
-        
-        if (!isDangerous) {
+
+        // Patterns are pre-processed (trimmed) in getDangerousClassPatterns
+        if (!getDangerousClassPatterns().contains(className)) {
             return false;
         }
         
@@ -1766,23 +1788,6 @@ public final class ReflectionUtils {
         return result;
     }
 
-    private static String makeParamKey(Class<?>... parameterTypes) {
-        if (parameterTypes == null || parameterTypes.length == 0) {
-            return "";
-        }
-
-        StringBuilder builder = new StringBuilder(32);
-        builder.append(':');
-        for (int i = 0; i < parameterTypes.length; i++) {
-            if (i > 0) {
-                builder.append('|');
-            }
-            Class<?> param = parameterTypes[i];
-            builder.append(param.getName());
-        }
-        return builder.toString();
-    }
-
     /**
      * Fetches a no-argument method from the specified class, caching the result for subsequent lookups.
      * This is intended for methods that are not overloaded and require no arguments
@@ -1955,8 +1960,19 @@ public final class ReflectionUtils {
 
             dis.readShort(); // access flags
             int thisClassIndex = dis.readShort() & 0xffff; // this_class
+
+            // Bounds checking for malformed class files
+            if (thisClassIndex < 1 || thisClassIndex > classes.length) {
+                throw new IllegalStateException("Invalid this_class index: " + thisClassIndex);
+            }
             int stringIndex = classes[thisClassIndex - 1];
+            if (stringIndex < 1 || stringIndex > strings.length) {
+                throw new IllegalStateException("Invalid string index: " + stringIndex);
+            }
             String className = strings[stringIndex - 1];
+            if (className == null) {
+                throw new IllegalStateException("Class name not found in constant pool");
+            }
             return className.replace('/', '.');
         } catch (IOException e) {
             ExceptionUtilities.uncheckedThrow(e);
@@ -2002,21 +2018,31 @@ public final class ReflectionUtils {
     private static class RecordSupport {
         static final Method IS_RECORD_METHOD;
         static final Method GET_RECORD_COMPONENTS_METHOD;
+        static final Method COMPONENT_GET_NAME_METHOD;
+        static final Method COMPONENT_GET_ACCESSOR_METHOD;
         static final boolean SUPPORTED;
 
         static {
             Method isRecord = null;
             Method getComponents = null;
+            Method getName = null;
+            Method getAccessor = null;
             boolean supported = false;
             try {
                 isRecord = Class.class.getMethod("isRecord");
                 getComponents = Class.class.getMethod("getRecordComponents");
+                // Get RecordComponent methods by getting the class first
+                Class<?> recordComponentClass = Class.forName("java.lang.reflect.RecordComponent");
+                getName = recordComponentClass.getMethod("getName");
+                getAccessor = recordComponentClass.getMethod("getAccessor");
                 supported = true;
-            } catch (NoSuchMethodException e) {
+            } catch (NoSuchMethodException | ClassNotFoundException e) {
                 // Running on Java < 14
             }
             IS_RECORD_METHOD = isRecord;
             GET_RECORD_COMPONENTS_METHOD = getComponents;
+            COMPONENT_GET_NAME_METHOD = getName;
+            COMPONENT_GET_ACCESSOR_METHOD = getAccessor;
             SUPPORTED = supported;
         }
     }
@@ -2065,35 +2091,33 @@ public final class ReflectionUtils {
      * @return The name of the component, or null if error
      */
     public static String getRecordComponentName(Object recordComponent) {
-        if (recordComponent == null) {
+        if (recordComponent == null || !RecordSupport.SUPPORTED) {
             return null;
         }
-        
+
         try {
-            Method getNameMethod = recordComponent.getClass().getMethod("getName");
-            return (String) getNameMethod.invoke(recordComponent);
+            return (String) RecordSupport.COMPONENT_GET_NAME_METHOD.invoke(recordComponent);
         } catch (Exception e) {
             return null;
         }
     }
-    
+
     /**
      * Get the value of a RecordComponent from a Record instance (Java 14+).
      * Uses reflection to maintain compatibility with Java 8.
-     * 
+     *
      * @param recordComponent The RecordComponent object
      * @param recordInstance The Record instance
      * @return The value of the component in the instance
      */
     public static Object getRecordComponentValue(Object recordComponent, Object recordInstance) {
-        if (recordComponent == null || recordInstance == null) {
+        if (recordComponent == null || recordInstance == null || !RecordSupport.SUPPORTED) {
             return null;
         }
-        
+
         try {
             // RecordComponent has an accessor() method that returns the Method to get the value
-            Method getAccessorMethod = recordComponent.getClass().getMethod("getAccessor");
-            Method accessor = (Method) getAccessorMethod.invoke(recordComponent);
+            Method accessor = (Method) RecordSupport.COMPONENT_GET_ACCESSOR_METHOD.invoke(recordComponent);
             return accessor.invoke(recordInstance);
         } catch (Exception e) {
             return null;

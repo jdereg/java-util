@@ -207,6 +207,43 @@ class FastReaderTest {
         assertEquals(-1, read);
     }
 
+    // Bounds validation tests for read(char[], int, int)
+    @Test
+    void testReadArrayWithNegativeOffset() {
+        fastReader = new FastReader(new StringReader("test"));
+        char[] buffer = new char[4];
+        assertThrows(IndexOutOfBoundsException.class, () -> fastReader.read(buffer, -1, 2));
+    }
+
+    @Test
+    void testReadArrayWithNegativeLength() {
+        fastReader = new FastReader(new StringReader("test"));
+        char[] buffer = new char[4];
+        assertThrows(IndexOutOfBoundsException.class, () -> fastReader.read(buffer, 0, -1));
+    }
+
+    @Test
+    void testReadArrayWithOffsetBeyondArray() {
+        fastReader = new FastReader(new StringReader("test"));
+        char[] buffer = new char[4];
+        assertThrows(IndexOutOfBoundsException.class, () -> fastReader.read(buffer, 5, 1));
+    }
+
+    @Test
+    void testReadArrayWithInvalidRange() {
+        fastReader = new FastReader(new StringReader("test"));
+        char[] buffer = new char[4];
+        assertThrows(IndexOutOfBoundsException.class, () -> fastReader.read(buffer, 2, 3));
+    }
+
+    @Test
+    void testReadArrayWithIntegerOverflow() {
+        fastReader = new FastReader(new StringReader("test"));
+        char[] buffer = new char[100];
+        // off + len will overflow to negative
+        assertThrows(IndexOutOfBoundsException.class, () -> fastReader.read(buffer, 10, Integer.MAX_VALUE));
+    }
+
     // Tests for reading newlines and specialized movePosition behavior
     @Test
     void testReadNewlineCharacter() throws IOException {

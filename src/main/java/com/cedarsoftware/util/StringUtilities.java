@@ -5,7 +5,6 @@ import java.io.UnsupportedEncodingException;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.LinkedHashSet;
-import java.util.Optional;
 import java.util.Random;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -538,12 +537,19 @@ public final class StringUtilities {
      * @param bytes array representation
      */
     public static String encode(byte[] bytes) {
-        StringBuilder sb = new StringBuilder(bytes.length << 1);
-        for (byte aByte : bytes) {
-            sb.append(convertDigit(aByte >> 4));
-            sb.append(convertDigit(aByte & 0x0f));
+        if (bytes == null) {
+            return null;
         }
-        return sb.toString();
+        if (bytes.length > Integer.MAX_VALUE / 2) {
+            throw new IllegalArgumentException("Byte array too large to encode: " + bytes.length);
+        }
+        int len = bytes.length << 1;
+        char[] result = new char[len];
+        for (int i = 0, j = 0; i < bytes.length; i++) {
+            result[j++] = HEX_ARRAY[(bytes[i] >> 4) & 0x0f];
+            result[j++] = HEX_ARRAY[bytes[i] & 0x0f];
+        }
+        return new String(result);
     }
 
     /**
@@ -1044,7 +1050,8 @@ public final class StringUtilities {
      * @return trimmed string, or defaultValue when null or empty
      */
     public static String trimEmptyToDefault(String value, String defaultValue) {
-        return Optional.ofNullable(value).map(StringUtilities::trimToNull).orElse(defaultValue);
+        String trimmed = trimToNull(value);
+        return trimmed != null ? trimmed : defaultValue;
     }
 
     /**
@@ -1098,8 +1105,7 @@ public final class StringUtilities {
      * }</pre>
      *
      * <p>
-     * <b>Note:</b> The resulting {@code Set} does not maintain the insertion order. If order preservation is required,
-     * consider using a {@link LinkedHashSet}.
+     * <b>Note:</b> The resulting {@code Set} maintains insertion order as it is a {@link LinkedHashSet}.
      * </p>
      *
      * @param commaSeparatedString the comma-separated string to convert
@@ -1118,7 +1124,7 @@ public final class StringUtilities {
         return Arrays.stream(commaSeparatedString.split(","))
                 .map(String::trim)
                 .filter(s -> !s.isEmpty())
-                .collect(Collectors.toSet());
+                .collect(Collectors.toCollection(LinkedHashSet::new));
     }
 
     /**
@@ -1131,9 +1137,11 @@ public final class StringUtilities {
         if (snake == null) {
             return null;
         }
-        StringBuilder result = new StringBuilder();
+        int len = snake.length();
+        StringBuilder result = new StringBuilder(len);
         boolean upper = false;
-        for (char c : snake.toCharArray()) {
+        for (int i = 0; i < len; i++) {
+            char c = snake.charAt(i);
             if (c == '_') {
                 upper = true;
                 continue;
@@ -1198,33 +1206,40 @@ public final class StringUtilities {
         if (count < 0) {
             throw new IllegalArgumentException("count must be >= 0");
         }
-        if (count == 0) {
+        if (count == 0 || s.isEmpty()) {
             return EMPTY;
         }
-        
-        // Security: Prevent memory exhaustion and integer overflow attacks (configurable)
+
+        // Always check for integer overflow to prevent negative StringBuilder capacity
+        long totalLength = (long) s.length() * count;
+        if (totalLength > Integer.MAX_VALUE) {
+            throw new IllegalArgumentException("Result would be too large: " + totalLength + " characters");
+        }
+
+        // Security: Prevent memory exhaustion attacks (configurable)
         if (isSecurityEnabled()) {
             int maxCount = getMaxRepeatCount();
             if (maxCount > 0 && count > maxCount) {
                 throw new IllegalArgumentException("count too large (max " + maxCount + "): " + count);
             }
-            
-            // Security: Check for integer overflow in total length calculation
-            long totalLength = (long) s.length() * count;
-            if (totalLength > Integer.MAX_VALUE) {
-                throw new IllegalArgumentException("Result would be too large: " + totalLength + " characters");
-            }
-            
+
             // Security: Limit total memory allocation to reasonable size
             int maxTotalSize = getMaxRepeatTotalSize();
             if (maxTotalSize > 0 && totalLength > maxTotalSize) {
                 throw new IllegalArgumentException("Result too large (max " + maxTotalSize + "): " + totalLength + " characters");
             }
         }
-        
-        StringBuilder result = new StringBuilder(s.length() * count);
-        for (int i = 0; i < count; i++) {
-            result.append(s);
+
+        // Use doubling algorithm for efficiency: O(log n) StringBuilder operations
+        StringBuilder result = new StringBuilder((int) totalLength);
+        while (count > 0) {
+            if ((count & 1) == 1) {
+                result.append(s);
+            }
+            count >>= 1;
+            if (count > 0) {
+                s = s + s;  // Double the string
+            }
         }
         return result.toString();
     }
@@ -1251,14 +1266,14 @@ public final class StringUtilities {
         if (s == null) {
             return null;
         }
-        if (length <= s.length()) {
+        int sLen = s.length();
+        if (length <= sLen) {
             return s;
         }
-        StringBuilder result = new StringBuilder(length);
-        for (int i = s.length(); i < length; i++) {
-            result.append(' ');
-        }
-        return result.append(s).toString();
+        int padLen = length - sLen;
+        char[] pad = new char[padLen];
+        Arrays.fill(pad, ' ');
+        return new String(pad) + s;
     }
 
     /**
@@ -1273,14 +1288,13 @@ public final class StringUtilities {
         if (s == null) {
             return null;
         }
-        if (length <= s.length()) {
+        int sLen = s.length();
+        if (length <= sLen) {
             return s;
         }
-        StringBuilder result = new StringBuilder(length);
-        result.append(s);
-        for (int i = s.length(); i < length; i++) {
-            result.append(' ');
-        }
-        return result.toString();
+        int padLen = length - sLen;
+        char[] pad = new char[padLen];
+        Arrays.fill(pad, ' ');
+        return s + new String(pad);
     }
 }

@@ -29,6 +29,7 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
@@ -521,6 +522,43 @@ public class ReflectionUtilsTest
         {
             fail("This should not throw an exception");
         }
+    }
+
+    @Test
+    public void testGetClassNameFromByteCodeMalformed() {
+        // Minimal valid-looking header but with invalid this_class index
+        // Class file structure: magic(4) + minor(2) + major(2) + const_pool_count(2) + ... + access_flags(2) + this_class(2)
+        // We create a minimal structure that passes parsing but has invalid indices
+        byte[] malformedByteCode = new byte[] {
+            (byte) 0xCA, (byte) 0xFE, (byte) 0xBA, (byte) 0xBE,  // magic number
+            0x00, 0x00,  // minor version
+            0x00, 0x34,  // major version (52 = Java 8)
+            0x00, 0x02,  // constant_pool_count = 2 (means 1 entry)
+            0x07, 0x00, (byte) 0xFF,  // CONSTANT_Class with invalid index 255
+            0x00, 0x00,  // access_flags
+            0x00, 0x01   // this_class index = 1
+        };
+
+        // Should throw IllegalStateException for invalid string index
+        assertThrows(IllegalStateException.class, () ->
+            ReflectionUtils.getClassNameFromByteCode(malformedByteCode));
+    }
+
+    @Test
+    public void testGetClassNameFromByteCodeInvalidThisClass() {
+        // Create minimal byte code with this_class index = 0 (invalid)
+        byte[] malformedByteCode = new byte[] {
+            (byte) 0xCA, (byte) 0xFE, (byte) 0xBA, (byte) 0xBE,  // magic number
+            0x00, 0x00,  // minor version
+            0x00, 0x34,  // major version (52 = Java 8)
+            0x00, 0x01,  // constant_pool_count = 1 (means 0 entries)
+            0x00, 0x00,  // access_flags
+            0x00, 0x00   // this_class index = 0 (invalid, must be >= 1)
+        };
+
+        // Should throw IllegalStateException for invalid this_class index
+        assertThrows(IllegalStateException.class, () ->
+            ReflectionUtils.getClassNameFromByteCode(malformedByteCode));
     }
 
     @Test

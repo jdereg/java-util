@@ -1,6 +1,8 @@
 package com.cedarsoftware.util;
 
-import java.nio.charset.StandardCharsets;
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
 import java.security.SecureRandom;
 import java.time.Instant;
 import java.util.Date;
@@ -109,14 +111,19 @@ public final class UniqueIdGenerator {
     private UniqueIdGenerator() { }
 
     static {
-        String setVia;
+        int id = -1;
+        String setVia = null;
+        String indirection = null;
 
-        int id = getServerIdFromVarName(JAVA_UTIL_CLUSTERID);
-        setVia = "environment variable: " + JAVA_UTIL_CLUSTERID;
+        // 1. Direct environment variable
+        id = getServerIdFromVarName(JAVA_UTIL_CLUSTERID);
+        if (id != -1) {
+            setVia = "environment variable: " + JAVA_UTIL_CLUSTERID;
+        }
 
+        // 2. Indirect: JAVA_UTIL_CLUSTERID contains the *name* of another env var
         if (id == -1) {
-            // Indirect: JAVA_UTIL_CLUSTERID contains the *name* of another env var
-            String indirection = SystemUtilities.getExternalVariable(JAVA_UTIL_CLUSTERID);
+            indirection = SystemUtilities.getExternalVariable(JAVA_UTIL_CLUSTERID);
             if (StringUtilities.hasContent(indirection)) {
                 id = getServerIdFromVarName(indirection);
                 if (id != -1) {
@@ -125,51 +132,55 @@ public final class UniqueIdGenerator {
             }
         }
 
+        // 3. K8s pod ordinal from HOSTNAME (e.g., service-abc-0 -> 0)
+        // Cache hostname for potential reuse in hash fallback
+        String hostName = null;
         if (id == -1) {
-            // K8s pod ordinal from HOSTNAME (e.g., service-abc-0 -> 0)
-            String podName = SystemUtilities.getExternalVariable(KUBERNETES_POD_NAME);
-            if (StringUtilities.hasContent(podName)) {
-                try {
-                    int dash = podName.lastIndexOf('-');
-                    if (dash >= 0 && dash + 1 < podName.length()) {
-                        String ordinal = podName.substring(dash + 1);
-                        id = Math.floorMod(parseInt(ordinal), 100);
-                        setVia = "Kubernetes pod ordinal from HOSTNAME: " + podName;
-                    }
-                } catch (Exception ignored) {
-                    // fall through
-                }
-            }
-        }
-
-        if (id == -1) {
-            id = getServerIdFromVarName(TANZU_INSTANCE_ID);
-            if (id != -1) setVia = "VMware Tanzu instance ID";
-        }
-
-        if (id == -1) {
-            id = getServerIdFromVarName(CF_INSTANCE_INDEX);
-            if (id != -1) setVia = "Cloud Foundry instance index";
-        }
-
-        if (id == -1) {
-            // Hostname hash -> 0..99 (print abbreviated hash only)
-            String hostName = SystemUtilities.getExternalVariable("HOSTNAME");
+            hostName = SystemUtilities.getExternalVariable(KUBERNETES_POD_NAME);
             if (StringUtilities.hasContent(hostName)) {
                 try {
-                    String sha256 = EncryptionUtilities.calculateSHA256Hash(hostName.getBytes(StandardCharsets.UTF_8));
-                    String head8  = sha256.substring(0, 8);
-                    int hashInt   = Integer.parseUnsignedInt(head8, 16);
-                    id = Math.floorMod(hashInt, 100);
-                    setVia = "hostname hash: " + hostName + " (sha256[0..8]=" + head8 + ")";
+                    int dash = hostName.lastIndexOf('-');
+                    if (dash >= 0 && dash + 1 < hostName.length()) {
+                        String ordinal = hostName.substring(dash + 1);
+                        id = Math.floorMod(parseInt(ordinal), 100);
+                        setVia = "Kubernetes pod ordinal from HOSTNAME: " + hostName;
+                    }
                 } catch (Exception ignored) {
-                    // fall through
+                    // fall through - not a K8s ordinal format
                 }
             }
         }
 
+        // 4. VMware Tanzu instance ID
         if (id == -1) {
-            // Final fallback: secure random (runs once at startup)
+            id = getServerIdFromVarName(TANZU_INSTANCE_ID);
+            if (id != -1) {
+                setVia = "VMware Tanzu instance ID";
+            }
+        }
+
+        // 5. Cloud Foundry instance index
+        if (id == -1) {
+            id = getServerIdFromVarName(CF_INSTANCE_INDEX);
+            if (id != -1) {
+                setVia = "Cloud Foundry instance index";
+            }
+        }
+
+        // 6. Hostname hash -> 0..99 (use cached hostname, or fetch if not yet retrieved)
+        if (id == -1) {
+            if (hostName == null) {
+                hostName = SystemUtilities.getExternalVariable("HOSTNAME");
+            }
+            if (StringUtilities.hasContent(hostName)) {
+                // Use simple hashCode - faster than SHA256 and sufficient for 0-99 distribution
+                id = Math.floorMod(hostName.hashCode(), 100);
+                setVia = "hostname hash: " + hostName;
+            }
+        }
+
+        // 7. Final fallback: secure random (runs once at startup)
+        if (id == -1) {
             SecureRandom random = new SecureRandom();
             id = Math.floorMod(random.nextInt(), 100);
             setVia = "SecureRandom";
@@ -209,15 +220,23 @@ public final class UniqueIdGenerator {
 
     /**
      * Extract timestamp as {@link Date} from {@link #getUniqueId()} values.
+     * @throws IllegalArgumentException if {@code uniqueId} is negative (out of supported range)
      */
     public static Date getDate(long uniqueId) {
+        if (uniqueId < 0) {
+            throw new IllegalArgumentException("Invalid uniqueId: must be non-negative");
+        }
         return new Date(uniqueId / FACTOR_16);
     }
 
     /**
      * Extract timestamp as {@link Date} from {@link #getUniqueId19()} values.
+     * @throws IllegalArgumentException if {@code uniqueId19} is negative (out of supported range)
      */
     public static Date getDate19(long uniqueId19) {
+        if (uniqueId19 < 0) {
+            throw new IllegalArgumentException("Invalid uniqueId19: must be non-negative");
+        }
         return new Date(uniqueId19 / FACTOR_19);
     }
 
@@ -294,50 +313,64 @@ public final class UniqueIdGenerator {
     /**
      * Wait until the system clock advances beyond the given millisecond.
      * Uses short spin with occasional nanosleep to reduce CPU.
+     * Optimized to reduce currentTimeMillis() syscall frequency.
      */
     private static long waitForNextMillis(long lastMs) {
         long ts = currentTimeMillis();
-        int spins = 0;
+        int parkCount = 0;
 
         while (ts <= lastMs) {
-            // Short spin phases interleaved with a tiny park to avoid burning CPU
+            // Spin phase: do multiple spin-waits before checking time (reduces syscall overhead)
+            // Check time every 8 iterations instead of every iteration
             for (int i = 0; i < 64; i++) {
+                onSpinWait();
+                onSpinWait();
+                onSpinWait();
+                onSpinWait();
+                onSpinWait();
+                onSpinWait();
+                onSpinWait();
                 onSpinWait();
                 ts = currentTimeMillis();
                 if (ts > lastMs) {
                     return ts;
                 }
             }
-            // ~100 microseconds backoff
+            // ~100 microseconds backoff after spin phase
             LockSupport.parkNanos(100_000L);
             ts = currentTimeMillis();
-            spins++;
-            if (spins > 64) {
-                // Safety valve: if the clock is stuck (virtualized env), back off a bit more
+            parkCount++;
+            if (parkCount > 64) {
+                // Safety valve: if the clock appears stuck (virtualized env), back off more
                 LockSupport.parkNanos(1_000_000L);
             }
         }
         return ts;
     }
 
-    private static final java.lang.reflect.Method ON_SPIN_WAIT_METHOD;
+    /**
+     * MethodHandle for Thread.onSpinWait() - much faster than Method.invoke() after JIT warmup.
+     * MethodHandle.invokeExact() can be inlined by the JIT compiler, while Method.invoke() cannot.
+     */
+    private static final MethodHandle ON_SPIN_WAIT_HANDLE;
     static {
-        java.lang.reflect.Method method = null;
+        MethodHandle handle = null;
         try {
-            method = Thread.class.getMethod("onSpinWait");
-        } catch (NoSuchMethodException e) {
-            // Java 8 or older
+            handle = MethodHandles.lookup()
+                    .findStatic(Thread.class, "onSpinWait", MethodType.methodType(void.class));
+        } catch (NoSuchMethodException | IllegalAccessException e) {
+            // Java 8 or older - onSpinWait doesn't exist
         }
-        ON_SPIN_WAIT_METHOD = method;
+        ON_SPIN_WAIT_HANDLE = handle;
     }
-    
+
     private static void onSpinWait() {
-        // Java 9+ hint; safe no-op if older runtime
-        if (ON_SPIN_WAIT_METHOD != null) {
+        // Java 9+ spin-wait hint; no-op on older runtimes
+        if (ON_SPIN_WAIT_HANDLE != null) {
             try {
-                ON_SPIN_WAIT_METHOD.invoke(null);
-            } catch (Exception ignored) {
-                // no-op
+                ON_SPIN_WAIT_HANDLE.invokeExact();
+            } catch (Throwable ignored) {
+                // no-op - should never happen for a simple static void method
             }
         }
     }

@@ -31,7 +31,7 @@
         <version.junit-jupiter-api>5.14.2</version.junit-jupiter-api>
         <version.junit-jupiter-params>5.14.2</version.junit-jupiter-params>
         <version.mockito-junit-jupiter>4.11.0</version.mockito-junit-jupiter>
-        <version.assertj-core>3.27.6</version.assertj-core>
+        <version.assertj-core>3.27.7</version.assertj-core>
         <version.json-io>4.87.0</version.json-io>
         <version.agrona>1.22.0</version.agrona> <!-- do not increase past 1.22.0 until abandoning JDK 8 support, class file format 52 -->
         <version.commons-collections4>4.5.0</version.commons-collections4>

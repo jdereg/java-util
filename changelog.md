@@ -1,5 +1,11 @@
 ### Revision History
 
+#### 4.89.0 (Unreleased)
+* **PERFORMANCE**: `Converter.isConversionSupportedFor(source, target)` now caches negative results
+  * Previously only cached positive hits, causing repeated inheritance traversal for unsupported pairs
+  * Now caches `UNSUPPORTED` sentinel for O(1) lookup on subsequent calls
+  * `addConversion()` already clears caches via `clearCachesForType()`, so invalidation is handled
+
 #### 4.88.0 - 2026-01-26
 * **BUG FIX**: `FastReader` - Added bounds validation in `read(char[], int, int)` method
   * Now throws `IndexOutOfBoundsException` for invalid offset, length, or buffer overflow

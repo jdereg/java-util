@@ -2436,6 +2436,10 @@ public final class Converter {
             cacheConverter(source, target, method);
             return true;
         }
+
+        // Cache the negative result so subsequent lookups are O(1).
+        // addConversion() calls clearCachesForType() to invalidate if a conversion is added later.
+        cacheConverter(source, target, UNSUPPORTED);
         return false;
     }
 

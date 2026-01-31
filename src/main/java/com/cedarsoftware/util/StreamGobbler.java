@@ -60,29 +60,21 @@ public class StreamGobbler implements Runnable
      */
     public void run()
     {
-        InputStreamReader isr = null;
-        BufferedReader br = null;
-        try
-        {
-            isr = new InputStreamReader(_inputStream, _charset);
-            br = new BufferedReader(isr);
+        String lineSeparator = System.lineSeparator();
+        try (BufferedReader br = new BufferedReader(
+                new InputStreamReader(_inputStream, _charset))) {
             StringBuilder output = new StringBuilder();
             String line;
             while ((line = br.readLine()) != null)
             {
                 output.append(line);
-                output.append(System.getProperty("line.separator"));
+                output.append(lineSeparator);
             }
             _result = output.toString();
         }
         catch (IOException e)
         {
             _result = e.getMessage();
-        }
-        finally
-        {
-            IOUtilities.close(isr);
-            IOUtilities.close(br);
         }
     }
 }

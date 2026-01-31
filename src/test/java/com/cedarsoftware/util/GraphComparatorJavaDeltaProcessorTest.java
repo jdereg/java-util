@@ -1,12 +1,33 @@
 package com.cedarsoftware.util;
 
 import java.lang.reflect.Field;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import org.junit.jupiter.api.Test;
 
-import static com.cedarsoftware.util.GraphComparator.Delta.Command.*;
-import static org.junit.jupiter.api.Assertions.*;
+import static com.cedarsoftware.util.GraphComparator.Delta.Command.ARRAY_RESIZE;
+import static com.cedarsoftware.util.GraphComparator.Delta.Command.ARRAY_SET_ELEMENT;
+import static com.cedarsoftware.util.GraphComparator.Delta.Command.LIST_RESIZE;
+import static com.cedarsoftware.util.GraphComparator.Delta.Command.LIST_SET_ELEMENT;
+import static com.cedarsoftware.util.GraphComparator.Delta.Command.MAP_PUT;
+import static com.cedarsoftware.util.GraphComparator.Delta.Command.MAP_REMOVE;
+import static com.cedarsoftware.util.GraphComparator.Delta.Command.OBJECT_ASSIGN_FIELD;
+import static com.cedarsoftware.util.GraphComparator.Delta.Command.OBJECT_FIELD_TYPE_CHANGED;
+import static com.cedarsoftware.util.GraphComparator.Delta.Command.OBJECT_ORPHAN;
+import static com.cedarsoftware.util.GraphComparator.Delta.Command.SET_ADD;
+import static com.cedarsoftware.util.GraphComparator.Delta.Command.SET_REMOVE;
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class GraphComparatorJavaDeltaProcessorTest {
 

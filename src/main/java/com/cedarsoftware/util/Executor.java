@@ -5,7 +5,6 @@ import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import com.cedarsoftware.util.LoggingConfig;
 
 /**
  * A utility class for executing system commands and capturing their output.

@@ -1,10 +1,5 @@
 package com.cedarsoftware.util.convert;
 
-import com.cedarsoftware.util.geom.Color;
-import com.cedarsoftware.util.geom.Dimension;
-import com.cedarsoftware.util.geom.Insets;
-import com.cedarsoftware.util.geom.Point;
-import com.cedarsoftware.util.geom.Rectangle;
 import java.io.File;
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -73,7 +68,6 @@ import java.util.stream.DoubleStream;
 import java.util.stream.IntStream;
 import java.util.stream.LongStream;
 import java.util.stream.Stream;
-import java.util.HashMap;
 
 import com.cedarsoftware.io.JsonIo;
 import com.cedarsoftware.io.JsonIoException;
@@ -86,6 +80,11 @@ import com.cedarsoftware.util.CollectionUtilities;
 import com.cedarsoftware.util.DeepEquals;
 import com.cedarsoftware.util.LoggingConfig;
 import com.cedarsoftware.util.SystemUtilities;
+import com.cedarsoftware.util.geom.Color;
+import com.cedarsoftware.util.geom.Dimension;
+import com.cedarsoftware.util.geom.Insets;
+import com.cedarsoftware.util.geom.Point;
+import com.cedarsoftware.util.geom.Rectangle;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -124,8 +123,6 @@ import static com.cedarsoftware.util.convert.MapConversions.YEAR_MONTH;
 import static com.cedarsoftware.util.convert.MapConversions.ZONE;
 import static com.cedarsoftware.util.convert.MapConversions.ZONED_DATE_TIME;
 import static com.cedarsoftware.util.convert.MapConversions.ZONE_OFFSET;
-import static org.assertj.core.api.Fail.fail;
-import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 

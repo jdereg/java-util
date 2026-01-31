@@ -1,7 +1,6 @@
 package com.cedarsoftware.util;
 
 import java.util.Collection;
-import java.util.Set;
 
 /**
  * A case-insensitive Set implementation that uses a compact internal representation

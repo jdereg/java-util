@@ -1,13 +1,14 @@
 package com.cedarsoftware.util.convert;
 
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.AfterEach;
-import static org.assertj.core.api.Assertions.assertThat;
-
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalTime;
+
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Test class for time conversion precision control options.

@@ -1,10 +1,5 @@
 package com.cedarsoftware.util.convert;
 
-import com.cedarsoftware.util.geom.Color;
-import com.cedarsoftware.util.geom.Dimension;
-import com.cedarsoftware.util.geom.Insets;
-import com.cedarsoftware.util.geom.Point;
-import com.cedarsoftware.util.geom.Rectangle;
 import java.io.Externalizable;
 import java.io.File;
 import java.io.Serializable;
@@ -44,23 +39,20 @@ import java.util.Comparator;
 import java.util.Currency;
 import java.util.Date;
 import java.util.EnumSet;
-// HashSet import removed - using IdentitySet for Class objects
-import com.cedarsoftware.util.IdentitySet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import java.util.SortedSet;
 import java.util.TimeZone;
 import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicIntegerArray;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLongArray;
 import java.util.concurrent.atomic.AtomicReferenceArray;
 import java.util.regex.Pattern;
@@ -70,7 +62,13 @@ import java.util.stream.LongStream;
 
 import com.cedarsoftware.util.ClassUtilities;
 import com.cedarsoftware.util.ClassValueMap;
+import com.cedarsoftware.util.IdentitySet;
 import com.cedarsoftware.util.MultiKeyMap;
+import com.cedarsoftware.util.geom.Color;
+import com.cedarsoftware.util.geom.Dimension;
+import com.cedarsoftware.util.geom.Insets;
+import com.cedarsoftware.util.geom.Point;
+import com.cedarsoftware.util.geom.Rectangle;
 
 /**
  * Instance conversion utility for converting objects between various types.

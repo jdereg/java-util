@@ -4,7 +4,6 @@ import java.util.logging.Logger;
 
 import com.cedarsoftware.util.LoggingConfig;
 import org.junit.jupiter.api.Test;
-import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Test to verify the CONVERSION_DB is being populated correctly

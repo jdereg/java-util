@@ -1,10 +1,5 @@
 package com.cedarsoftware.util.convert;
 
-import com.cedarsoftware.util.geom.Color;
-import com.cedarsoftware.util.geom.Dimension;
-import com.cedarsoftware.util.geom.Insets;
-import com.cedarsoftware.util.geom.Point;
-import com.cedarsoftware.util.geom.Rectangle;
 import java.lang.reflect.Method;
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -55,6 +50,11 @@ import com.cedarsoftware.util.LoggingConfig;
 import com.cedarsoftware.util.ReflectionUtils;
 import com.cedarsoftware.util.StringUtilities;
 import com.cedarsoftware.util.SystemUtilities;
+import com.cedarsoftware.util.geom.Color;
+import com.cedarsoftware.util.geom.Dimension;
+import com.cedarsoftware.util.geom.Insets;
+import com.cedarsoftware.util.geom.Point;
+import com.cedarsoftware.util.geom.Rectangle;
 
 import static com.cedarsoftware.util.convert.Converter.getShortName;
 

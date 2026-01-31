@@ -1,6 +1,5 @@
 package com.cedarsoftware.util;
 
-import org.junit.jupiter.api.Test;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.net.URI;
@@ -9,7 +8,10 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Date;
 import java.util.UUID;
-import static org.junit.jupiter.api.Assertions.*;
+
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * Test to verify the expanded SIMPLE_ARRAY_TYPES optimization works correctly

@@ -1,7 +1,6 @@
 package com.cedarsoftware.util;
 
 import org.junit.jupiter.api.Test;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Test to identify exactly where the performance issue is:
@@ -67,7 +66,7 @@ public class CaseInsensitiveCacheTypeComparisonTest {
 
             System.out.printf("  PUT: %,6d ns/op, GET: %,6d ns/op", putTime, getTime);
             if (putTime > 5000 || getTime > 5000) {
-                System.out.println("  ⚠️ SLOW!");
+                System.out.println("  ⚠️ Cache pressure detected - consider larger cache");
             } else {
                 System.out.println();
             }

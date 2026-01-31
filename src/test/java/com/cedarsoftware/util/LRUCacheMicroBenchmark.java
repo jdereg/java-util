@@ -1,7 +1,8 @@
 package com.cedarsoftware.util;
 
-import org.junit.jupiter.api.Test;
 import java.util.concurrent.ConcurrentHashMap;
+
+import org.junit.jupiter.api.Test;
 
 /**
  * Micro-benchmark to directly compare ConcurrentHashMap vs LRUCache operations.

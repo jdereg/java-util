@@ -1,9 +1,12 @@
 package com.cedarsoftware.util;
 
-import org.junit.jupiter.api.Test;
 import java.lang.reflect.Field;
-import java.util.*;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.List;
 import java.util.logging.Logger;
+
+import org.junit.jupiter.api.Test;
 
 /**
  * Debug test to understand what's in the flattened keys for complex structures

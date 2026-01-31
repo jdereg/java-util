@@ -1,9 +1,16 @@
 package com.cedarsoftware.util;
 
-import org.junit.jupiter.api.Test;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.RandomAccess;
 
-import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * Test to verify that compareObjectArrayToCollection() is potentially dead code.

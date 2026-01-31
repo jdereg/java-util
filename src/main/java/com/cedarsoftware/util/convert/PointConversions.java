@@ -1,13 +1,14 @@
 package com.cedarsoftware.util.convert;
 
-import com.cedarsoftware.util.geom.Dimension;
-import com.cedarsoftware.util.geom.Insets;
-import com.cedarsoftware.util.geom.Point;
-import com.cedarsoftware.util.geom.Rectangle;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.LinkedHashMap;
 import java.util.Map;
+
+import com.cedarsoftware.util.geom.Dimension;
+import com.cedarsoftware.util.geom.Insets;
+import com.cedarsoftware.util.geom.Point;
+import com.cedarsoftware.util.geom.Rectangle;
 
 /**
  * Conversions to and from com.cedarsoftware.util.Point.

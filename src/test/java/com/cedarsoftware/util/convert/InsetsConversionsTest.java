@@ -1,21 +1,18 @@
 package com.cedarsoftware.util.convert;
 
+import java.math.BigInteger;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.logging.Logger;
+
+import com.cedarsoftware.util.LoggingConfig;
 import com.cedarsoftware.util.geom.Dimension;
 import com.cedarsoftware.util.geom.Insets;
 import com.cedarsoftware.util.geom.Point;
 import com.cedarsoftware.util.geom.Rectangle;
-import java.math.BigDecimal;
-import java.math.BigInteger;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.logging.Logger;
-
-import com.cedarsoftware.util.convert.DefaultConverterOptions;
-import com.cedarsoftware.util.LoggingConfig;
-
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 

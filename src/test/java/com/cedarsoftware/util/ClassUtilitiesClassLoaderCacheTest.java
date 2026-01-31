@@ -1,12 +1,15 @@
 package com.cedarsoftware.util;
 
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.DisplayName;
-
 import java.net.URL;
 import java.net.URLClassLoader;
 
-import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 
 /**
  * Test cases for ClassLoader-scoped caching in ClassUtilities.

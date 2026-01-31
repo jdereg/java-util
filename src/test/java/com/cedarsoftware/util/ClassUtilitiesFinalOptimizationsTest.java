@@ -1,12 +1,15 @@
 package com.cedarsoftware.util;
 
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.DisplayName;
-
-import java.util.Set;
 import java.util.HashSet;
+import java.util.Set;
 
-import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Test cases for final optimizations from GPT-5 review.

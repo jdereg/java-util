@@ -1,14 +1,19 @@
 package com.cedarsoftware.util;
 
-import org.junit.jupiter.api.Test;
-
 import java.lang.reflect.Field;
-import java.util.*;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.TreeMap;
+
+import org.junit.jupiter.api.Test;
 
 import static com.cedarsoftware.util.CompactMap.INSERTION;
 import static com.cedarsoftware.util.CompactMap.SORTED;
 import static com.cedarsoftware.util.CompactMap.UNORDERED;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class MapUtilitiesDetectMapOrderingTest {
 

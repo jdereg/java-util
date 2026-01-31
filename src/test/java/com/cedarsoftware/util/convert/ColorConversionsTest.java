@@ -1,13 +1,9 @@
 package com.cedarsoftware.util.convert;
 
-import com.cedarsoftware.util.geom.Color;
-import java.math.BigDecimal;
-import java.math.BigInteger;
 import java.util.HashMap;
 import java.util.Map;
 
-import com.cedarsoftware.util.convert.DefaultConverterOptions;
-
+import com.cedarsoftware.util.geom.Color;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 

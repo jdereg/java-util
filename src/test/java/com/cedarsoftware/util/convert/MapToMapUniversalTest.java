@@ -1,30 +1,28 @@
 package com.cedarsoftware.util.convert;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.TreeMap;
+import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ConcurrentNavigableMap;
-import java.util.WeakHashMap;
-import java.util.IdentityHashMap;
-import java.util.Map;
-import java.util.Arrays;
-import java.util.List;
-import java.util.ArrayList;
+import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.logging.Logger;
 
 import com.cedarsoftware.util.CaseInsensitiveMap;
-import com.cedarsoftware.util.ClassUtilities;
-import com.cedarsoftware.util.CompactMap;
 import com.cedarsoftware.util.CompactCIHashMap;
+import com.cedarsoftware.util.CompactMap;
 import com.cedarsoftware.util.ConcurrentHashMapNullSafe;
 import com.cedarsoftware.util.ConcurrentNavigableMapNullSafe;
 import com.cedarsoftware.util.DeepEquals;
-
 import com.cedarsoftware.util.LoggingConfig;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

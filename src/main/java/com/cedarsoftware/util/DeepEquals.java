@@ -1,6 +1,5 @@
 package com.cedarsoftware.util;
 
-import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;

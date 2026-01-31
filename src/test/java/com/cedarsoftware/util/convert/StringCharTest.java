@@ -2,10 +2,10 @@ package com.cedarsoftware.util.convert;
 
 import java.util.logging.Logger;
 
-import com.cedarsoftware.util.ClassUtilities;
 import com.cedarsoftware.util.LoggingConfig;
 import org.junit.jupiter.api.Test;
-import static org.junit.jupiter.api.Assertions.*;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * Test String to char conversion with addFactoryConversion

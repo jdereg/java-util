@@ -1,10 +1,5 @@
 package com.cedarsoftware.util.convert;
 
-import com.cedarsoftware.util.geom.Color;
-import com.cedarsoftware.util.geom.Dimension;
-import com.cedarsoftware.util.geom.Insets;
-import com.cedarsoftware.util.geom.Point;
-import com.cedarsoftware.util.geom.Rectangle;
 import java.io.File;
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -45,8 +40,12 @@ import java.util.logging.Logger;
 import java.util.stream.Stream;
 
 import com.cedarsoftware.util.DateUtilities;
-import com.cedarsoftware.util.LoggingConfig;
 import com.cedarsoftware.util.DeepEquals;
+import com.cedarsoftware.util.LoggingConfig;
+import com.cedarsoftware.util.geom.Dimension;
+import com.cedarsoftware.util.geom.Insets;
+import com.cedarsoftware.util.geom.Point;
+import com.cedarsoftware.util.geom.Rectangle;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -55,8 +54,6 @@ import org.junit.jupiter.params.provider.EmptySource;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.NullSource;
-
-import com.cedarsoftware.util.convert.DefaultConverterOptions;
 
 import static com.cedarsoftware.util.ArrayUtilities.EMPTY_BYTE_ARRAY;
 import static com.cedarsoftware.util.ArrayUtilities.EMPTY_CHAR_ARRAY;

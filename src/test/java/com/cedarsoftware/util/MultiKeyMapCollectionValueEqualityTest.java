@@ -1,8 +1,14 @@
 package com.cedarsoftware.util;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.LinkedList;
+import java.util.List;
+
 import org.junit.jupiter.api.Test;
-import java.util.*;
-import static org.junit.jupiter.api.Assertions.*;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 /**
  * Test that verifies the KIND_COLLECTION fast path properly respects value-based equality mode.

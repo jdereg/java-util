@@ -1,7 +1,5 @@
 package com.cedarsoftware.util;
 
-import com.cedarsoftware.util.geom.Color;
-import com.cedarsoftware.util.geom.Point;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.net.MalformedURLException;
@@ -33,6 +31,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
+import com.cedarsoftware.util.geom.Point;
 import org.agrona.collections.Object2ObjectHashMap;
 import org.junit.jupiter.api.Test;
 

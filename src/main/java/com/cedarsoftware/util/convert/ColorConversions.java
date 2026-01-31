@@ -1,10 +1,11 @@
 package com.cedarsoftware.util.convert;
 
-import com.cedarsoftware.util.geom.Color;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.LinkedHashMap;
 import java.util.Map;
+
+import com.cedarsoftware.util.geom.Color;
 
 /**
  * Conversions to and from com.cedarsoftware.util.Color.

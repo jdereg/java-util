@@ -2,12 +2,14 @@ package com.cedarsoftware.util;
 
 import java.util.AbstractMap;
 import java.util.Map;
-import java.util.Objects;
 import java.util.NoSuchElementException;
+import java.util.Objects;
 
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 /**
  * Tests for Map.Entry instances returned by ConcurrentNavigableMapNullSafe.

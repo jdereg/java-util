@@ -1,7 +1,5 @@
 package com.cedarsoftware.util;
 
-import org.junit.jupiter.api.Test;
-
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
@@ -12,7 +10,12 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Test to verify the fix for [thread-1] SimpleDateFormat race condition.

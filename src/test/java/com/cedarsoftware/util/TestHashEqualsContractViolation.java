@@ -1,9 +1,14 @@
 package com.cedarsoftware.util;
 
-import org.junit.jupiter.api.Test;
-import java.util.*;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
-import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Test to prove [crit-2]: Hash/Equals contract violation for floating-point numbers.

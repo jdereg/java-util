@@ -2,7 +2,8 @@ package com.cedarsoftware.util;
 
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Test the new 1-key and 2-key optimizations with informed handoff.

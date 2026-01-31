@@ -1,15 +1,14 @@
 package com.cedarsoftware.util.convert;
 
-import com.cedarsoftware.util.DeepEquals;
-import org.junit.jupiter.api.Test;
-
 import java.time.Duration;
+import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
-import java.time.Instant;
 import java.util.TimeZone;
 
-import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * Test Duration to OffsetDateTime conversion

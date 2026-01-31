@@ -1,16 +1,30 @@
 package com.cedarsoftware.util;
 
 import java.io.Serializable;
-import java.util.*;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Parameter;
+import java.util.AbstractCollection;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.RandomAccess;
+import java.util.Set;
+import java.util.TreeSet;
 
 import com.cedarsoftware.util.convert.Converter;
 import com.cedarsoftware.util.convert.DefaultConverterOptions;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Edge case tests for ClassUtilities as suggested by GPT-5 review.

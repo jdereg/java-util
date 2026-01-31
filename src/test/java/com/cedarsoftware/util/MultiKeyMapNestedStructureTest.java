@@ -1,9 +1,13 @@
 package com.cedarsoftware.util;
 
-import org.junit.jupiter.api.Test;
-import java.util.*;
+import java.util.Arrays;
+import java.util.List;
 import java.util.logging.Logger;
-import static org.junit.jupiter.api.Assertions.*;
+
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 /**
  * Test complex nested structures with Object arrays containing Collections

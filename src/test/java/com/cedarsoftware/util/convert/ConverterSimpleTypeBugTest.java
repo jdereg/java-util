@@ -1,11 +1,13 @@
 package com.cedarsoftware.util.convert;
 
-import org.junit.jupiter.api.Test;
-import static org.junit.jupiter.api.Assertions.*;
-
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
+
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Test to demonstrate and verify the fix for the isSimpleTypeConversionSupported() bug.

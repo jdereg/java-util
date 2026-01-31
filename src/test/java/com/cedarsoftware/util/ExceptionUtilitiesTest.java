@@ -3,7 +3,6 @@ package com.cedarsoftware.util;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Modifier;
-
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.junit.jupiter.api.Test;

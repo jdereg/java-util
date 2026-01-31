@@ -3,17 +3,14 @@ package com.cedarsoftware.util;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.text.DateFormat;
-import java.util.Objects;
 import java.util.Date;
+import java.util.Objects;
 import java.util.logging.ConsoleHandler;
 import java.util.logging.Formatter;
 import java.util.logging.Handler;
-import java.util.logging.Level;
 import java.util.logging.LogManager;
 import java.util.logging.LogRecord;
 import java.util.logging.Logger;
-
-import com.cedarsoftware.util.SafeSimpleDateFormat;
 
 /**
  * Configures java.util.logging to use a uniform log format similar to

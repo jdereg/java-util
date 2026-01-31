@@ -14,18 +14,18 @@ import java.io.Flushable;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.net.URLConnection;
 import java.net.HttpURLConnection;
+import java.net.URLConnection;
 import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.Objects;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.util.zip.Deflater;
 import java.util.zip.DeflaterOutputStream;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.Inflater;
 import java.util.zip.InflaterInputStream;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 /**
  * Utility class providing robust I/O operations with built-in error handling and resource management.

@@ -1,7 +1,8 @@
 package com.cedarsoftware.util;
 
 import org.junit.jupiter.api.Test;
-import static org.junit.jupiter.api.Assertions.*;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * Test the simple fix: getMultiKey() delegates to get()

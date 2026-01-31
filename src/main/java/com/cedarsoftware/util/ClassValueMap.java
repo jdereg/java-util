@@ -242,7 +242,10 @@ public class ClassValueMap<V> extends AbstractMap<Class<?>, V> implements Concur
         // Class.class is loaded by bootstrap classloader, so identity comparison is safe
         if (key.getClass() == Class.class) {
             Object value = cache.get((Class<?>) key);
-            return (value == NO_VALUE) ? null : (V) value;
+            if (value == NO_VALUE) {
+                return null;
+            }
+            return (V) value;
         }
         return null;
     }

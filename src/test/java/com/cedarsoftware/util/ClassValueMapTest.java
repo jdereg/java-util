@@ -536,4 +536,106 @@ class ClassValueMapTest {
         // Test that null map throws NullPointerException
         assertThrows(NullPointerException.class, () -> new ClassValueMap<String>(null));
     }
+
+    @Test
+    @EnabledIfSystemProperty(named = "performRelease", matches = "true")
+    void testPerformanceVsHashMap() {
+        final int WARMUP_ITERATIONS = 100_000;
+        final int TEST_ITERATIONS = 2_500_000;
+        final Class<?>[] testClasses = {
+                String.class, Integer.class, Double.class, Boolean.class,
+                Long.class, Float.class, Character.class, Byte.class,
+                Short.class, Object.class, Class.class, Number.class,
+                Math.class, System.class, Runtime.class, Thread.class,
+                Exception.class, Error.class, Throwable.class, StringBuilder.class
+        };
+
+        // Setup all three with identical data
+        Map<Class<?>, Integer> hashMap = new HashMap<>();
+        ClassValueMap<Integer> classValueMap = new ClassValueMap<>();
+
+        // Raw ClassValue - pre-populated like a cache would be
+        final Map<Class<?>, Integer> rawBackingMap = new HashMap<>();
+        ClassValue<Integer> rawClassValue = new ClassValue<Integer>() {
+            @Override
+            protected Integer computeValue(Class<?> type) {
+                return rawBackingMap.get(type);
+            }
+        };
+
+        for (int i = 0; i < testClasses.length; i++) {
+            hashMap.put(testClasses[i], i);
+            classValueMap.put(testClasses[i], i);
+            rawBackingMap.put(testClasses[i], i);
+        }
+
+        // Prime the raw ClassValue cache
+        for (Class<?> clazz : testClasses) {
+            rawClassValue.get(clazz);
+        }
+
+        // Warmup phase - JIT compilation
+        Random random = new Random(42);
+        for (int i = 0; i < WARMUP_ITERATIONS; i++) {
+            Class<?> key = testClasses[random.nextInt(testClasses.length)];
+            hashMap.get(key);
+            classValueMap.get(key);
+            rawClassValue.get(key);
+        }
+
+        // Test HashMap performance
+        random = new Random(42);
+        long hashMapStart = System.nanoTime();
+        long hashMapSum = 0;
+        for (int i = 0; i < TEST_ITERATIONS; i++) {
+            Class<?> key = testClasses[random.nextInt(testClasses.length)];
+            Integer value = hashMap.get(key);
+            hashMapSum += value;
+        }
+        long hashMapTime = System.nanoTime() - hashMapStart;
+
+        // Test ClassValueMap performance
+        random = new Random(42);
+        long classValueMapStart = System.nanoTime();
+        long classValueMapSum = 0;
+        for (int i = 0; i < TEST_ITERATIONS; i++) {
+            Class<?> key = testClasses[random.nextInt(testClasses.length)];
+            Integer value = classValueMap.get(key);
+            classValueMapSum += value;
+        }
+        long classValueMapTime = System.nanoTime() - classValueMapStart;
+
+        // Test raw ClassValue performance
+        random = new Random(42);
+        long rawClassValueStart = System.nanoTime();
+        long rawClassValueSum = 0;
+        for (int i = 0; i < TEST_ITERATIONS; i++) {
+            Class<?> key = testClasses[random.nextInt(testClasses.length)];
+            Integer value = rawClassValue.get(key);
+            rawClassValueSum += value;
+        }
+        long rawClassValueTime = System.nanoTime() - rawClassValueStart;
+
+        // Verify correctness (all should produce same sum)
+        assertEquals(hashMapSum, classValueMapSum, "HashMap and ClassValueMap should return same values");
+        assertEquals(hashMapSum, rawClassValueSum, "HashMap and raw ClassValue should return same values");
+
+        // Log results
+        double hashMapMs = hashMapTime / 1_000_000.0;
+        double classValueMapMs = classValueMapTime / 1_000_000.0;
+        double rawClassValueMs = rawClassValueTime / 1_000_000.0;
+
+        LOG.info("Performance Test Results (" + TEST_ITERATIONS + " iterations):");
+        LOG.info("  HashMap:          " + String.format("%6.2f", hashMapMs) + " ms (baseline)");
+        LOG.info("  Raw ClassValue:   " + String.format("%6.2f", rawClassValueMs) + " ms (" +
+                String.format("%.2fx", hashMapTime / (double) rawClassValueTime) + " vs HashMap)");
+        LOG.info("  ClassValueMap:    " + String.format("%6.2f", classValueMapMs) + " ms (" +
+                String.format("%.2fx", hashMapTime / (double) classValueMapTime) + " vs HashMap)");
+
+        // ClassValueMap should be at least as fast as HashMap for read-heavy workloads
+        // We use a conservative threshold since JIT and GC can cause variance
+        assertTrue(classValueMapTime <= hashMapTime * 2,
+                "ClassValueMap should not be significantly slower than HashMap. " +
+                        "HashMap: " + hashMapMs + "ms, ClassValueMap: " + classValueMapMs + "ms");
+    }
 }

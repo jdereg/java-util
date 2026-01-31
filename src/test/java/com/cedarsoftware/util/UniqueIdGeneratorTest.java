@@ -13,8 +13,6 @@ import java.util.logging.Logger;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 
-import com.cedarsoftware.util.LoggingConfig;
-
 import static com.cedarsoftware.util.UniqueIdGenerator.getDate;
 import static com.cedarsoftware.util.UniqueIdGenerator.getDate19;
 import static com.cedarsoftware.util.UniqueIdGenerator.getInstant;

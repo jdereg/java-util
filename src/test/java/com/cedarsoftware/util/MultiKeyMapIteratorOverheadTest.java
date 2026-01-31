@@ -1,7 +1,13 @@
 package com.cedarsoftware.util;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Objects;
+
 import org.junit.jupiter.api.Test;
-import java.util.*;
 
 /**
  * Test to measure the overhead of iterator creation vs direct indexed access for RandomAccess collections.

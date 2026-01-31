@@ -1,7 +1,7 @@
 package com.cedarsoftware.util;
 
-import java.lang.reflect.Array;
 import java.io.Serializable;
+import java.lang.reflect.Array;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.Set;

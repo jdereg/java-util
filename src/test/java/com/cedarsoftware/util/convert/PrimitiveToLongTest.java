@@ -4,7 +4,6 @@ import java.util.logging.Logger;
 
 import com.cedarsoftware.util.LoggingConfig;
 import org.junit.jupiter.api.Test;
-import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Test primitive to long conversions

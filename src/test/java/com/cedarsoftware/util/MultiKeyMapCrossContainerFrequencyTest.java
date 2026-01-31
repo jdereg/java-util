@@ -1,7 +1,8 @@
 package com.cedarsoftware.util;
 
+import java.util.Arrays;
+
 import org.junit.jupiter.api.Test;
-import java.util.*;
 
 /**
  * Test to measure how often cross-container comparisons actually occur in typical MultiKeyMap usage.

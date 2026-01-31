@@ -1,7 +1,14 @@
 package com.cedarsoftware.util;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.RandomAccess;
+
 import org.junit.jupiter.api.Test;
-import java.util.*;
 
 /**
  * Debug test to understand what happens during normalization

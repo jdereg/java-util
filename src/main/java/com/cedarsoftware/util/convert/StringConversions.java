@@ -1,9 +1,5 @@
 package com.cedarsoftware.util.convert;
 
-import com.cedarsoftware.util.geom.Dimension;
-import com.cedarsoftware.util.geom.Insets;
-import com.cedarsoftware.util.geom.Point;
-import com.cedarsoftware.util.geom.Rectangle;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.math.RoundingMode;
@@ -31,7 +27,9 @@ import java.time.format.DateTimeParseException;
 import java.util.Calendar;
 import java.util.Currency;
 import java.util.Date;
+import java.util.LinkedHashMap;
 import java.util.Locale;
+import java.util.Map;
 import java.util.TimeZone;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -39,14 +37,16 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.Map;
-import java.util.LinkedHashMap;
-import com.cedarsoftware.util.geom.Color;
 
 import com.cedarsoftware.util.ClassUtilities;
 import com.cedarsoftware.util.DateUtilities;
 import com.cedarsoftware.util.RegexUtilities;
 import com.cedarsoftware.util.StringUtilities;
+import com.cedarsoftware.util.geom.Color;
+import com.cedarsoftware.util.geom.Dimension;
+import com.cedarsoftware.util.geom.Insets;
+import com.cedarsoftware.util.geom.Point;
+import com.cedarsoftware.util.geom.Rectangle;
 
 import static com.cedarsoftware.util.ArrayUtilities.EMPTY_BYTE_ARRAY;
 import static com.cedarsoftware.util.ArrayUtilities.EMPTY_CHAR_ARRAY;

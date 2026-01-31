@@ -4,7 +4,8 @@ import java.util.logging.Logger;
 
 import com.cedarsoftware.util.LoggingConfig;
 import org.junit.jupiter.api.Test;
-import static org.junit.jupiter.api.Assertions.*;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * Test basic primitive conversions that should work with ConversionTripleMap

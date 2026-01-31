@@ -1,10 +1,12 @@
 package com.cedarsoftware.util;
 
-import org.junit.jupiter.api.Test;
 import java.util.Arrays;
 import java.util.List;
 import java.util.logging.Logger;
-import static org.junit.jupiter.api.Assertions.*;
+
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * Test that user-provided strings matching sentinel values don't cause key collisions.

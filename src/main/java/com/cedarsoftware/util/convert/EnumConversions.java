@@ -1,12 +1,11 @@
 package com.cedarsoftware.util.convert;
 
-import java.lang.reflect.Array;
 import java.util.Collection;
-
-import com.cedarsoftware.util.ArrayUtilities;
 import java.util.EnumSet;
 import java.util.LinkedHashMap;
 import java.util.Map;
+
+import com.cedarsoftware.util.ArrayUtilities;
 
 /**
  * @author John DeRegnaucourt (jdereg@gmail.com)

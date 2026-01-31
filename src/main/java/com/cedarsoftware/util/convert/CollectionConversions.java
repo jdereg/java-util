@@ -1,12 +1,11 @@
 package com.cedarsoftware.util.convert;
 
-import java.lang.reflect.Array;
 import java.util.ArrayDeque;
-
-import com.cedarsoftware.util.ArrayUtilities;
 import java.util.Collection;
 import java.util.Deque;
 import java.util.IdentityHashMap;
+
+import com.cedarsoftware.util.ArrayUtilities;
 
 import static com.cedarsoftware.util.CollectionUtilities.getSynchronizedCollection;
 import static com.cedarsoftware.util.CollectionUtilities.getUnmodifiableCollection;

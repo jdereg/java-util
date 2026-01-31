@@ -1,11 +1,12 @@
 package com.cedarsoftware.util;
 
+import java.util.Arrays;
+
 import org.junit.jupiter.api.Test;
 
-import java.util.Arrays;
-import java.util.concurrent.atomic.AtomicInteger;
-
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 /**
  * Tests for the computeIfPresent API on MultiKeyMap.

@@ -1,9 +1,11 @@
 package com.cedarsoftware.util;
 
-import org.junit.jupiter.api.Test;
-import java.util.*;
+import java.util.Arrays;
 import java.util.logging.Logger;
-import static org.junit.jupiter.api.Assertions.*;
+
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Test null formatting with the ∅ symbol

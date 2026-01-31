@@ -9,7 +9,6 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 import com.cedarsoftware.util.ConcurrentHashMapNullSafe;
-import com.cedarsoftware.util.EncryptionUtilities;
 
 /**
  * This class provides a thread-safe Least Recently Used (LRU) cache API that evicts the least recently used items

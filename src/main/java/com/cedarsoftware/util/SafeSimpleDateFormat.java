@@ -57,7 +57,7 @@ public class SafeSimpleDateFormat extends DateFormat {
     // Per-thread LRU for the static accessor (pattern -> SDF). Keeps original behavior.
     private static final int STATIC_PER_THREAD_LRU_CAPACITY = 16;
     private static final ThreadLocal<Map<String, SimpleDateFormat>> STATIC_TL =
-            ThreadLocal.withInitial(() -> new LinkedHashMap<String, SimpleDateFormat>(16, 0.75f, true) {
+            ThreadLocal.withInitial(() -> new LinkedHashMap<String, SimpleDateFormat>(24, 0.75f, true) {
                 @Override
                 protected boolean removeEldestEntry(Map.Entry<String, SimpleDateFormat> eldest) {
                     return size() > STATIC_PER_THREAD_LRU_CAPACITY;
@@ -127,7 +127,7 @@ public class SafeSimpleDateFormat extends DateFormat {
               boolean lenient,
               NumberFormat nf,
               DateFormatSymbols symbols,
-              Date twoDigitYearStart) {
+              Long twoDigitYearStartEpochMs) {
 
             this.pattern = Objects.requireNonNull(pattern, "pattern");
             this.locale  = Objects.requireNonNull(locale, "locale");
@@ -135,7 +135,7 @@ public class SafeSimpleDateFormat extends DateFormat {
             this.lenient = lenient;
             this.nf      = (NumberFormat) Objects.requireNonNull(nf, "numberFormat").clone();
             this.symbols = (DateFormatSymbols) Objects.requireNonNull(symbols, "symbols").clone();
-            this.twoDigitYearStartEpochMs = (twoDigitYearStart == null) ? null : twoDigitYearStart.getTime();
+            this.twoDigitYearStartEpochMs = twoDigitYearStartEpochMs;
             this.nfSig = NFSig.of(this.nf);
         }
 
@@ -204,7 +204,7 @@ public class SafeSimpleDateFormat extends DateFormat {
 
         static NFSig of(NumberFormat nf) {
             RoundingMode rm = null;
-            try { rm = nf.getRoundingMode(); } catch (Throwable ignore) {}
+            try { rm = nf.getRoundingMode(); } catch (Exception ignore) {}
             return new NFSig(
                     nf.getClass(),
                     nf.isGroupingUsed(),
@@ -271,13 +271,7 @@ public class SafeSimpleDateFormat extends DateFormat {
 
     private SimpleDateFormat getSdf() {
         State st = stateRef.get();
-        Map<State, SimpleDateFormat> m = currentThreadCache();
-        SimpleDateFormat sdf = m.get(st);
-        if (sdf == null) {
-            sdf = st.build();
-            m.put(st, sdf);
-        }
-        return sdf;
+        return currentThreadCache().computeIfAbsent(st, State::build);
     }
 
     // ----- Public API (unchanged signatures) -----
@@ -295,8 +289,7 @@ public class SafeSimpleDateFormat extends DateFormat {
     @Override
     public void setTimeZone(TimeZone tz) {
         update(s -> new State(s.pattern, s.locale, Objects.requireNonNull(tz, "tz"),
-                s.lenient, s.nf, s.symbols,
-                s.twoDigitYearStartEpochMs == null ? null : new Date(s.twoDigitYearStartEpochMs)));
+                s.lenient, s.nf, s.symbols, s.twoDigitYearStartEpochMs));
         // Keep parent DateFormat fields in sync
         if (this.calendar != null) {
             this.calendar.setTimeZone(tz);
@@ -306,8 +299,7 @@ public class SafeSimpleDateFormat extends DateFormat {
     @Override
     public void setLenient(boolean lenient) {
         update(s -> new State(s.pattern, s.locale, s.tz,
-                lenient, s.nf, s.symbols,
-                s.twoDigitYearStartEpochMs == null ? null : new Date(s.twoDigitYearStartEpochMs)));
+                lenient, s.nf, s.symbols, s.twoDigitYearStartEpochMs));
         // Keep parent DateFormat fields in sync
         if (this.calendar != null) {
             this.calendar.setLenient(lenient);
@@ -320,10 +312,7 @@ public class SafeSimpleDateFormat extends DateFormat {
         final TimeZone tz = cal.getTimeZone();
         final boolean len = cal.isLenient();
         update(s -> new State(s.pattern, s.locale, tz,
-                len, s.nf, s.symbols,
-                s.twoDigitYearStartEpochMs == null ? null : new Date(s.twoDigitYearStartEpochMs)));
-        // For legacy expectations, apply provided Calendar to current thread's SDF:
-        getSdf().setCalendar(cal);
+                len, s.nf, s.symbols, s.twoDigitYearStartEpochMs));
         // Keep parent DateFormat field in sync
         this.calendar = cal;
     }
@@ -332,8 +321,7 @@ public class SafeSimpleDateFormat extends DateFormat {
     public void setNumberFormat(NumberFormat format) {
         Objects.requireNonNull(format, "format");
         update(s -> new State(s.pattern, s.locale, s.tz,
-                s.lenient, format, s.symbols,
-                s.twoDigitYearStartEpochMs == null ? null : new Date(s.twoDigitYearStartEpochMs)));
+                s.lenient, format, s.symbols, s.twoDigitYearStartEpochMs));
         // Keep parent DateFormat field in sync
         this.numberFormat = format;
     }
@@ -341,14 +329,14 @@ public class SafeSimpleDateFormat extends DateFormat {
     public void setDateFormatSymbols(DateFormatSymbols symbols) {
         Objects.requireNonNull(symbols, "symbols");
         update(s -> new State(s.pattern, s.locale, s.tz,
-                s.lenient, s.nf, symbols,
-                s.twoDigitYearStartEpochMs == null ? null : new Date(s.twoDigitYearStartEpochMs)));
+                s.lenient, s.nf, symbols, s.twoDigitYearStartEpochMs));
     }
 
     public void set2DigitYearStart(Date date) {
         Objects.requireNonNull(date, "date");
+        final long epochMs = date.getTime();
         update(s -> new State(s.pattern, s.locale, s.tz,
-                s.lenient, s.nf, s.symbols, date));
+                s.lenient, s.nf, s.symbols, epochMs));
     }
 
     @Override
@@ -372,14 +360,18 @@ public class SafeSimpleDateFormat extends DateFormat {
     /**
      * Copy-on-write updater. Replaces the current State with a new one and
      * prunes the old State's formatter from the current thread's cache.
+     * Uses compareAndSet for thread-safety under concurrent mutations.
      */
     private void update(java.util.function.UnaryOperator<State> fn) {
-        State oldSt = stateRef.get();
-        State newSt = Objects.requireNonNull(fn.apply(oldSt), "new state");
-        if (oldSt.equals(newSt)) {
-            return;
-        }
-        stateRef.set(newSt);
+        State oldSt;
+        State newSt;
+        do {
+            oldSt = stateRef.get();
+            newSt = Objects.requireNonNull(fn.apply(oldSt), "new state");
+            if (oldSt.equals(newSt)) {
+                return;
+            }
+        } while (!stateRef.compareAndSet(oldSt, newSt));
         // Prevent per-thread cache growth for this thread:
         currentThreadCache().remove(oldSt);
         // Lazy rebuild on next use; call getSdf() here if you prefer eager.

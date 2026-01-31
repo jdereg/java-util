@@ -2,8 +2,8 @@ package com.cedarsoftware.util;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.util.zip.GZIPInputStream;
 import java.util.zip.Deflater;
+import java.util.zip.GZIPInputStream;
 
 import org.junit.jupiter.api.Test;
 

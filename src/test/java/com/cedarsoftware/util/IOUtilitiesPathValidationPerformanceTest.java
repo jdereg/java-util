@@ -1,11 +1,5 @@
 package com.cedarsoftware.util;
 
-import org.junit.jupiter.api.Disabled;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
-
 import java.io.File;
 import java.lang.reflect.Method;
 import java.nio.file.Files;
@@ -14,7 +8,13 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Logger;
 
-import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
+
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Performance tests for IOUtilities path validation to ensure minimal overhead.

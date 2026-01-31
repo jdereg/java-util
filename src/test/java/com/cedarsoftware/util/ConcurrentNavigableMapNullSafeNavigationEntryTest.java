@@ -6,7 +6,9 @@ import java.util.Objects;
 
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 /**
  * Tests Map.Entry instances returned by navigation methods of ConcurrentNavigableMapNullSafe.

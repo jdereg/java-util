@@ -2,8 +2,6 @@ package com.cedarsoftware.util;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
-import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Accurate memory comparison between CaseInsensitiveMap and MultiKeyMap.

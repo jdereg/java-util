@@ -1,16 +1,18 @@
 package com.cedarsoftware.util;
 
-import com.cedarsoftware.util.convert.Converter;
-import com.cedarsoftware.util.convert.DefaultConverterOptions;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.DisplayName;
-
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
-import static org.junit.jupiter.api.Assertions.*;
+import com.cedarsoftware.util.convert.Converter;
+import com.cedarsoftware.util.convert.DefaultConverterOptions;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Test cases for inner class construction with multiple constructor parameters.

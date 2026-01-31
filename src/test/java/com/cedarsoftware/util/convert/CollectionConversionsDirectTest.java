@@ -9,10 +9,14 @@ import java.util.List;
 import java.util.Set;
 
 import com.cedarsoftware.util.CollectionUtilities;
-import com.cedarsoftware.util.convert.CollectionsWrappers;
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class CollectionConversionsDirectTest {
 

@@ -49,6 +49,17 @@
   * Now throws `IllegalArgumentException` with resource name
 * **PERFORMANCE**: `TestUtil.assertContainsIgnoreCase()` and `checkContainsIgnoreCase()` avoid substring allocation
   * Uses offset tracking with `indexOf(needle, fromIndex)` instead of creating substring on each iteration
+* **PERFORMANCE**: `Traverser` optimizations for object graph traversal
+  * Added `ClassValueMap` cache for `shouldSkipClass()` to avoid repeated `isAssignableFrom()` checks
+  * Hoisted security limit lookups outside traversal loop (limits don't change during traversal)
+  * `NodeVisit` constructor now wraps maps directly instead of creating unnecessary `HashMap` copies
+  * Inlined validation methods to reduce method call overhead
+* **PERFORMANCE**: `SafeSimpleDateFormat` thread-safety and allocation improvements
+  * `State` constructor now takes `Long` instead of `Date` to avoid temporary object allocation
+  * `getSdf()` now uses `computeIfAbsent()` instead of manual get/put pattern
+  * `update()` method now uses `compareAndSet` loop for proper thread-safety under concurrent mutations
+  * Eliminated unnecessary `Date` object creation in setter methods
+* **CLEANUP**: Import organization and unused import removal across multiple classes
 
 #### 4.89.0 - 2026-01-26
 * **BUG FIX**: `FastReader` - Added bounds validation in `read(char[], int, int)` method

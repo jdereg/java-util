@@ -12,7 +12,6 @@ import java.util.Collection;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Useful APIs for working with Java types, including resolving type variables and generic types.

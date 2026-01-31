@@ -1,17 +1,15 @@
 package com.cedarsoftware.util;
 
-import org.apache.commons.collections4.map.MultiKeyMap;
-import org.apache.commons.collections4.keyvalue.MultiKey;
-import org.junit.jupiter.api.Disabled;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
-
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Random;
 import java.util.logging.Logger;
+
+import org.apache.commons.collections4.keyvalue.MultiKey;
+import org.apache.commons.collections4.map.MultiKeyMap;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 
 /**
  * Performance comparison between Cedar's MultiKeyMap and Apache Commons Collections' MultiKeyMap.

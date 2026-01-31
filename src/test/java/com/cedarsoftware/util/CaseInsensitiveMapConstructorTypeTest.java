@@ -1,7 +1,5 @@
 package com.cedarsoftware.util;
 
-import org.junit.jupiter.api.Test;
-
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.TreeMap;
@@ -9,9 +7,10 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.logging.Logger;
 
-import com.cedarsoftware.util.LoggingConfig;
+import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Tests to verify that CaseInsensitiveMap copy constructor creates the same map type as the source.

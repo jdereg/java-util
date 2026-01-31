@@ -607,6 +607,15 @@ public class DeepEquals {
 
             // Handle primitive wrappers, String, Date, Class, UUID, URL, URI, Temporal classes, etc.
             if (Converter.isSimpleTypeConversionSupported(key1Class)) {
+                // Special handling for URL: compare by string representation to avoid DNS resolution
+                // Java's URL.equals() performs DNS lookup which causes flaky tests and CI failures
+                if (key1 instanceof URL && key2 instanceof URL) {
+                    if (!((URL) key1).toExternalForm().equals(((URL) key2).toExternalForm())) {
+                        stack.addFirst(new ItemsToCompare(key1, key2, itemsToCompare, Difference.VALUE_MISMATCH));
+                        return false;
+                    }
+                    continue;
+                }
                 if (key1 instanceof Comparable<?> && key2 instanceof Comparable<?>) {
                     try {
                         if (((Comparable)key1).compareTo(key2) != 0) {

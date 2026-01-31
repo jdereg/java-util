@@ -1,5 +1,10 @@
 ### Revision History
 
+#### 4.90.0 (Unreleased)
+* **BUG FIX**: `DeepEquals` - URL comparison now uses string representation instead of `URL.equals()`
+  * Java's `URL.equals()` performs DNS resolution which causes flaky CI failures
+  * Now compares URLs using `toExternalForm()` for reliable, deterministic comparison
+
 #### 4.89.0 - 2026-01-31
 * **PERFORMANCE**: `FastReader.getLastSnippet()` now returns bounded 200-char context
   * Previously could return 0 to 8192 characters depending on buffer position

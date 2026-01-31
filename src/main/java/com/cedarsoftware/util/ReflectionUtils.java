@@ -185,6 +185,18 @@ public final class ReflectionUtils {
     private static final AtomicReference<Map<? super MethodCacheKey, Method>> METHOD_CACHE =
             new AtomicReference<>(ensureThreadSafe(new LRUCache<>(CACHE_SIZE)));
 
+    // Sentinel methods used to cache negative lookups (avoids repeated expensive hierarchy searches)
+    private static final Method NOT_FOUND_METHOD;
+    private static final Method OVERLOADED_METHOD;
+    static {
+        try {
+            NOT_FOUND_METHOD = Object.class.getDeclaredMethod("getClass");
+            OVERLOADED_METHOD = Object.class.getDeclaredMethod("hashCode");
+        } catch (NoSuchMethodException e) {
+            throw new ExceptionInInitializerError(e);
+        }
+    }
+
     private static final AtomicReference<Map<? super FieldsCacheKey, Collection<Field>>> FIELDS_CACHE =
             new AtomicReference<>(ensureThreadSafe(new LRUCache<>(CACHE_SIZE)));
 
@@ -1568,32 +1580,32 @@ public final class ReflectionUtils {
         MethodCacheKey key = new MethodCacheKey(beanClass, methodName, types);
 
         // Use computeIfAbsent for atomic cache access
-        return METHOD_CACHE.get().computeIfAbsent(key, k -> {
+        Method result = METHOD_CACHE.get().computeIfAbsent(key, k -> {
             // Collect all matching methods from class hierarchy and interfaces
             List<Method> candidates = new ArrayList<>();
             Set<Class<?>> visited = new IdentitySet<>();
             Deque<Class<?>> toVisit = new ArrayDeque<>();
             toVisit.add(beanClass);
-            
+
             while (!toVisit.isEmpty()) {
                 Class<?> current = toVisit.poll();
                 if (!visited.add(current)) {
                     continue; // Already processed this class/interface
                 }
-                
+
                 // Check declared methods in current class/interface
                 for (Method method : current.getDeclaredMethods()) {
                     if (method.getName().equals(methodName) && method.getParameterCount() == argCount) {
                         candidates.add(method);
                     }
                 }
-                
+
                 // Add superclass to visit (if exists)
                 Class<?> superclass = current.getSuperclass();
                 if (superclass != null) {
                     toVisit.add(superclass);
                 }
-                
+
                 // Add interfaces to visit
                 for (Class<?> iface : current.getInterfaces()) {
                     toVisit.add(iface);
@@ -1601,10 +1613,8 @@ public final class ReflectionUtils {
             }
 
             if (candidates.isEmpty()) {
-                throw new IllegalArgumentException(
-                        String.format("Method '%s' with %d parameters not found in %s, its superclasses, or interfaces",
-                                methodName, argCount, beanClass.getName())
-                );
+                // Cache negative result to avoid repeated expensive hierarchy searches
+                return NOT_FOUND_METHOD;
             }
 
             // Select the best matching method using our composite strategy
@@ -1615,6 +1625,15 @@ public final class ReflectionUtils {
 
             return selected;
         });
+
+        // Check for sentinel outside computeIfAbsent and throw appropriate exception
+        if (result == NOT_FOUND_METHOD) {
+            throw new IllegalArgumentException(
+                    String.format("Method '%s' with %d parameters not found in %s, its superclasses, or interfaces",
+                            methodName, argCount, beanClass.getName())
+            );
+        }
+        return result;
     }
 
     /**
@@ -1813,11 +1832,11 @@ public final class ReflectionUtils {
         // Create a cache key for a method with no parameters
         MethodCacheKey key = new MethodCacheKey(clazz, methodName);
 
-        return METHOD_CACHE.get().computeIfAbsent(key, k -> {
+        Method result = METHOD_CACHE.get().computeIfAbsent(key, k -> {
             // First, check if method name exists at all and count occurrences
             int methodCount = 0;
             Method foundMethod = null;
-            
+
             for (Method m : clazz.getMethods()) {
                 if (methodName.equals(m.getName())) {
                     methodCount++;
@@ -1826,22 +1845,31 @@ public final class ReflectionUtils {
                     }
                 }
             }
-            
-            // If multiple methods exist with same name (overloaded), throw exception
+
+            // If multiple methods exist with same name (overloaded), cache negative result
             if (methodCount > 1) {
-                throw new IllegalArgumentException("Method: " + methodName + "() called on a class with overloaded methods "
-                        + "- ambiguous as to which one to return. Use getMethod() with argument types or argument count.");
+                return OVERLOADED_METHOD;
             }
-            
-            // If no 0-arg method found
+
+            // If no 0-arg method found, cache negative result
             if (foundMethod == null) {
-                throw new IllegalArgumentException("Method: " + methodName + "() is not found on class: " + clazz.getName()
-                        + ". Perhaps the method is protected, private, or misspelled?");
+                return NOT_FOUND_METHOD;
             }
 
             secureSetAccessible(foundMethod);
             return foundMethod;
         });
+
+        // Check for sentinels outside computeIfAbsent and throw appropriate exception
+        if (result == OVERLOADED_METHOD) {
+            throw new IllegalArgumentException("Method: " + methodName + "() called on a class with overloaded methods "
+                    + "- ambiguous as to which one to return. Use getMethod() with argument types or argument count.");
+        }
+        if (result == NOT_FOUND_METHOD) {
+            throw new IllegalArgumentException("Method: " + methodName + "() is not found on class: " + clazz.getName()
+                    + ". Perhaps the method is protected, private, or misspelled?");
+        }
+        return result;
     }
 
     /**

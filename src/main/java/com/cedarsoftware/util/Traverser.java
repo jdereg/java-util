@@ -123,18 +123,18 @@ public class Traverser {
 
     private static final Logger LOG = Logger.getLogger(Traverser.class.getName());
     static { LoggingConfig.init(); }
-    
+
     // Default security limits  
     private static final int DEFAULT_MAX_STACK_DEPTH = 1000000;  // 1M depth for heap-based traversal
     private static final int DEFAULT_MAX_OBJECTS_VISITED = 100000;
     private static final int DEFAULT_MAX_COLLECTION_SIZE = 50000;
     private static final int DEFAULT_MAX_ARRAY_LENGTH = 50000;
-    
+
     static {
         // Initialize system properties with defaults if not already set (backward compatibility)
         initializeSystemPropertyDefaults();
     }
-    
+
     private static void initializeSystemPropertyDefaults() {
         // Set default values if not explicitly configured
         if (System.getProperty("traverser.max.stack.depth") == null) {
@@ -150,13 +150,13 @@ public class Traverser {
             System.setProperty("traverser.max.array.length", "0"); // Disabled by default
         }
     }
-    
+
     // Security configuration methods
-    
+
     private static boolean isSecurityEnabled() {
         return Boolean.parseBoolean(System.getProperty("traverser.security.enabled", "false"));
     }
-    
+
     private static int getMaxStackDepth() {
         if (!isSecurityEnabled()) {
             return 0; // Disabled
@@ -172,7 +172,7 @@ public class Traverser {
         }
         return DEFAULT_MAX_STACK_DEPTH;
     }
-    
+
     private static int getMaxObjectsVisited() {
         if (!isSecurityEnabled()) {
             return 0; // Disabled
@@ -188,7 +188,7 @@ public class Traverser {
         }
         return DEFAULT_MAX_OBJECTS_VISITED;
     }
-    
+
     private static int getMaxCollectionSize() {
         if (!isSecurityEnabled()) {
             return 0; // Disabled
@@ -204,7 +204,7 @@ public class Traverser {
         }
         return DEFAULT_MAX_COLLECTION_SIZE;
     }
-    
+
     private static int getMaxArrayLength() {
         if (!isSecurityEnabled()) {
             return 0; // Disabled
@@ -220,28 +220,28 @@ public class Traverser {
         }
         return DEFAULT_MAX_ARRAY_LENGTH;
     }
-    
+
     private static void validateStackDepth(int currentDepth) {
         int maxDepth = getMaxStackDepth();
         if (maxDepth > 0 && currentDepth > maxDepth) {
             throw new SecurityException("Stack depth exceeded limit (max " + maxDepth + "): " + currentDepth);
         }
     }
-    
+
     private static void validateObjectsVisited(int objectsVisited) {
         int maxObjects = getMaxObjectsVisited();
         if (maxObjects > 0 && objectsVisited > maxObjects) {
             throw new SecurityException("Objects visited exceeded limit (max " + maxObjects + "): " + objectsVisited);
         }
     }
-    
+
     private static void validateCollectionSize(int size) {
         int maxSize = getMaxCollectionSize();
         if (maxSize > 0 && size > maxSize) {
             throw new SecurityException("Collection size exceeded limit (max " + maxSize + "): " + size);
         }
     }
-    
+
     private static void validateArrayLength(int length) {
         int maxLength = getMaxArrayLength();
         if (maxLength > 0 && length > maxLength) {
@@ -316,12 +316,12 @@ public class Traverser {
     private final Consumer<NodeVisit> nodeVisitor;
     private final boolean collectFields;
     private int objectsVisited = 0;
-    
+
     // Helper class to track object and its depth in heap-based traversal
     private static class TraversalNode {
         final Object object;
         final int depth;
-        
+
         TraversalNode(Object object, int depth) {
             this.object = object;
             this.depth = depth;
@@ -399,7 +399,7 @@ public class Traverser {
             TraversalNode node = stack.pollFirst();
             Object current = node.object;
             int currentDepth = node.depth;
-            
+
             // Security: Check stack depth limit (optimized)
             if (maxStackDepth > 0 && currentDepth > maxStackDepth) {
                 throw new SecurityException("Stack depth exceeded limit (max " + maxStackDepth + "): " + currentDepth);
@@ -416,7 +416,7 @@ public class Traverser {
 
             objVisited.add(current);
             objectsVisited++;
-            
+
             // Security: Check objects visited limit (optimized)
             if (maxObjectsVisited > 0 && objectsVisited > maxObjectsVisited) {
                 throw new SecurityException("Objects visited exceeded limit (max " + maxObjectsVisited + "): " + objectsVisited);
@@ -478,7 +478,7 @@ public class Traverser {
     private void processCollection(Deque<TraversalNode> stack, Collection<?> collection, Set<Class<?>> classesToSkip, int depth) {
         // Security: Validate collection size
         validateCollectionSize(collection.size());
-        
+
         for (Object element : collection) {
             if (element != null && !shouldSkipClass(element.getClass(), classesToSkip)) {
                 stack.addFirst(new TraversalNode(element, depth + 1));
@@ -489,7 +489,7 @@ public class Traverser {
     private void processMap(Deque<TraversalNode> stack, Map<?, ?> map, Set<Class<?>> classesToSkip, int depth) {
         // Security: Validate map size  
         validateCollectionSize(map.size());
-        
+
         for (Map.Entry<?, ?> entry : map.entrySet()) {
             Object key = entry.getKey();
             Object value = entry.getValue();
@@ -525,7 +525,7 @@ public class Traverser {
             }
         }
     }
-    
+
     private void processArray(Deque<TraversalNode> stack, Object array, Set<Class<?>> classesToSkip, int depth) {
         int length = ArrayUtilities.getLength(array);
         Class<?> componentType = array.getClass().getComponentType();
@@ -533,7 +533,7 @@ public class Traverser {
         if (!componentType.isPrimitive()) {
             // Security: Validate array length only for object arrays
             validateArrayLength(length);
-            
+
             for (int i = 0; i < length; i++) {
                 Object element = ArrayUtilities.getElement(array, i);
                 if (element != null && !shouldSkipClass(element.getClass(), classesToSkip)) {

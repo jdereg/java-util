@@ -227,6 +227,10 @@ public class ClassUtilities {
         return (cl != null) ? cl : getClassLoader(ClassUtilities.class);
     }
     
+    // Sentinel class to indicate "class not found" in the cache.
+    // Using Void.class as it cannot be instantiated and is never a valid lookup result.
+    private static final Class<?> CLASS_NOT_FOUND_SENTINEL = Void.class;
+
     private static Class<?> fromCache(String name, ClassLoader cl) {
         // Check global aliases first (primitive types and user-defined aliases)
         Class<?> globalAlias = GLOBAL_ALIASES.get(name);
@@ -253,6 +257,17 @@ public class ClassUtilities {
             holder.cache.remove(name, ref);
         }
         return cls;
+    }
+
+    private static void toCacheNotFound(String name, ClassLoader cl) {
+        final ClassLoader key = resolveLoader(cl);
+        final LoaderCache holder = getLoaderCacheHolder(key);
+
+        // Opportunistically drain dead references (lock-free, uses CAS-based removal)
+        drainQueue(holder);
+
+        // Cache the sentinel to indicate "class not found" - use strong reference since Void.class is permanent
+        holder.cache.put(name, new WeakReference<>(CLASS_NOT_FOUND_SENTINEL));
     }
     
     // Helper to get or create loader cache holder with proper synchronization
@@ -390,9 +405,12 @@ public class ClassUtilities {
     };
 
     /**
-     * Add a cache for successful constructor selections
+     * Cache for constructor selections.
+     * - Optional.of(constructor) = this constructor works
+     * - Optional.empty() = no constructor works, go directly to unsafe or fail
+     * - null (not in map) = not yet determined
      */
-    private static final Map<Class<?>, Constructor<?>> SUCCESSFUL_CONSTRUCTOR_CACHE = new ClassValueMap<>();
+    private static final Map<Class<?>, Optional<Constructor<?>>> SUCCESSFUL_CONSTRUCTOR_CACHE = new ClassValueMap<>();
 
     /**
      * Cache for class hierarchy information
@@ -877,7 +895,11 @@ public class ClassUtilities {
     private static Class<?> internalClassForName(String name, ClassLoader classLoader) throws ClassNotFoundException {
         Class<?> c = fromCache(name, classLoader);
         if (c != null) {
-            // Performance: Skip re-verification - classes are verified before being cached (line 909)
+            // Check if this is a cached "class not found" sentinel
+            if (c == CLASS_NOT_FOUND_SENTINEL) {
+                throw new ClassNotFoundException("Class not found (cached): " + name);
+            }
+            // Performance: Skip re-verification - classes are verified before being cached
             // Cached classes are immutable, so if verified once, they remain verified
             return c;
         }
@@ -900,12 +922,22 @@ public class ClassUtilities {
             try {
                 CLASS_LOAD_DEPTH.set(nextDepth);
                 c = loadClass(name, classLoader);
+            } catch (ClassNotFoundException e) {
+                // Cache the negative result to avoid repeated failed lookups
+                toCacheNotFound(name, classLoader);
+                throw e;
             } finally {
                 CLASS_LOAD_DEPTH.set(currentDepth);
             }
         } else {
             // Enhanced security disabled - skip ThreadLocal overhead entirely
-            c = loadClass(name, classLoader);
+            try {
+                c = loadClass(name, classLoader);
+            } catch (ClassNotFoundException e) {
+                // Cache the negative result to avoid repeated failed lookups
+                toCacheNotFound(name, classLoader);
+                throw e;
+            }
         }
 
         // Perform full security check on loaded class
@@ -2417,7 +2449,7 @@ public class ClassUtilities {
                 Constructor<?> noArg = c.getDeclaredConstructor();
                 trySetAccessible(noArg);
                 Object instance = noArg.newInstance();
-                SUCCESSFUL_CONSTRUCTOR_CACHE.put(c, noArg);
+                SUCCESSFUL_CONSTRUCTOR_CACHE.put(c, Optional.of(noArg));
                 return instance;
             } catch (NoSuchMethodException ignored) {
                 // No no-arg constructor, fall through to normal logic
@@ -2427,14 +2459,25 @@ public class ClassUtilities {
                 // No-arg constructor failed, fall through to try other constructors
             }
         }
-        
+
         // Convert to array once to avoid repeated toArray() calls
         Object[] suppliedArgs = normalizedArgs.isEmpty() ? ArrayUtilities.EMPTY_OBJECT_ARRAY : normalizedArgs.toArray();
-        
-        // Check if we have a previously successful constructor for this class
-        Constructor<?> cachedConstructor = SUCCESSFUL_CONSTRUCTOR_CACHE.get(c);
 
-        if (cachedConstructor != null) {
+        // Check if we have a previously cached result for this class
+        Optional<Constructor<?>> cachedResult = SUCCESSFUL_CONSTRUCTOR_CACHE.get(c);
+
+        if (cachedResult != null) {
+            if (!cachedResult.isPresent()) {
+                // Cached negative result - no constructor works, go directly to unsafe
+                Object instance = tryUnsafeInstantiation(c);
+                if (instance != null) {
+                    return instance;
+                }
+                throw new IllegalArgumentException("Unable to instantiate (cached): " + c.getName());
+            }
+
+            // Cached successful constructor
+            Constructor<?> cachedConstructor = cachedResult.get();
             try {
                 Parameter[] parameters = cachedConstructor.getParameters();
 
@@ -2479,11 +2522,11 @@ public class ClassUtilities {
                         if (params.length > 0 && params[0].getType().equals(enclosingClass)) {
                             try {
                                 trySetAccessible(constructor);
-                                
+
                                 if (params.length == 1) {
                                     // Simple case: only takes enclosing instance
                                     Object instance = constructor.newInstance(enclosingInstance);
-                                    SUCCESSFUL_CONSTRUCTOR_CACHE.put(c, constructor);
+                                    SUCCESSFUL_CONSTRUCTOR_CACHE.put(c, Optional.of(constructor));
                                     return instance;
                                 } else {
                                     // Complex case: takes enclosing instance plus more arguments
@@ -2493,9 +2536,9 @@ public class ClassUtilities {
                                     Object[] allArgs = new Object[params.length];
                                     allArgs[0] = enclosingInstance;
                                     System.arraycopy(restArgs, 0, allArgs, 1, restArgs.length);
-                                    
+
                                     Object instance = constructor.newInstance(allArgs);
-                                    SUCCESSFUL_CONSTRUCTOR_CACHE.put(c, constructor);
+                                    SUCCESSFUL_CONSTRUCTOR_CACHE.put(c, Optional.of(constructor));
                                     return instance;
                                 }
                             } catch (Exception e) {
@@ -2534,7 +2577,7 @@ public class ClassUtilities {
                 Object instance = constructor.newInstance(argsNonNull);
 
                 // Cache this successful constructor for future use
-                SUCCESSFUL_CONSTRUCTOR_CACHE.put(c, constructor);
+                SUCCESSFUL_CONSTRUCTOR_CACHE.put(c, Optional.of(constructor));
                 return instance;
             } catch (Exception e1) {
                 exceptions.add(e1);
@@ -2545,7 +2588,7 @@ public class ClassUtilities {
                     Object instance = constructor.newInstance(argsNull);
 
                     // Cache this successful constructor for future use
-                    SUCCESSFUL_CONSTRUCTOR_CACHE.put(c, constructor);
+                    SUCCESSFUL_CONSTRUCTOR_CACHE.put(c, Optional.of(constructor));
                     return instance;
                 } catch (Exception e2) {
                     exceptions.add(e2);

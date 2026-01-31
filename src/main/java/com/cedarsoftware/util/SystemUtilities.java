@@ -11,19 +11,16 @@ import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Enumeration;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TimeZone;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Predicate;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-
-import java.util.stream.Collectors;
-import java.util.Set;
-import java.util.HashSet;
-import java.util.Arrays;
-import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Utility class providing common system-level operations and information gathering capabilities.
@@ -114,11 +111,14 @@ import java.util.concurrent.atomic.AtomicInteger;
  * @see ManagementFactory
  */
 public final class SystemUtilities {
-    public static final String OS_NAME = System.getProperty("os.name").toLowerCase();
-    public static final String JAVA_VERSION = System.getProperty("java.version");
-    public static final String USER_HOME = System.getProperty("user.home");
-    public static final String TEMP_DIR = System.getProperty("java.io.tmpdir");
-    public static final int JDK_MAJOR_VERSION = determineJdkMajorVersion();
+    private static final String osNameRaw = System.getProperty("os.name");
+    public static final String OS_NAME = osNameRaw != null ? osNameRaw.toLowerCase() : "unknown";
+    public static final String JAVA_VERSION = System.getProperty("java.version", "unknown");
+    public static final String USER_HOME = System.getProperty("user.home", "");
+    public static final String TEMP_DIR = System.getProperty("java.io.tmpdir", "");
+    private static final int[] JDK_VERSION = determineJdkVersion();
+    public static final int JDK_MAJOR_VERSION = JDK_VERSION[0];
+    private static final int JDK_MINOR_VERSION = JDK_VERSION[1];
     private static final Logger LOG = Logger.getLogger(SystemUtilities.class.getName());
 
     static {
@@ -135,6 +135,11 @@ public final class SystemUtilities {
 
     // Security: Resource limits for system operations
     private static final AtomicInteger SHUTDOWN_HOOK_COUNT = new AtomicInteger(0);
+
+    // Cached security configuration (volatile for thread-safe lazy initialization)
+    private static volatile Set<String> cachedSensitivePatterns;
+    private static volatile String cachedPatternSource;
+    private static final Object PATTERN_LOCK = new Object();
 
     static {
         // Initialize system properties with defaults if not already set (backward compatibility)
@@ -202,7 +207,25 @@ public final class SystemUtilities {
 
     private static Set<String> getSensitiveVariablePatterns() {
         String patterns = System.getProperty("systemutilities.sensitive.variable.patterns", DEFAULT_SENSITIVE_VARIABLE_PATTERNS);
-        return new HashSet<>(Arrays.asList(patterns.split(",")));
+
+        // Double-checked locking for thread-safe lazy caching
+        if (cachedSensitivePatterns == null || !patterns.equals(cachedPatternSource)) {
+            synchronized (PATTERN_LOCK) {
+                if (cachedSensitivePatterns == null || !patterns.equals(cachedPatternSource)) {
+                    // Pre-process patterns: trim and uppercase for efficient matching
+                    Set<String> processedPatterns = new HashSet<>();
+                    for (String pattern : patterns.split(",")) {
+                        String trimmed = pattern.trim().toUpperCase();
+                        if (!trimmed.isEmpty()) {
+                            processedPatterns.add(trimmed);
+                        }
+                    }
+                    cachedPatternSource = patterns;
+                    cachedSensitivePatterns = processedPatterns;
+                }
+            }
+        }
+        return cachedSensitivePatterns;
     }
 
     private SystemUtilities() {
@@ -274,7 +297,13 @@ public final class SystemUtilities {
 
         String upperVar = varName.toUpperCase();
         Set<String> sensitivePatterns = getSensitiveVariablePatterns();
-        return sensitivePatterns.stream().anyMatch(pattern -> upperVar.contains(pattern.trim().toUpperCase()));
+        // Simple loop is more efficient than stream for this use case
+        for (String pattern : sensitivePatterns) {
+            if (upperVar.contains(pattern)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
@@ -334,11 +363,8 @@ public final class SystemUtilities {
         if (JDK_MAJOR_VERSION < major) {
             return false;
         }
-
-        // At this point, we know JDK_MAJOR_VERSION == major, so we only need to check the minor version.
-        // parseJavaVersionNumbers() is still needed here for the minor part.
-        int[] version = parseJavaVersionNumbers();
-        return version[1] >= minor;
+        // Major versions are equal, check minor version (cached at class load)
+        return JDK_MINOR_VERSION >= minor;
     }
 
     /**
@@ -349,41 +375,12 @@ public final class SystemUtilities {
     }
 
     /**
-     * @return current JDK major version. Returns -1 if it cannot obtain the Java major version
+     * Determines the JDK major and minor version numbers.
+     *
+     * @return int array where [0] is major version and [1] is minor version.
+     *         Returns {-1, 0} if version cannot be determined.
      */
-    private static int determineJdkMajorVersion() {
-        try {
-            // Security: Check SecurityManager permissions for reflection
-            checkReflectionPermission();
-
-            Method versionMethod = ReflectionUtils.getMethod(Runtime.class, "version");
-            Object v = versionMethod.invoke(Runtime.getRuntime());
-            Method major = ReflectionUtils.getMethod(v.getClass(), "major");
-            return (Integer) major.invoke(v);
-        } catch (Exception ignore) {
-            try {
-                String version = System.getProperty("java.version");
-                if (version.startsWith("1.")) {
-                    return Integer.parseInt(version.substring(2, 3));
-                }
-                int dot = version.indexOf('.');
-                if (dot != -1) {
-                    return Integer.parseInt(version.substring(0, dot));
-                }
-                return Integer.parseInt(version);
-            } catch (Exception ignored) {
-                try {
-                    String spec = System.getProperty("java.specification.version");
-                    return spec.startsWith("1.") ? Integer.parseInt(spec.substring(2)) : Integer.parseInt(spec);
-                } catch (NumberFormatException e) {
-                    return -1;
-                }
-            }
-        }
-    }
-
-
-    private static int[] parseJavaVersionNumbers() {
+    private static int[] determineJdkVersion() {
         try {
             // Security: Check SecurityManager permissions for reflection
             checkReflectionPermission();
@@ -395,13 +392,41 @@ public final class SystemUtilities {
             int major = (Integer) majorMethod.invoke(v);
             int minor = (Integer) minorMethod.invoke(v);
             return new int[]{major, minor};
-        } catch (Exception ignored) {
-            String[] parts = JAVA_VERSION.split("\\.");
-            int major = Integer.parseInt(parts[0]);
-            int minor = parts.length > 1 ? Integer.parseInt(parts[1]) : 0;
-            return new int[]{major, minor};
+        } catch (Exception ignore) {
+            try {
+                String version = System.getProperty("java.version", "");
+                if (version.startsWith("1.")) {
+                    // Java 8 and earlier: "1.8.0_292" -> major=8, minor=0
+                    int major = Integer.parseInt(version.substring(2, 3));
+                    int minor = 0;
+                    if (version.length() > 4 && version.charAt(3) == '.') {
+                        int nextDot = version.indexOf('.', 4);
+                        String minorStr = nextDot > 0 ? version.substring(4, nextDot) : version.substring(4);
+                        // Remove any non-numeric suffix
+                        minorStr = minorStr.replaceAll("[^0-9].*", "");
+                        if (!minorStr.isEmpty()) {
+                            minor = Integer.parseInt(minorStr);
+                        }
+                    }
+                    return new int[]{major, minor};
+                }
+                // Java 9+: "11.0.2" or "17"
+                String[] parts = version.split("\\.");
+                int major = Integer.parseInt(parts[0].replaceAll("[^0-9].*", ""));
+                int minor = parts.length > 1 ? Integer.parseInt(parts[1].replaceAll("[^0-9].*", "")) : 0;
+                return new int[]{major, minor};
+            } catch (Exception ignored) {
+                try {
+                    String spec = System.getProperty("java.specification.version", "");
+                    int major = spec.startsWith("1.") ? Integer.parseInt(spec.substring(2)) : Integer.parseInt(spec);
+                    return new int[]{major, 0};
+                } catch (NumberFormatException e) {
+                    return new int[]{-1, 0};
+                }
+            }
         }
     }
+
 
     /**
      * Checks security manager permissions for reflection operations.
@@ -503,22 +528,36 @@ public final class SystemUtilities {
     }
 
     /**
-     * Get system timezone, considering various sources
+     * Get system timezone, considering the TZ environment variable and system default.
+     *
+     * @return the system timezone from TZ environment variable if valid, otherwise the JVM default
      */
     public static TimeZone getSystemTimeZone() {
         String tzEnv = System.getenv("TZ");
         if (tzEnv != null && !tzEnv.isEmpty()) {
-            return TimeZone.getTimeZone(tzEnv);
+            TimeZone tz = TimeZone.getTimeZone(tzEnv);
+            // TimeZone.getTimeZone() returns GMT for unknown IDs - validate the result
+            if (!"GMT".equals(tz.getID()) || "GMT".equalsIgnoreCase(tzEnv)) {
+                return tz;
+            }
+            // TZ was set but invalid, log warning and fall back to default
+            LOG.log(Level.WARNING, "Invalid timezone in TZ environment variable: " + tzEnv + ", using system default");
         }
         return TimeZone.getDefault();
     }
 
     /**
-     * Check if enough memory is available
+     * Check if enough memory is available.
+     * This considers both free memory in the current heap and room to expand up to max memory.
+     *
+     * @param requiredBytes the number of bytes required
+     * @return true if the JVM can potentially allocate the required bytes
      */
     public static boolean hasAvailableMemory(long requiredBytes) {
         MemoryInfo info = getMemoryInfo();
-        return info.getFreeMemory() >= requiredBytes;
+        // Available = free memory in current heap + room to grow (maxMemory - totalMemory)
+        long availableMemory = info.getFreeMemory() + (info.getMaxMemory() - info.getTotalMemory());
+        return availableMemory >= requiredBytes;
     }
 
     /**
@@ -533,15 +572,22 @@ public final class SystemUtilities {
      * @return map of non-sensitive environment variables
      */
     public static Map<String, String> getEnvironmentVariables(Predicate<String> filter) {
-        return System.getenv().entrySet().stream()
-                .filter(e -> !(isSecurityEnabled() && isEnvironmentVariableValidationEnabled() && isSensitiveVariable(e.getKey()))) // Security: Filter sensitive variables
-                .filter(e -> filter == null || filter.test(e.getKey()))
-                .collect(Collectors.toMap(
-                        Map.Entry::getKey,
-                        Map.Entry::getValue,
-                        (v1, v2) -> v1,
-                        LinkedHashMap::new
-                ));
+        boolean securityFiltering = isSecurityEnabled() && isEnvironmentVariableValidationEnabled();
+        Map<String, String> result = new LinkedHashMap<>();
+
+        for (Map.Entry<String, String> entry : System.getenv().entrySet()) {
+            String key = entry.getKey();
+            // Security: Filter sensitive variables
+            if (securityFiltering && isSensitiveVariable(key)) {
+                continue;
+            }
+            // Apply user filter
+            if (filter != null && !filter.test(key)) {
+                continue;
+            }
+            result.put(key, entry.getValue());
+        }
+        return result;
     }
 
     /**
@@ -555,14 +601,17 @@ public final class SystemUtilities {
      * @return map of all environment variables matching the filter
      */
     public static Map<String, String> getEnvironmentVariablesUnsafe(Predicate<String> filter) {
-        return System.getenv().entrySet().stream()
-                .filter(e -> filter == null || filter.test(e.getKey()))
-                .collect(Collectors.toMap(
-                        Map.Entry::getKey,
-                        Map.Entry::getValue,
-                        (v1, v2) -> v1,
-                        LinkedHashMap::new
-                ));
+        if (filter == null) {
+            return new LinkedHashMap<>(System.getenv());
+        }
+
+        Map<String, String> result = new LinkedHashMap<>();
+        for (Map.Entry<String, String> entry : System.getenv().entrySet()) {
+            if (filter.test(entry.getKey())) {
+                result.put(entry.getKey(), entry.getValue());
+            }
+        }
+        return result;
     }
 
     /**
@@ -603,6 +652,10 @@ public final class SystemUtilities {
      * shutdown hooks to prevent resource exhaustion attacks. The current default limit is
      * 100 hooks, configurable via system property.</p>
      *
+     * <p><strong>Note:</strong> The hook count tracks hooks added via this method. If hooks
+     * are removed via {@code Runtime.getRuntime().removeShutdownHook()}, the count will not
+     * be decremented until the hook would have executed.</p>
+     *
      * @param hook the runnable to execute during shutdown
      * @throws IllegalStateException    if the maximum number of shutdown hooks is exceeded
      * @throws IllegalArgumentException if hook is null
@@ -612,12 +665,21 @@ public final class SystemUtilities {
             throw new IllegalArgumentException("Shutdown hook cannot be null");
         }
 
-        // Security: Enforce limit on shutdown hooks to prevent resource exhaustion
-        int maxHooks = getMaxShutdownHooks();
-        int currentCount = SHUTDOWN_HOOK_COUNT.incrementAndGet();
-        if (isSecurityEnabled() && isResourceLimitsEnabled() && currentCount > maxHooks) {
-            SHUTDOWN_HOOK_COUNT.decrementAndGet();
-            throw new IllegalStateException("Maximum number of shutdown hooks exceeded: " + maxHooks);
+        // Security: Atomically check and increment to prevent race condition
+        if (isSecurityEnabled() && isResourceLimitsEnabled()) {
+            int maxHooks = getMaxShutdownHooks();
+            while (true) {
+                int current = SHUTDOWN_HOOK_COUNT.get();
+                if (current >= maxHooks) {
+                    throw new IllegalStateException("Maximum number of shutdown hooks exceeded: " + maxHooks);
+                }
+                if (SHUTDOWN_HOOK_COUNT.compareAndSet(current, current + 1)) {
+                    break;
+                }
+                // CAS failed, another thread modified the count, retry
+            }
+        } else {
+            SHUTDOWN_HOOK_COUNT.incrementAndGet();
         }
 
         try {
@@ -626,9 +688,10 @@ public final class SystemUtilities {
                     hook.run();
                 } catch (Exception e) {
                     LOG.log(Level.SEVERE, "Shutdown hook threw exception", e);
-                } finally {
-                    SHUTDOWN_HOOK_COUNT.decrementAndGet();
                 }
+                // Note: We don't decrement here anymore since the count represents
+                // hooks registered, not hooks pending execution. This provides a more
+                // accurate count for resource limiting purposes.
             }));
         } catch (Exception e) {
             // If adding the hook fails, decrement the counter

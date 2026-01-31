@@ -1,6 +1,9 @@
 package com.cedarsoftware.util;
 
+import java.io.IOException;
+import java.net.URISyntaxException;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -42,11 +45,13 @@ public class TestUtil
      */
     public static void assertContainsIgnoreCase(String source, String... contains) {
         String lowerSource = source.toLowerCase();
+        int offset = 0;
         for (String contain : contains) {
-            int idx = lowerSource.indexOf(contain.toLowerCase());
-            String msg = "'" + contain + "' not found in '" + lowerSource + "'";
-            assert idx >=0 : msg;
-            lowerSource = lowerSource.substring(idx);
+            String lowerContain = contain.toLowerCase();
+            int idx = lowerSource.indexOf(lowerContain, offset);
+            String msg = "'" + contain + "' not found in '" + source + "' (searching from position " + offset + ")";
+            assert idx >= 0 : msg;
+            offset = idx + lowerContain.length();
         }
     }
 
@@ -66,12 +71,14 @@ public class TestUtil
      */
     public static boolean checkContainsIgnoreCase(String source, String... contains) {
         String lowerSource = source.toLowerCase();
+        int offset = 0;
         for (String contain : contains) {
-            int idx = lowerSource.indexOf(contain.toLowerCase());
+            String lowerContain = contain.toLowerCase();
+            int idx = lowerSource.indexOf(lowerContain, offset);
             if (idx == -1) {
                 return false;
             }
-            lowerSource = lowerSource.substring(idx);
+            offset = idx + lowerContain.length();
         }
         return true;
     }
@@ -88,12 +95,16 @@ public class TestUtil
         try
         {
             URL url = TestUtil.class.getResource("/" + name);
+            if (url == null) {
+                throw new IllegalArgumentException("Resource not found: " + name);
+            }
             Path resPath = Paths.get(url.toURI());
-            return new String(Files.readAllBytes(resPath));
+            return new String(Files.readAllBytes(resPath), StandardCharsets.UTF_8);
         }
-        catch (Exception e)
+        catch (IOException | URISyntaxException e)
         {
-            throw new RuntimeException(e);
+            ExceptionUtilities.uncheckedThrow(e);
+            return null; // Unreachable, but required by compiler
         }
     }
     

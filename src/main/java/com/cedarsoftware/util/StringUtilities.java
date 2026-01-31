@@ -143,65 +143,46 @@ public final class StringUtilities {
     public static final String EMPTY = "";
     
     // Security configuration - all disabled by default for backward compatibility
-    // These are checked dynamically to allow runtime configuration changes for testing
+    // Read dynamically to allow runtime configuration changes for testing
     private static boolean isSecurityEnabled() {
         return Boolean.parseBoolean(System.getProperty("stringutilities.security.enabled", "false"));
     }
-    
-    private static int getMaxHexDecodeSize() {
+
+    private static int getIntProperty(String name, int defaultValue) {
         try {
-            return Converter.convert(System.getProperty("stringutilities.max.hex.decode.size", "0"), int.class);
+            String value = System.getProperty(name);
+            return value == null ? defaultValue : Integer.parseInt(value);
         } catch (Exception e) {
-            return 0;
+            return defaultValue;
         }
+    }
+
+    private static int getMaxHexDecodeSize() {
+        return getIntProperty("stringutilities.max.hex.decode.size", 0);
     }
 
     private static int getMaxWildcardLength() {
-        try {
-            return Converter.convert(System.getProperty("stringutilities.max.wildcard.length", "0"), int.class);
-        } catch (Exception e) {
-            return 0;
-        }
+        return getIntProperty("stringutilities.max.wildcard.length", 0);
     }
 
     private static int getMaxWildcardCount() {
-        try {
-            return Converter.convert(System.getProperty("stringutilities.max.wildcard.count", "0"), int.class);
-        } catch (Exception e) {
-            return 0;
-        }
+        return getIntProperty("stringutilities.max.wildcard.count", 0);
     }
 
     private static int getMaxLevenshteinStringLength() {
-        try {
-            return Converter.convert(System.getProperty("stringutilities.max.levenshtein.string.length", "0"), int.class);
-        } catch (Exception e) {
-            return 0;
-        }
+        return getIntProperty("stringutilities.max.levenshtein.string.length", 0);
     }
 
     private static int getMaxDamerauLevenshteinStringLength() {
-        try {
-            return Converter.convert(System.getProperty("stringutilities.max.damerau.levenshtein.string.length", "0"), int.class);
-        } catch (Exception e) {
-            return 0;
-        }
+        return getIntProperty("stringutilities.max.damerau.levenshtein.string.length", 0);
     }
 
     private static int getMaxRepeatCount() {
-        try {
-            return Converter.convert(System.getProperty("stringutilities.max.repeat.count", "0"), int.class);
-        } catch (Exception e) {
-            return 0;
-        }
+        return getIntProperty("stringutilities.max.repeat.count", 0);
     }
 
     private static int getMaxRepeatTotalSize() {
-        try {
-            return Converter.convert(System.getProperty("stringutilities.max.repeat.total.size", "0"), int.class);
-        } catch (Exception e) {
-            return 0;
-        }
+        return getIntProperty("stringutilities.max.repeat.total.size", 0);
     }
 
     /**
@@ -253,7 +234,13 @@ public final class StringUtilities {
      * @see StringUtilities#equals(CharSequence, CharSequence)
      */
     public static boolean equals(String s1, String s2) {
-        return equals(s1, (CharSequence) s2);
+        if (s1 == s2) {
+            return true;
+        }
+        if (s1 == null || s2 == null) {
+            return false;
+        }
+        return s1.equals(s2);
     }
 
     /**
@@ -285,7 +272,13 @@ public final class StringUtilities {
      * @see StringUtilities#equalsIgnoreCase(CharSequence, CharSequence)
      */
     public static boolean equalsIgnoreCase(String s1, String s2) {
-        return equalsIgnoreCase(s1, (CharSequence) s2);
+        if (s1 == s2) {
+            return true;
+        }
+        if (s1 == null || s2 == null) {
+            return false;
+        }
+        return s1.equalsIgnoreCase(s2);
     }
 
     /**
@@ -477,7 +470,18 @@ public final class StringUtilities {
      * @return the length of the trimmed string, or 0 if the input is null
      */
     public static int trimLength(String s) {
-        return trimToEmpty(s).length();
+        if (s == null) {
+            return 0;
+        }
+        int start = 0;
+        int end = s.length();
+        while (start < end && s.charAt(start) <= ' ') {
+            start++;
+        }
+        while (end > start && s.charAt(end - 1) <= ' ') {
+            end--;
+        }
+        return end - start;
     }
 
 
@@ -711,9 +715,9 @@ public final class StringUtilities {
         }
         
         // degenerate cases
-        if (s == null || EMPTY.contentEquals(s)) {
-            return t == null || EMPTY.contentEquals(t) ? 0 : t.length();
-        } else if (t == null || EMPTY.contentEquals(t)) {
+        if (s == null || s.length() == 0) {
+            return t == null || t.length() == 0 ? 0 : t.length();
+        } else if (t == null || t.length() == 0) {
             return s.length();
         }
 
@@ -778,9 +782,9 @@ public final class StringUtilities {
             }
         }
         
-        if (source == null || EMPTY.contentEquals(source)) {
-            return target == null || EMPTY.contentEquals(target) ? 0 : target.length();
-        } else if (target == null || EMPTY.contentEquals(target)) {
+        if (source == null || source.length() == 0) {
+            return target == null || target.length() == 0 ? 0 : target.length();
+        } else if (target == null || target.length() == 0) {
             return source.length();
         }
 
@@ -1232,13 +1236,14 @@ public final class StringUtilities {
 
         // Use doubling algorithm for efficiency: O(log n) StringBuilder operations
         StringBuilder result = new StringBuilder((int) totalLength);
+        StringBuilder current = new StringBuilder(s);
         while (count > 0) {
             if ((count & 1) == 1) {
-                result.append(s);
+                result.append(current);
             }
             count >>= 1;
             if (count > 0) {
-                s = s + s;  // Double the string
+                current.append(current.toString());  // Double using StringBuilder
             }
         }
         return result.toString();
@@ -1270,10 +1275,13 @@ public final class StringUtilities {
         if (length <= sLen) {
             return s;
         }
+        StringBuilder sb = new StringBuilder(length);
         int padLen = length - sLen;
-        char[] pad = new char[padLen];
-        Arrays.fill(pad, ' ');
-        return new String(pad) + s;
+        for (int i = 0; i < padLen; i++) {
+            sb.append(' ');
+        }
+        sb.append(s);
+        return sb.toString();
     }
 
     /**
@@ -1292,9 +1300,12 @@ public final class StringUtilities {
         if (length <= sLen) {
             return s;
         }
+        StringBuilder sb = new StringBuilder(length);
+        sb.append(s);
         int padLen = length - sLen;
-        char[] pad = new char[padLen];
-        Arrays.fill(pad, ' ');
-        return s + new String(pad);
+        for (int i = 0; i < padLen; i++) {
+            sb.append(' ');
+        }
+        return sb.toString();
     }
 }

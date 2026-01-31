@@ -370,7 +370,7 @@ public final class UniqueIdGenerator {
             try {
                 ON_SPIN_WAIT_HANDLE.invokeExact();
             } catch (Throwable ignored) {
-                // no-op - should never happen for a simple static void method
+                // no-op - required by invokeExact() signature, but void method won't throw
             }
         }
     }

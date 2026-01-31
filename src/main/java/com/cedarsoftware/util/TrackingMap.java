@@ -93,19 +93,46 @@ public class TrackingMap<K, V> implements Map<K, V> {
      */
     private final Set<Object> readKeys;
 
+    // Cached interface references to avoid repeated instanceof checks and casts
+    private final ConcurrentMap<K, V> asConcurrent;
+    private final NavigableMap<K, V> asNavigable;
+    private final SortedMap<K, V> asSorted;
+
     /**
      * Wraps the provided {@code Map} with a {@code TrackingMap}.
      *
      * @param map the {@code Map} to be wrapped and tracked
      * @throws IllegalArgumentException if the provided {@code map} is {@code null}
      */
+    @SuppressWarnings("unchecked")
     public TrackingMap(Map<K, V> map) {
         if (map == null) {
             throw new IllegalArgumentException("Cannot construct a TrackingMap() with null");
         }
         internalMap = map;
+
+        // Cache interface references for performance
+        asConcurrent = (map instanceof ConcurrentMap) ? (ConcurrentMap<K, V>) map : null;
+        asNavigable = (map instanceof NavigableMap) ? (NavigableMap<K, V>) map : null;
+        asSorted = (map instanceof SortedMap) ? (SortedMap<K, V>) map : null;
+
         // Use concurrent tracking set if wrapping a concurrent map for thread safety
-        readKeys = (map instanceof ConcurrentMap) ? ConcurrentHashMap.newKeySet() : new HashSet<>();
+        // Pre-size HashSet based on map size to reduce rehashing
+        readKeys = (asConcurrent != null)
+            ? ConcurrentHashMap.newKeySet()
+            : new HashSet<>(Math.max(16, map.size()));
+    }
+
+    /**
+     * Private constructor for creating sub-maps that share the parent's readKeys.
+     */
+    @SuppressWarnings("unchecked")
+    private TrackingMap(Map<K, V> map, Set<Object> sharedReadKeys) {
+        internalMap = map;
+        readKeys = sharedReadKeys;
+        asConcurrent = (map instanceof ConcurrentMap) ? (ConcurrentMap<K, V>) map : null;
+        asNavigable = (map instanceof NavigableMap) ? (NavigableMap<K, V>) map : null;
+        asSorted = (map instanceof SortedMap) ? (SortedMap<K, V>) map : null;
     }
 
     /**
@@ -330,16 +357,16 @@ public class TrackingMap<K, V> implements Map<K, V> {
      * @throws UnsupportedOperationException if the wrapped map doesn't support ConcurrentMap operations
      */
     public V putIfAbsent(K key, V value) {
-        if (internalMap instanceof ConcurrentMap) {
-            return internalMap.putIfAbsent(key, value);
+        if (asConcurrent != null) {
+            return asConcurrent.putIfAbsent(key, value);
         }
         // Fallback for non-concurrent maps with synchronization
         synchronized (this) {
-            V existing = internalMap.get(key);
-            if (existing == null) {
-                return internalMap.put(key, value);
+            if (!internalMap.containsKey(key)) {
+                internalMap.put(key, value);
+                return null;
             }
-            return existing;
+            return internalMap.get(key);
         }
     }
 
@@ -355,8 +382,8 @@ public class TrackingMap<K, V> implements Map<K, V> {
      */
     public boolean remove(Object key, Object value) {
         boolean removed;
-        if (internalMap instanceof ConcurrentMap) {
-            removed = internalMap.remove(key, value);
+        if (asConcurrent != null) {
+            removed = asConcurrent.remove(key, value);
         } else {
             // Fallback for non-concurrent maps with synchronization
             synchronized (this) {
@@ -386,8 +413,8 @@ public class TrackingMap<K, V> implements Map<K, V> {
      * @throws UnsupportedOperationException if the wrapped map doesn't support ConcurrentMap operations
      */
     public boolean replace(K key, V oldValue, V newValue) {
-        if (internalMap instanceof ConcurrentMap) {
-            return internalMap.replace(key, oldValue, newValue);
+        if (asConcurrent != null) {
+            return asConcurrent.replace(key, oldValue, newValue);
         }
         // Fallback for non-concurrent maps with synchronization
         synchronized (this) {
@@ -411,8 +438,8 @@ public class TrackingMap<K, V> implements Map<K, V> {
      * @throws UnsupportedOperationException if the wrapped map doesn't support ConcurrentMap operations
      */
     public V replace(K key, V value) {
-        if (internalMap instanceof ConcurrentMap) {
-            return internalMap.replace(key, value);
+        if (asConcurrent != null) {
+            return asConcurrent.replace(key, value);
         }
         // Fallback for non-concurrent maps with synchronization
         synchronized (this) {
@@ -445,15 +472,18 @@ public class TrackingMap<K, V> implements Map<K, V> {
     /**
      * If the value for the specified key is present and non-null, attempts to
      * compute a new mapping given the key and its current mapped value.
-     * Marks the key as accessed since this involves reading the current value.
+     * Only marks the key as accessed if it was actually present in the map.
      *
      * @param key key with which the specified value is to be associated
      * @param remappingFunction the function to compute a value
      * @return the new value associated with the specified key, or null if none
      */
     public V computeIfPresent(K key, BiFunction<? super K, ? super V, ? extends V> remappingFunction) {
+        boolean wasPresent = internalMap.containsKey(key);
         V result = internalMap.computeIfPresent(key, remappingFunction);
-        readKeys.add(key);
+        if (wasPresent) {
+            readKeys.add(key);
+        }
         return result;
     }
 
@@ -541,10 +571,10 @@ public class TrackingMap<K, V> implements Map<K, V> {
      * @throws UnsupportedOperationException if the wrapped map doesn't support NavigableMap operations
      */
     public Map.Entry<K, V> lowerEntry(K key) {
-        if (!(internalMap instanceof NavigableMap)) {
+        if (asNavigable == null) {
             throw new UnsupportedOperationException("Wrapped map does not support NavigableMap operations");
         }
-        Map.Entry<K, V> entry = ((NavigableMap<K, V>) internalMap).lowerEntry(key);
+        Map.Entry<K, V> entry = asNavigable.lowerEntry(key);
         if (entry != null) {
             readKeys.add(entry.getKey());
         }
@@ -561,10 +591,10 @@ public class TrackingMap<K, V> implements Map<K, V> {
      * @throws UnsupportedOperationException if the wrapped map doesn't support NavigableMap operations
      */
     public K lowerKey(K key) {
-        if (!(internalMap instanceof NavigableMap)) {
+        if (asNavigable == null) {
             throw new UnsupportedOperationException("Wrapped map does not support NavigableMap operations");
         }
-        K result = ((NavigableMap<K, V>) internalMap).lowerKey(key);
+        K result = asNavigable.lowerKey(key);
         if (result != null) {
             readKeys.add(result);
         }
@@ -582,10 +612,10 @@ public class TrackingMap<K, V> implements Map<K, V> {
      * @throws UnsupportedOperationException if the wrapped map doesn't support NavigableMap operations
      */
     public Map.Entry<K, V> floorEntry(K key) {
-        if (!(internalMap instanceof NavigableMap)) {
+        if (asNavigable == null) {
             throw new UnsupportedOperationException("Wrapped map does not support NavigableMap operations");
         }
-        Map.Entry<K, V> entry = ((NavigableMap<K, V>) internalMap).floorEntry(key);
+        Map.Entry<K, V> entry = asNavigable.floorEntry(key);
         if (entry != null) {
             readKeys.add(entry.getKey());
         }
@@ -602,10 +632,10 @@ public class TrackingMap<K, V> implements Map<K, V> {
      * @throws UnsupportedOperationException if the wrapped map doesn't support NavigableMap operations
      */
     public K floorKey(K key) {
-        if (!(internalMap instanceof NavigableMap)) {
+        if (asNavigable == null) {
             throw new UnsupportedOperationException("Wrapped map does not support NavigableMap operations");
         }
-        K result = ((NavigableMap<K, V>) internalMap).floorKey(key);
+        K result = asNavigable.floorKey(key);
         if (result != null) {
             readKeys.add(result);
         }
@@ -623,10 +653,10 @@ public class TrackingMap<K, V> implements Map<K, V> {
      * @throws UnsupportedOperationException if the wrapped map doesn't support NavigableMap operations
      */
     public Map.Entry<K, V> ceilingEntry(K key) {
-        if (!(internalMap instanceof NavigableMap)) {
+        if (asNavigable == null) {
             throw new UnsupportedOperationException("Wrapped map does not support NavigableMap operations");
         }
-        Map.Entry<K, V> entry = ((NavigableMap<K, V>) internalMap).ceilingEntry(key);
+        Map.Entry<K, V> entry = asNavigable.ceilingEntry(key);
         if (entry != null) {
             readKeys.add(entry.getKey());
         }
@@ -643,10 +673,10 @@ public class TrackingMap<K, V> implements Map<K, V> {
      * @throws UnsupportedOperationException if the wrapped map doesn't support NavigableMap operations
      */
     public K ceilingKey(K key) {
-        if (!(internalMap instanceof NavigableMap)) {
+        if (asNavigable == null) {
             throw new UnsupportedOperationException("Wrapped map does not support NavigableMap operations");
         }
-        K result = ((NavigableMap<K, V>) internalMap).ceilingKey(key);
+        K result = asNavigable.ceilingKey(key);
         if (result != null) {
             readKeys.add(result);
         }
@@ -664,10 +694,10 @@ public class TrackingMap<K, V> implements Map<K, V> {
      * @throws UnsupportedOperationException if the wrapped map doesn't support NavigableMap operations
      */
     public Map.Entry<K, V> higherEntry(K key) {
-        if (!(internalMap instanceof NavigableMap)) {
+        if (asNavigable == null) {
             throw new UnsupportedOperationException("Wrapped map does not support NavigableMap operations");
         }
-        Map.Entry<K, V> entry = ((NavigableMap<K, V>) internalMap).higherEntry(key);
+        Map.Entry<K, V> entry = asNavigable.higherEntry(key);
         if (entry != null) {
             readKeys.add(entry.getKey());
         }
@@ -684,10 +714,10 @@ public class TrackingMap<K, V> implements Map<K, V> {
      * @throws UnsupportedOperationException if the wrapped map doesn't support NavigableMap operations
      */
     public K higherKey(K key) {
-        if (!(internalMap instanceof NavigableMap)) {
+        if (asNavigable == null) {
             throw new UnsupportedOperationException("Wrapped map does not support NavigableMap operations");
         }
-        K result = ((NavigableMap<K, V>) internalMap).higherKey(key);
+        K result = asNavigable.higherKey(key);
         if (result != null) {
             readKeys.add(result);
         }
@@ -704,10 +734,10 @@ public class TrackingMap<K, V> implements Map<K, V> {
      * @throws UnsupportedOperationException if the wrapped map doesn't support NavigableMap operations
      */
     public Map.Entry<K, V> firstEntry() {
-        if (!(internalMap instanceof NavigableMap)) {
+        if (asNavigable == null) {
             throw new UnsupportedOperationException("Wrapped map does not support NavigableMap operations");
         }
-        Map.Entry<K, V> entry = ((NavigableMap<K, V>) internalMap).firstEntry();
+        Map.Entry<K, V> entry = asNavigable.firstEntry();
         if (entry != null) {
             readKeys.add(entry.getKey());
         }
@@ -724,10 +754,10 @@ public class TrackingMap<K, V> implements Map<K, V> {
      * @throws UnsupportedOperationException if the wrapped map doesn't support NavigableMap operations
      */
     public Map.Entry<K, V> lastEntry() {
-        if (!(internalMap instanceof NavigableMap)) {
+        if (asNavigable == null) {
             throw new UnsupportedOperationException("Wrapped map does not support NavigableMap operations");
         }
-        Map.Entry<K, V> entry = ((NavigableMap<K, V>) internalMap).lastEntry();
+        Map.Entry<K, V> entry = asNavigable.lastEntry();
         if (entry != null) {
             readKeys.add(entry.getKey());
         }
@@ -744,10 +774,10 @@ public class TrackingMap<K, V> implements Map<K, V> {
      * @throws UnsupportedOperationException if the wrapped map doesn't support NavigableMap operations
      */
     public Map.Entry<K, V> pollFirstEntry() {
-        if (!(internalMap instanceof NavigableMap)) {
+        if (asNavigable == null) {
             throw new UnsupportedOperationException("Wrapped map does not support NavigableMap operations");
         }
-        Map.Entry<K, V> entry = ((NavigableMap<K, V>) internalMap).pollFirstEntry();
+        Map.Entry<K, V> entry = asNavigable.pollFirstEntry();
         if (entry != null) {
             readKeys.remove(entry.getKey());
         }
@@ -764,10 +794,10 @@ public class TrackingMap<K, V> implements Map<K, V> {
      * @throws UnsupportedOperationException if the wrapped map doesn't support NavigableMap operations
      */
     public Map.Entry<K, V> pollLastEntry() {
-        if (!(internalMap instanceof NavigableMap)) {
+        if (asNavigable == null) {
             throw new UnsupportedOperationException("Wrapped map does not support NavigableMap operations");
         }
-        Map.Entry<K, V> entry = ((NavigableMap<K, V>) internalMap).pollLastEntry();
+        Map.Entry<K, V> entry = asNavigable.pollLastEntry();
         if (entry != null) {
             readKeys.remove(entry.getKey());
         }
@@ -782,10 +812,10 @@ public class TrackingMap<K, V> implements Map<K, V> {
      * @throws UnsupportedOperationException if the wrapped map doesn't support NavigableMap operations
      */
     public NavigableSet<K> navigableKeySet() {
-        if (!(internalMap instanceof NavigableMap)) {
+        if (asNavigable == null) {
             throw new UnsupportedOperationException("Wrapped map does not support NavigableMap operations");
         }
-        return ((NavigableMap<K, V>) internalMap).navigableKeySet();
+        return asNavigable.navigableKeySet();
     }
 
     /**
@@ -796,10 +826,10 @@ public class TrackingMap<K, V> implements Map<K, V> {
      * @throws UnsupportedOperationException if the wrapped map doesn't support NavigableMap operations
      */
     public NavigableSet<K> descendingKeySet() {
-        if (!(internalMap instanceof NavigableMap)) {
+        if (asNavigable == null) {
             throw new UnsupportedOperationException("Wrapped map does not support NavigableMap operations");
         }
-        return ((NavigableMap<K, V>) internalMap).descendingKeySet();
+        return asNavigable.descendingKeySet();
     }
 
     /**
@@ -814,15 +844,11 @@ public class TrackingMap<K, V> implements Map<K, V> {
      * @throws UnsupportedOperationException if the wrapped map doesn't support ConcurrentNavigableMap operations
      */
     public TrackingMap<K, V> subMap(K fromKey, boolean fromInclusive, K toKey, boolean toInclusive) {
-        if (internalMap instanceof ConcurrentNavigableMap) {
-            NavigableMap<K, V> subMap = ((ConcurrentNavigableMap<K, V>) internalMap).subMap(fromKey, fromInclusive, toKey, toInclusive);
-            return new TrackingMap<>(subMap);
-        } else if (internalMap instanceof NavigableMap) {
-            NavigableMap<K, V> subMap = ((NavigableMap<K, V>) internalMap).subMap(fromKey, fromInclusive, toKey, toInclusive);
-            return new TrackingMap<>(subMap);
-        } else {
+        if (asNavigable == null) {
             throw new UnsupportedOperationException("Wrapped map does not support NavigableMap operations");
         }
+        NavigableMap<K, V> subMap = asNavigable.subMap(fromKey, fromInclusive, toKey, toInclusive);
+        return new TrackingMap<>(subMap, readKeys);
     }
 
     /**
@@ -836,15 +862,11 @@ public class TrackingMap<K, V> implements Map<K, V> {
      * @throws UnsupportedOperationException if the wrapped map doesn't support NavigableMap operations
      */
     public TrackingMap<K, V> headMap(K toKey, boolean inclusive) {
-        if (internalMap instanceof ConcurrentNavigableMap) {
-            NavigableMap<K, V> headMap = ((ConcurrentNavigableMap<K, V>) internalMap).headMap(toKey, inclusive);
-            return new TrackingMap<>(headMap);
-        } else if (internalMap instanceof NavigableMap) {
-            NavigableMap<K, V> headMap = ((NavigableMap<K, V>) internalMap).headMap(toKey, inclusive);
-            return new TrackingMap<>(headMap);
-        } else {
+        if (asNavigable == null) {
             throw new UnsupportedOperationException("Wrapped map does not support NavigableMap operations");
         }
+        NavigableMap<K, V> headMap = asNavigable.headMap(toKey, inclusive);
+        return new TrackingMap<>(headMap, readKeys);
     }
 
     /**
@@ -858,15 +880,11 @@ public class TrackingMap<K, V> implements Map<K, V> {
      * @throws UnsupportedOperationException if the wrapped map doesn't support NavigableMap operations
      */
     public TrackingMap<K, V> tailMap(K fromKey, boolean inclusive) {
-        if (internalMap instanceof ConcurrentNavigableMap) {
-            NavigableMap<K, V> tailMap = ((ConcurrentNavigableMap<K, V>) internalMap).tailMap(fromKey, inclusive);
-            return new TrackingMap<>(tailMap);
-        } else if (internalMap instanceof NavigableMap) {
-            NavigableMap<K, V> tailMap = ((NavigableMap<K, V>) internalMap).tailMap(fromKey, inclusive);
-            return new TrackingMap<>(tailMap);
-        } else {
+        if (asNavigable == null) {
             throw new UnsupportedOperationException("Wrapped map does not support NavigableMap operations");
         }
+        NavigableMap<K, V> tailMap = asNavigable.tailMap(fromKey, inclusive);
+        return new TrackingMap<>(tailMap, readKeys);
     }
 
     // ===== SortedMap methods =====
@@ -880,10 +898,10 @@ public class TrackingMap<K, V> implements Map<K, V> {
      * @throws UnsupportedOperationException if the wrapped map doesn't support SortedMap operations
      */
     public java.util.Comparator<? super K> comparator() {
-        if (!(internalMap instanceof SortedMap)) {
+        if (asSorted == null) {
             throw new UnsupportedOperationException("Wrapped map does not support SortedMap operations");
         }
-        return ((SortedMap<K, V>) internalMap).comparator();
+        return asSorted.comparator();
     }
 
     /**
@@ -933,10 +951,10 @@ public class TrackingMap<K, V> implements Map<K, V> {
      * @throws UnsupportedOperationException if the wrapped map doesn't support SortedMap operations
      */
     public K firstKey() {
-        if (!(internalMap instanceof SortedMap)) {
+        if (asSorted == null) {
             throw new UnsupportedOperationException("Wrapped map does not support SortedMap operations");
         }
-        K result = ((SortedMap<K, V>) internalMap).firstKey();
+        K result = asSorted.firstKey();
         if (result != null) {
             readKeys.add(result);
         }
@@ -952,10 +970,10 @@ public class TrackingMap<K, V> implements Map<K, V> {
      * @throws UnsupportedOperationException if the wrapped map doesn't support SortedMap operations
      */
     public K lastKey() {
-        if (!(internalMap instanceof SortedMap)) {
+        if (asSorted == null) {
             throw new UnsupportedOperationException("Wrapped map does not support SortedMap operations");
         }
-        K result = ((SortedMap<K, V>) internalMap).lastKey();
+        K result = asSorted.lastKey();
         if (result != null) {
             readKeys.add(result);
         }

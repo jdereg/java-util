@@ -525,14 +525,17 @@ public class TTLCache<K, V> implements Map<K, V>, AutoCloseable {
     }
 
     /**
-     * Returns {@code true} if this cache maps one or more keys to the specified value.
+     * Returns {@code true} if this cache maps one or more non-expired keys to the specified value.
      */
     @Override
     public boolean containsValue(Object value) {
+        long currentTime = System.currentTimeMillis();
         for (CacheEntry<K, V> entry : cacheMap.values()) {
-            Object entryValue = entry.node.value;
-            if (Objects.equals(entryValue, value)) {
-                return true;
+            if (entry.expiryTime >= currentTime) {
+                Object entryValue = entry.node.value;
+                if (Objects.equals(entryValue, value)) {
+                    return true;
+                }
             }
         }
         return false;
@@ -549,37 +552,43 @@ public class TTLCache<K, V> implements Map<K, V>, AutoCloseable {
     }
 
     /**
-     * Returns the keys currently held in the cache.
+     * Returns the non-expired keys currently held in the cache.
      * <p>
      * The returned set is a snapshot and is not backed by the cache. Changes to
      * the set or its iterator do not modify the cache contents.
      *
-     * @return a snapshot {@link Set} of the keys contained in this cache
+     * @return a snapshot {@link Set} of the non-expired keys contained in this cache
      */
     @Override
     public Set<K> keySet() {
+        long currentTime = System.currentTimeMillis();
         Set<K> keys = new HashSet<>();
         for (CacheEntry<K, V> entry : cacheMap.values()) {
-            K key = entry.node.key;
-            keys.add(key);
+            if (entry.expiryTime >= currentTime) {
+                K key = entry.node.key;
+                keys.add(key);
+            }
         }
         return keys;
     }
 
     /**
-     * Returns the values currently held in the cache.
+     * Returns the non-expired values currently held in the cache.
      * <p>
      * Like {@link #keySet()}, this collection is a snapshot.  Mutating the
      * returned collection or its iterator will not affect the cache.
      *
-     * @return a snapshot {@link Collection} of the values contained in this cache
+     * @return a snapshot {@link Collection} of the non-expired values contained in this cache
      */
     @Override
     public Collection<V> values() {
+        long currentTime = System.currentTimeMillis();
         List<V> values = new ArrayList<>();
         for (CacheEntry<K, V> entry : cacheMap.values()) {
-            V value = entry.node.value;
-            values.add(value);
+            if (entry.expiryTime >= currentTime) {
+                V value = entry.node.value;
+                values.add(value);
+            }
         }
         return values;
     }
@@ -613,37 +622,60 @@ public class TTLCache<K, V> implements Map<K, V>, AutoCloseable {
     }
 
     /**
-     * Custom Iterator for the EntrySet.
+     * Custom Iterator for the EntrySet that skips expired entries.
      */
     private class EntryIterator implements Iterator<Entry<K, V>> {
         private final Iterator<Entry<K, CacheEntry<K, V>>> iterator;
-        private Entry<K, CacheEntry<K, V>> current;
+        private Entry<K, CacheEntry<K, V>> lastReturned;  // Entry returned by last next() call
+        private Entry<K, CacheEntry<K, V>> nextCacheEntry; // Next entry to return
+        private Entry<K, V> nextEntry;
 
         EntryIterator() {
             this.iterator = cacheMap.entrySet().iterator();
+            advance();
+        }
+
+        private void advance() {
+            nextEntry = null;
+            nextCacheEntry = null;
+            long currentTime = System.currentTimeMillis();
+            while (iterator.hasNext()) {
+                Entry<K, CacheEntry<K, V>> entry = iterator.next();
+                CacheEntry<K, V> cacheEntry = entry.getValue();
+                if (cacheEntry.expiryTime >= currentTime) {
+                    nextCacheEntry = entry;
+                    K key = cacheEntry.node.key;
+                    V value = cacheEntry.node.value;
+                    nextEntry = new AbstractMap.SimpleEntry<>(key, value);
+                    return;
+                }
+            }
         }
 
         @Override
         public boolean hasNext() {
-            return iterator.hasNext();
+            return nextEntry != null;
         }
 
         @Override
         public Entry<K, V> next() {
-            current = iterator.next();
-            K key = current.getValue().node.key;
-            V value = current.getValue().node.value;
-            return new AbstractMap.SimpleEntry<>(key, value);
+            if (nextEntry == null) {
+                throw new java.util.NoSuchElementException();
+            }
+            lastReturned = nextCacheEntry;
+            Entry<K, V> result = nextEntry;
+            advance();
+            return result;
         }
 
         @Override
         public void remove() {
-            if (current == null) {
+            if (lastReturned == null) {
                 throw new IllegalStateException();
             }
-            K cacheKey = current.getKey();
+            K cacheKey = lastReturned.getKey();
             removeEntry(cacheKey);
-            current = null;
+            lastReturned = null;
         }
     }
 
@@ -666,19 +698,23 @@ public class TTLCache<K, V> implements Map<K, V>, AutoCloseable {
     }
 
     /**
-     * Returns the hash code value for this cache.
+     * Returns the hash code value for this cache, considering only non-expired entries.
      */
     @Override
     public int hashCode() {
         lock.lock();
         try {
+            long currentTime = System.currentTimeMillis();
             int hash = 0;
             for (Map.Entry<K, CacheEntry<K, V>> entry : cacheMap.entrySet()) {
-                K key = entry.getKey();
-                V value = entry.getValue().node.value;
-                int keyHash = (key == null ? 0 : key.hashCode());
-                int valueHash = (value == null ? 0 : value.hashCode());
-                hash += keyHash ^ valueHash;
+                CacheEntry<K, V> cacheEntry = entry.getValue();
+                if (cacheEntry.expiryTime >= currentTime) {
+                    K key = entry.getKey();
+                    V value = cacheEntry.node.value;
+                    int keyHash = (key == null ? 0 : key.hashCode());
+                    int valueHash = (value == null ? 0 : value.hashCode());
+                    hash += keyHash ^ valueHash;
+                }
             }
             return hash;
         } finally {
@@ -712,11 +748,17 @@ public class TTLCache<K, V> implements Map<K, V>, AutoCloseable {
 
     /**
      * Cancel the purge task associated with this cache instance.
+     * This method is thread-safe.
      */
     public void close() {
-        if (purgeTask != null) {
-            purgeTask.cancel();
-            purgeTask = null;
+        lock.lock();
+        try {
+            if (purgeTask != null) {
+                purgeTask.cancel();
+                purgeTask = null;
+            }
+        } finally {
+            lock.unlock();
         }
     }
 

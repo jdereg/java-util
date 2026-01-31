@@ -4,11 +4,18 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.List;
+import java.util.Set;
+import java.util.Spliterator;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.Test;
 
@@ -293,5 +300,167 @@ class ConcurrentSetTest {
 
         assertEquals(set, copy);
         assertNotSame(set, copy);
+    }
+
+    // ========== Spliterator Tests ==========
+
+    @Test
+    void testSpliteratorCharacteristics() {
+        ConcurrentSet<String> set = new ConcurrentSet<>();
+        set.add("a");
+        set.add("b");
+
+        Spliterator<String> spliterator = set.spliterator();
+
+        // Should have DISTINCT (it's a Set)
+        assertTrue((spliterator.characteristics() & Spliterator.DISTINCT) != 0,
+                "Spliterator should report DISTINCT");
+
+        // Should have CONCURRENT (backed by ConcurrentHashMap)
+        assertTrue((spliterator.characteristics() & Spliterator.CONCURRENT) != 0,
+                "Spliterator should report CONCURRENT");
+
+        // Should NOT have NONNULL (ConcurrentSet supports null elements)
+        assertFalse((spliterator.characteristics() & Spliterator.NONNULL) != 0,
+                "Spliterator should NOT report NONNULL since ConcurrentSet supports null");
+    }
+
+    @Test
+    void testSpliteratorEstimateSize() {
+        ConcurrentSet<Integer> set = new ConcurrentSet<>();
+        for (int i = 0; i < 100; i++) {
+            set.add(i);
+        }
+
+        Spliterator<Integer> spliterator = set.spliterator();
+        assertEquals(100, spliterator.estimateSize(), "Spliterator should report correct size");
+    }
+
+    @Test
+    void testSpliteratorTryAdvance() {
+        ConcurrentSet<String> set = new ConcurrentSet<>();
+        set.add("a");
+        set.add("b");
+        set.add(null);
+
+        Spliterator<String> spliterator = set.spliterator();
+        Set<String> collected = new HashSet<>();
+
+        while (spliterator.tryAdvance(collected::add)) {
+            // collecting elements
+        }
+
+        assertEquals(3, collected.size());
+        assertTrue(collected.contains("a"));
+        assertTrue(collected.contains("b"));
+        assertTrue(collected.contains(null), "Spliterator should properly unwrap null sentinel");
+    }
+
+    @Test
+    void testSpliteratorForEachRemaining() {
+        ConcurrentSet<String> set = new ConcurrentSet<>();
+        set.add("x");
+        set.add("y");
+        set.add(null);
+
+        Spliterator<String> spliterator = set.spliterator();
+        // Use ConcurrentSet itself to collect since it supports null
+        Set<String> collected = new ConcurrentSet<>();
+
+        spliterator.forEachRemaining(collected::add);
+
+        assertEquals(3, collected.size());
+        assertTrue(collected.contains("x"));
+        assertTrue(collected.contains("y"));
+        assertTrue(collected.contains(null), "forEachRemaining should properly unwrap null sentinel");
+    }
+
+    @Test
+    void testSpliteratorTrySplit() {
+        ConcurrentSet<Integer> set = new ConcurrentSet<>();
+        for (int i = 0; i < 1000; i++) {
+            set.add(i);
+        }
+
+        Spliterator<Integer> spliterator = set.spliterator();
+        Spliterator<Integer> split = spliterator.trySplit();
+
+        // For a large enough set, trySplit should return non-null
+        if (split != null) {
+            // Both spliterators should have elements
+            assertTrue(spliterator.estimateSize() > 0, "Original spliterator should have elements");
+            assertTrue(split.estimateSize() > 0, "Split spliterator should have elements");
+
+            // Combined size should equal original
+            long combinedSize = spliterator.estimateSize() + split.estimateSize();
+            assertEquals(1000, combinedSize, "Combined size should equal original set size");
+        }
+    }
+
+    @Test
+    void testParallelStreamWithNulls() {
+        ConcurrentSet<String> set = new ConcurrentSet<>();
+        set.add("a");
+        set.add("b");
+        set.add("c");
+        set.add(null);
+
+        // Collect via parallel stream - null handling must work correctly
+        List<String> collected = set.parallelStream()
+                .collect(Collectors.toList());
+
+        assertEquals(4, collected.size());
+        assertTrue(collected.contains("a"));
+        assertTrue(collected.contains("b"));
+        assertTrue(collected.contains("c"));
+        assertTrue(collected.contains(null), "Parallel stream should properly handle null");
+    }
+
+    @Test
+    void testParallelStreamSum() {
+        ConcurrentSet<Integer> set = new ConcurrentSet<>();
+        for (int i = 1; i <= 1000; i++) {
+            set.add(i);
+        }
+
+        // Sum via parallel stream
+        int sum = set.parallelStream()
+                .mapToInt(Integer::intValue)
+                .sum();
+
+        assertEquals(500500, sum, "Parallel stream sum should be correct (1+2+...+1000 = 500500)");
+    }
+
+    @Test
+    void testParallelStreamFilter() {
+        ConcurrentSet<Integer> set = new ConcurrentSet<>();
+        for (int i = 0; i < 100; i++) {
+            set.add(i);
+        }
+        set.add(null);
+
+        // Filter even numbers, excluding null
+        List<Integer> evens = set.parallelStream()
+                .filter(n -> n != null && n % 2 == 0)
+                .collect(Collectors.toList());
+
+        assertEquals(50, evens.size(), "Should have 50 even numbers (0, 2, 4, ..., 98)");
+        assertTrue(evens.stream().allMatch(n -> n % 2 == 0), "All collected should be even");
+    }
+
+    @Test
+    void testStreamForEachWithNull() {
+        ConcurrentSet<String> set = new ConcurrentSet<>();
+        set.add("hello");
+        set.add(null);
+        set.add("world");
+
+        List<String> collected = Collections.synchronizedList(new ArrayList<>());
+        set.stream().forEach(collected::add);
+
+        assertEquals(3, collected.size());
+        assertTrue(collected.contains("hello"));
+        assertTrue(collected.contains("world"));
+        assertTrue(collected.contains(null));
     }
 }

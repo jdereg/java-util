@@ -5,7 +5,9 @@ import java.io.Serializable;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.Set;
+import java.util.Spliterator;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Consumer;
 
 /**
  * ConcurrentSet provides a Set that is thread-safe and usable in highly concurrent environments.
@@ -151,6 +153,71 @@ public class ConcurrentSet<T> implements Set<T>, Serializable {
                 iterator.remove();
             }
         };
+    }
+
+    /**
+     * Returns a Spliterator over the elements in this set.
+     * <p>
+     * The returned spliterator preserves the concurrency characteristics of the
+     * underlying ConcurrentHashMap-based set, enabling efficient parallel stream
+     * operations. It properly handles the null sentinel translation.
+     * </p>
+     * <p>
+     * The spliterator reports {@link Spliterator#DISTINCT} and {@link Spliterator#CONCURRENT}.
+     * It does NOT report {@link Spliterator#NONNULL} since this set supports null elements.
+     * </p>
+     *
+     * @return a Spliterator over the elements in this set
+     */
+    @Override
+    public Spliterator<T> spliterator() {
+        return new UnwrappingSpliterator(set.spliterator());
+    }
+
+    /**
+     * A Spliterator wrapper that unwraps the null sentinel back to null.
+     * Delegates to the underlying concurrent set's spliterator for efficient
+     * parallel decomposition.
+     */
+    private class UnwrappingSpliterator implements Spliterator<T> {
+        private final Spliterator<Object> delegate;
+
+        UnwrappingSpliterator(Spliterator<Object> delegate) {
+            this.delegate = delegate;
+        }
+
+        @Override
+        public boolean tryAdvance(Consumer<? super T> action) {
+            return delegate.tryAdvance(o -> action.accept(unwrap(o)));
+        }
+
+        @Override
+        public void forEachRemaining(Consumer<? super T> action) {
+            delegate.forEachRemaining(o -> action.accept(unwrap(o)));
+        }
+
+        @Override
+        public Spliterator<T> trySplit() {
+            Spliterator<Object> split = delegate.trySplit();
+            return split == null ? null : new UnwrappingSpliterator(split);
+        }
+
+        @Override
+        public long estimateSize() {
+            return delegate.estimateSize();
+        }
+
+        @Override
+        public long getExactSizeIfKnown() {
+            return delegate.getExactSizeIfKnown();
+        }
+
+        @Override
+        public int characteristics() {
+            // Remove NONNULL since we support null elements (exposed via sentinel unwrapping)
+            // Keep DISTINCT, CONCURRENT, SIZED, etc. from the underlying spliterator
+            return delegate.characteristics() & ~Spliterator.NONNULL;
+        }
     }
 
     @Override

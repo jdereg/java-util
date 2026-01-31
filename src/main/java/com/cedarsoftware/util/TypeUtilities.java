@@ -501,7 +501,8 @@ public class TypeUtilities {
 
         @Override
         public Type[] getActualTypeArguments() {
-            return args.clone();
+            // Return direct reference for performance - callers should not modify
+            return args;
         }
 
         @Override

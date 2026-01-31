@@ -178,8 +178,14 @@ public final class FastReader extends Reader {
         return 0;
     }
 
+    /**
+     * Returns the last portion of the buffer that has been read, useful for error context.
+     * @return up to the last 200 characters read from the current buffer
+     */
     public String getLastSnippet() {
-        return new String(buf, 0, position);
+        int snippetLength = Math.min(position, 200);
+        int start = position - snippetLength;
+        return new String(buf, start, snippetLength);
     }
 
 }

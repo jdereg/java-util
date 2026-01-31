@@ -1,8 +1,6 @@
 ### Revision History
 
-#### 4.91.0 (Unreleased)
-
-#### 4.90.0 - 2026-01-31
+#### 4.89.0 - 2026-01-31
 * **PERFORMANCE**: `FastReader.getLastSnippet()` now returns bounded 200-char context
   * Previously could return 0 to 8192 characters depending on buffer position
   * Now consistently returns up to the last 200 characters read for useful error context

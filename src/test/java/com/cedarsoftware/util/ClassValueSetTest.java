@@ -809,4 +809,109 @@ class ClassValueSetTest {
         assertNotEquals(nullSet1, nullSet2, "Sets with different elements should not be equal");
         assertNotEquals(nullSet2, nullSet1, "Sets with different elements should not be equal (symmetric)");
     }
+
+    @Test
+    @EnabledIfSystemProperty(named = "performRelease", matches = "true")
+    void testPerformanceVsHashSet() {
+        final int WARMUP_ITERATIONS = 100_000;
+        final int TEST_ITERATIONS = 2_500_000;
+        final Class<?>[] testClasses = {
+                String.class, Integer.class, Double.class, Boolean.class,
+                Long.class, Float.class, Character.class, Byte.class,
+                Short.class, Object.class, Class.class, Number.class,
+                Math.class, System.class, Runtime.class, Thread.class,
+                Exception.class, Error.class, Throwable.class, StringBuilder.class
+        };
+
+        // Setup all three with identical data
+        Set<Class<?>> hashSet = new HashSet<>();
+        ClassValueSet classValueSet = new ClassValueSet();
+
+        // Raw ClassValue - simulating a set with Boolean presence marker
+        final Set<Class<?>> rawBackingSet = new HashSet<>();
+        ClassValue<Boolean> rawClassValue = new ClassValue<Boolean>() {
+            @Override
+            protected Boolean computeValue(Class<?> type) {
+                return rawBackingSet.contains(type);
+            }
+        };
+
+        for (Class<?> testClass : testClasses) {
+            hashSet.add(testClass);
+            classValueSet.add(testClass);
+            rawBackingSet.add(testClass);
+        }
+
+        // Prime the raw ClassValue cache
+        for (Class<?> clazz : testClasses) {
+            rawClassValue.get(clazz);
+        }
+
+        // Warmup phase - JIT compilation
+        Random random = new Random(42);
+        for (int i = 0; i < WARMUP_ITERATIONS; i++) {
+            Class<?> key = testClasses[random.nextInt(testClasses.length)];
+            hashSet.contains(key);
+            classValueSet.contains(key);
+            rawClassValue.get(key);
+        }
+
+        // Test HashSet performance
+        random = new Random(42);
+        long hashSetStart = System.nanoTime();
+        long hashSetHits = 0;
+        for (int i = 0; i < TEST_ITERATIONS; i++) {
+            Class<?> key = testClasses[random.nextInt(testClasses.length)];
+            if (hashSet.contains(key)) {
+                hashSetHits++;
+            }
+        }
+        long hashSetTime = System.nanoTime() - hashSetStart;
+
+        // Test ClassValueSet performance
+        random = new Random(42);
+        long classValueSetStart = System.nanoTime();
+        long classValueSetHits = 0;
+        for (int i = 0; i < TEST_ITERATIONS; i++) {
+            Class<?> key = testClasses[random.nextInt(testClasses.length)];
+            if (classValueSet.contains(key)) {
+                classValueSetHits++;
+            }
+        }
+        long classValueSetTime = System.nanoTime() - classValueSetStart;
+
+        // Test raw ClassValue performance
+        random = new Random(42);
+        long rawClassValueStart = System.nanoTime();
+        long rawClassValueHits = 0;
+        for (int i = 0; i < TEST_ITERATIONS; i++) {
+            Class<?> key = testClasses[random.nextInt(testClasses.length)];
+            if (rawClassValue.get(key)) {
+                rawClassValueHits++;
+            }
+        }
+        long rawClassValueTime = System.nanoTime() - rawClassValueStart;
+
+        // Verify correctness (all should produce same hit count)
+        assertEquals(hashSetHits, classValueSetHits, "HashSet and ClassValueSet should return same results");
+        assertEquals(hashSetHits, rawClassValueHits, "HashSet and raw ClassValue should return same results");
+
+        // Log results
+        double hashSetMs = hashSetTime / 1_000_000.0;
+        double classValueSetMs = classValueSetTime / 1_000_000.0;
+        double rawClassValueMs = rawClassValueTime / 1_000_000.0;
+
+        LOG.info("Performance Test Results (" + TEST_ITERATIONS + " iterations):");
+        LOG.info("  HashSet:          " + String.format("%6.2f", hashSetMs) + " ms (baseline)");
+        LOG.info("  Raw ClassValue:   " + String.format("%6.2f", rawClassValueMs) + " ms (" +
+                String.format("%.2fx", hashSetTime / (double) rawClassValueTime) + " vs HashSet)");
+        LOG.info("  ClassValueSet:    " + String.format("%6.2f", classValueSetMs) + " ms (" +
+                String.format("%.2fx", hashSetTime / (double) classValueSetTime) + " vs HashSet)");
+
+        // ClassValueSet should be at least as fast as HashSet for read-heavy workloads
+        // We use a conservative threshold since JIT and GC can cause variance
+        assertTrue(classValueSetTime <= hashSetTime * 2,
+                "ClassValueSet should not be significantly slower than HashSet. " +
+                        "HashSet: " + hashSetMs + "ms, ClassValueSet: " + classValueSetMs + "ms");
+    }
 }

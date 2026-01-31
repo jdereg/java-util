@@ -1,12 +1,56 @@
 ### Revision History
 
-#### 4.89.0 (Unreleased)
+#### 4.90.0 (Unreleased)
 * **PERFORMANCE**: `Converter.isConversionSupportedFor(source, target)` now caches negative results
   * Previously only cached positive hits, causing repeated inheritance traversal for unsupported pairs
   * Now caches `UNSUPPORTED` sentinel for O(1) lookup on subsequent calls
   * `addConversion()` already clears caches via `clearCachesForType()`, so invalidation is handled
+* **PERFORMANCE**: `ReflectionUtils.getMethod()` and `getNonOverloadedMethod()` now cache negative results
+  * Previously threw exceptions inside `computeIfAbsent`, bypassing the cache for "not found" cases
+  * Now caches sentinel `Method` objects for failed lookups, achieving O(1) on subsequent calls
+  * Avoids repeated expensive class hierarchy traversals for non-existent methods
+* **PERFORMANCE**: `ConcurrentSet.spliterator()` now returns an optimized spliterator for parallel streams
+  * Delegates to underlying `ConcurrentHashMap` spliterator for efficient parallel decomposition
+  * Properly reports `CONCURRENT` and `DISTINCT` characteristics
+  * Correctly handles null sentinel unwrapping for null element support
+  * Enables efficient `parallelStream()` operations on `ConcurrentSet`
+* **BUG FIX**: `TrackingMap.putIfAbsent()` now correctly handles null values
+  * Previously used `get() == null` which conflates "key absent" with "key present with null value"
+  * Now uses `containsKey()` to properly distinguish between the two cases
+* **BUG FIX**: `TrackingMap.computeIfPresent()` now only tracks keys that were actually present
+  * Previously tracked the key unconditionally, even when the key didn't exist
+* **PERFORMANCE**: `TrackingMap` now caches interface cast results at construction time
+  * Avoids repeated `instanceof` checks and casts for `asConcurrent()`, `asNavigable()`, `asSorted()` methods
+* **PERFORMANCE**: `TrackingMap` - Pre-sized `HashSet` in constructor for `readKeys`
+  * Uses initial capacity of 16 to reduce early rehashing
+* **BUG FIX**: `TrackingMap` sub-maps now share the parent's `readKeys` set
+  * `subMap()`, `headMap()`, `tailMap()`, `descendingMap()` now correctly track reads across all views
+  * Previously each sub-map had an isolated `readKeys` set that didn't reflect in parent
+* **BUG FIX**: `TTLCache.containsValue()` now filters expired entries
+  * Previously returned `true` for expired entries still in the cache
+* **BUG FIX**: `TTLCache.keySet()` now filters expired entries
+  * Iterator skips expired entries and correctly removes underlying cache entries
+* **BUG FIX**: `TTLCache.values()` now filters expired entries
+  * Iterator skips expired entries and correctly removes underlying cache entries
+* **BUG FIX**: `TTLCache.entrySet()` now filters expired entries
+  * Iterator skips expired entries with proper look-ahead logic
+  * `remove()` correctly removes the last-returned entry, not the prefetched next entry
+* **BUG FIX**: `TTLCache.hashCode()` now filters expired entries
+  * Previously included expired entries in hash computation
+* **BUG FIX**: `TTLCache.close()` now thread-safe
+  * Added `closed` volatile flag to prevent double-close of scheduled executor
+* **BUG FIX**: `TestUtil.assertContainsIgnoreCase()` and `checkContainsIgnoreCase()` now correctly advance past found tokens
+  * Previously could match the same token multiple times when searching for sequential occurrences
+  * Now uses `indexOf(needle, fromIndex)` to ensure each token is found after the previous one
+* **BUG FIX**: `TestUtil.fetchResource()` now uses UTF-8 charset as documented
+  * Previously used platform default charset despite Javadoc stating UTF-8
+* **BUG FIX**: `TestUtil.fetchResource()` now throws descriptive error for missing resources
+  * Previously threw NPE with no context when resource not found
+  * Now throws `IllegalArgumentException` with resource name
+* **PERFORMANCE**: `TestUtil.assertContainsIgnoreCase()` and `checkContainsIgnoreCase()` avoid substring allocation
+  * Uses offset tracking with `indexOf(needle, fromIndex)` instead of creating substring on each iteration
 
-#### 4.88.0 - 2026-01-26
+#### 4.89.0 - 2026-01-26
 * **BUG FIX**: `FastReader` - Added bounds validation in `read(char[], int, int)` method
   * Now throws `IndexOutOfBoundsException` for invalid offset, length, or buffer overflow
   * Matches standard `Reader` contract and `FastWriter` behavior

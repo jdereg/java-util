@@ -1,6 +1,12 @@
 ### Revision History
 
-#### 4.90.0 (Unreleased)
+#### 4.89.0 - 2026-01-31
+* **PERFORMANCE**: `FastReader.getLastSnippet()` now returns bounded 200-char context
+  * Previously could return 0 to 8192 characters depending on buffer position
+  * Now consistently returns up to the last 200 characters read for useful error context
+* **PERFORMANCE**: `ParameterizedTypeImpl.getActualTypeArguments()` removed defensive clone
+  * Returns direct reference for performance - callers should not modify the array
+  * Eliminates allocation overhead in hot paths during type resolution
 * **PERFORMANCE**: `Converter.isConversionSupportedFor(source, target)` now caches negative results
   * Previously only cached positive hits, causing repeated inheritance traversal for unsupported pairs
   * Now caches `UNSUPPORTED` sentinel for O(1) lookup on subsequent calls
@@ -61,7 +67,7 @@
   * Eliminated unnecessary `Date` object creation in setter methods
 * **CLEANUP**: Import organization and unused import removal across multiple classes
 
-#### 4.89.0 - 2026-01-26
+#### 4.88.0 - 2026-01-26
 * **BUG FIX**: `FastReader` - Added bounds validation in `read(char[], int, int)` method
   * Now throws `IndexOutOfBoundsException` for invalid offset, length, or buffer overflow
   * Matches standard `Reader` contract and `FastWriter` behavior

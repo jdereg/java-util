@@ -6,6 +6,10 @@
   * Now compares URLs using `toExternalForm()` for reliable, deterministic comparison
 * **MAINTENANCE**: Migrated test files from deprecated `JsonIo.toObjects()` to `JsonIo.toJava().asClass()` API
   * Updated 8 calls in `CompactMapTest` and `ConverterEverythingTest`
+* **PERFORMANCE**: Added `FastReader.readUntil()` for bulk character reading until delimiter
+  * Reads characters into destination buffer until one of two delimiters is found
+  * Delimiter character is left unconsumed for subsequent read
+  * Enables bulk string parsing optimization in json-io's JsonParser
 
 #### 4.89.0 - 2026-01-31
 * **PERFORMANCE**: `FastReader.getLastSnippet()` now returns bounded 200-char context

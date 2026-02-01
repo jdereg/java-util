@@ -167,57 +167,39 @@ public final class FastReader extends Reader {
 
         int totalRead = 0;
 
-        // Copy member variables to locals for faster loop access (avoids repeated field loads)
-        final char[] localPushbackBuffer = pushbackBuffer;
-        final int localPushbackBufferSize = pushbackBufferSize;
-        int localPushbackPosition = pushbackPosition;
-        final char[] localBuf = buf;
-        int localPosition = position;
-        int localLimit = limit;
-
         // First, drain any pushback buffer
-        while (localPushbackPosition < localPushbackBufferSize && totalRead < maxLen) {
-            char c = localPushbackBuffer[localPushbackPosition];
+        while (pushbackPosition < pushbackBufferSize && totalRead < maxLen) {
+            char c = pushbackBuffer[pushbackPosition];
             if (c == delim1 || c == delim2) {
                 // Found delimiter in pushback - don't consume it
-                pushbackPosition = localPushbackPosition;  // Write back before return
                 return totalRead > 0 ? totalRead : 0;
             }
             dest[off++] = c;
-            localPushbackPosition++;
+            pushbackPosition++;
             totalRead++;
         }
-        pushbackPosition = localPushbackPosition;  // Write back after pushback loop
 
         // Now read from main buffer
         while (totalRead < maxLen) {
-            // Write back position before fill() since fill() may modify position/limit
-            position = localPosition;
             fill();
-            // Re-read after fill() since it may have changed position and limit
-            localPosition = position;
-            localLimit = limit;
-
-            if (localLimit == -1) {
+            if (limit == -1) {
                 // EOF reached
                 return totalRead > 0 ? totalRead : -1;
             }
 
             // Scan current buffer for delimiters
-            while (localPosition < localLimit && totalRead < maxLen) {
-                char c = localBuf[localPosition];
+            while (position < limit && totalRead < maxLen) {
+                char c = buf[position];
                 if (c == delim1 || c == delim2) {
                     // Found delimiter - don't consume it
-                    position = localPosition;  // Write back before return
                     return totalRead;
                 }
                 dest[off++] = c;
-                localPosition++;
+                position++;
                 totalRead++;
             }
         }
 
-        position = localPosition;  // Write back after main loop
         return totalRead;
     }
 

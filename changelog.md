@@ -10,7 +10,6 @@
   * Reads characters into destination buffer until one of two delimiters is found
   * Delimiter character is left unconsumed for subsequent read
   * Enables bulk string parsing optimization in json-io's JsonParser
-  * Uses local variables instead of member fields in hot loops to enable register allocation
 
 #### 4.89.0 - 2026-01-31
 * **PERFORMANCE**: `FastReader.getLastSnippet()` now returns bounded 200-char context

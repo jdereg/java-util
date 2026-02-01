@@ -4,6 +4,8 @@
 * **BUG FIX**: `DeepEquals` - URL comparison now uses string representation instead of `URL.equals()`
   * Java's `URL.equals()` performs DNS resolution which causes flaky CI failures
   * Now compares URLs using `toExternalForm()` for reliable, deterministic comparison
+* **MAINTENANCE**: Migrated test files from deprecated `JsonIo.toObjects()` to `JsonIo.toJava().asClass()` API
+  * Updated 8 calls in `CompactMapTest` and `ConverterEverythingTest`
 
 #### 4.89.0 - 2026-01-31
 * **PERFORMANCE**: `FastReader.getLastSnippet()` now returns bounded 200-char context

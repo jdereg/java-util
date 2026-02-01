@@ -24,6 +24,7 @@ import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.logging.Logger;
 
 import com.cedarsoftware.io.JsonIo;
+import com.cedarsoftware.io.TypeHolder;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 
@@ -3562,7 +3563,7 @@ public class CompactMapTest
 
         // Serialize and deserialize
         String json = JsonIo.toJson(map, null);
-        CompactMap<String, Object> restoredMap = JsonIo.toObjects(json, null, CompactMap.class);
+        CompactMap<String, Object> restoredMap = JsonIo.toJava(json, null).asClass(CompactMap.class);
 
         // Verify the map was properly restored
         assertEquals(3, restoredMap.size());
@@ -3606,7 +3607,7 @@ public class CompactMapTest
 
         // Serialize and deserialize
         String json = JsonIo.toJson(map, null);
-        CompactMap<Object, String> restoredMap = JsonIo.toObjects(json, null, CompactMap.class);
+        CompactMap<Object, String> restoredMap = JsonIo.toJava(json, null).asClass(CompactMap.class);
 
         // Verify the map was properly restored
         assertEquals(3, restoredMap.size());
@@ -3663,7 +3664,7 @@ public class CompactMapTest
         // Serialize and deserialize
         String json = JsonIo.toJson(map, null);
         LOG.info("JSON: " + json);
-        CompactMap<Object, Object> restoredMap = JsonIo.toObjects(json, null, CompactMap.class);
+        CompactMap<Object, Object> restoredMap = JsonIo.toJava(json, null).asClass(CompactMap.class);
 
         // Verify map size
         assertEquals(4, restoredMap.size(), "Map should have 4 entries");
@@ -3735,7 +3736,7 @@ public class CompactMapTest
         // Serialize and deserialize
         String json = JsonIo.toJson(map, null);
         LOG.info("Circular reference JSON: " + json);
-        CompactMap<Object, Object> restoredMap = JsonIo.toObjects(json, null, CompactMap.class);
+        CompactMap<Object, Object> restoredMap = JsonIo.toJava(json, null).asClass(CompactMap.class);
 
         // Get reference objects
         Person personFromMarker = (Person) restoredMap.get("personKey");
@@ -3815,7 +3816,7 @@ public class CompactMapTest
 
         // Serialize and deserialize
         String json = JsonIo.toJson(map, null);
-        CompactMap<Object, Object> restoredMap = JsonIo.toObjects(json, null, CompactMap.class);
+        CompactMap<Object, Object> restoredMap = JsonIo.toJava(json, null).asClass(CompactMap.class);
 
         // Get reference objects
         Person personFromMarker = (Person) restoredMap.get("personKey");

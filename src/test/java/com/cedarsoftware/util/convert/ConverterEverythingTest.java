@@ -4888,7 +4888,7 @@ class ConverterEverythingTest {
             WriteOptions writeOptions = new WriteOptionsBuilder().build();
             ReadOptions readOptions = new ReadOptionsBuilder().setZoneId(TOKYO_Z).build();
             String json = JsonIo.toJson(source, writeOptions);
-            Object restored = JsonIo.toObjects(json, readOptions, targetClass);
+            Object restored = JsonIo.toJava(json, readOptions).asClass(targetClass);
 
             // Compare dates by LocalDate
             LocalDate restoredDate = (restored instanceof java.sql.Date) ?
@@ -4924,7 +4924,7 @@ class ConverterEverythingTest {
         if (target instanceof Throwable) {
             Throwable t = (Throwable) target;
             try {
-                Object x = JsonIo.toObjects(json, readOptions, targetClass);
+                Object x = JsonIo.toJava(json, readOptions).asClass(targetClass);
 //                LOG.info("x = " + x);
                 throw new ConversionTestException("This test: " + shortNameSource + " ==> " + shortNameTarget + " should have thrown: " + target.getClass().getName());
             } catch (Throwable e) {
@@ -4940,7 +4940,7 @@ class ConverterEverythingTest {
         } else {
             Object restored = null;
             try {
-                restored = JsonIo.toObjects(json, readOptions, targetClass);
+                restored = JsonIo.toJava(json, readOptions).asClass(targetClass);
             } catch (Exception e) {
                 e.printStackTrace();
                 throw new RuntimeException(e);

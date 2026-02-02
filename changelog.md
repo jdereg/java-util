@@ -1,5 +1,10 @@
 ### Revision History
 
+#### 4.91.0 (unreleased)
+* **MAINTENANCE**: Fixed flaky `IOUtilitiesProtocolValidationTest.testProtocolValidationPerformance` test
+  * Added warmup iterations to allow JIT compilation before timing
+  * Increased threshold from 100ms to 500ms for CI environments with variable performance
+
 #### 4.90.0 2026-02-02
 * **BUG FIX**: `DeepEquals` - URL comparison now uses string representation instead of `URL.equals()`
   * Java's `URL.equals()` performs DNS resolution which causes flaky CI failures

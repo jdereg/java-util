@@ -4,6 +4,8 @@
 * **MAINTENANCE**: Fixed flaky `IOUtilitiesProtocolValidationTest.testProtocolValidationPerformance` test
   * Added warmup iterations to allow JIT compilation before timing
   * Increased threshold from 100ms to 500ms for CI environments with variable performance
+* **MAINTENANCE**: Fixed flaky `UniqueIdGeneratorTest` timing tests
+  * Increased threshold from 2ms to 50ms for CI environments with thread scheduling delays
 
 #### 4.90.0 2026-02-02
 * **BUG FIX**: `DeepEquals` - URL comparison now uses string representation instead of `URL.equals()`

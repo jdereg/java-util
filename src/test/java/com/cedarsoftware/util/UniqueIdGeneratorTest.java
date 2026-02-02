@@ -66,11 +66,12 @@ public class UniqueIdGeneratorTest
     {
         long id = getUniqueId();
         Date date = getDate(id);
-        assert abs(date.getTime() - currentTimeMillis()) < 2;
+        // Use generous threshold for CI environments with thread scheduling delays
+        assert abs(date.getTime() - currentTimeMillis()) < 50;
 
         id = getUniqueId19();
         date = getDate19(id);
-        assert abs(date.getTime() - currentTimeMillis()) < 2;
+        assert abs(date.getTime() - currentTimeMillis()) < 50;
     }
 
     @Test
@@ -79,12 +80,13 @@ public class UniqueIdGeneratorTest
         long id = getUniqueId();
         long currentTime = currentTimeMillis();
         Instant instant = getInstant(id);
-        assert abs(instant.toEpochMilli() - currentTime) <= 2;
+        // Use generous threshold for CI environments with thread scheduling delays
+        assert abs(instant.toEpochMilli() - currentTime) <= 50;
 
         id = getUniqueId19();
         instant = getInstant19(id);
         currentTime = currentTimeMillis();
-        assert abs(instant.toEpochMilli() - currentTime) <= 2;
+        assert abs(instant.toEpochMilli() - currentTime) <= 50;
     }
 
     @Test

@@ -607,7 +607,7 @@ Both of these features ensure that our library can be seamlessly integrated into
 ### Maven and Gradle Integration
 
 To include in your project:
-
+> Replace `LATEST_VERSION` with the version shown here:
 [![Maven Central](https://img.shields.io/maven-central/v/com.cedarsoftware/java-util)](https://central.sonatype.com/artifact/com.cedarsoftware/java-util)
 
 ##### Gradle
@@ -623,8 +623,6 @@ implementation 'com.cedarsoftware:java-util:LATEST_VERSION'
   <version>LATEST_VERSION</version>
 </dependency>
 ```
-
-> Replace `LATEST_VERSION` with the version shown in the badge above.
 
 ### 🚀 Framework Integration Examples
 

@@ -6,6 +6,8 @@
   * Increased threshold from 100ms to 500ms for CI environments with variable performance
 * **MAINTENANCE**: Fixed flaky `UniqueIdGeneratorTest` timing tests
   * Increased threshold from 2ms to 50ms for CI environments with thread scheduling delays
+* **MAINTENANCE**: Fixed flaky `MultiKeyMapLockStripingTest.testPerformanceWithStriping` test
+  * Increased slowdown tolerance from 5x to 10x for CI environments with shared resources
 
 #### 4.90.0 2026-02-02
 * **BUG FIX**: `DeepEquals` - URL comparison now uses string representation instead of `URL.equals()`

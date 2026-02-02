@@ -1,6 +1,6 @@
 ### Revision History
 
-#### 4.90.0 (Unreleased)
+#### 4.90.0 2026-02-02
 * **BUG FIX**: `DeepEquals` - URL comparison now uses string representation instead of `URL.equals()`
   * Java's `URL.equals()` performs DNS resolution which causes flaky CI failures
   * Now compares URLs using `toExternalForm()` for reliable, deterministic comparison

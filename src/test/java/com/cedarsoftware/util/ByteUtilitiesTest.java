@@ -96,4 +96,242 @@ public class ByteUtilitiesTest
         assertEquals('0', ByteUtilities.toHexChar(16));
         assertEquals('5', ByteUtilities.toHexChar(0x15));
     }
+
+    // ============ indexOf tests ============
+
+    @Test
+    public void testIndexOfBasic() {
+        byte[] data = {0x00, 0x01, 0x02, 0x03, 0x04, 0x02, 0x03};
+        byte[] pattern = {0x02, 0x03};
+        assertEquals(2, ByteUtilities.indexOf(data, pattern, 0));
+        assertEquals(5, ByteUtilities.indexOf(data, pattern, 3));
+    }
+
+    @Test
+    public void testIndexOfSingleByte() {
+        byte[] data = {0x00, 0x01, 0x02, 0x03, 0x02};
+        byte[] pattern = {0x02};
+        assertEquals(2, ByteUtilities.indexOf(data, pattern, 0));
+        assertEquals(4, ByteUtilities.indexOf(data, pattern, 3));
+        assertEquals(-1, ByteUtilities.indexOf(data, pattern, 5));
+    }
+
+    @Test
+    public void testIndexOfNotFound() {
+        byte[] data = {0x00, 0x01, 0x02, 0x03};
+        byte[] pattern = {0x05, 0x06};
+        assertEquals(-1, ByteUtilities.indexOf(data, pattern, 0));
+    }
+
+    @Test
+    public void testIndexOfAtStart() {
+        byte[] data = {0x01, 0x02, 0x03};
+        byte[] pattern = {0x01, 0x02};
+        assertEquals(0, ByteUtilities.indexOf(data, pattern, 0));
+    }
+
+    @Test
+    public void testIndexOfAtEnd() {
+        byte[] data = {0x00, 0x01, 0x02, 0x03};
+        byte[] pattern = {0x02, 0x03};
+        assertEquals(2, ByteUtilities.indexOf(data, pattern, 0));
+    }
+
+    @Test
+    public void testIndexOfNullInputs() {
+        byte[] data = {0x01, 0x02};
+        byte[] pattern = {0x01};
+        assertEquals(-1, ByteUtilities.indexOf(null, pattern, 0));
+        assertEquals(-1, ByteUtilities.indexOf(data, null, 0));
+        assertEquals(-1, ByteUtilities.indexOf(null, null, 0));
+    }
+
+    @Test
+    public void testIndexOfEmptyPattern() {
+        byte[] data = {0x01, 0x02};
+        byte[] pattern = {};
+        assertEquals(-1, ByteUtilities.indexOf(data, pattern, 0));
+    }
+
+    @Test
+    public void testIndexOfNegativeStart() {
+        byte[] data = {0x01, 0x02};
+        byte[] pattern = {0x01};
+        assertEquals(-1, ByteUtilities.indexOf(data, pattern, -1));
+    }
+
+    @Test
+    public void testIndexOfPatternLongerThanData() {
+        byte[] data = {0x01, 0x02};
+        byte[] pattern = {0x01, 0x02, 0x03};
+        assertEquals(-1, ByteUtilities.indexOf(data, pattern, 0));
+    }
+
+    @Test
+    public void testIndexOfStartBeyondValidRange() {
+        byte[] data = {0x01, 0x02, 0x03};
+        byte[] pattern = {0x02, 0x03};
+        assertEquals(-1, ByteUtilities.indexOf(data, pattern, 3));  // Can't fit pattern starting at position 3
+    }
+
+    // ============ lastIndexOf tests ============
+
+    @Test
+    public void testLastIndexOfBasic() {
+        byte[] data = {0x02, 0x03, 0x00, 0x02, 0x03};
+        byte[] pattern = {0x02, 0x03};
+        assertEquals(3, ByteUtilities.lastIndexOf(data, pattern, data.length - 1));
+        assertEquals(0, ByteUtilities.lastIndexOf(data, pattern, 2));
+    }
+
+    @Test
+    public void testLastIndexOfNoStartParam() {
+        byte[] data = {0x02, 0x03, 0x00, 0x02, 0x03};
+        byte[] pattern = {0x02, 0x03};
+        assertEquals(3, ByteUtilities.lastIndexOf(data, pattern));
+    }
+
+    @Test
+    public void testLastIndexOfSingleByte() {
+        byte[] data = {0x02, 0x00, 0x01, 0x02, 0x03};
+        byte[] pattern = {0x02};
+        assertEquals(3, ByteUtilities.lastIndexOf(data, pattern, data.length - 1));
+        assertEquals(0, ByteUtilities.lastIndexOf(data, pattern, 2));
+        assertEquals(-1, ByteUtilities.lastIndexOf(data, pattern, -1));
+    }
+
+    @Test
+    public void testLastIndexOfNotFound() {
+        byte[] data = {0x00, 0x01, 0x02, 0x03};
+        byte[] pattern = {0x05, 0x06};
+        assertEquals(-1, ByteUtilities.lastIndexOf(data, pattern, data.length - 1));
+    }
+
+    @Test
+    public void testLastIndexOfAtStart() {
+        byte[] data = {0x01, 0x02, 0x03, 0x04};
+        byte[] pattern = {0x01, 0x02};
+        assertEquals(0, ByteUtilities.lastIndexOf(data, pattern, data.length - 1));
+    }
+
+    @Test
+    public void testLastIndexOfAtEnd() {
+        byte[] data = {0x00, 0x01, 0x02, 0x03};
+        byte[] pattern = {0x02, 0x03};
+        assertEquals(2, ByteUtilities.lastIndexOf(data, pattern, data.length - 1));
+    }
+
+    @Test
+    public void testLastIndexOfNullInputs() {
+        byte[] data = {0x01, 0x02};
+        byte[] pattern = {0x01};
+        assertEquals(-1, ByteUtilities.lastIndexOf(null, pattern, 0));
+        assertEquals(-1, ByteUtilities.lastIndexOf(data, null, 0));
+        assertEquals(-1, ByteUtilities.lastIndexOf(null, null, 0));
+        assertEquals(-1, ByteUtilities.lastIndexOf(null, pattern));
+    }
+
+    @Test
+    public void testLastIndexOfEmptyPattern() {
+        byte[] data = {0x01, 0x02};
+        byte[] pattern = {};
+        assertEquals(-1, ByteUtilities.lastIndexOf(data, pattern, data.length - 1));
+    }
+
+    @Test
+    public void testLastIndexOfNegativeStart() {
+        byte[] data = {0x01, 0x02};
+        byte[] pattern = {0x01};
+        assertEquals(-1, ByteUtilities.lastIndexOf(data, pattern, -1));
+    }
+
+    @Test
+    public void testLastIndexOfPatternLongerThanData() {
+        byte[] data = {0x01, 0x02};
+        byte[] pattern = {0x01, 0x02, 0x03};
+        assertEquals(-1, ByteUtilities.lastIndexOf(data, pattern, data.length - 1));
+    }
+
+    @Test
+    public void testLastIndexOfStartBeyondDataLength() {
+        // Start is beyond array length - should still work (clamped to valid range)
+        byte[] data = {0x01, 0x02, 0x03};
+        byte[] pattern = {0x02, 0x03};
+        assertEquals(1, ByteUtilities.lastIndexOf(data, pattern, 100));
+    }
+
+    // ============ contains tests ============
+
+    @Test
+    public void testContainsFound() {
+        byte[] data = {0x00, 0x01, 0x02, 0x03, 0x04};
+        byte[] pattern = {0x01, 0x02};
+        assertTrue(ByteUtilities.contains(data, pattern));
+    }
+
+    @Test
+    public void testContainsNotFound() {
+        byte[] data = {0x00, 0x01, 0x02, 0x03};
+        byte[] pattern = {0x05, 0x06};
+        assertFalse(ByteUtilities.contains(data, pattern));
+    }
+
+    @Test
+    public void testContainsSingleByte() {
+        byte[] data = {0x00, 0x01, 0x02};
+        assertTrue(ByteUtilities.contains(data, new byte[]{0x01}));
+        assertFalse(ByteUtilities.contains(data, new byte[]{0x05}));
+    }
+
+    @Test
+    public void testContainsNullInputs() {
+        byte[] data = {0x01, 0x02};
+        byte[] pattern = {0x01};
+        assertFalse(ByteUtilities.contains(null, pattern));
+        assertFalse(ByteUtilities.contains(data, null));
+        assertFalse(ByteUtilities.contains(null, null));
+    }
+
+    @Test
+    public void testContainsEmptyPattern() {
+        byte[] data = {0x01, 0x02};
+        byte[] pattern = {};
+        assertFalse(ByteUtilities.contains(data, pattern));
+    }
+
+    @Test
+    public void testContainsEntireArray() {
+        byte[] data = {0x01, 0x02, 0x03};
+        byte[] pattern = {0x01, 0x02, 0x03};
+        assertTrue(ByteUtilities.contains(data, pattern));
+    }
+
+    @Test
+    public void testContainsPatternLongerThanData() {
+        byte[] data = {0x01, 0x02};
+        byte[] pattern = {0x01, 0x02, 0x03};
+        assertFalse(ByteUtilities.contains(data, pattern));
+    }
+
+    // ============ isGzipped edge cases ============
+
+    @Test
+    public void testIsGzippedNullInput() {
+        assertFalse(ByteUtilities.isGzipped(null));
+        assertFalse(ByteUtilities.isGzipped(null, 0));
+    }
+
+    @Test
+    public void testIsGzippedInvalidOffset() {
+        byte[] data = {(byte)0x1f, (byte)0x8b};
+        assertFalse(ByteUtilities.isGzipped(data, -1));
+        assertFalse(ByteUtilities.isGzipped(data, 2));  // Offset at end
+        assertFalse(ByteUtilities.isGzipped(data, 1));  // Not enough bytes after offset
+    }
+
+    @Test
+    public void testIsGzippedTooShort() {
+        byte[] data = {(byte)0x1f};  // Only 1 byte
+        assertFalse(ByteUtilities.isGzipped(data));
+    }
 }

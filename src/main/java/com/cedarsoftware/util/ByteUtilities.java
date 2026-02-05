@@ -85,49 +85,82 @@ import java.util.Arrays;
  *         limitations under the License.
  */
 public final class ByteUtilities {
-    // Security Configuration - using dynamic property reading for testability
+    // Security Configuration - cached for performance with property change detection
     // Default limits used when security is enabled but no custom limits specified
     private static final int DEFAULT_MAX_HEX_STRING_LENGTH = 1000000;  // 1MB hex string
     private static final int DEFAULT_MAX_ARRAY_SIZE = 10000000;        // 10MB byte array
-    
+
+    // Property names
+    private static final String PROP_SECURITY_ENABLED = "byteutilities.security.enabled";
+    private static final String PROP_MAX_HEX_LENGTH = "byteutilities.max.hex.string.length";
+    private static final String PROP_MAX_ARRAY_SIZE = "byteutilities.max.array.size";
+
+    // Cached security settings with property change detection
+    private static volatile String cachedSecurityEnabledProp;
+    private static volatile boolean cachedSecurityEnabled;
+    private static volatile String cachedMaxHexLengthProp;
+    private static volatile int cachedMaxHexLength;
+    private static volatile String cachedMaxArraySizeProp;
+    private static volatile int cachedMaxArraySize;
+
+    // Maximum array size that can be safely doubled without overflow
+    private static final int MAX_SAFE_ARRAY_SIZE = Integer.MAX_VALUE / 2;
+
     private static boolean isSecurityEnabled() {
-        return Boolean.parseBoolean(System.getProperty("byteutilities.security.enabled", "false"));
+        String currentProp = System.getProperty(PROP_SECURITY_ENABLED, "false");
+        if (!currentProp.equals(cachedSecurityEnabledProp)) {
+            cachedSecurityEnabledProp = currentProp;
+            cachedSecurityEnabled = Boolean.parseBoolean(currentProp);
+        }
+        return cachedSecurityEnabled;
     }
-    
+
     private static int getMaxHexStringLength() {
         if (!isSecurityEnabled()) {
             return 0; // Disabled
         }
-        String value = System.getProperty("byteutilities.max.hex.string.length");
-        if (value == null) {
-            return DEFAULT_MAX_HEX_STRING_LENGTH;
+        String currentProp = System.getProperty(PROP_MAX_HEX_LENGTH);
+        if (currentProp == null) {
+            cachedMaxHexLengthProp = null;
+            cachedMaxHexLength = DEFAULT_MAX_HEX_STRING_LENGTH;
+            return cachedMaxHexLength;
         }
-        try {
-            int limit = Integer.parseInt(value);
-            return limit <= 0 ? 0 : limit; // 0 or negative means disabled
-        } catch (NumberFormatException e) {
-            return DEFAULT_MAX_HEX_STRING_LENGTH;
+        if (!currentProp.equals(cachedMaxHexLengthProp)) {
+            cachedMaxHexLengthProp = currentProp;
+            try {
+                int limit = Integer.parseInt(currentProp);
+                cachedMaxHexLength = limit <= 0 ? 0 : limit;
+            } catch (NumberFormatException e) {
+                cachedMaxHexLength = DEFAULT_MAX_HEX_STRING_LENGTH;
+            }
         }
+        return cachedMaxHexLength;
     }
-    
+
     private static int getMaxArraySize() {
         if (!isSecurityEnabled()) {
             return 0; // Disabled
         }
-        String value = System.getProperty("byteutilities.max.array.size");
-        if (value == null) {
-            return DEFAULT_MAX_ARRAY_SIZE;
+        String currentProp = System.getProperty(PROP_MAX_ARRAY_SIZE);
+        if (currentProp == null) {
+            cachedMaxArraySizeProp = null;
+            cachedMaxArraySize = DEFAULT_MAX_ARRAY_SIZE;
+            return cachedMaxArraySize;
         }
-        try {
-            int limit = Integer.parseInt(value);
-            return limit <= 0 ? 0 : limit; // 0 or negative means disabled
-        } catch (NumberFormatException e) {
-            return DEFAULT_MAX_ARRAY_SIZE;
+        if (!currentProp.equals(cachedMaxArraySizeProp)) {
+            cachedMaxArraySizeProp = currentProp;
+            try {
+                int limit = Integer.parseInt(currentProp);
+                cachedMaxArraySize = limit <= 0 ? 0 : limit;
+            } catch (NumberFormatException e) {
+                cachedMaxArraySize = DEFAULT_MAX_ARRAY_SIZE;
+            }
         }
+        return cachedMaxArraySize;
     }
 
-    // For encode: Array of hex digits.
-    static final char[] HEX_ARRAY = "0123456789ABCDEF".toCharArray();
+    // For encode: Array of hex digits (private - use toHexChar() for public access)
+    private static final char[] HEX_ARRAY = "0123456789ABCDEF".toCharArray();
 
     // For decode: Precomputed lookup table for hex digits.
     // Maps ASCII codes (0–127) to their hex value or -1 if invalid.
@@ -228,6 +261,12 @@ public final class ByteUtilities {
         if (maxArraySize > 0 && bytes.length > maxArraySize) {
             throw new SecurityException("Byte array size exceeds maximum allowed: " + maxArraySize);
         }
+
+        // Check for integer overflow: bytes.length * 2 must not overflow
+        if (bytes.length > MAX_SAFE_ARRAY_SIZE) {
+            throw new IllegalArgumentException("Byte array too large to encode: length " + bytes.length +
+                    " exceeds maximum safe size " + MAX_SAFE_ARRAY_SIZE);
+        }
         char[] hexChars = new char[bytes.length * 2];
         for (int i = 0, j = 0; i < bytes.length; i++) {
             int v = bytes[i] & 0xFF;
@@ -291,6 +330,17 @@ public final class ByteUtilities {
             return -1;
         }
 
+        // Fast path for single-byte patterns
+        if (patternLen == 1) {
+            byte target = pattern[0];
+            for (int i = start; i < dataLen; i++) {
+                if (data[i] == target) {
+                    return i;
+                }
+            }
+            return -1;
+        }
+
         final int limit = dataLen - patternLen;
         outer:
         for (int i = start; i <= limit; i++) {
@@ -302,5 +352,105 @@ public final class ByteUtilities {
             return i;
         }
         return -1;
+    }
+
+    /**
+     * Finds the last occurrence of a byte pattern within a byte array, searching backwards from the specified index.
+     * <p>
+     * This method searches backwards from the start position to find the last occurrence
+     * of the pattern. It is useful for locating byte sequences when you need the rightmost match.
+     * </p>
+     *
+     * <h3>Example Usage</h3>
+     * <pre>{@code
+     * byte[] data = {0x02, 0x03, 0x00, 0x02, 0x03};
+     * byte[] pattern = {0x02, 0x03};
+     * int index = ByteUtilities.lastIndexOf(data, pattern, data.length - 1);  // Returns 3
+     * int prev = ByteUtilities.lastIndexOf(data, pattern, 2);                  // Returns 0
+     * }</pre>
+     *
+     * @param data    the byte array to search within
+     * @param pattern the byte pattern to find
+     * @param start   the index to start searching backwards from (inclusive)
+     * @return the index of the last occurrence of the pattern, or -1 if not found
+     *         or if any parameter is invalid (null arrays, negative start, etc.)
+     */
+    public static int lastIndexOf(byte[] data, byte[] pattern, int start) {
+        if (data == null || pattern == null || start < 0 || pattern.length == 0) {
+            return -1;
+        }
+        final int dataLen = data.length;
+        final int patternLen = pattern.length;
+        if (patternLen > dataLen) {
+            return -1;
+        }
+
+        // Adjust start to the last valid position where pattern could fit
+        int effectiveStart = Math.min(start, dataLen - patternLen);
+        if (effectiveStart < 0) {
+            return -1;
+        }
+
+        // Fast path for single-byte patterns
+        if (patternLen == 1) {
+            byte target = pattern[0];
+            for (int i = effectiveStart; i >= 0; i--) {
+                if (data[i] == target) {
+                    return i;
+                }
+            }
+            return -1;
+        }
+
+        outer:
+        for (int i = effectiveStart; i >= 0; i--) {
+            for (int j = 0; j < patternLen; j++) {
+                if (data[i + j] != pattern[j]) {
+                    continue outer;
+                }
+            }
+            return i;
+        }
+        return -1;
+    }
+
+    /**
+     * Finds the last occurrence of a byte pattern within a byte array.
+     * <p>
+     * This is a convenience method that searches from the end of the data array.
+     * </p>
+     *
+     * @param data    the byte array to search within
+     * @param pattern the byte pattern to find
+     * @return the index of the last occurrence of the pattern, or -1 if not found
+     *         or if any parameter is invalid
+     * @see #lastIndexOf(byte[], byte[], int)
+     */
+    public static int lastIndexOf(byte[] data, byte[] pattern) {
+        if (data == null) {
+            return -1;
+        }
+        return lastIndexOf(data, pattern, data.length - 1);
+    }
+
+    /**
+     * Checks if a byte array contains the specified byte pattern.
+     * <p>
+     * This is a convenience method equivalent to {@code indexOf(data, pattern, 0) >= 0}.
+     * </p>
+     *
+     * <h3>Example Usage</h3>
+     * <pre>{@code
+     * byte[] data = {0x00, 0x01, 0x02, 0x03};
+     * byte[] pattern = {0x01, 0x02};
+     * boolean found = ByteUtilities.contains(data, pattern);  // Returns true
+     * }</pre>
+     *
+     * @param data    the byte array to search within
+     * @param pattern the byte pattern to find
+     * @return true if the pattern is found within data, false otherwise
+     */
+    public static boolean contains(byte[] data, byte[] pattern) {
+        return indexOf(data, pattern, 0) >= 0;
     }
 }

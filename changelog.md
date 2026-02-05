@@ -1,6 +1,22 @@
 ### Revision History
 
 #### 4.91.0 (unreleased)
+* **PERFORMANCE**: `ByteUtilities` - Cached security property lookups for better performance
+  * Security-related `System.getProperty()` calls are now cached with property change detection
+  * Eliminates repeated property parsing on every `encode()`/`decode()` call
+  * Cache automatically refreshes when property values change
+* **BUG FIX**: `ByteUtilities.encode()` - Added integer overflow protection
+  * Arrays larger than `Integer.MAX_VALUE / 2` now throw `IllegalArgumentException`
+  * Previously would cause `NegativeArraySizeException` due to `bytes.length * 2` overflow
+* **PERFORMANCE**: `ByteUtilities.indexOf()` - Added fast path for single-byte patterns
+  * Single-byte pattern searches now use optimized loop without nested iteration
+* **FEATURE**: `ByteUtilities` - Added new search methods
+  * `lastIndexOf(byte[] data, byte[] pattern, int start)` - Find last occurrence searching backwards
+  * `lastIndexOf(byte[] data, byte[] pattern)` - Find last occurrence from end
+  * `contains(byte[] data, byte[] pattern)` - Check if pattern exists in data
+* **CLEANUP**: `ByteUtilities.HEX_ARRAY` is now private
+  * Use `ByteUtilities.toHexChar(int)` public API instead
+  * `StringUtilities` updated to use `toHexChar()` method
 * **MAINTENANCE**: Fixed flaky `IOUtilitiesProtocolValidationTest.testProtocolValidationPerformance` test
   * Added warmup iterations to allow JIT compilation before timing
   * Increased threshold from 100ms to 500ms for CI environments with variable performance

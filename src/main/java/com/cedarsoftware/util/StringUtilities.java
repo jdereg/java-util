@@ -9,8 +9,6 @@ import java.util.Random;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import static com.cedarsoftware.util.ByteUtilities.HEX_ARRAY;
-
 /**
  * Comprehensive utility class for string operations providing enhanced manipulation, comparison,
  * and conversion capabilities with null-safe implementations.
@@ -550,8 +548,8 @@ public final class StringUtilities {
         int len = bytes.length << 1;
         char[] result = new char[len];
         for (int i = 0, j = 0; i < bytes.length; i++) {
-            result[j++] = HEX_ARRAY[(bytes[i] >> 4) & 0x0f];
-            result[j++] = HEX_ARRAY[bytes[i] & 0x0f];
+            result[j++] = ByteUtilities.toHexChar((bytes[i] >> 4) & 0x0f);
+            result[j++] = ByteUtilities.toHexChar(bytes[i] & 0x0f);
         }
         return new String(result);
     }
@@ -563,7 +561,7 @@ public final class StringUtilities {
      * @return '0'..'F' in char format.
      */
     private static char convertDigit(int value) {
-        return HEX_ARRAY[value & 0x0f];
+        return ByteUtilities.toHexChar(value);
     }
 
     public static int count(String s, char c) {

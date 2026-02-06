@@ -969,12 +969,22 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         return (int) (bits ^ (bits >>> 32));
     }
 
+    /**
+     * Spreads higher bits of the hash into lower bits to improve bucket distribution.
+     * When the table is small, only the low-order bits select the bucket. Without
+     * spreading, hashes that differ only in higher bits collide in the same bucket.
+     * This is the same technique used by {@code ConcurrentHashMap}.
+     */
+    private static int spread(int h) {
+        return h ^ (h >>> 16);
+    }
+
     private int getStripeIndex(int hash) {
         // Use bucket index for stripe selection to reduce false contention
         // between independent buckets that happen to have same low-order hash bits
         final AtomicReferenceArray<MultiKey<V>[]> table = buckets;  // Volatile read of buckets
         final int mask = table.length() - 1;  // Array length is immutable
-        return (hash & mask) & STRIPE_MASK;
+        return (spread(hash) & mask) & STRIPE_MASK;
     }
 
     private ReentrantLock getStripeLock(int hash) {
@@ -1165,7 +1175,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                 int hash = computeElementHash(key, caseSensitive);
                 final AtomicReferenceArray<MultiKey<V>[]> table = buckets;
                 final int mask = table.length() - 1;
-                final int index = hash & mask;
+                final int index = spread(hash) & mask;
                 final MultiKey<V>[] chain = table.get(index);
                 if (chain != null) {
                     // Fast scan for single-key entries only
@@ -2072,7 +2082,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     private MultiKey<V> findEntryWithPrecomputedHash(final Object normalizedKey, final int hash) {
         final AtomicReferenceArray<MultiKey<V>[]> table = buckets;  // Volatile read of buckets
         final int mask = table.length() - 1;  // Array length is immutable
-        final int index = hash & mask;
+        final int index = spread(hash) & mask;
 
         final MultiKey<V>[] chain = table.get(index);
         if (chain == null) {
@@ -3132,7 +3142,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         int hash = lookupKey.hash;
         final AtomicReferenceArray<MultiKey<V>[]> table = buckets;  // Volatile read of buckets
         final int mask = table.length() - 1;  // Array length is immutable
-        int index = hash & mask;
+        int index = spread(hash) & mask;
         MultiKey<V>[] chain = table.get(index);
 
         if (chain == null) return null;
@@ -3150,7 +3160,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         int hash = newKey.hash;
         final AtomicReferenceArray<MultiKey<V>[]> table = buckets;  // Volatile read of buckets
         final int mask = table.length() - 1;  // Array length is immutable
-        int index = hash & mask;
+        int index = spread(hash) & mask;
         MultiKey<V>[] chain = table.get(index);
 
         if (chain == null) {
@@ -3371,7 +3381,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         int hash = removeKey.hash;
         final AtomicReferenceArray<MultiKey<V>[]> table = buckets;  // Volatile read of buckets
         final int mask = table.length() - 1;  // Array length is immutable
-        int index = hash & mask;
+        int index = spread(hash) & mask;
         MultiKey<V>[] chain = table.get(index);
 
         if (chain == null) return null;
@@ -3426,7 +3436,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
 
     @SuppressWarnings("unchecked")
     private int rehashEntry(MultiKey<V> entry, AtomicReferenceArray<MultiKey<V>[]> target) {
-        int index = entry.hash & (target.length() - 1);
+        int index = spread(entry.hash) & (target.length() - 1);
         MultiKey<V>[] chain = target.get(index);
         if (chain == null) {
             target.set(index, new MultiKey[]{entry});

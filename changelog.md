@@ -42,6 +42,10 @@
   * `getMultiKey()` and `containsMultiKey()` methods never nulled out array entries after use
   * In thread-pool environments, this pinned references to user objects for the lifetime of the thread
   * Added `try/finally` cleanup in all 8 methods
+* **PERFORMANCE**: `MultiKeyMap` - Hash spreading for better bucket distribution
+  * Added `spread(h) = h ^ (h >>> 16)` at all bucket selection points (same technique as `ConcurrentHashMap`)
+  * When the table is small, only low-order bits select the bucket; spreading mixes in higher bits to reduce collisions
+  * Applied at all 7 bucket index computation sites; stored hashes are unchanged
 
 #### 4.90.0 2026-02-02
 * **BUG FIX**: `DeepEquals` - URL comparison now uses string representation instead of `URL.equals()`

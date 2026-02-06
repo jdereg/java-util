@@ -13,17 +13,18 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 /**
  * Test for bug #5: Stripe contention diagnostics track the wrong stripe.
  *
- * Bug: putInternal and removeInternal compute the stripe index for contention
+ * Bug: putInternal and removeInternal computed the stripe index for contention
  * tracking as {@code hash & STRIPE_MASK}, but getStripeLock computes it as
- * {@code (hash & tableMask) & STRIPE_MASK}. When the table is smaller than
- * STRIPE_COUNT (e.g., default capacity 16 vs STRIPE_COUNT 32), these produce
- * different values. For example, with hash=112, tableMask=15, STRIPE_MASK=31:
- *   - getStripeLock:  (112 & 15) & 31 = 0  (actual lock acquired on stripe 0)
- *   - putInternal:     112 & 31      = 16  (contention tracked on stripe 16)
- *
- * This means per-stripe contention metrics are attributed to the wrong stripes.
+ * {@code (spread(hash) & tableMask) & STRIPE_MASK}. When the table is smaller
+ * than STRIPE_COUNT, these produce different values, so per-stripe metrics
+ * were attributed to incorrect stripes.
  */
 class MultiKeyMapStripeTrackingTest {
+
+    /** Mirrors MultiKeyMap.spread() */
+    private static int spread(int h) {
+        return h ^ (h >>> 16);
+    }
 
     @Test
     void testPutTracksAcquisitionOnCorrectStripe() throws Exception {
@@ -48,36 +49,31 @@ class MultiKeyMapStripeTrackingTest {
             return; // Can't trigger on this machine/config
         }
 
-        // Find a key whose hash has bits set in (stripeMask & ~tableMask),
-        // causing the buggy and correct stripe computations to differ.
-        int diffBits = stripeMask & ~tableMask;
-
+        // Find a key where the correct stripe (with spread) differs from
+        // the old buggy stripe (hash & STRIPE_MASK without spread or tableMask)
         String testKey = null;
         int testHash = 0;
         for (int i = 0; i < 10000; i++) {
             String candidate = "key" + i;
             int h = candidate.hashCode();
-            if ((h & diffBits) != 0) {
+            int correctStripe = (spread(h) & tableMask) & stripeMask;
+            int buggyStripe = h & stripeMask;
+            if (correctStripe != buggyStripe) {
                 testKey = candidate;
                 testHash = h;
                 break;
             }
         }
-        assertNotNull(testKey, "Should find a key with hash bits in the differing range");
+        assertNotNull(testKey, "Should find a key where correct and buggy stripes differ");
 
-        int correctStripe = (testHash & tableMask) & stripeMask;
-        int buggyStripe = testHash & stripeMask;
-        assertNotEquals(correctStripe, buggyStripe,
-                "Precondition: correct and buggy stripes must differ for this key");
+        int expectedStripe = (spread(testHash) & tableMask) & stripeMask;
 
         // Perform a put
         map.put(testKey, "value");
 
-        // Verify acquisition was tracked on the correct stripe (the one matching getStripeLock)
-        assertEquals(1, acq[correctStripe].get(),
-                "Acquisition should be tracked on stripe " + correctStripe + " (matching getStripeLock)");
-        assertEquals(0, acq[buggyStripe].get(),
-                "Stripe " + buggyStripe + " should have no acquisitions (wrong stripe)");
+        // Verify acquisition was tracked on the correct stripe
+        assertEquals(1, acq[expectedStripe].get(),
+                "Acquisition should be tracked on stripe " + expectedStripe + " (matching getStripeIndex)");
     }
 
     @Test
@@ -101,14 +97,14 @@ class MultiKeyMapStripeTrackingTest {
             return;
         }
 
-        int diffBits = stripeMask & ~tableMask;
-
         String testKey = null;
         int testHash = 0;
         for (int i = 0; i < 10000; i++) {
             String candidate = "key" + i;
             int h = candidate.hashCode();
-            if ((h & diffBits) != 0) {
+            int correctStripe = (spread(h) & tableMask) & stripeMask;
+            int buggyStripe = h & stripeMask;
+            if (correctStripe != buggyStripe) {
                 testKey = candidate;
                 testHash = h;
                 break;
@@ -116,21 +112,17 @@ class MultiKeyMapStripeTrackingTest {
         }
         assertNotNull(testKey);
 
-        int correctStripe = (testHash & tableMask) & stripeMask;
-        int buggyStripe = testHash & stripeMask;
-        assertNotEquals(correctStripe, buggyStripe);
+        int expectedStripe = (spread(testHash) & tableMask) & stripeMask;
 
         // Put the key first (this also increments the correct stripe's counter)
         map.put(testKey, "value");
-        int acqAfterPut = acq[correctStripe].get();
+        int acqAfterPut = acq[expectedStripe].get();
 
         // Now remove it - should also track on the correct stripe
         map.remove(testKey);
 
-        assertEquals(acqAfterPut + 1, acq[correctStripe].get(),
-                "Remove acquisition should be tracked on stripe " + correctStripe);
-        assertEquals(0, acq[buggyStripe].get(),
-                "Stripe " + buggyStripe + " should have no acquisitions");
+        assertEquals(acqAfterPut + 1, acq[expectedStripe].get(),
+                "Remove acquisition should be tracked on stripe " + expectedStripe);
     }
 
     @Test
@@ -155,8 +147,8 @@ class MultiKeyMapStripeTrackingTest {
             map.put("item" + i, "val" + i);
         }
 
-        // With table size 16 and stripe count 32, the correct stripe index
-        // is (hash & 15) & 31 which can only produce values in [0, 15].
+        // With table size 16 and stripe count 32, the stripe index is
+        // (spread(hash) & 15) & 31 which can only produce values in [0, 15].
         // Stripes [16, 31] should never receive acquisitions.
         for (int s = tableSize; s < acq.length; s++) {
             assertEquals(0, acq[s].get(),

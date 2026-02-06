@@ -1280,8 +1280,10 @@ public class CompactMap<K, V> implements Map<K, V> {
 
             @Override
             public boolean retainAll(Collection c) {
-                // Create fast-access O(1) to all elements within passed in Collection
-                Map<K, V> other = getNewMap();
+                // Create fast-access O(1) to all elements within passed in Collection.
+                // When case-insensitive, use CaseInsensitiveMap so that key lookup
+                // respects case-insensitivity (getNewMap() may return a plain HashMap).
+                Map<K, V> other = isCaseInsensitive() ? new CaseInsensitiveMap<>() : getNewMap();
 
                 for (Object o : c) {
                     other.put((K) o, null);

@@ -1228,20 +1228,28 @@ public class CompactMap<K, V> implements Map<K, V> {
         }
 
         if (val instanceof Object[]) {   // 2 to compactSize
+            Object[] entries = (Object[]) val;
+            int len = entries.length;
             for (Entry<?, ?> entry : other.entrySet()) {
                 final Object thatKey = entry.getKey();
-                if (!containsKey(thatKey)) {
-                    return false;
-                }
-
-                Object thatValue = entry.getValue();
-                Object thisValue = get(thatKey);
-
-                if (thatValue == null || thisValue == null) {   // Perform null checks
-                    if (thatValue != thisValue) {
-                        return false;
+                // Single scan: find key and retrieve value in one pass
+                boolean found = false;
+                for (int i = 0; i < len; i += 2) {
+                    if (entries[i] != null && areKeysEqual(thatKey, entries[i])) {
+                        Object thisValue = entries[i + 1];
+                        Object thatValue = entry.getValue();
+                        if (thatValue == null || thisValue == null) {
+                            if (thatValue != thisValue) {
+                                return false;
+                            }
+                        } else if (!thisValue.equals(thatValue)) {
+                            return false;
+                        }
+                        found = true;
+                        break;
                     }
-                } else if (!thisValue.equals(thatValue)) {
+                }
+                if (!found) {
                     return false;
                 }
             }

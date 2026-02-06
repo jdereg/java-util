@@ -1204,6 +1204,7 @@ public class CompactMap<K, V> implements Map<K, V> {
                     return false;
                 }
             }
+            return true;
         } else if (val instanceof Map) {   // > compactSize
             Map<K, V> map = (Map<K, V>) val;
             return map.equals(other);

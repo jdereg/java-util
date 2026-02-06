@@ -1906,7 +1906,7 @@ public class CompactMap<K, V> implements Map<K, V> {
 
         public final boolean hasNext() {
             if (val instanceof Object[]) {   // State 3: 2 to compactSize
-                return (index + 1) < size();
+                return (index + 1) < expectedSize;
             } else if (val instanceof Map) {   // State 4: > compactSize
                 return mapIterator.hasNext();
             } else if (val == EMPTY_MAP) {   // State 1: empty
@@ -1920,7 +1920,7 @@ public class CompactMap<K, V> implements Map<K, V> {
             if (modCount != expectedModCount) {
                 throw new ConcurrentModificationException();
             }
-            if (++index >= size()) {
+            if (++index >= expectedSize) {
                 throw new NoSuchElementException();
             }
             if (val instanceof Object[]) {  // State 3: 2 to compactSize

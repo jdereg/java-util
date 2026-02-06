@@ -1073,10 +1073,10 @@ public class CompactMap<K, V> implements Map<K, V> {
      * @return the value associated with the removed key, or null if key not found
      */
     private V removeFromMap(Map<K, V> map, Object key) {
-        if (!map.containsKey(key)) {
+        V save = map.remove(key);
+        if (save == null && !map.containsKey(key)) {
             return null;
         }
-        V save = map.remove(key);
 
         if (map.size() == compactSize()) {   // Transition back to Object[]
             Object[] entries = new Object[compactSize() * 2];

@@ -1862,17 +1862,27 @@ public class CompactMap<K, V> implements Map<K, V> {
             if (size() != expectedSize) {
                 throw new ConcurrentModificationException();
             }
-            int newSize = expectedSize - 1;
 
-            if (mapIterator != null && newSize == compactSize()) {
-                current = ((Map.Entry<K, V>) current).getKey();
-                mapIterator = null;
-            }
-
-            if (mapIterator == null) {
-                CompactMap.this.remove(current);
-            } else {
+            if (mapIterator != null) {
                 mapIterator.remove();
+                int newSize = expectedSize - 1;
+                if (newSize <= compactSize()) {
+                    // Transition from Map to compact array.
+                    // The mapIterator.remove() already removed the entry from the map properly.
+                    // Now build the array from the remaining map entries.
+                    mapIterator = null;
+                    Map<K, V> map = (Map<K, V>) val;
+                    Object[] entries = new Object[map.size() * 2];
+                    int idx = 0;
+                    for (Entry<K, V> e : map.entrySet()) {
+                        entries[idx] = e.getKey();
+                        entries[idx + 1] = e.getValue();
+                        idx += 2;
+                    }
+                    val = entries;
+                }
+            } else {
+                CompactMap.this.remove(current);
             }
 
             index--;

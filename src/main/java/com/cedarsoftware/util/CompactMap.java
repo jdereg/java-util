@@ -227,7 +227,7 @@ import java.util.concurrent.locks.ReentrantLock;
  */
 @SuppressWarnings("unchecked")
 public class CompactMap<K, V> implements Map<K, V> {
-    private static final String EMPTY_MAP = "_︿_ψ_☼";
+    private static final Object EMPTY_MAP = new Object();
 
     // Constants for option keys
     public static final String COMPACT_SIZE = "compactSize";

@@ -298,6 +298,8 @@ public class CompactMap<K, V> implements Map<K, V> {
 
     // The only "state" and why this is a compactMap - one-member variable
     protected Object val = EMPTY_MAP;
+    // Structural modification counter for fail-fast iterator detection
+    int modCount = 0;
 
     /**
      * Constructs an empty CompactMap with the default configuration.
@@ -544,10 +546,12 @@ public class CompactMap<K, V> implements Map<K, V> {
      */
     @Override
     public V put(K key, V value) {
+        int s = size();
+        V result;
         if (val instanceof Object[]) {   // Compact array storage (2 to compactSize)
-            return putInCompactArray((Object[]) val, key, value);
+            result = putInCompactArray((Object[]) val, key, value);
         } else if (val instanceof Map) {   // Backing map storage (&gt; compactSize)
-            return ((Map<K, V>) val).put(key, value);
+            result = ((Map<K, V>) val).put(key, value);
         } else if (val == EMPTY_MAP) {   // Empty map
             if (areKeysEqual(key, getSingleValueKey()) && !(value instanceof Map || value instanceof Object[])) {
                 // Store the value directly for optimized single-entry storage
@@ -557,11 +561,15 @@ public class CompactMap<K, V> implements Map<K, V> {
                 // Create a CompactMapEntry for the first entry
                 val = new CompactMapEntry(key, value);
             }
-            return null;
+            result = null;
+        } else {
+            // Single entry state, handle overwrite, or insertion which transitions the Map to Object[4]
+            result = handleSingleEntryPut(key, value);
         }
-
-        // Single entry state, handle overwrite, or insertion which transitions the Map to Object[4]
-        return handleSingleEntryPut(key, value);
+        if (size() != s) {
+            modCount++;
+        }
+        return result;
     }
 
     /**
@@ -569,17 +577,23 @@ public class CompactMap<K, V> implements Map<K, V> {
      */
     @Override
     public V remove(Object key) {
+        int s = size();
+        V result;
         if (val instanceof Object[]) {   // 2 to compactSize
-            return removeFromCompactArray(key);
+            result = removeFromCompactArray(key);
         } else if (val instanceof Map) {   // > compactSize
             Map<K, V> map = (Map<K, V>) val;
-            return removeFromMap(map, key);
+            result = removeFromMap(map, key);
         } else if (val == EMPTY_MAP) {   // empty
-            return null;
+            result = null;
+        } else {
+            // size == 1
+            result = handleSingleEntryRemove(key);
         }
-
-        // size == 1
-        return handleSingleEntryRemove(key);
+        if (size() != s) {
+            modCount++;
+        }
+        return result;
     }
 
     /**
@@ -1112,7 +1126,11 @@ public class CompactMap<K, V> implements Map<K, V> {
                 }
                 val = backingMap;
             }
+            int sizeBefore = backingMap.size();
             backingMap.putAll(map);
+            if (backingMap.size() != sizeBefore) {
+                modCount++;
+            }
             return;
         }
 
@@ -1129,6 +1147,9 @@ public class CompactMap<K, V> implements Map<K, V> {
      * </p>
      */
     public void clear() {
+        if (val != EMPTY_MAP) {
+            modCount++;
+        }
         val = EMPTY_MAP;
     }
 
@@ -1811,10 +1832,12 @@ public class CompactMap<K, V> implements Map<K, V> {
         Iterator<Map.Entry<K, V>> mapIterator;
         Object current;
         int expectedSize;
+        int expectedModCount;
         int index;
 
         CompactIterator() {
             expectedSize = size();
+            expectedModCount = modCount;
             current = EMPTY_MAP;
             index = -1;
 
@@ -1842,7 +1865,7 @@ public class CompactMap<K, V> implements Map<K, V> {
         }
 
         final void advance() {
-            if (expectedSize != size()) {
+            if (modCount != expectedModCount) {
                 throw new ConcurrentModificationException();
             }
             if (++index >= size()) {
@@ -1863,12 +1886,13 @@ public class CompactMap<K, V> implements Map<K, V> {
             if (current == EMPTY_MAP) {
                 throw new IllegalStateException();
             }
-            if (size() != expectedSize) {
+            if (modCount != expectedModCount) {
                 throw new ConcurrentModificationException();
             }
 
             if (mapIterator != null) {
                 mapIterator.remove();
+                modCount++;
                 int newSize = expectedSize - 1;
                 if (newSize <= compactSize()) {
                     // Transition from Map to compact array.
@@ -1893,6 +1917,7 @@ public class CompactMap<K, V> implements Map<K, V> {
             index--;
             current = EMPTY_MAP;
             expectedSize--;
+            expectedModCount = modCount;
         }
     }
 

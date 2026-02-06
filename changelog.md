@@ -46,6 +46,9 @@
   * Added `spread(h) = h ^ (h >>> 16)` at all bucket selection points (same technique as `ConcurrentHashMap`)
   * When the table is small, only low-order bits select the bucket; spreading mixes in higher bits to reduce collisions
   * Applied at all 7 bucket index computation sites; stored hashes are unchanged
+* **PERFORMANCE**: `MultiKeyMap` - `keySet()` and `values()` no longer rebuild full `entrySet()`
+  * `values()` now iterates buckets directly, skipping all key reconstruction (`reconstructKey()`) and `SimpleEntry` allocation
+  * `keySet()` now iterates buckets directly, skipping `SimpleEntry` wrapper allocation
 
 #### 4.90.0 2026-02-02
 * **BUG FIX**: `DeepEquals` - URL comparison now uses string representation instead of `URL.equals()`

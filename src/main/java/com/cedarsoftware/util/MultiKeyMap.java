@@ -3563,8 +3563,32 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      */
     public Set<Object> keySet() {
         Set<Object> set = new HashSet<>();
-        for (Map.Entry<Object, V> e : entrySet()) {
-            set.add(e.getKey());
+        final AtomicReferenceArray<MultiKey<V>[]> snapshot = buckets;
+        final int len = snapshot.length();
+        for (int bucketIdx = 0; bucketIdx < len; bucketIdx++) {
+            MultiKey<V>[] chain = snapshot.get(bucketIdx);
+            if (chain != null) {
+                for (MultiKey<V> e : chain) {
+                    Object keys = e.keys;
+                    Object k;
+                    if (keys == null || keys == NULL_SENTINEL) {
+                        k = null;
+                    } else if (keys instanceof Object[]) {
+                        Object[] keysArray = (Object[]) keys;
+                        k = keysArray.length == 1 ? (keysArray[0] == NULL_SENTINEL ? null : keysArray[0]) : reconstructKey(keysArray);
+                    } else if (keys instanceof Collection) {
+                        if (collectionKeyMode == CollectionKeyMode.COLLECTIONS_NOT_EXPANDED) {
+                            k = keys;
+                        } else {
+                            Object[] keysArray = ((Collection<?>) keys).toArray();
+                            k = reconstructKey(keysArray);
+                        }
+                    } else {
+                        k = keys;
+                    }
+                    set.add(k);
+                }
+            }
         }
         return set;
     }
@@ -3580,8 +3604,15 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      */
     public Collection<V> values() {
         List<V> vals = new ArrayList<>();
-        for (Map.Entry<Object, V> e : entrySet()) {
-            vals.add(e.getValue());
+        final AtomicReferenceArray<MultiKey<V>[]> snapshot = buckets;
+        final int len = snapshot.length();
+        for (int bucketIdx = 0; bucketIdx < len; bucketIdx++) {
+            MultiKey<V>[] chain = snapshot.get(bucketIdx);
+            if (chain != null) {
+                for (MultiKey<V> e : chain) {
+                    vals.add(e.value);
+                }
+            }
         }
         return vals;
     }

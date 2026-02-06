@@ -1072,6 +1072,7 @@ public class CompactMap<K, V> implements Map<K, V> {
                 entries[idx + 1] = entry.getValue();
                 idx += 2;
             }
+            sortCompactArray(entries);
             val = entries;
         }
         return save;
@@ -1880,6 +1881,7 @@ public class CompactMap<K, V> implements Map<K, V> {
                         entries[idx + 1] = e.getValue();
                         idx += 2;
                     }
+                    sortCompactArray(entries);
                     val = entries;
                 }
             } else {

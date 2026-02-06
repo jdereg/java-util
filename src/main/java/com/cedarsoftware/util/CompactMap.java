@@ -984,18 +984,29 @@ public class CompactMap<K, V> implements Map<K, V> {
      * @return the previous value associated with the removed key, or null if key not found
      */
     private V handleTransitionToSingleEntry(Object[] entries, Object key) {
+        K remainingKey;
+        V remainingValue;
+        V prevValue;
+
         if (areKeysEqual(key, entries[0])) {
-            Object prevValue = entries[1];
-            clear();
-            put((K) entries[2], (V) entries[3]);
-            return (V) prevValue;
+            prevValue = (V) entries[1];
+            remainingKey = (K) entries[2];
+            remainingValue = (V) entries[3];
         } else if (areKeysEqual(key, entries[2])) {
-            Object prevValue = entries[3];
-            clear();
-            put((K) entries[0], (V) entries[1]);
-            return (V) prevValue;
+            prevValue = (V) entries[3];
+            remainingKey = (K) entries[0];
+            remainingValue = (V) entries[1];
+        } else {
+            return null;
         }
-        return null;
+
+        // Transition directly to single-entry storage, bypassing clear()+put()
+        if (areKeysEqual(remainingKey, getSingleValueKey()) && !(remainingValue instanceof Map || remainingValue instanceof Object[])) {
+            val = remainingValue;
+        } else {
+            val = new CompactMapEntry(remainingKey, remainingValue);
+        }
+        return prevValue;
     }
 
     /**

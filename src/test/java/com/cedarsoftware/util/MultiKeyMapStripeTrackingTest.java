@@ -26,9 +26,17 @@ class MultiKeyMapStripeTrackingTest {
         return h ^ (h >>> 16);
     }
 
+    /** Creates a small map with contention tracking enabled */
+    private static MultiKeyMap<String> createTrackedMap() {
+        return MultiKeyMap.<String>builder()
+                .capacity(16)
+                .trackContentionMetrics(true)
+                .build();
+    }
+
     @Test
     void testPutTracksAcquisitionOnCorrectStripe() throws Exception {
-        MultiKeyMap<String> map = new MultiKeyMap<>(16);
+        MultiKeyMap<String> map = createTrackedMap();
 
         // Access internals via reflection
         Field stripeAcqField = MultiKeyMap.class.getDeclaredField("stripeLockAcquisitions");
@@ -78,7 +86,7 @@ class MultiKeyMapStripeTrackingTest {
 
     @Test
     void testRemoveTracksAcquisitionOnCorrectStripe() throws Exception {
-        MultiKeyMap<String> map = new MultiKeyMap<>(16);
+        MultiKeyMap<String> map = createTrackedMap();
 
         Field stripeAcqField = MultiKeyMap.class.getDeclaredField("stripeLockAcquisitions");
         stripeAcqField.setAccessible(true);
@@ -127,7 +135,7 @@ class MultiKeyMapStripeTrackingTest {
 
     @Test
     void testNoAcquisitionsAboveTableSizeStripes() throws Exception {
-        MultiKeyMap<String> map = new MultiKeyMap<>(16);
+        MultiKeyMap<String> map = createTrackedMap();
 
         Field stripeAcqField = MultiKeyMap.class.getDeclaredField("stripeLockAcquisitions");
         stripeAcqField.setAccessible(true);

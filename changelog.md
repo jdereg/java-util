@@ -49,6 +49,10 @@
 * **PERFORMANCE**: `MultiKeyMap` - `keySet()` and `values()` no longer rebuild full `entrySet()`
   * `values()` now iterates buckets directly, skipping all key reconstruction (`reconstructKey()`) and `SimpleEntry` allocation
   * `keySet()` now iterates buckets directly, skipping `SimpleEntry` wrapper allocation
+* **PERFORMANCE**: `MultiKeyMap` - Lock contention tracking is now opt-in via `trackContentionMetrics(true)`
+  * Eliminates 2+ `AtomicInteger` CAS operations per `put`/`remove` call when tracking is disabled (default)
+  * Also skips the `tryLock()`-then-`lock()` contention detection pattern, using a single `lock()` call instead
+  * Enable via `MultiKeyMap.builder().trackContentionMetrics(true)` when diagnostics are needed
 
 #### 4.90.0 2026-02-02
 * **BUG FIX**: `DeepEquals` - URL comparison now uses string representation instead of `URL.equals()`

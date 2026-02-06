@@ -422,6 +422,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     private final boolean simpleKeysMode;
     private final boolean valueBasedEquality;
     private final boolean caseSensitive;
+    private final boolean trackContentionMetrics;
     private static final float DEFAULT_LOAD_FACTOR = 0.75f;
 
     // Cached hashCode for performance (invalidated on mutations)
@@ -518,6 +519,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         this.simpleKeysMode = builder.simpleKeysMode;
         this.valueBasedEquality = builder.valueBasedEquality;
         this.caseSensitive = builder.caseSensitive;
+        this.trackContentionMetrics = builder.trackContentionMetrics;
 
         for (int i = 0; i < STRIPE_COUNT; i++) {
             stripeLocks[i] = new ReentrantLock();
@@ -590,6 +592,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         private boolean simpleKeysMode = false;
         private boolean valueBasedEquality = true;  // Default: cross-type numeric matching
         private boolean caseSensitive = true;  // Default: case-sensitive string comparison
+        private boolean trackContentionMetrics = false;  // Default: off for maximum write throughput
 
         // Private constructor - instantiate via MultiKeyMap.builder()
         private Builder() {}
@@ -711,6 +714,22 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         }
 
         /**
+         * Enables or disables lock contention metrics tracking.
+         * <p>When enabled, the map tracks per-stripe lock acquisition counts and contention
+         * events using atomic counters. This adds measurable overhead (multiple {@code AtomicInteger}
+         * increments per write operation) but provides diagnostic data accessible via
+         * {@link MultiKeyMap#printContentionStatistics()}.</p>
+         * <p>Default is {@code false} (disabled) for maximum write throughput.</p>
+         *
+         * @param track {@code true} to enable contention tracking, {@code false} to disable
+         * @return this builder instance for method chaining
+         */
+        public Builder<V> trackContentionMetrics(boolean track) {
+            this.trackContentionMetrics = track;
+            return this;
+        }
+
+        /**
          * Copies configuration from an existing MultiKeyMap.
          * <p>This copies all configuration settings including capacity, load factor,
          * collection key mode, and dimension flattening settings.</p>
@@ -726,6 +745,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             this.simpleKeysMode = source.simpleKeysMode;
             this.valueBasedEquality = source.valueBasedEquality;
             this.caseSensitive = source.caseSensitive;
+            this.trackContentionMetrics = source.trackContentionMetrics;
             return this;
         }
 
@@ -992,16 +1012,21 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     }
 
     private void lockAllStripes() {
-        int contended = 0;
-        for (ReentrantLock lock : stripeLocks) {
-            // Use tryLock() to accurately detect contention
-            if (!lock.tryLock()) {
-                contended++;
-                lock.lock(); // Now wait for the lock
+        if (trackContentionMetrics) {
+            int contended = 0;
+            for (ReentrantLock lock : stripeLocks) {
+                if (!lock.tryLock()) {
+                    contended++;
+                    lock.lock();
+                }
+            }
+            globalLockAcquisitions.incrementAndGet();
+            if (contended > 0) globalLockContentions.incrementAndGet();
+        } else {
+            for (ReentrantLock lock : stripeLocks) {
+                lock.lock();
             }
         }
-        globalLockAcquisitions.incrementAndGet();
-        if (contended > 0) globalLockContentions.incrementAndGet();
     }
 
     private void unlockAllStripes() {
@@ -3114,23 +3139,29 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         V old;
         boolean resize;
 
-        // Use tryLock() to accurately detect contention
-        boolean contended = !lock.tryLock();
-        if (contended) {
-            // Failed to acquire immediately - this is true contention
-            lock.lock(); // Now wait for the lock
-            contentionCount.incrementAndGet();
-            stripeLockContention[stripe].incrementAndGet();
-        }
-
-        try {
-            totalLockAcquisitions.incrementAndGet();
-            stripeLockAcquisitions[stripe].incrementAndGet();
-
-            old = putNoLock(newKey);
-            resize = atomicSize.get() > buckets.length() * loadFactor;
-        } finally {
-            lock.unlock();
+        if (trackContentionMetrics) {
+            boolean contended = !lock.tryLock();
+            if (contended) {
+                lock.lock();
+                contentionCount.incrementAndGet();
+                stripeLockContention[stripe].incrementAndGet();
+            }
+            try {
+                totalLockAcquisitions.incrementAndGet();
+                stripeLockAcquisitions[stripe].incrementAndGet();
+                old = putNoLock(newKey);
+                resize = atomicSize.get() > buckets.length() * loadFactor;
+            } finally {
+                lock.unlock();
+            }
+        } else {
+            lock.lock();
+            try {
+                old = putNoLock(newKey);
+                resize = atomicSize.get() > buckets.length() * loadFactor;
+            } finally {
+                lock.unlock();
+            }
         }
 
         resizeRequest(resize);
@@ -3355,22 +3386,27 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         ReentrantLock lock = stripeLocks[stripe];
         V old;
 
-        // Use tryLock() to accurately detect contention
-        boolean contended = !lock.tryLock();
-        if (contended) {
-            // Failed to acquire immediately - this is true contention
-            lock.lock(); // Now wait for the lock
-            contentionCount.incrementAndGet();
-            stripeLockContention[stripe].incrementAndGet();
-        }
-
-        try {
-            totalLockAcquisitions.incrementAndGet();
-            stripeLockAcquisitions[stripe].incrementAndGet();
-
-            old = removeNoLock(removeKey);
-        } finally {
-            lock.unlock();
+        if (trackContentionMetrics) {
+            boolean contended = !lock.tryLock();
+            if (contended) {
+                lock.lock();
+                contentionCount.incrementAndGet();
+                stripeLockContention[stripe].incrementAndGet();
+            }
+            try {
+                totalLockAcquisitions.incrementAndGet();
+                stripeLockAcquisitions[stripe].incrementAndGet();
+                old = removeNoLock(removeKey);
+            } finally {
+                lock.unlock();
+            }
+        } else {
+            lock.lock();
+            try {
+                old = removeNoLock(removeKey);
+            } finally {
+                lock.unlock();
+            }
         }
 
         return old;

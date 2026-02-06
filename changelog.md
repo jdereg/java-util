@@ -24,6 +24,24 @@
   * Increased threshold from 2ms to 50ms for CI environments with thread scheduling delays
 * **MAINTENANCE**: Fixed flaky `MultiKeyMapLockStripingTest.testPerformanceWithStriping` test
   * Increased slowdown tolerance from 5x to 10x for CI environments with shared resources
+* **BUG FIX**: `MultiKeyMap` - `cachedHashCode` not invalidated by ConcurrentMap methods
+  * `putIfAbsent`, `computeIfAbsent`, `computeIfPresent`, `compute`, `merge`, `remove(K,V)`, `replace(K,V)`, `replace(K,V,V)` all bypassed `cachedHashCode = null` invalidation
+  * After any of these methods mutated the map, `hashCode()` returned a stale cached value
+* **BUG FIX**: `MultiKeyMap` - `compareCollections` skips trailing elements after Set sections
+  * Unconditional `i++` at end of while loop overcounted after Set branch which already advances `i`
+  * Elements following a Set in an expanded key were never compared, causing false key matches
+* **BUG FIX**: `MultiKeyMap` - Small Set comparison (<=6 elements) doesn't track consumed matches
+  * Under `valueBasedEquality`, two distinct elements in set1 could match the same element in set2
+  * For example, `Integer(1)` and `Long(1L)` both matching `Integer(1)`, producing false equality
+  * Fixed with `boolean[]` consumed tracking in all three comparison methods
+* **BUG FIX**: `MultiKeyMap` - Stripe contention diagnostics track wrong stripe
+  * `putInternal` and `removeInternal` used `hash & STRIPE_MASK` but `getStripeLock` uses `(hash & tableMask) & STRIPE_MASK`
+  * When table size < stripe count, per-stripe metrics were attributed to incorrect stripes
+  * Extracted shared `getStripeIndex()` helper for consistent stripe computation
+* **BUG FIX**: `MultiKeyMap` - ThreadLocal lookup arrays leak references
+  * `getMultiKey()` and `containsMultiKey()` methods never nulled out array entries after use
+  * In thread-pool environments, this pinned references to user objects for the lifetime of the thread
+  * Added `try/finally` cleanup in all 8 methods
 
 #### 4.90.0 2026-02-02
 * **BUG FIX**: `DeepEquals` - URL comparison now uses string representation instead of `URL.equals()`

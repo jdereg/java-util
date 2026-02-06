@@ -969,13 +969,16 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         return (int) (bits ^ (bits >>> 32));
     }
 
-    private ReentrantLock getStripeLock(int hash) {
-        // GPT5 optimization: Use bucket index for stripe selection to reduce false contention
+    private int getStripeIndex(int hash) {
+        // Use bucket index for stripe selection to reduce false contention
         // between independent buckets that happen to have same low-order hash bits
         final AtomicReferenceArray<MultiKey<V>[]> table = buckets;  // Volatile read of buckets
         final int mask = table.length() - 1;  // Array length is immutable
-        int bucketIndex = hash & mask;
-        return stripeLocks[bucketIndex & STRIPE_MASK];
+        return (hash & mask) & STRIPE_MASK;
+    }
+
+    private ReentrantLock getStripeLock(int hash) {
+        return stripeLocks[getStripeIndex(hash)];
     }
 
     private void lockAllStripes() {
@@ -1024,7 +1027,12 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         Object[] key = LOOKUP_KEY_2.get();
         key[0] = k1;
         key[1] = k2;
-        return get(key);
+        try {
+            return get(key);
+        } finally {
+            key[0] = null;
+            key[1] = null;
+        }
     }
 
     /**
@@ -1040,7 +1048,13 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         key[0] = k1;
         key[1] = k2;
         key[2] = k3;
-        return get(key);
+        try {
+            return get(key);
+        } finally {
+            key[0] = null;
+            key[1] = null;
+            key[2] = null;
+        }
     }
 
     /**
@@ -1058,7 +1072,14 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         key[1] = k2;
         key[2] = k3;
         key[3] = k4;
-        return get(key);
+        try {
+            return get(key);
+        } finally {
+            key[0] = null;
+            key[1] = null;
+            key[2] = null;
+            key[3] = null;
+        }
     }
 
     /**
@@ -1078,7 +1099,15 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         key[2] = k3;
         key[3] = k4;
         key[4] = k5;
-        return get(key);
+        try {
+            return get(key);
+        } finally {
+            key[0] = null;
+            key[1] = null;
+            key[2] = null;
+            key[3] = null;
+            key[4] = null;
+        }
     }
 
     /**
@@ -2319,12 +2348,15 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                     // Empty sets - equal, nothing to compare
                     // No action needed - continue to next element
                 } else if (setSize <= 6) {
-                    // Optimization: For small Sets (≤6 elements), nested loop is faster than allocation
+                    // Optimization: For small Sets (≤6 elements), nested loop is faster than HashMap
                     // O(n²) comparison (max 36 operations) but avoids HashMap overhead
+                    // Track consumed matches to prevent double-matching under valueBasedEquality
+                    boolean[] consumed = new boolean[setSize];
                     for (int s1 = startIdx; s1 < startIdx + setSize; s1++) {
                         boolean found = false;
                         for (int s2 = startIdx; s2 < startIdx + setSize; s2++) {
-                            if (elementEquals(array1[s1], array2[s2], valueBasedEquality, caseSensitive)) {
+                            if (!consumed[s2 - startIdx] && elementEquals(array1[s1], array2[s2], valueBasedEquality, caseSensitive)) {
+                                consumed[s2 - startIdx] = true;
                                 found = true;
                                 break;
                             }
@@ -2459,10 +2491,13 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                 } else if (setSize <= 6) {
                     // Optimization: For small Sets (≤6 elements), nested loop is faster than allocation
                     // O(n²) comparison (max 36 operations) - we only allocate the iterator list
+                    // Track consumed matches to prevent double-matching under valueBasedEquality
+                    boolean[] consumed = new boolean[setSize];
                     for (int s1 = arrayStartIdx; s1 < arrayStartIdx + arraySetSize; s1++) {
                         boolean found = false;
-                        for (Object iterElem : iterElements) {
-                            if (elementEquals(array[s1], iterElem, valueBasedEquality, caseSensitive)) {
+                        for (int s2 = 0; s2 < iterElements.size(); s2++) {
+                            if (!consumed[s2] && elementEquals(array[s1], iterElements.get(s2), valueBasedEquality, caseSensitive)) {
+                                consumed[s2] = true;
                                 found = true;
                                 break;
                             }
@@ -2616,10 +2651,13 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                 } else if (setSize <= 6) {
                     // Optimization: For small Sets (≤6 elements), nested loop is faster than additional allocation
                     // O(n²) comparison (max 36 operations) - we already have the two lists
-                    for (Object setElem1 : set1Elements) {
+                    // Track consumed matches to prevent double-matching under valueBasedEquality
+                    boolean[] consumed = new boolean[setSize];
+                    for (int s1 = 0; s1 < set1Elements.size(); s1++) {
                         boolean found = false;
-                        for (Object setElem2 : set2Elements) {
-                            if (elementEquals(setElem1, setElem2, valueBasedEquality, caseSensitive)) {
+                        for (int s2 = 0; s2 < set2Elements.size(); s2++) {
+                            if (!consumed[s2] && elementEquals(set1Elements.get(s1), set2Elements.get(s2), valueBasedEquality, caseSensitive)) {
+                                consumed[s2] = true;
                                 found = true;
                                 break;
                             }
@@ -2688,6 +2726,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                 }
 
                 // Note: SET_CLOSE was already counted when extracted (line 2529), no need to count again
+                continue;  // Skip the unconditional i++ below; the Set branch already advanced i correctly
             } else if (elem1 == SET_OPEN || elem2 == SET_OPEN) {
                 // One is SET_OPEN but not the other - mismatch
                 return false;
@@ -3060,8 +3099,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         cachedHashCode = null;
 
         int hash = newKey.hash;
-        ReentrantLock lock = getStripeLock(hash);
-        int stripe = hash & STRIPE_MASK;
+        int stripe = getStripeIndex(hash);
+        ReentrantLock lock = stripeLocks[stripe];
         V old;
         boolean resize;
 
@@ -3073,7 +3112,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             contentionCount.incrementAndGet();
             stripeLockContention[stripe].incrementAndGet();
         }
-        
+
         try {
             totalLockAcquisitions.incrementAndGet();
             stripeLockAcquisitions[stripe].incrementAndGet();
@@ -3169,7 +3208,12 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         Object[] key = LOOKUP_KEY_2.get();
         key[0] = k1;
         key[1] = k2;
-        return containsKey(key);
+        try {
+            return containsKey(key);
+        } finally {
+            key[0] = null;
+            key[1] = null;
+        }
     }
 
     /**
@@ -3185,7 +3229,13 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         key[0] = k1;
         key[1] = k2;
         key[2] = k3;
-        return containsKey(key);
+        try {
+            return containsKey(key);
+        } finally {
+            key[0] = null;
+            key[1] = null;
+            key[2] = null;
+        }
     }
 
     /**
@@ -3203,7 +3253,14 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         key[1] = k2;
         key[2] = k3;
         key[3] = k4;
-        return containsKey(key);
+        try {
+            return containsKey(key);
+        } finally {
+            key[0] = null;
+            key[1] = null;
+            key[2] = null;
+            key[3] = null;
+        }
     }
 
     /**
@@ -3223,7 +3280,15 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         key[2] = k3;
         key[3] = k4;
         key[4] = k5;
-        return containsKey(key);
+        try {
+            return containsKey(key);
+        } finally {
+            key[0] = null;
+            key[1] = null;
+            key[2] = null;
+            key[3] = null;
+            key[4] = null;
+        }
     }
 
     /**
@@ -3276,8 +3341,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         cachedHashCode = null;
 
         int hash = removeKey.hash;
-        ReentrantLock lock = getStripeLock(hash);
-        int stripe = hash & STRIPE_MASK;
+        int stripe = getStripeIndex(hash);
+        ReentrantLock lock = stripeLocks[stripe];
         V old;
 
         // Use tryLock() to accurately detect contention
@@ -3288,7 +3353,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             contentionCount.incrementAndGet();
             stripeLockContention[stripe].incrementAndGet();
         }
-        
+
         try {
             totalLockAcquisitions.incrementAndGet();
             stripeLockAcquisitions[stripe].incrementAndGet();
@@ -3596,16 +3661,19 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      *         if there was no mapping for the key
      */
     public V putIfAbsent(Object key, V value) {
+        // Invalidate hashCode cache on potential mutation
+        cachedHashCode = null;
+
         V existing = get(key);
         if (existing != null) return existing;
-        
+
         // Normalize the key once, outside the lock
         MultiKey<V> norm = flattenKey(key);
         Object normalizedKey = norm.keys;
         int hash = norm.hash;
         ReentrantLock lock = getStripeLock(hash);
         boolean resize = false;
-        
+
         lock.lock();
         try {
             // Check again inside the lock
@@ -3639,6 +3707,9 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      */
     public V computeIfAbsent(Object key, Function<? super Object, ? extends V> mappingFunction) {
         Objects.requireNonNull(mappingFunction);
+
+        // Invalidate hashCode cache on potential mutation
+        cachedHashCode = null;
 
         // Normalize key once upfront - avoid double normalization that get() + flattenKey() would cause
         MultiKey<V> norm = flattenKey(key);
@@ -3691,6 +3762,9 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      */
     public V computeIfPresent(Object key, BiFunction<? super Object, ? super V, ? extends V> remappingFunction) {
         Objects.requireNonNull(remappingFunction);
+
+        // Invalidate hashCode cache on potential mutation
+        cachedHashCode = null;
 
         // Normalize key once upfront - avoid double normalization that get() + flattenKey() would cause
         MultiKey<V> norm = flattenKey(key);
@@ -3747,6 +3821,9 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     public V compute(Object key, BiFunction<? super Object, ? super V, ? extends V> remappingFunction) {
         Objects.requireNonNull(remappingFunction);
 
+        // Invalidate hashCode cache on potential mutation
+        cachedHashCode = null;
+
         MultiKey<V> norm = flattenKey(key);
         Object normalizedKey = norm.keys;
         int hash = norm.hash;
@@ -3798,13 +3875,16 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     public V merge(Object key, V value, BiFunction<? super V, ? super V, ? extends V> remappingFunction) {
         Objects.requireNonNull(value);
         Objects.requireNonNull(remappingFunction);
-        
+
+        // Invalidate hashCode cache on potential mutation
+        cachedHashCode = null;
+
         MultiKey<V> norm = flattenKey(key);
         Object normalizedKey = norm.keys;
         int hash = norm.hash;
         ReentrantLock lock = getStripeLock(hash);
         boolean resize = false;
-        
+
         V result;
         lock.lock();
         try {
@@ -3848,11 +3928,14 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      * @return {@code true} if the value was removed
      */
     public boolean remove(Object key, Object value) {
+        // Invalidate hashCode cache on potential mutation
+        cachedHashCode = null;
+
         MultiKey<V> norm = flattenKey(key);
         Object normalizedKey = norm.keys;
         int hash = norm.hash;
         ReentrantLock lock = getStripeLock(hash);
-        
+
         lock.lock();
         try {
             MultiKey<V> lookupKey = new MultiKey<>(normalizedKey, hash, null);
@@ -3885,12 +3968,15 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      *         if there was no mapping for the key
      */
     public V replace(Object key, V value) {
+        // Invalidate hashCode cache on potential mutation
+        cachedHashCode = null;
+
         MultiKey<V> norm = flattenKey(key);
         Object normalizedKey = norm.keys;
         int hash = norm.hash;
         ReentrantLock lock = getStripeLock(hash);
         boolean resize = false;
-        
+
         V result;
         lock.lock();
         try {
@@ -3930,12 +4016,15 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      * @return {@code true} if the value was replaced
      */
     public boolean replace(Object key, V oldValue, V newValue) {
+        // Invalidate hashCode cache on potential mutation
+        cachedHashCode = null;
+
         MultiKey<V> norm = flattenKey(key);
         Object normalizedKey = norm.keys;
         int hash = norm.hash;
         ReentrantLock lock = getStripeLock(hash);
         boolean resize = false;
-        
+
         boolean result = false;
         lock.lock();
         try {

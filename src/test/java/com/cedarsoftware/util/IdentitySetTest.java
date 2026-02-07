@@ -8,6 +8,7 @@ import java.util.NoSuchElementException;
 import java.util.Set;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -502,5 +503,91 @@ class IdentitySetTest {
         assertTrue(visited.contains(Integer.class));
         assertFalse(visited.contains(Long.class));
         assertEquals(3, visited.size());
+    }
+
+    // ============== Bug regression tests ==============
+
+    @Test
+    void testAddAfterRemoveDoesNotDuplicate() {
+        // Bug: addInternal inserted into a DELETED slot without probing further,
+        // creating a duplicate entry when the element existed later in the chain.
+        IdentitySet<Object> set = new IdentitySet<>(16);
+        Object[] objs = new Object[100];
+        for (int i = 0; i < objs.length; i++) {
+            objs[i] = new Object();
+            set.add(objs[i]);
+        }
+
+        // Remove half the elements to create DELETED tombstones
+        for (int i = 0; i < objs.length; i += 2) {
+            assertTrue(set.remove(objs[i]));
+        }
+        assertEquals(50, set.size());
+
+        // Re-add the surviving elements — should all return false (already present)
+        for (int i = 1; i < objs.length; i += 2) {
+            assertFalse(set.add(objs[i]), "add() returned true for element already in set");
+        }
+        assertEquals(50, set.size());
+
+        // Verify remove followed by contains is consistent
+        for (int i = 1; i < objs.length; i += 2) {
+            assertTrue(set.remove(objs[i]));
+            assertFalse(set.contains(objs[i]), "contains() returned true after remove()");
+        }
+        assertEquals(0, set.size());
+    }
+
+    @Test
+    void testAddReturnsCorrectBooleanAfterRemoval() {
+        // Verifies the specific scenario: add A, add B (same bucket), remove A, add B → false
+        IdentitySet<Object> set = new IdentitySet<>(4);
+        Object a = new Object();
+        Object b = new Object();
+
+        set.add(a);
+        set.add(b);
+        assertEquals(2, set.size());
+
+        set.remove(a);
+        assertEquals(1, set.size());
+
+        // b is still in the set — add must return false and size must stay 1
+        assertFalse(set.add(b));
+        assertEquals(1, set.size());
+
+        // Now remove b and verify it's fully gone
+        assertTrue(set.remove(b));
+        assertEquals(0, set.size());
+        assertFalse(set.contains(b));
+    }
+
+    @Test
+    void testEdgeCaseInitialCapacities() {
+        // Zero and negative values should not cause issues (clamped to minimum)
+        IdentitySet<Object> set0 = new IdentitySet<>(0);
+        assertTrue(set0.isEmpty());
+        set0.add(new Object());
+        assertEquals(1, set0.size());
+
+        IdentitySet<Object> setNeg = new IdentitySet<>(-5);
+        assertTrue(setNeg.isEmpty());
+        setNeg.add(new Object());
+        assertEquals(1, setNeg.size());
+    }
+
+    @Test
+    @Timeout(5)
+    void testLargeInitialCapacityDoesNotInfiniteLoop() {
+        // Bug: initialCapacity > 2^30 caused int overflow in the power-of-2 rounding loop,
+        // leading to an infinite loop. After fix, capacity is capped at 2^30.
+        // The allocation may OOM on constrained JVMs — that's acceptable.
+        // The critical thing is the constructor does not hang.
+        try {
+            IdentitySet<Object> set = new IdentitySet<>(Integer.MAX_VALUE);
+            assertTrue(set.isEmpty());
+        } catch (OutOfMemoryError e) {
+            // Expected on most JVMs — proving the loop terminates is what matters
+        }
     }
 }

@@ -54,6 +54,7 @@ import java.util.NoSuchElementException;
  */
 public class IdentitySet<T> extends AbstractSet<T> {
     private static final int DEFAULT_CAPACITY = 16;
+    private static final int MAX_CAPACITY = 1 << 30;  // Largest power-of-2 for int
     private static final float LOAD_FACTOR = 0.5f;  // Keep load low for fast probing
 
     // Sentinel for deleted slots to maintain probe chains
@@ -77,9 +78,10 @@ public class IdentitySet<T> extends AbstractSet<T> {
      * @param initialCapacity the initial capacity (will be rounded up to power of 2)
      */
     public IdentitySet(int initialCapacity) {
-        // Round up to power of 2
+        // Round up to power of 2, capping at MAX_CAPACITY to prevent int overflow
         int capacity = 1;
-        while (capacity < initialCapacity) {
+        int target = Math.min(Math.max(initialCapacity, 1), MAX_CAPACITY);
+        while (capacity < target) {
             capacity <<= 1;
         }
         elements = new Object[capacity];
@@ -120,16 +122,23 @@ public class IdentitySet<T> extends AbstractSet<T> {
         final int hash = System.identityHashCode(element);
         int index = hash & mask;
         final Object[] e = elements;
+        int firstDeleted = -1;
 
-        // Linear probe
+        // Linear probe — must scan past DELETED slots to check for existing duplicates
         while (true) {
             Object existing = e[index];
-            if (existing == null || existing == DELETED) {
-                e[index] = element;
+            if (existing == null) {
+                // Element not in set — insert at first DELETED slot if one was seen, else here
+                int insertIndex = firstDeleted >= 0 ? firstDeleted : index;
+                e[insertIndex] = element;
                 size++;
                 return true;
             }
-            if (existing == element) {  // Identity comparison - already present
+            if (existing == DELETED) {
+                if (firstDeleted < 0) {
+                    firstDeleted = index;
+                }
+            } else if (existing == element) {  // Identity comparison - already present
                 return false;
             }
             index = (index + 1) & mask;

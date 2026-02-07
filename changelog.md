@@ -1,6 +1,12 @@
 ### Revision History
 
 #### 4.91.0 (unreleased)
+* **BUG FIX**: `IdentitySet.addInternal()` - Element duplication after removal via tombstone slots
+  * When a DELETED tombstone appeared before an existing element in the probe chain, `addInternal()` inserted a duplicate without checking further, causing `add()` to return `true` for elements already present, inflated `size`, and ghost entries that survived `remove()`
+  * Fixed by remembering the first DELETED slot but continuing to probe until `null` or finding the element
+* **BUG FIX**: `IdentitySet` constructor - Infinite loop for `initialCapacity > 2^30`
+  * The power-of-2 rounding loop overflowed `int`, causing `capacity` to go negative then zero, looping forever
+  * Fixed by clamping the target to `[1, 2^30]` before the loop
 * **BUG FIX**: `Executor` - `InterruptedException` swallowed without restoring thread interrupt flag
   * Both `execute()` methods now call `Thread.currentThread().interrupt()` before returning
   * Bounded gobbler thread `join()` calls with timeout to prevent indefinite hangs after `destroyForcibly()`

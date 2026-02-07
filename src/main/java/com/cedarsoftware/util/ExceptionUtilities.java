@@ -32,10 +32,10 @@ public final class ExceptionUtilities {
      * @return Throwable representing the actual cause (most nested exception).
      */
     public static Throwable getDeepestException(Throwable e) {
-        while (e.getCause() != null) {
+        IdentitySet<Throwable> seen = new IdentitySet<>();
+        while (e.getCause() != null && seen.add(e)) {
             e = e.getCause();
         }
-
         return e;
     }
 
@@ -109,7 +109,7 @@ public final class ExceptionUtilities {
      * Safely Ignore a Throwable or rethrow if it is a Throwable that should
      * not be ignored.
      *
-     * @param t Throwable to possibly ignore (ThreadDeath and OutOfMemory are not ignored).
+     * @param t Throwable to possibly ignore (OutOfMemoryError is not ignored).
      */
     public static void safelyIgnoreException(Throwable t) {
         if (t instanceof OutOfMemoryError) {

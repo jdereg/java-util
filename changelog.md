@@ -1,6 +1,9 @@
 ### Revision History
 
 #### 4.91.0 (unreleased)
+* **BUG FIX**: `ExceptionUtilities.getDeepestException()` - Infinite loop on circular exception cause chains
+  * Added cycle detection using `IdentitySet` to safely handle circular chains (e.g. A→B→A)
+  * Fixed Javadoc on `safelyIgnoreException(Throwable)` that incorrectly claimed `ThreadDeath` was rethrown
 * **BUG FIX**: `EncryptionUtilities` - All 7 `fast*` file-hashing methods (`fastMD5`, `fastSHA1`, `fastSHA256`, `fastSHA384`, `fastSHA512`, `fastSHA3_256`, `fastSHA3_512`) never used the optimized `FileChannel` path
   * `Files.newInputStream()` returns `ChannelInputStream` on Java 9+, not `FileInputStream`, so the `instanceof FileInputStream` check always failed
   * Every call fell through to the slower `InputStream.read(byte[])` path instead of the intended `FileChannel`/`ByteBuffer` path

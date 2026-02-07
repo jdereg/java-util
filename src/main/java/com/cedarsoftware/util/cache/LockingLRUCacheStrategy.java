@@ -288,6 +288,16 @@ public class LockingLRUCacheStrategy<K, V> implements Map<K, V> {
     public void clear() {
         lock.lock();
         try {
+            // Null out all nodes' links so concurrent get()'s tryLock/moveToHead
+            // detects them as evicted via the null-link check.
+            Node<K, V> node = head.next;
+            while (node != tail) {
+                Node<K, V> next = node.next;
+                node.prev = null;
+                node.next = null;
+                node.value = null;
+                node = next;
+            }
             head.next = tail;
             tail.prev = head;
             cache.clear();

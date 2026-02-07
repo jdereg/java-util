@@ -1,6 +1,11 @@
 ### Revision History
 
 #### 4.91.0 (unreleased)
+* **BUG FIX**: `LockingLRUCacheStrategy.clear()` - Concurrent `get()` could corrupt the linked list after `clear()`
+  * `clear()` reset the head/tail sentinels but did not null out removed nodes' `prev`/`next` links
+  * A concurrent `get()` using `tryLock` could call `moveToHead()` on a node with stale links, splicing ghost nodes into the live list
+  * This caused `entrySet()`, `containsValue()`, `hashCode()`, and `equals()` to return stale data
+  * Fixed by walking the list and nulling each node's links before resetting the sentinels
 * **BUG FIX**: `LoggingConfig.init()` - Missing `initialized` guard allowed repeated reconfiguration
   * The no-arg `init()` did not check the `initialized` flag, unlike `init(String)` which did
   * In test environments, every class with `static { LoggingConfig.init(); }` re-captured the full stack trace and overwrote formatters

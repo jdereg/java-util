@@ -185,13 +185,16 @@ public class ClassValueSet extends AbstractSet<Class<?>> {
      */
     @Override
     public void clear() {
-        // Invalidate cache entries before clearing the backing set.
-        // Iterate directly over backingSet (no copy needed) and invalidate each entry.
-        for (Class<?> cls : backingSet) {
-            membershipCache.remove(cls);
-        }
+        // Snapshot keys before clearing (needed for cache invalidation).
+        // We must clear backingSet BEFORE invalidating cache to prevent a race:
+        // If we invalidate first, a concurrent contains() could repopulate the cache
+        // from the still-populated backingSet, leaving permanently stale entries.
+        Set<Class<?>> keys = new HashSet<>(backingSet);
         backingSet.clear();
         containsNull.set(false);
+        for (Class<?> cls : keys) {
+            membershipCache.remove(cls);
+        }
     }
 
     @Override
@@ -213,37 +216,23 @@ public class ClassValueSet extends AbstractSet<Class<?>> {
         if (o == this) {
             return true;
         }
-
         if (!(o instanceof Set)) {
             return false;
         }
-
         Set<?> other = (Set<?>) o;
         if (other.size() != size()) {
             return false;
         }
-
         try {
-            // Check if other set has all our elements
+            // Size equality + A ⊆ B implies A = B, so one direction suffices.
             if (containsNull.get() && !other.contains(null)) {
                 return false;
             }
-
             for (Class<?> cls : backingSet) {
                 if (!other.contains(cls)) {
                     return false;
                 }
             }
-
-            // Check if we have all other set's elements
-            for (Object element : other) {
-                if (element != null) {
-                    if (!(element instanceof Class) || !contains(element)) {
-                        return false;
-                    }
-                }
-            }
-
             return true;
         } catch (ClassCastException | NullPointerException e) {
             return false;
@@ -253,15 +242,13 @@ public class ClassValueSet extends AbstractSet<Class<?>> {
     /**
      * Returns the hash code value for this set.
      * The hash code of a set is the sum of the hash codes of its elements.
+     * Null's hash code is 0 by convention, so it doesn't contribute to the sum.
      */
     @Override
     public int hashCode() {
         int h = 0;
         for (Class<?> cls : backingSet) {
-            h += (cls != null ? cls.hashCode() : 0);
-        }
-        if (containsNull.get()) {
-            h += 0; // null element's hash code is 0
+            h += cls.hashCode();
         }
         return h;
     }
@@ -306,9 +293,9 @@ public class ClassValueSet extends AbstractSet<Class<?>> {
     @Override
     public Iterator<Class<?>> iterator() {
         final boolean hasNull = containsNull.get();
-        // Make a snapshot of the backing set to avoid ConcurrentModificationException
-        // Use IdentitySet for Class objects for faster contains/add operations
-        final Iterator<Class<?>> backingIterator = new IdentitySet<>(backingSet).iterator();
+        // ConcurrentHashMap.newKeySet() provides weakly-consistent iterators
+        // that never throw ConcurrentModificationException — no snapshot needed.
+        final Iterator<Class<?>> backingIterator = backingSet.iterator();
 
         return new Iterator<Class<?>>() {
             private boolean nullReturned = !hasNull;

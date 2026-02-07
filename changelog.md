@@ -73,6 +73,15 @@
   * `hashCode()` iterated `entrySet()` which reconstructs original-case String keys, then used `String.hashCode()` (case-sensitive)
   * Two equal case-insensitive MultiKeyMaps with different-case keys produced different hashCodes, violating the hashCode contract
   * Fixed: case-insensitive mode now iterates internal buckets using pre-computed case-insensitive key hashes
+* **BUG FIX**: `ClassValueSet` - `clear()` race condition allows permanently stale cache entries
+  * Cache was invalidated BEFORE clearing the backing set, allowing a concurrent `contains()` to re-cache stale `true` values that would never be invalidated
+  * Fixed: snapshot keys, clear backing set first, then invalidate cache (matching `ClassValueMap` pattern)
+* **PERFORMANCE**: `ClassValueSet` - Remove unnecessary O(n) copy in `iterator()`
+  * Previously copied entire backing set into an `IdentitySet` snapshot on every `iterator()` call
+  * `ConcurrentHashMap.newKeySet()` already provides weakly-consistent iterators that never throw `ConcurrentModificationException`
+* **PERFORMANCE**: `ClassValueSet` - Simplify `equals()` and `hashCode()`
+  * Removed redundant second iteration in `equals()` — `size()` check + one-direction subset check is sufficient
+  * Removed dead `h += 0` null branch and unnecessary null guard in `hashCode()`
 * **BUG FIX**: `ClassValueMap` - `remove(null, value)` and `replace(null, oldValue, newValue)` use identity comparison instead of `equals()`
   * Both methods used `AtomicReference.compareAndSet()` which compares with `==`, not `equals()`
   * For non-interned objects, the operations silently failed even when the value was logically equal

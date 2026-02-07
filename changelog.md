@@ -73,6 +73,17 @@
   * `hashCode()` iterated `entrySet()` which reconstructs original-case String keys, then used `String.hashCode()` (case-sensitive)
   * Two equal case-insensitive MultiKeyMaps with different-case keys produced different hashCodes, violating the hashCode contract
   * Fixed: case-insensitive mode now iterates internal buckets using pre-computed case-insensitive key hashes
+* **BUG FIX**: `ClassValueMap` - `remove(null, value)` and `replace(null, oldValue, newValue)` use identity comparison instead of `equals()`
+  * Both methods used `AtomicReference.compareAndSet()` which compares with `==`, not `equals()`
+  * For non-interned objects, the operations silently failed even when the value was logically equal
+  * Fixed: CAS loops with `Objects.equals()` for proper value-based comparison per the `ConcurrentMap` contract
+* **PERFORMANCE**: `ClassValueMap` - Cache `entrySet()` and `values()` view objects
+  * Previously created new anonymous instances on every call; now cached in `transient` fields
+* **PERFORMANCE**: `ClassValueMap` - Override `containsValue()` for direct check
+  * Previously inherited `AbstractMap.containsValue()` which iterates `entrySet()` creating wrapper objects
+  * Now checks `nullKeyStore` + `backingMap.containsValue()` directly without allocation
+* **PERFORMANCE**: `ClassValueMap` - Override `isEmpty()` for short-circuit
+  * `backingMap.isEmpty()` is O(1) vs inherited `size() == 0` which computes full ConcurrentHashMap size
 * **MAINTENANCE**: `CaseInsensitiveSet` - Added regression tests for case-insensitive `hashCode()` and `retainAll()`
   * Verified `hashCode()` is case-insensitive through `SetFromMap` → `CaseInsensitiveMap.keySet().hashCode()` delegation
   * Verified `retainAll()` is case-insensitive through `SetFromMap` → `CaseInsensitiveMap.keySet().retainAll()` delegation

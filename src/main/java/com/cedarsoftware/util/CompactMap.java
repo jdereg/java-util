@@ -1219,14 +1219,6 @@ public class CompactMap<K, V> implements Map<K, V> {
             return false;
         }
 
-        // For case-insensitive maps, use strict Object.equals() for key comparison
-        // to maintain the Map.equals() symmetry contract. Without this,
-        // compactMap.equals(hashMap) could return true while
-        // hashMap.equals(compactMap) returns false.
-        if (isCaseInsensitive()) {
-            return equalsStrictKeys(other);
-        }
-
         if (val instanceof Object[]) {   // 2 to compactSize
             Object[] entries = (Object[]) val;
             int len = entries.length;
@@ -1263,31 +1255,6 @@ public class CompactMap<K, V> implements Map<K, V> {
 
         // size == 1
         return entrySet().equals(other.entrySet());
-    }
-
-    /**
-     * Compares this map's entries against the other map using strict
-     * Object.equals() for key comparison (not case-insensitive areKeysEqual).
-     * This ensures the Map.equals() symmetry contract is maintained when
-     * comparing a case-insensitive CompactMap with a standard Map.
-     */
-    private boolean equalsStrictKeys(Map<?, ?> other) {
-        // Build a HashMap from our entries for O(1) strict-equality key lookup.
-        // HashMap uses Object.equals()/hashCode() which is case-sensitive for Strings.
-        Map<Object, Object> strict = new HashMap<>(size() * 2);
-        for (Entry<K, V> e : entrySet()) {
-            strict.put(e.getKey(), e.getValue());
-        }
-        for (Entry<?, ?> entry : other.entrySet()) {
-            Object thatKey = entry.getKey();
-            if (!strict.containsKey(thatKey)) {
-                return false;
-            }
-            if (!Objects.equals(entry.getValue(), strict.get(thatKey))) {
-                return false;
-            }
-        }
-        return true;
     }
 
     /**

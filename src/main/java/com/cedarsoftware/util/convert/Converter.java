@@ -221,6 +221,7 @@ public final class Converter {
     
     private final ConverterOptions options;
     private final long instanceId;
+    private volatile boolean hasUserConversions;
 
     // Efficient key that combines two Class instances and instance ID for fast creation and lookup
     public static final class ConversionPair {
@@ -1532,14 +1533,19 @@ public final class Converter {
     public Converter(ConverterOptions options) {
         this.options = options;
         this.instanceId = INSTANCE_ID_GENERATOR.getAndIncrement();
-        
-        for (Map.Entry<ConversionPair, Convert<?>> entry : this.options.getConverterOverrides().entrySet()) {
+
+        Map<ConversionPair, Convert<?>> overrides = this.options.getConverterOverrides();
+        this.hasUserConversions = !overrides.isEmpty();
+
+        for (Map.Entry<ConversionPair, Convert<?>> entry : overrides.entrySet()) {
             ConversionPair pair = entry.getKey();
-            USER_DB.put(pair(pair.getSource(), pair.getTarget(), pair.getInstanceId()), entry.getValue());
-            
+            // Store with this instance's ID (not the pair's ID which is typically 0L from the static factory).
+            // This ensures consistency with addConversion() and all lookup paths that use this.instanceId.
+            USER_DB.put(pair(pair.getSource(), pair.getTarget(), this.instanceId), entry.getValue());
+
             // Add identity conversions for non-standard types to enable O(1) hasConverterOverrideFor lookup
-            addIdentityConversionIfNeeded(pair.getSource(), pair.getInstanceId());
-            addIdentityConversionIfNeeded(pair.getTarget(), pair.getInstanceId());
+            addIdentityConversionIfNeeded(pair.getSource(), this.instanceId);
+            addIdentityConversionIfNeeded(pair.getTarget(), this.instanceId);
         }
     }
 
@@ -1709,20 +1715,20 @@ public final class Converter {
             }
         }
 
-        // Check user-added conversions in this context (either instanceId 0L for static, or specific instanceId for instance)
-        Convert<?> conversionMethod = USER_DB.get(pair(sourceType, toType, this.instanceId));
-        if (isValidConversion(conversionMethod)) {
-            cacheConverter(sourceType, toType, conversionMethod);
-            return (T) conversionMethod.convert(from, this, toType);
+        // Check user-added conversions (skip when no user conversions — saves ConversionPair + map lookup)
+        if (hasUserConversions) {
+            Convert<?> conversionMethod = USER_DB.get(pair(sourceType, toType, this.instanceId));
+            if (isValidConversion(conversionMethod)) {
+                cacheConverter(sourceType, toType, conversionMethod);
+                return (T) conversionMethod.convert(from, this, toType);
+            }
         }
 
         // Then check the factory conversion database.
-        conversionMethod = CONVERSION_DB.get(pair(sourceType, toType, 0L));
+        Convert<?> conversionMethod = CONVERSION_DB.get(pair(sourceType, toType, 0L));
         if (isValidConversion(conversionMethod)) {
-            // Cache built-in conversions with instance ID 0 to keep them shared across instances
+            // Cache built-in conversions at shared level (0L) so all instances benefit
             FULL_CONVERSION_CACHE.put(pair(sourceType, toType, 0L), conversionMethod);
-            // Also cache with current instance ID for faster future lookup
-            cacheConverter(sourceType, toType, conversionMethod);
             return (T) conversionMethod.convert(from, this, toType);
         }
 
@@ -1761,18 +1767,15 @@ public final class Converter {
 
     private Convert<?> getCachedConverter(Class<?> source, Class<?> target) {
         // Check instance-specific cache first, then fall back to shared conversions.
-        // ConversionPair allocation is very cheap (~4ns) - benchmarking showed it's faster than caching pairs.
         Convert<?> converter = FULL_CONVERSION_CACHE.get(pair(source, target, this.instanceId));
         if (converter != null) {
             return converter;
         }
-
         // Fall back to shared conversions (instance ID 0)
         return FULL_CONVERSION_CACHE.get(pair(source, target, 0L));
     }
 
     private void cacheConverter(Class<?> source, Class<?> target, Convert<?> converter) {
-        // Use put with pair() to create conversion key
         FULL_CONVERSION_CACHE.put(pair(source, target, this.instanceId), converter);
     }
 
@@ -2300,7 +2303,9 @@ public final class Converter {
         }
 
         // Finally, attempt an inheritance-based lookup.
-        method = getInheritedConverter(source, target, 0L);
+        // Use this.instanceId (not 0L) so the walk also finds user conversions for parent types
+        // and avoids caching UNSUPPORTED for pairs that convert() handles via inheritance.
+        method = getInheritedConverter(source, target, this.instanceId);
         if (isValidConversion(method)) {
             cacheConverter(source, target, method);
             return true;
@@ -2342,20 +2347,11 @@ public final class Converter {
      * @return {@code true} if custom converter overrides exist for the conversion pair, {@code false} otherwise
      */
     private boolean hasConverterOverrideFor(Class<?> sourceType, Class<?> targetType) {
-        // Check if there are custom overrides for this conversion pair
-        if (options != null) {
-            Map<ConversionPair, Convert<?>> converterOverrides = options.getConverterOverrides();
-            if (converterOverrides != null && !converterOverrides.isEmpty()) {
-                // Get instance ID from first conversion pair (all pairs for this instance use same ID)
-                ConversionPair firstPair = converterOverrides.keySet().iterator().next();
-                long instanceId = firstPair.getInstanceId();
-                
-                // Direct hash lookup in USER_DB using this instance's ID
-                Convert<?> converter = USER_DB.get(pair(sourceType, targetType, instanceId));
-                return converter != null && converter != UNSUPPORTED;
-            }
-        }
-        return false;
+        // Direct hash lookup in USER_DB using this instance's ID.
+        // This finds both overrides from ConverterOptions (stored in constructor)
+        // and conversions added dynamically via addConversion().
+        Convert<?> converter = USER_DB.get(pair(sourceType, targetType, this.instanceId));
+        return converter != null && converter != UNSUPPORTED;
     }
 
     /**
@@ -2429,7 +2425,9 @@ public final class Converter {
         }
 
         // Finally, attempt inheritance-based conversion.
-        method = getInheritedConverter(source, target, 0L);
+        // Use this.instanceId (not 0L) so the walk also finds user conversions for parent types
+        // and avoids caching UNSUPPORTED for pairs that convert() handles via inheritance.
+        method = getInheritedConverter(source, target, this.instanceId);
         if (isValidConversion(method)) {
             cacheConverter(source, target, method);
             return true;
@@ -2450,6 +2448,11 @@ public final class Converter {
      * @return {@code true} if a conversion exists for the class
      */
     public boolean isConversionSupportedFor(Class<?> type) {
+        // If this instance has user-added conversions involving this type, return true
+        // without consulting the static cache (which may not reflect instance-specific state).
+        if (hasConverterOverrideFor(type)) {
+            return true;
+        }
         return SELF_CONVERSION_CACHE.computeIfAbsent(type, t -> isConversionSupportedFor(t, t));
     }
 
@@ -2467,10 +2470,14 @@ public final class Converter {
     private Convert<?> getConversionFromDBs(Class<?> source, Class<?> target) {
         source = ClassUtilities.toPrimitiveWrapperClass(source);
         target = ClassUtilities.toPrimitiveWrapperClass(target);
-        Convert<?> method = USER_DB.get(pair(source, target, 0L));
+
+        // Check instance-specific user conversions (ConverterOptions overrides + addConversion())
+        Convert<?> method = USER_DB.get(pair(source, target, this.instanceId));
         if (isValidConversion(method)) {
             return method;
         }
+
+        // Check built-in conversions
         method = CONVERSION_DB.get(pair(source, target, 0L));
         if (isValidConversion(method)) {
             return method;
@@ -2675,6 +2682,8 @@ public final class Converter {
         // Add identity conversions for non-standard types to enable O(1) hasConverterOverrideFor lookup
         addIdentityConversionIfNeeded(source, this.instanceId);
         addIdentityConversionIfNeeded(target, this.instanceId);
+
+        this.hasUserConversions = true;
         return previous;
     }
 

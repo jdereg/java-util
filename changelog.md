@@ -114,6 +114,37 @@
   * Fixed: write lock is now held for the entire operation
 * **PERFORMANCE**: `ConcurrentList` - `hashCode()`, `equals()`, `forEach()`, and `toString()` avoid O(n) snapshot allocation
   * Previously created snapshot arrays via `iterator()` → `toArray()`; now iterate directly under read lock
+* **BUG FIX**: `Converter` - `isConversionSupportedFor()` caches `UNSUPPORTED` for user-added conversions, poisoning `convert()`
+  * `getConversionFromDBs()` used hardcoded instanceId `0L` for `USER_DB` lookups, but `addConversion()` stores entries with `this.instanceId`
+  * `isConversionSupportedFor()` cached `UNSUPPORTED` when it couldn't find the user conversion
+  * If `isConversionSupportedFor(source, target)` was called before `convert(source, target)`, the `UNSUPPORTED` entry poisoned the cache, causing `convert()` to silently return `null`
+  * Fixed: `getConversionFromDBs()` now checks `USER_DB` with `this.instanceId` first
+* **BUG FIX**: `Converter` - `hasConverterOverrideFor()` misses dynamically added conversions
+  * Extracted instanceId from `options.getConverterOverrides()` iterator instead of using `this.instanceId`
+  * Conversions added via `addConversion()` after construction were invisible to `isSimpleTypeConversionSupported()`
+  * Fixed: uses `this.instanceId` directly for a simple O(1) hash lookup
+* **BUG FIX**: `Converter` - Constructor stores option overrides with wrong instanceId
+  * `ConverterOptions` overrides were stored in `USER_DB` with the pair's instanceId (typically `0L`) instead of `this.instanceId`
+  * This was inconsistent with `addConversion()` which uses `this.instanceId`, causing lookup mismatches
+  * Fixed: constructor now stores overrides with `this.instanceId`
+* **BUG FIX**: `Converter` - `isConversionSupportedFor(Class)` static cache ignores dynamic overrides
+  * `SELF_CONVERSION_CACHE` is static but caches results from instance methods that depend on instance-specific state
+  * If an instance without overrides cached `false`, instances with user overrides also got `false`
+  * Fixed: checks `hasConverterOverrideFor()` before consulting the static cache
+* **PERFORMANCE**: `Converter` - Skip `USER_DB` lookup in `convert()` when no user conversions exist
+  * Added `hasUserConversions` flag set in constructor and `addConversion()`
+  * When `false`, the `USER_DB.get()` call is skipped, saving one `ConversionPair` allocation + `ConcurrentHashMap.get()` per `convert()` call
+* **PERFORMANCE**: `Converter` - Remove redundant instance-level caching for built-in conversions
+  * Built-in conversions were cached at both `0L` (shared) and `instanceId` (instance-specific)
+  * The instance-level cache was redundant since `getCachedConverter()` falls back to the shared `0L` entry
+  * Removed the redundant `cacheConverter()` call, reducing `FULL_CONVERSION_CACHE` entries
+* **BUG FIX**: `Converter` - `isConversionSupportedFor()` and `isSimpleTypeConversionSupported()` miss user conversions via inheritance
+  * Both methods called `getInheritedConverter()` with hardcoded instanceId `0L` instead of `this.instanceId`
+  * If a user registered a conversion for a parent class (e.g., `Number→MyType`), queries for child classes (e.g., `Integer→MyType`) could not find it via the inheritance walk
+  * Worse, both methods cached `UNSUPPORTED`, poisoning the `convert()` cache — the same class of cache poisoning bug as the direct-lookup fix above, but in the inheritance path
+  * Fixed: both methods now use `this.instanceId` for the inheritance walk, consistent with `convert()`
+* **CLEANUP**: `Converter` - Removed dead code in `getConversionFromDBs()`
+  * After the constructor fix (storing overrides at `this.instanceId`), the `USER_DB` check at instanceId `0L` was unreachable dead code
 * **BUG FIX**: `ConcurrentSet` - `toString()` used `{}` braces instead of standard `[]` brackets
   * All JDK `Set` implementations and `AbstractCollection.toString()` use `[]`; `ConcurrentSet` was the only outlier
 * **PERFORMANCE**: `ConcurrentSet` - `retainAll()` uses `HashSet` instead of `ConcurrentHashMap.newKeySet()` for temporary lookup

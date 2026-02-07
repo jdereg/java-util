@@ -883,10 +883,17 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
                 if (!(o instanceof Entry)) {
                     return false;
                 }
-                final int size = map.size();
                 Entry<K, V> that = (Entry<K, V>) o;
-                CaseInsensitiveMap.this.remove(that.getKey());
-                return map.size() != size;
+                K key = that.getKey();
+                if (!CaseInsensitiveMap.this.containsKey(key)) {
+                    return false;
+                }
+                V storedValue = CaseInsensitiveMap.this.get(key);
+                if (!Objects.equals(storedValue, that.getValue())) {
+                    return false;
+                }
+                CaseInsensitiveMap.this.remove(key);
+                return true;
             }
 
             /**
@@ -896,18 +903,13 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
             @Override
             @SuppressWarnings("unchecked")
             public boolean removeAll(Collection<?> c) {
-                final int size = map.size();
+                boolean modified = false;
                 for (Object o : c) {
-                    if (o instanceof Entry) {
-                        try {
-                            Entry<K, V> that = (Entry<K, V>) o;
-                            CaseInsensitiveMap.this.remove(that.getKey());
-                        } catch (ClassCastException ignored) {
-                            // Ignore entries that cannot be cast
-                        }
+                    if (remove(o)) {
+                        modified = true;
                     }
                 }
-                return map.size() != size;
+                return modified;
             }
 
             /**

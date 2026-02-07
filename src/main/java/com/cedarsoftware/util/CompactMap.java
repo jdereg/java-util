@@ -1282,6 +1282,8 @@ public class CompactMap<K, V> implements Map<K, V> {
      *
      * @return a set view of the keys contained in this map
      */
+    // Note: Unlike most Map implementations, we intentionally do not cache this view in a transient field.
+    // CompactMap is designed for minimal per-instance memory footprint, so adding member variables is avoided.
     public Set<K> keySet() {
         return new AbstractSet<K>() {
             public Iterator<K> iterator() {
@@ -1348,6 +1350,7 @@ public class CompactMap<K, V> implements Map<K, V> {
      *
      * @return a collection view of the values contained in this map
      */
+    // Note: View not cached in transient field — see keySet() comment.
     public Collection<V> values() {
         return new AbstractCollection<V>() {
             public Iterator<V> iterator() {
@@ -1378,6 +1381,7 @@ public class CompactMap<K, V> implements Map<K, V> {
      *
      * @return a set view of the mappings contained in this map
      */
+    // Note: View not cached in transient field — see keySet() comment.
     @Override
     public Set<Entry<K, V>> entrySet() {
         return new AbstractSet<Entry<K, V>>() {

@@ -348,12 +348,17 @@ public final class ConcurrentList<E> implements List<E>, Deque<E>, RandomAccess,
 
     @Override
     public boolean addAll(Collection<? extends E> c) {
-        boolean modified = false;
-        for (E e : c) {
-            addLast(e);
-            modified = true;
+        lock.writeLock().lock();
+        try {
+            boolean modified = false;
+            for (E e : c) {
+                addLast(e);
+                modified = true;
+            }
+            return modified;
+        } finally {
+            lock.writeLock().unlock();
         }
-        return modified;
     }
 
     @Override
@@ -458,16 +463,16 @@ public final class ConcurrentList<E> implements List<E>, Deque<E>, RandomAccess,
 
     @Override
     public void add(int index, E element) {
-        if (index == 0) {
-            addFirst(element);
-            return;
-        }
-        if (index == size()) {
-            addLast(element);
-            return;
-        }
         lock.writeLock().lock();
         try {
+            if (index == 0) {
+                addFirst(element);
+                return;
+            }
+            if (index == size()) {
+                addLast(element);
+                return;
+            }
             List<E> list = new ArrayList<>(this);
             list.add(index, element);
             rebuild(list);
@@ -478,14 +483,14 @@ public final class ConcurrentList<E> implements List<E>, Deque<E>, RandomAccess,
 
     @Override
     public E remove(int index) {
-        if (index == 0) {
-            return removeFirst();
-        }
-        if (index == size() - 1) {
-            return removeLast();
-        }
         lock.writeLock().lock();
         try {
+            if (index == 0) {
+                return removeFirst();
+            }
+            if (index == size() - 1) {
+                return removeLast();
+            }
             List<E> list = new ArrayList<>(this);
             E removed = list.remove(index);
             rebuild(list);
@@ -924,10 +929,21 @@ public final class ConcurrentList<E> implements List<E>, Deque<E>, RandomAccess,
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     public void forEach(Consumer<? super E> action) {
         Objects.requireNonNull(action);
-        for (E e : this) {
-            action.accept(e);
+        // Iterate directly under read lock to avoid O(n) snapshot allocation.
+        lock.readLock().lock();
+        try {
+            int sz = size();
+            long h = head.get();
+            for (int i = 0; i < sz; i++) {
+                long pos = h + i;
+                E e = (E) getBucket(bucketIndex(pos)).get(bucketOffset(pos));
+                action.accept(e);
+            }
+        } finally {
+            lock.readLock().unlock();
         }
     }
 
@@ -940,47 +956,74 @@ public final class ConcurrentList<E> implements List<E>, Deque<E>, RandomAccess,
             return false;
         }
         List<?> other = (List<?>) obj;
-        if (size() != other.size()) {
-            return false;
-        }
-        Iterator<E> it1 = iterator();
-        Iterator<?> it2 = other.iterator();
-        while (it1.hasNext() && it2.hasNext()) {
-            E e1 = it1.next();
-            Object e2 = it2.next();
-            if (!Objects.equals(e1, e2)) {
+        // Iterate directly under read lock to avoid O(n) snapshot allocation.
+        lock.readLock().lock();
+        try {
+            int sz = size();
+            if (sz != other.size()) {
                 return false;
             }
+            long h = head.get();
+            Iterator<?> it2 = other.iterator();
+            for (int i = 0; i < sz; i++) {
+                if (!it2.hasNext()) {
+                    return false;
+                }
+                long pos = h + i;
+                Object e1 = getBucket(bucketIndex(pos)).get(bucketOffset(pos));
+                Object e2 = it2.next();
+                if (!Objects.equals(e1, e2)) {
+                    return false;
+                }
+            }
+            return !it2.hasNext();
+        } finally {
+            lock.readLock().unlock();
         }
-        return !it1.hasNext() && !it2.hasNext();
     }
 
     @Override
     public int hashCode() {
-        // Per List.hashCode() contract (must match for equal lists):
-        // int hashCode = 1;
-        // for (E e : list) hashCode = 31*hashCode + (e==null ? 0 : e.hashCode());
-        int hash = 1;
-        for (E e : this) {
-            hash = 31 * hash + (e == null ? 0 : e.hashCode());
+        // Per List.hashCode() contract: hash = 1; for each e: hash = 31*hash + (e==null ? 0 : e.hashCode())
+        // Iterate directly under read lock to avoid O(n) snapshot allocation.
+        lock.readLock().lock();
+        try {
+            int hash = 1;
+            int sz = size();
+            long h = head.get();
+            for (int i = 0; i < sz; i++) {
+                long pos = h + i;
+                Object e = getBucket(bucketIndex(pos)).get(bucketOffset(pos));
+                hash = 31 * hash + (e == null ? 0 : e.hashCode());
+            }
+            return hash;
+        } finally {
+            lock.readLock().unlock();
         }
-        return hash;
     }
 
     @Override
     public String toString() {
-        StringBuilder sb = new StringBuilder();
-        sb.append('[');
-        Iterator<E> it = iterator();
-        while (it.hasNext()) {
-            E e = it.next();
-            sb.append(e == this ? "(this Collection)" : e);
-            if (it.hasNext()) {
-                sb.append(',').append(' ');
+        // Iterate directly under read lock to avoid O(n) snapshot allocation.
+        lock.readLock().lock();
+        try {
+            int sz = size();
+            long h = head.get();
+            StringBuilder sb = new StringBuilder();
+            sb.append('[');
+            for (int i = 0; i < sz; i++) {
+                if (i > 0) {
+                    sb.append(',').append(' ');
+                }
+                long pos = h + i;
+                Object e = getBucket(bucketIndex(pos)).get(bucketOffset(pos));
+                sb.append(e == this ? "(this Collection)" : e);
             }
+            sb.append(']');
+            return sb.toString();
+        } finally {
+            lock.readLock().unlock();
         }
-        sb.append(']');
-        return sb.toString();
     }
 
     private void rebuild(List<E> elements) {

@@ -102,6 +102,18 @@
 * **PERFORMANCE**: `ConcurrentNavigableMapNullSafe` - Cache `keySet()` view object
   * Previously created a new `KeyNavigableSet` on every `keySet()` call, bypassing the base class cache
   * Now cached in a `transient` field; the view is already backed by the live internal map
+* **BUG FIX**: `ConcurrentList` - `remove(int)` TOCTOU race can remove wrong element
+  * `index == size() - 1` check was before the write lock; concurrent modifications between the check and `removeLast()` acquiring the lock could cause a different element to be removed
+  * Fixed: moved size check inside the write lock
+* **BUG FIX**: `ConcurrentList` - `add(int, E)` TOCTOU race can insert at wrong position
+  * `index == size()` check was before the write lock; concurrent `addLast()` between the check and lock acquisition could place the element at the wrong index
+  * Fixed: moved size check inside the write lock
+* **BUG FIX**: `ConcurrentList` - `addAll(Collection)` not atomic — elements can be interleaved
+  * Each `addLast()` acquired/released the write lock individually, allowing concurrent operations to interleave elements within the batch
+  * Inconsistent with `addAll(int, Collection)` which was already atomic
+  * Fixed: write lock is now held for the entire operation
+* **PERFORMANCE**: `ConcurrentList` - `hashCode()`, `equals()`, `forEach()`, and `toString()` avoid O(n) snapshot allocation
+  * Previously created snapshot arrays via `iterator()` → `toArray()`; now iterate directly under read lock
 * **MAINTENANCE**: `CaseInsensitiveSet` - Added regression tests for case-insensitive `hashCode()` and `retainAll()`
   * Verified `hashCode()` is case-insensitive through `SetFromMap` → `CaseInsensitiveMap.keySet().hashCode()` delegation
   * Verified `retainAll()` is case-insensitive through `SetFromMap` → `CaseInsensitiveMap.keySet().retainAll()` delegation

@@ -5,7 +5,6 @@ import java.util.AbstractSet;
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.NavigableSet;
-import java.util.Objects;
 import java.util.Set;
 import java.util.SortedSet;
 import java.util.concurrent.ConcurrentNavigableMap;
@@ -42,6 +41,7 @@ public class ConcurrentNavigableMapNullSafe<K, V> extends AbstractConcurrentNull
         implements ConcurrentNavigableMap<K, V> {
 
     private final Comparator<? super K> originalComparator;
+    private transient NavigableSet<K> cachedKeySet;
     /**
      * Sentinel object used to represent {@code null} keys internally. Using a
      * dedicated object avoids any chance of key collision and eliminates the
@@ -320,8 +320,10 @@ public class ConcurrentNavigableMapNullSafe<K, V> extends AbstractConcurrentNull
 
     @Override
     public NavigableSet<K> keySet() {
-        Set<Object> internalKeys = internalMap.keySet();
-        return new KeyNavigableSet<>(this, internalKeys);
+        if (cachedKeySet == null) {
+            cachedKeySet = new KeyNavigableSet<>(this, internalMap.keySet());
+        }
+        return cachedKeySet;
     }
 
     /**
@@ -494,41 +496,8 @@ public class ConcurrentNavigableMapNullSafe<K, V> extends AbstractConcurrentNull
         if (internalEntry == null) {
             return null;
         }
-        final Object keyObj = internalEntry.getKey();
-        return new Entry<K, V>() {
-            @Override
-            public K getKey() {
-                return unmaskNullKey(keyObj);
-            }
-
-            @Override
-            public V getValue() {
-                return unmaskNullValue(internalMap.get(keyObj));
-            }
-
-            @Override
-            public V setValue(V value) {
-                Object old = internalMap.put(keyObj, maskNullValue(value));
-                return unmaskNullValue(old);
-            }
-
-            @Override
-            public boolean equals(Object o) {
-                if (!(o instanceof Entry)) return false;
-                Entry<?, ?> e = (Entry<?, ?>) o;
-                return Objects.equals(getKey(), e.getKey()) &&
-                        Objects.equals(getValue(), e.getValue());
-            }
-
-            @Override
-            public int hashCode() {
-                return Objects.hashCode(getKey()) ^ Objects.hashCode(getValue());
-            }
-
-            @Override
-            public String toString() {
-                return getKey() + "=" + getValue();
-            }
-        };
+        K key = unmaskNullKey(internalEntry.getKey());
+        V value = unmaskNullValue(internalEntry.getValue());
+        return new AbstractMap.SimpleImmutableEntry<>(key, value);
     }
 }

@@ -94,6 +94,14 @@
   * Now checks `nullKeyStore` + `backingMap.containsValue()` directly without allocation
 * **PERFORMANCE**: `ClassValueMap` - Override `isEmpty()` for short-circuit
   * `backingMap.isEmpty()` is O(1) vs inherited `size() == 0` which computes full ConcurrentHashMap size
+* **BUG FIX**: `ConcurrentNavigableMapNullSafe` - `wrapEntry().getValue()` performs live lookup instead of returning snapshot value
+  * Navigation entry methods (`firstEntry`, `lastEntry`, `lowerEntry`, `floorEntry`, `ceilingEntry`, `higherEntry`) returned entries whose `getValue()` did `internalMap.get(key)` — a live lookup
+  * Violated the `NavigableMap` contract that these methods return snapshot entries
+  * If the map was modified after getting the entry, `getValue()` returned the new value or `null` (if the key was removed)
+  * Fixed: `wrapEntry()` now returns `SimpleImmutableEntry` with snapshot value, matching `ConcurrentSkipListMap` behavior
+* **PERFORMANCE**: `ConcurrentNavigableMapNullSafe` - Cache `keySet()` view object
+  * Previously created a new `KeyNavigableSet` on every `keySet()` call, bypassing the base class cache
+  * Now cached in a `transient` field; the view is already backed by the live internal map
 * **MAINTENANCE**: `CaseInsensitiveSet` - Added regression tests for case-insensitive `hashCode()` and `retainAll()`
   * Verified `hashCode()` is case-insensitive through `SetFromMap` → `CaseInsensitiveMap.keySet().hashCode()` delegation
   * Verified `retainAll()` is case-insensitive through `SetFromMap` → `CaseInsensitiveMap.keySet().retainAll()` delegation

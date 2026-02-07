@@ -425,7 +425,7 @@ public class CaseInsensitiveSet<E> extends AbstractSet<E> implements Set<E>, Ser
     public boolean retainAll(Collection<?> c) {
         return delegate.retainAll(c);
     }
-    
+
     /**
      * {@inheritDoc}
      * <p>
@@ -434,6 +434,13 @@ public class CaseInsensitiveSet<E> extends AbstractSet<E> implements Set<E>, Ser
      * only by case (e.g., "Hello" and "hello") are treated as equal, and removing any of them will
      * remove the corresponding entry from the set.
      * </p>
+     * <p>
+     * This override is required because {@link java.util.AbstractSet#removeAll} has a size-based
+     * optimization that, when {@code this.size() <= c.size()}, iterates over {@code this} and calls
+     * {@code c.contains()} — which is case-sensitive for non-CaseInsensitive collections.
+     * By always iterating over {@code c} and calling {@code this.remove()}, case-insensitive
+     * semantics are preserved regardless of the collection type passed in.
+     * </p>
      *
      * @param c the collection containing elements to be removed from this set
      * @return {@code true} if this set changed as a result of the call
@@ -441,8 +448,6 @@ public class CaseInsensitiveSet<E> extends AbstractSet<E> implements Set<E>, Ser
      */
     @Override
     public boolean removeAll(Collection<?> c) {
-        // We need to handle this specially because the default implementation
-        // may use c.contains() which would be case-sensitive if c is not a CaseInsensitiveSet
         boolean modified = false;
         for (Object elem : c) {
             if (remove(elem)) {

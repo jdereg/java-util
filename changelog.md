@@ -73,6 +73,9 @@
   * `hashCode()` iterated `entrySet()` which reconstructs original-case String keys, then used `String.hashCode()` (case-sensitive)
   * Two equal case-insensitive MultiKeyMaps with different-case keys produced different hashCodes, violating the hashCode contract
   * Fixed: case-insensitive mode now iterates internal buckets using pre-computed case-insensitive key hashes
+* **MAINTENANCE**: `CaseInsensitiveSet` - Added regression tests for case-insensitive `hashCode()` and `retainAll()`
+  * Verified `hashCode()` is case-insensitive through `SetFromMap` → `CaseInsensitiveMap.keySet().hashCode()` delegation
+  * Verified `retainAll()` is case-insensitive through `SetFromMap` → `CaseInsensitiveMap.keySet().retainAll()` delegation
 * **BUG FIX**: `CompactMap` - EMPTY_MAP sentinel collision causing silent data loss
   * The `EMPTY_MAP` sentinel was a static `String`; if a user stored that exact string as a value, Java string interning caused the map to appear empty
   * Fixed: changed `EMPTY_MAP` to a unique `Object` instance that cannot collide with user values

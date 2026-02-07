@@ -53,6 +53,14 @@
   * Eliminates 2+ `AtomicInteger` CAS operations per `put`/`remove` call when tracking is disabled (default)
   * Also skips the `tryLock()`-then-`lock()` contention detection pattern, using a single `lock()` call instead
   * Enable via `MultiKeyMap.builder().trackContentionMetrics(true)` when diagnostics are needed
+* **PERFORMANCE**: `CaseInsensitiveMap` - Eliminate double lookup in `equals()`
+  * Replaced `containsKey()` + `get()` (two `convertKey()` calls and two hash probes per entry) with single `get()`, falling back to `containsKey()` only for null values
+* **PERFORMANCE**: `CaseInsensitiveMap` - Cache `keySet()` and `entrySet()` view objects
+  * Previously created new `AbstractSet` instances on every call; now cached in `transient` fields matching the JDK `AbstractMap`/`HashMap` pattern
+* **BUG FIX**: `CaseInsensitiveMap` - `entrySet().remove()` and `removeAll()` ignore entry value
+  * Both methods only checked the key, removing entries even when the value didn't match
+  * Violates the `Set<Map.Entry>` contract which requires both key AND value to match
+  * Fixed: `remove()` now checks `Objects.equals()` on the value before removing; `removeAll()` delegates to the fixed `remove()`
 * **BUG FIX**: `MultiKeyMap` - `hashCode()` uses case-sensitive hashing for case-insensitive maps
   * `hashCode()` iterated `entrySet()` which reconstructs original-case String keys, then used `String.hashCode()` (case-sensitive)
   * Two equal case-insensitive MultiKeyMaps with different-case keys produced different hashCodes, violating the hashCode contract

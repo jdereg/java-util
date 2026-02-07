@@ -171,6 +171,8 @@ import java.util.function.Function;
 public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V> {
     private final Map<K, V> map;
     private final boolean isMultiKeyMapBacking;
+    private transient Set<K> cachedKeySet;
+    private transient Set<Entry<K, V>> cachedEntrySet;
     private static final AtomicReference<List<Entry<Class<?>, Function<Integer, ? extends Map<?, ?>>>>> mapRegistry;
 
     static {
@@ -617,13 +619,11 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
 
         for (Entry<?, ?> entry : that.entrySet()) {
             Object thatKey = entry.getKey();
-            if (!containsKey(thatKey)) {
+            Object thisValue = get(thatKey);
+            if (thisValue == null && !containsKey(thatKey)) {
                 return false;
             }
-
-            Object thatValue = entry.getValue();
-            Object thisValue = get(thatKey);
-            if (!Objects.equals(thisValue, thatValue)) {
+            if (!Objects.equals(thisValue, entry.getValue())) {
                 return false;
             }
         }
@@ -649,7 +649,11 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
      */
     @Override
     public Set<K> keySet() {
-        return new AbstractSet<K>() {
+        Set<K> ks = cachedKeySet;
+        if (ks != null) {
+            return ks;
+        }
+        ks = new AbstractSet<K>() {
             /**
              * Returns an iterator over the keys in this set. For String keys, the iterator
              * returns the original Strings rather than their case-insensitive representations.
@@ -799,8 +803,10 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
                 return changed[0];
             }
         };
+        cachedKeySet = ks;
+        return ks;
     }
-    
+
     /**
      * {@inheritDoc}
      * <p>Returns a Set view of the entries contained in this map. Each entry returns its key in the
@@ -808,7 +814,11 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
      */
     @Override
     public Set<Entry<K, V>> entrySet() {
-        return new AbstractSet<Entry<K, V>>() {
+        Set<Entry<K, V>> es = cachedEntrySet;
+        if (es != null) {
+            return es;
+        }
+        es = new AbstractSet<Entry<K, V>>() {
             /**
              * {@inheritDoc}
              * <p>Returns the number of entries in the underlying map.</p>
@@ -951,6 +961,8 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
                 return new ConcurrentAwareEntryIterator(map.entrySet().iterator());
             }
         };
+        cachedEntrySet = es;
+        return es;
     }
     
     /**

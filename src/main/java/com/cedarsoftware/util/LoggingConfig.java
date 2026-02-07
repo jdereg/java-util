@@ -32,6 +32,9 @@ public final class LoggingConfig {
      * If running in test environment (detected by system property), uses clean test format.
      */
     public static synchronized void init() {
+        if (initialized) {
+            return;
+        }
         // Check if we're running in test environment
         String testProperty = System.getProperty("surefire.test.class.path");
         boolean isTestEnvironment = testProperty != null || 

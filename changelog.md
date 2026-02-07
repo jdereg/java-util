@@ -1,6 +1,14 @@
 ### Revision History
 
 #### 4.91.0 (unreleased)
+* **BUG FIX**: `LoggingConfig.init()` - Missing `initialized` guard allowed repeated reconfiguration
+  * The no-arg `init()` did not check the `initialized` flag, unlike `init(String)` which did
+  * In test environments, every class with `static { LoggingConfig.init(); }` re-captured the full stack trace and overwrote formatters
+  * User-configured formats set via `init(String)` could be silently overwritten by subsequent `init()` calls
+* **PERFORMANCE**: `IOUtilities.compressBytes(FastByteArrayOutputStream, FastByteArrayOutputStream)` - Eliminated unnecessary buffer copy
+  * Used `writeTo(gzipStream)` (zero-copy) instead of `toByteArray()` (allocates full copy), matching the `ByteArrayOutputStream` overload
+* **PERFORMANCE**: `IOUtilities.compressBytes(byte[], int, int)` - Removed redundant double copy
+  * `toByteArray()` already returns a correctly-sized copy; the outer `Arrays.copyOf()` was redundant
 * **BUG FIX**: `IdentitySet.addInternal()` - Element duplication after removal via tombstone slots
   * When a DELETED tombstone appeared before an existing element in the probe chain, `addInternal()` inserted a duplicate without checking further, causing `add()` to return `true` for elements already present, inflated `size`, and ghost entries that survived `remove()`
   * Fixed by remembering the first DELETED slot but continuing to probe until `null` or finding the element

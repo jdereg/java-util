@@ -1202,7 +1202,7 @@ public final class IOUtilities {
         Convention.throwIfNull(original, "Original FastByteArrayOutputStream cannot be null");
         Convention.throwIfNull(compressed, "Compressed FastByteArrayOutputStream cannot be null");
         try (DeflaterOutputStream gzipStream = new AdjustableGZIPOutputStream(compressed, Deflater.BEST_SPEED)) {
-            gzipStream.write(original.toByteArray(), 0, original.size());
+            original.writeTo(gzipStream);
             gzipStream.flush();
         } catch (IOException e) {
             ExceptionUtilities.uncheckedThrow(e);
@@ -1236,7 +1236,7 @@ public final class IOUtilities {
                 gzipStream.write(bytes, offset, len);
                 gzipStream.flush();
             }
-            return Arrays.copyOf(byteStream.toByteArray(), byteStream.size());
+            return byteStream.toByteArray();
         } catch (Exception e) {
             throw new RuntimeException("Error compressing bytes.", e);
         }

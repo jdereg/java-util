@@ -271,21 +271,17 @@ public final class MathUtilities
         {
             throw new SecurityException("Array size exceeds maximum allowed: " + maxArraySize);
         }
-        if (len == 1)
-        {
-            if (values[0] == null)
-            {
-                throw new IllegalArgumentException("Cannot passed null BigInteger entry to minimum()");
-            }
-            return values[0];
-        }
         BigInteger current = values[0];
+        if (current == null)
+        {
+            throw new IllegalArgumentException("Cannot pass null BigInteger entry to minimum()");
+        }
 
         for (int i=1; i < len; i++)
         {
             if (values[i] == null)
             {
-                throw new IllegalArgumentException("Cannot passed null BigInteger entry to minimum()");
+                throw new IllegalArgumentException("Cannot pass null BigInteger entry to minimum()");
             }
             current = values[i].min(current);
         }
@@ -312,21 +308,17 @@ public final class MathUtilities
         {
             throw new SecurityException("Array size exceeds maximum allowed: " + maxArraySize);
         }
-        if (len == 1)
-        {
-            if (values[0] == null)
-            {
-                throw new IllegalArgumentException("Cannot passed null BigInteger entry to maximum()");
-            }
-            return values[0];
-        }
         BigInteger current = values[0];
+        if (current == null)
+        {
+            throw new IllegalArgumentException("Cannot pass null BigInteger entry to maximum()");
+        }
 
         for (int i=1; i < len; i++)
         {
             if (values[i] == null)
             {
-                throw new IllegalArgumentException("Cannot passed null BigInteger entry to maximum()");
+                throw new IllegalArgumentException("Cannot pass null BigInteger entry to maximum()");
             }
             current = values[i].max(current);
         }
@@ -353,21 +345,17 @@ public final class MathUtilities
         {
             throw new SecurityException("Array size exceeds maximum allowed: " + maxArraySize);
         }
-        if (len == 1)
-        {
-            if (values[0] == null)
-            {
-                throw new IllegalArgumentException("Cannot passed null BigDecimal entry to minimum()");
-            }
-            return values[0];
-        }
         BigDecimal current = values[0];
+        if (current == null)
+        {
+            throw new IllegalArgumentException("Cannot pass null BigDecimal entry to minimum()");
+        }
 
         for (int i=1; i < len; i++)
         {
             if (values[i] == null)
             {
-                throw new IllegalArgumentException("Cannot passed null BigDecimal entry to minimum()");
+                throw new IllegalArgumentException("Cannot pass null BigDecimal entry to minimum()");
             }
             current = values[i].min(current);
         }
@@ -394,15 +382,11 @@ public final class MathUtilities
         {
             throw new SecurityException("Array size exceeds maximum allowed: " + maxArraySize);
         }
-        if (len == 1)
-        {
-            if (values[0] == null)
-            {
-                throw new IllegalArgumentException("Cannot pass null BigDecimal entry to maximum()");
-            }
-            return values[0];
-        }
         BigDecimal current = values[0];
+        if (current == null)
+        {
+            throw new IllegalArgumentException("Cannot pass null BigDecimal entry to maximum()");
+        }
 
         for (int i=1; i < len; i++)
         {

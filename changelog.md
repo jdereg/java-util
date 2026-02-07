@@ -1,6 +1,9 @@
 ### Revision History
 
 #### 4.91.0 (unreleased)
+* **BUG FIX**: `MathUtilities` - `minimum()`/`maximum()` for `BigInteger` and `BigDecimal` did not null-check `values[0]` when array had 2+ elements
+  * Calling e.g. `minimum(null, BigInteger.ONE)` produced a confusing `NullPointerException` from `BigInteger.compareTo()` instead of the friendly `IllegalArgumentException`
+  * Fixed by moving the null check before the loop, which also eliminates the redundant `len == 1` special case
 * **PERFORMANCE**: `ThreadedLRUCacheStrategy.computeIfAbsent()` - Eliminated unnecessary eviction checks on cache hits
   * `computeIfAbsent()` incremented `insertsSinceEviction` on every call, including cache hits
   * This triggered unnecessary eviction scans even when no new entry was added

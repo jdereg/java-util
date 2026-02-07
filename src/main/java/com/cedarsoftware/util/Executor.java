@@ -181,6 +181,7 @@ public class Executor {
             Process proc = startProcess(command, envp, dir);
             return runIt(proc);
         } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
             LOG.log(Level.SEVERE, "Error occurred executing command: " + command, e);
             return new ExecutionResult(-1, "", e.getMessage());
         }
@@ -197,11 +198,12 @@ public class Executor {
      */
     public ExecutionResult execute(String[] cmdarray, String[] envp, File dir) {
         validateExecutionEnabled();
-        
+
         try {
             Process proc = startProcess(cmdarray, envp, dir);
             return runIt(proc);
         } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
             LOG.log(Level.SEVERE, "Error occurred executing command: " + cmdArrayToString(cmdarray), e);
             return new ExecutionResult(-1, "", e.getMessage());
         }
@@ -340,8 +342,8 @@ public class Executor {
             proc.destroyForcibly();
         }
 
-        errorGobbler.join();
-        outputGobbler.join();
+        errorGobbler.join(DEFAULT_TIMEOUT_SECONDS * 1000);
+        outputGobbler.join(DEFAULT_TIMEOUT_SECONDS * 1000);
 
         String err = errors.getResult();
         String outStr = out.getResult();

@@ -1,6 +1,9 @@
 ### Revision History
 
 #### 4.91.0 (unreleased)
+* **BUG FIX**: `Executor` - `InterruptedException` swallowed without restoring thread interrupt flag
+  * Both `execute()` methods now call `Thread.currentThread().interrupt()` before returning
+  * Bounded gobbler thread `join()` calls with timeout to prevent indefinite hangs after `destroyForcibly()`
 * **BUG FIX**: `ExceptionUtilities.getDeepestException()` - Infinite loop on circular exception cause chains
   * Added cycle detection using `IdentitySet` to safely handle circular chains (e.g. A→B→A)
   * Fixed Javadoc on `safelyIgnoreException(Throwable)` that incorrectly claimed `ThreadDeath` was rethrown

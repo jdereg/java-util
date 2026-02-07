@@ -114,6 +114,10 @@
   * Fixed: write lock is now held for the entire operation
 * **PERFORMANCE**: `ConcurrentList` - `hashCode()`, `equals()`, `forEach()`, and `toString()` avoid O(n) snapshot allocation
   * Previously created snapshot arrays via `iterator()` → `toArray()`; now iterate directly under read lock
+* **BUG FIX**: `ConcurrentSet` - `toString()` used `{}` braces instead of standard `[]` brackets
+  * All JDK `Set` implementations and `AbstractCollection.toString()` use `[]`; `ConcurrentSet` was the only outlier
+* **PERFORMANCE**: `ConcurrentSet` - `retainAll()` uses `HashSet` instead of `ConcurrentHashMap.newKeySet()` for temporary lookup
+  * The temporary wrapped-collection set is only accessed by the current thread; concurrent overhead was unnecessary
 * **MAINTENANCE**: `CaseInsensitiveSet` - Added regression tests for case-insensitive `hashCode()` and `retainAll()`
   * Verified `hashCode()` is case-insensitive through `SetFromMap` → `CaseInsensitiveMap.keySet().hashCode()` delegation
   * Verified `retainAll()` is case-insensitive through `SetFromMap` → `CaseInsensitiveMap.keySet().retainAll()` delegation

@@ -42,14 +42,14 @@ class ConcurrentSetAdditionalTest {
     @Test
     void testToStringOutput() {
         ConcurrentSet<String> set = new ConcurrentSet<>();
-        assertEquals("{}", set.toString());
+        assertEquals("[]", set.toString());
 
         set.add("a");
         set.add(null);
         set.add("b");
 
         String str = set.toString();
-        assertTrue(str.startsWith("{") && str.endsWith("}"), "String should start and end with braces");
+        assertTrue(str.startsWith("[") && str.endsWith("]"), "String should use standard [] brackets");
         String content = str.substring(1, str.length() - 1);
         String[] parts = content.split(", ");
         Set<String> tokens = new HashSet<>(Arrays.asList(parts));

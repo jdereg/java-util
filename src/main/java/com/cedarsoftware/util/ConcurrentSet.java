@@ -4,6 +4,7 @@ import java.io.Serializable;
 import java.lang.reflect.Array;
 import java.util.Collection;
 import java.util.Iterator;
+import java.util.HashSet;
 import java.util.Set;
 import java.util.Spliterator;
 import java.util.concurrent.ConcurrentHashMap;
@@ -115,14 +116,14 @@ public class ConcurrentSet<T> implements Set<T>, Serializable {
     @Override
     public String toString() {
         Iterator<T> it = iterator();
-        if (!it.hasNext()) return "{}";
+        if (!it.hasNext()) return "[]";
 
         StringBuilder sb = new StringBuilder();
-        sb.append('{');
+        sb.append('[');
         for (;;) {
             T e = it.next();
             sb.append(e == this ? "(this Set)" : e);
-            if (!it.hasNext()) return sb.append('}').toString();
+            if (!it.hasNext()) return sb.append(']').toString();
             sb.append(',').append(' ');
         }
     }
@@ -298,7 +299,7 @@ public class ConcurrentSet<T> implements Set<T>, Serializable {
 
     @Override
     public boolean retainAll(Collection<?> col) {
-        Set<Object> wrappedCol = ConcurrentHashMap.newKeySet();
+        Set<Object> wrappedCol = new HashSet<>();
         for (Object o : col) {
             wrappedCol.add(wrap(o));
         }

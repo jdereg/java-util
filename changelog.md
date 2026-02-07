@@ -82,6 +82,7 @@
 * **PERFORMANCE**: `ClassValueSet` - Simplify `equals()` and `hashCode()`
   * Removed redundant second iteration in `equals()` — `size()` check + one-direction subset check is sufficient
   * Removed dead `h += 0` null branch and unnecessary null guard in `hashCode()`
+* **PERFORMANCE**: `CompactSet` - Add `equals()` self-check to avoid O(n) comparison when comparing to self
 * **BUG FIX**: `ClassValueMap` - `remove(null, value)` and `replace(null, oldValue, newValue)` use identity comparison instead of `equals()`
   * Both methods used `AtomicReference.compareAndSet()` which compares with `==`, not `equals()`
   * For non-interned objects, the operations silently failed even when the value was logically equal

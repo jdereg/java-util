@@ -211,7 +211,7 @@ public class CompactSet<E> implements Set<E> {
 
     @Override
     public boolean equals(Object o) {
-        // Let keySet() handle equality checks for us
+        if (o == this) { return true; }
         return map.keySet().equals(o);
     }
 

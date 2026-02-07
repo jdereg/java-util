@@ -57,6 +57,14 @@
   * Replaced `containsKey()` + `get()` (two `convertKey()` calls and two hash probes per entry) with single `get()`, falling back to `containsKey()` only for null values
 * **PERFORMANCE**: `CaseInsensitiveMap` - Cache `keySet()` and `entrySet()` view objects
   * Previously created new `AbstractSet` instances on every call; now cached in `transient` fields matching the JDK `AbstractMap`/`HashMap` pattern
+* **BUG FIX**: `AbstractConcurrentNullSafeMap` - `merge()` incorrectly invokes remapping function when existing value is null
+  * When a key was mapped to `null` (stored internally as `NullSentinel.NULL_VALUE`), the sentinel made null appear non-null to the backing map's `merge()`
+  * The remapping function was incorrectly called with `(null, newValue)` instead of just inserting the new value per the `merge()` contract
+* **PERFORMANCE**: `AbstractConcurrentNullSafeMap` - `equals()` and `hashCode()` iterate internal map directly
+  * Previously iterated `entrySet()` wrappers where each `Entry.getValue()` did a full hash probe on the backing map
+  * Also eliminated `containsKey()` + `get()` double lookup on the other map in `equals()`
+* **PERFORMANCE**: `AbstractConcurrentNullSafeMap` - Cache `keySet()`, `entrySet()`, and `values()` view objects
+  * Previously created new anonymous instances on every call; now cached in `transient` fields
 * **BUG FIX**: `CaseInsensitiveMap` - `entrySet().remove()` and `removeAll()` ignore entry value
   * Both methods only checked the key, removing entries even when the value didn't match
   * Violates the `Set<Map.Entry>` contract which requires both key AND value to match

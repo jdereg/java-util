@@ -96,6 +96,9 @@ public abstract class AbstractConcurrentNullSafeMap<K, V> implements ConcurrentM
 
     // Internal ConcurrentMap storing Objects
     protected final ConcurrentMap<Object, Object> internalMap;
+    private transient Set<K> cachedKeySet;
+    private transient Collection<V> cachedValues;
+    private transient Set<Entry<K, V>> cachedEntrySet;
 
     /**
      * Constructs a new AbstractConcurrentNullSafeMap with the provided internal map.
@@ -287,9 +290,16 @@ public abstract class AbstractConcurrentNullSafeMap<K, V> implements ConcurrentM
     @Override
     public V merge(K key, V value, BiFunction<? super V, ? super V, ? extends V> remappingFunction) {
         Objects.requireNonNull(remappingFunction);
-        Objects.requireNonNull(value); // Adjust based on whether you want to allow nulls
+        Objects.requireNonNull(value);
         Object maskedKey = maskNullKey(key);
-        Object result = internalMap.merge(maskedKey, maskNullValue(value), (v1, v2) -> {
+        Object maskedValue = maskNullValue(value);
+        Object result = internalMap.merge(maskedKey, maskedValue, (v1, v2) -> {
+            // Per merge() contract: if existing value is null, just insert the new value
+            // without calling the remapping function. The sentinel makes null look non-null
+            // to the internal map, so we must check explicitly.
+            if (v1 == NullSentinel.NULL_VALUE) {
+                return v2;
+            }
             V unmaskV1 = unmaskNullValue(v1);
             V unmaskV2 = unmaskNullValue(v2);
             V newValue = remappingFunction.apply(unmaskV1, unmaskV2);
@@ -303,8 +313,12 @@ public abstract class AbstractConcurrentNullSafeMap<K, V> implements ConcurrentM
 
     @Override
     public Collection<V> values() {
+        Collection<V> vs = cachedValues;
+        if (vs != null) {
+            return vs;
+        }
         Collection<Object> internalValues = internalMap.values();
-        return new AbstractCollection<V>() {
+        vs = new AbstractCollection<V>() {
             @Override
             public Iterator<V> iterator() {
                 Iterator<Object> it = internalValues.iterator();
@@ -341,12 +355,18 @@ public abstract class AbstractConcurrentNullSafeMap<K, V> implements ConcurrentM
                 internalMap.clear();
             }
         };
+        cachedValues = vs;
+        return vs;
     }
 
     @Override
     public Set<K> keySet() {
+        Set<K> ks = cachedKeySet;
+        if (ks != null) {
+            return ks;
+        }
         Set<Object> internalKeys = internalMap.keySet();
-        return new AbstractSet<K>() {
+        ks = new AbstractSet<K>() {
             @Override
             public Iterator<K> iterator() {
                 Iterator<Object> it = internalKeys.iterator();
@@ -388,12 +408,18 @@ public abstract class AbstractConcurrentNullSafeMap<K, V> implements ConcurrentM
                 internalMap.clear();
             }
         };
+        cachedKeySet = ks;
+        return ks;
     }
 
     @Override
     public Set<Entry<K, V>> entrySet() {
+        Set<Entry<K, V>> es = cachedEntrySet;
+        if (es != null) {
+            return es;
+        }
         Set<Entry<Object, Object>> internalEntries = internalMap.entrySet();
-        return new AbstractSet<Entry<K, V>>() {
+        es = new AbstractSet<Entry<K, V>>() {
             @Override
             public Iterator<Entry<K, V>> iterator() {
                 Iterator<Entry<Object, Object>> it = internalEntries.iterator();
@@ -476,6 +502,8 @@ public abstract class AbstractConcurrentNullSafeMap<K, V> implements ConcurrentM
                 internalMap.clear();
             }
         };
+        cachedEntrySet = es;
+        return es;
     }
 
     /**
@@ -491,11 +519,13 @@ public abstract class AbstractConcurrentNullSafeMap<K, V> implements ConcurrentM
         if (!(o instanceof Map)) return false;
         Map<?, ?> other = (Map<?, ?>) o;
         if (this.size() != other.size()) return false;
-        for (Entry<K, V> entry : this.entrySet()) {
-            K key = entry.getKey();
-            V value = entry.getValue();
-            if (!other.containsKey(key)) return false;
+        // Iterate internalMap directly to avoid entrySet() wrapper overhead
+        // (each wrapper Entry.getValue() would do a hash lookup)
+        for (Entry<Object, Object> entry : internalMap.entrySet()) {
+            K key = unmaskNullKey(entry.getKey());
+            V value = unmaskNullValue(entry.getValue());
             Object otherValue = other.get(key);
+            if (otherValue == null && !other.containsKey(key)) return false;
             if (!Objects.equals(value, otherValue)) return false;
         }
         return true;
@@ -510,9 +540,10 @@ public abstract class AbstractConcurrentNullSafeMap<K, V> implements ConcurrentM
     @Override
     public int hashCode() {
         int h = 0;
-        for (Entry<K, V> entry : this.entrySet()) {
-            K key = entry.getKey();
-            V value = entry.getValue();
+        // Iterate internalMap directly to avoid entrySet() wrapper overhead
+        for (Entry<Object, Object> entry : internalMap.entrySet()) {
+            K key = unmaskNullKey(entry.getKey());
+            V value = unmaskNullValue(entry.getValue());
             int keyHash = (key == null) ? 0 : key.hashCode();
             int valueHash = (value == null) ? 0 : value.hashCode();
             h += keyHash ^ valueHash;

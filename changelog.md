@@ -53,6 +53,37 @@
   * Eliminates 2+ `AtomicInteger` CAS operations per `put`/`remove` call when tracking is disabled (default)
   * Also skips the `tryLock()`-then-`lock()` contention detection pattern, using a single `lock()` call instead
   * Enable via `MultiKeyMap.builder().trackContentionMetrics(true)` when diagnostics are needed
+* **BUG FIX**: `MultiKeyMap` - `hashCode()` uses case-sensitive hashing for case-insensitive maps
+  * `hashCode()` iterated `entrySet()` which reconstructs original-case String keys, then used `String.hashCode()` (case-sensitive)
+  * Two equal case-insensitive MultiKeyMaps with different-case keys produced different hashCodes, violating the hashCode contract
+  * Fixed: case-insensitive mode now iterates internal buckets using pre-computed case-insensitive key hashes
+* **BUG FIX**: `CompactMap` - EMPTY_MAP sentinel collision causing silent data loss
+  * The `EMPTY_MAP` sentinel was a static `String`; if a user stored that exact string as a value, Java string interning caused the map to appear empty
+  * Fixed: changed `EMPTY_MAP` to a unique `Object` instance that cannot collide with user values
+* **BUG FIX**: `CompactMap` - Iterator `remove()` during Map-to-array transition
+  * When `iterator.remove()` caused size to drop to `compactSize()`, the code bypassed `mapIterator.remove()` and called `CompactMap.this.remove()` directly, creating fragile coupling to backing map iteration order
+  * Fixed: always use `mapIterator.remove()` first, then manually build the compact array from remaining entries
+* **BUG FIX**: `CompactMap` - `equals()` missing `return true` for compact array path
+  * The loop verifying all entries match fell through without returning `true`, reaching a fallthrough path that redundantly checked equality via `entrySet().equals()`
+  * Fixed: added `return true` after the compact array verification loop
+* **BUG FIX**: `CompactMap` - `removeFromMap()` not sorting array after Map-to-array transition
+  * Entries were copied in backing map's iteration order without sorting; for sorted/reverse CompactMaps, binary search failed to find present keys
+  * Fixed: call `sortCompactArray()` after building the array in both `removeFromMap()` and the iterator's transition path
+* **BUG FIX**: `CompactMap` - `keySet().retainAll()` case-sensitivity mismatch
+  * For legacy subclasses where `isCaseInsensitive()` returns `true` but `getNewMap()` returns a plain `HashMap`, the retain lookup was case-sensitive
+  * Keys differing only in case from the retain collection were incorrectly removed
+  * Fixed: use `CaseInsensitiveMap` for the lookup when `isCaseInsensitive()` is true
+* **BUG FIX**: `CompactMap` - `ConcurrentModificationException` detection uses size, not modCount
+  * Iterator used `expectedSize != size()` to detect concurrent modification, missing structural changes where size stayed constant (e.g., add one key + remove another)
+  * Fixed: added `modCount` field that increments on every structural modification; iterator checks `expectedModCount` matching standard Java collection behavior
+* **PERFORMANCE**: `CompactMap` - Eliminate double lookup in `removeFromMap()`
+  * Replaced `containsKey()` + `remove()` with single `remove()` call, falling back to `containsKey()` only when `remove()` returns null
+* **PERFORMANCE**: `CompactMap` - Optimize `handleTransitionToSingleEntry()`
+  * Directly assigns `val` to remaining entry, bypassing `clear()` + `put()` which dispatches through the full state chain
+* **PERFORMANCE**: `CompactMap` - Single scan in `equals()` for compact array path
+  * Replaced `containsKey()` + `get()` (two linear scans per entry) with single inline scan that finds key and retrieves value in one pass
+* **PERFORMANCE**: `CompactMap` - Cache size in iterator
+  * Replaced `size()` calls in `hasNext()` and `advance()` with the already-tracked `expectedSize` field, avoiding `instanceof` dispatch on every iteration step
 
 #### 4.90.0 2026-02-02
 * **BUG FIX**: `DeepEquals` - URL comparison now uses string representation instead of `URL.equals()`

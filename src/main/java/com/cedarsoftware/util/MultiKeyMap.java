@@ -4138,13 +4138,27 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             return cached;
         }
 
-        // Compute hashCode (no lock needed - computation is idempotent)
-        // Multiple threads may compute simultaneously, but all produce the same result
         int h = 0;
-        for (Map.Entry<Object, V> e : entrySet()) {
-            // Use Objects.hashCode() - List/Set have proper content-based hashCode implementations
-            int keyHash = Objects.hashCode(e.getKey());
-            h += keyHash ^ Objects.hashCode(e.getValue());
+        if (caseSensitive) {
+            // Case-sensitive: use entrySet() with standard Objects.hashCode()
+            for (Map.Entry<Object, V> e : entrySet()) {
+                h += Objects.hashCode(e.getKey()) ^ Objects.hashCode(e.getValue());
+            }
+        } else {
+            // Case-insensitive: iterate internal buckets and use MultiKey.hash
+            // (pre-computed via computeElementHash with case-insensitive string hashing).
+            // This ensures two equal case-insensitive maps with different-case keys
+            // produce the same hashCode.
+            final AtomicReferenceArray<MultiKey<V>[]> snapshot = buckets;
+            final int len = snapshot.length();
+            for (int bucketIdx = 0; bucketIdx < len; bucketIdx++) {
+                MultiKey<V>[] chain = snapshot.get(bucketIdx);
+                if (chain != null) {
+                    for (MultiKey<V> mk : chain) {
+                        h += mk.hash ^ Objects.hashCode(mk.value);
+                    }
+                }
+            }
         }
 
         // Cache the result (volatile write ensures visibility to all threads)

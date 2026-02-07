@@ -1,6 +1,10 @@
 ### Revision History
 
 #### 4.91.0 (unreleased)
+* **BUG FIX**: `EncryptionUtilities` - All 7 `fast*` file-hashing methods (`fastMD5`, `fastSHA1`, `fastSHA256`, `fastSHA384`, `fastSHA512`, `fastSHA3_256`, `fastSHA3_512`) never used the optimized `FileChannel` path
+  * `Files.newInputStream()` returns `ChannelInputStream` on Java 9+, not `FileInputStream`, so the `instanceof FileInputStream` check always failed
+  * Every call fell through to the slower `InputStream.read(byte[])` path instead of the intended `FileChannel`/`ByteBuffer` path
+  * Fixed by using `new FileInputStream(file)` directly, which guarantees the `FileChannel` optimization is used
 * **PERFORMANCE**: `ByteUtilities` - Cached security property lookups for better performance
   * Security-related `System.getProperty()` calls are now cached with property change detection
   * Eliminates repeated property parsing on every `encode()`/`decode()` call

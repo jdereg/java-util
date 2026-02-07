@@ -9,13 +9,12 @@ import javax.crypto.spec.PBEKeySpec;
 import javax.crypto.spec.SecretKeySpec;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.NoSuchFileException;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.Key;
@@ -385,14 +384,10 @@ public class EncryptionUtilities {
     public static String fastMD5(File file) {
         // Security: Validate file size to prevent resource exhaustion
         validateFileSize(file);
-        
-        try (InputStream in = Files.newInputStream(file.toPath())) {
-            if (in instanceof FileInputStream) {
-                return calculateFileHash(((FileInputStream) in).getChannel(), getMD5Digest());
-            }
-            // Fallback for non-file input streams (rare, but possible with custom filesystem providers)
-            return calculateStreamHash(in, getMD5Digest());
-        } catch (NoSuchFileException e) {
+
+        try (FileInputStream fis = new FileInputStream(file)) {
+            return calculateFileHash(fis.getChannel(), getMD5Digest());
+        } catch (FileNotFoundException e) {
             return null;
         } catch (IOException e) {
             throw new java.io.UncheckedIOException(e);
@@ -452,14 +447,10 @@ public class EncryptionUtilities {
     public static String fastSHA1(File file) {
         // Security: Validate file size to prevent resource exhaustion
         validateFileSize(file);
-        
-        try (InputStream in = Files.newInputStream(file.toPath())) {
-            if (in instanceof FileInputStream) {
-                return calculateFileHash(((FileInputStream) in).getChannel(), getSHA1Digest());
-            }
-            // Fallback for non-file input streams (rare, but possible with custom filesystem providers)
-            return calculateStreamHash(in, getSHA1Digest());
-        } catch (NoSuchFileException e) {
+
+        try (FileInputStream fis = new FileInputStream(file)) {
+            return calculateFileHash(fis.getChannel(), getSHA1Digest());
+        } catch (FileNotFoundException e) {
             return null;
         } catch (IOException e) {
             throw new java.io.UncheckedIOException(e);
@@ -482,14 +473,10 @@ public class EncryptionUtilities {
     public static String fastSHA256(File file) {
         // Security: Validate file size to prevent resource exhaustion
         validateFileSize(file);
-        
-        try (InputStream in = Files.newInputStream(file.toPath())) {
-            if (in instanceof FileInputStream) {
-                return calculateFileHash(((FileInputStream) in).getChannel(), getSHA256Digest());
-            }
-            // Fallback for non-file input streams (rare, but possible with custom filesystem providers)
-            return calculateStreamHash(in, getSHA256Digest());
-        } catch (NoSuchFileException e) {
+
+        try (FileInputStream fis = new FileInputStream(file)) {
+            return calculateFileHash(fis.getChannel(), getSHA256Digest());
+        } catch (FileNotFoundException e) {
             return null;
         } catch (IOException e) {
             throw new java.io.UncheckedIOException(e);
@@ -505,13 +492,10 @@ public class EncryptionUtilities {
     public static String fastSHA384(File file) {
         // Security: Validate file size to prevent resource exhaustion
         validateFileSize(file);
-        
-        try (InputStream in = Files.newInputStream(file.toPath())) {
-            if (in instanceof FileInputStream) {
-                return calculateFileHash(((FileInputStream) in).getChannel(), getSHA384Digest());
-            }
-            return calculateStreamHash(in, getSHA384Digest());
-        } catch (NoSuchFileException e) {
+
+        try (FileInputStream fis = new FileInputStream(file)) {
+            return calculateFileHash(fis.getChannel(), getSHA384Digest());
+        } catch (FileNotFoundException e) {
             return null;
         } catch (IOException e) {
             throw new java.io.UncheckedIOException(e);
@@ -534,14 +518,10 @@ public class EncryptionUtilities {
     public static String fastSHA512(File file) {
         // Security: Validate file size to prevent resource exhaustion
         validateFileSize(file);
-        
-        try (InputStream in = Files.newInputStream(file.toPath())) {
-            if (in instanceof FileInputStream) {
-                return calculateFileHash(((FileInputStream) in).getChannel(), getSHA512Digest());
-            }
-            // Fallback for non-file input streams (rare, but possible with custom filesystem providers)
-            return calculateStreamHash(in, getSHA512Digest());
-        } catch (NoSuchFileException e) {
+
+        try (FileInputStream fis = new FileInputStream(file)) {
+            return calculateFileHash(fis.getChannel(), getSHA512Digest());
+        } catch (FileNotFoundException e) {
             return null;
         } catch (IOException e) {
             throw new java.io.UncheckedIOException(e);
@@ -557,13 +537,10 @@ public class EncryptionUtilities {
     public static String fastSHA3_256(File file) {
         // Security: Validate file size to prevent resource exhaustion
         validateFileSize(file);
-        
-        try (InputStream in = Files.newInputStream(file.toPath())) {
-            if (in instanceof FileInputStream) {
-                return calculateFileHash(((FileInputStream) in).getChannel(), getSHA3_256Digest());
-            }
-            return calculateStreamHash(in, getSHA3_256Digest());
-        } catch (NoSuchFileException e) {
+
+        try (FileInputStream fis = new FileInputStream(file)) {
+            return calculateFileHash(fis.getChannel(), getSHA3_256Digest());
+        } catch (FileNotFoundException e) {
             return null;
         } catch (IOException e) {
             throw new java.io.UncheckedIOException(e);
@@ -579,13 +556,10 @@ public class EncryptionUtilities {
     public static String fastSHA3_512(File file) {
         // Security: Validate file size to prevent resource exhaustion
         validateFileSize(file);
-        
-        try (InputStream in = Files.newInputStream(file.toPath())) {
-            if (in instanceof FileInputStream) {
-                return calculateFileHash(((FileInputStream) in).getChannel(), getSHA3_512Digest());
-            }
-            return calculateStreamHash(in, getSHA3_512Digest());
-        } catch (NoSuchFileException e) {
+
+        try (FileInputStream fis = new FileInputStream(file)) {
+            return calculateFileHash(fis.getChannel(), getSHA3_512Digest());
+        } catch (FileNotFoundException e) {
             return null;
         } catch (IOException e) {
             throw new java.io.UncheckedIOException(e);

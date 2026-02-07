@@ -31,9 +31,8 @@ import com.cedarsoftware.util.MapUtilities;
  * <b>Algorithm:</b> This implementation uses a zone-based eviction strategy with sample-15 approximate LRU:
  * <ul>
  *   <li><b>Zone A (0 to capacity):</b> Normal operation, no eviction needed</li>
- *   <li><b>Zone B (capacity to 1.5x):</b> Background cleanup brings cache back to capacity</li>
- *   <li><b>Zone C (1.5x to 2x):</b> Probabilistic inline eviction (probability increases as size approaches 2x)</li>
- *   <li><b>Zone D (2x+):</b> Hard cap - evict before insert to maintain bounded memory</li>
+ *   <li><b>Zone B (capacity to 2x):</b> Amortized inline eviction + background cleanup brings cache back to capacity</li>
+ *   <li><b>Zone C (2x+):</b> Hard cap - evict before insert to maintain bounded memory</li>
  * </ul>
  * <p>
  * <b>Sample-15 Eviction:</b> Instead of sorting all entries (O(n log n)), we sample 15 random entries and evict
@@ -76,11 +75,9 @@ import com.cedarsoftware.util.MapUtilities;
 public class ThreadedLRUCacheStrategy<K, V> implements Map<K, V>, Closeable {
     private static final int DEFAULT_CLEANUP_INTERVAL_MS = 500;
     private static final int SAMPLE_SIZE = 15;  // Sample size for approximate LRU (99% accuracy per Redis research)
-    private static final double SOFT_CAP_RATIO = 1.5;  // Start probabilistic eviction
     private static final double HARD_CAP_RATIO = 2.0;  // Hard cap - evict before insert
 
     private final int capacity;
-    private final int softCap;   // 1.5x capacity - start probabilistic eviction
     private final int hardCap;   // 2.0x capacity - hard limit, evict before insert
     private final ConcurrentMap<K, Node<K, V>> cache;
     private final WeakReference<ThreadedLRUCacheStrategy<K, V>> selfRef;
@@ -171,8 +168,8 @@ public class ThreadedLRUCacheStrategy<K, V> implements Map<K, V>, Closeable {
      * <p>
      * The cache uses a zone-based eviction strategy:
      * <ul>
-     *   <li>Up to 1.5x capacity: Background cleanup only</li>
-     *   <li>1.5x to 2x capacity: Probabilistic inline eviction</li>
+     *   <li>Up to capacity: No eviction needed</li>
+     *   <li>Capacity to 2x: Amortized inline eviction + background cleanup</li>
      *   <li>At 2x capacity: Hard cap with evict-before-insert</li>
      * </ul>
      * <p>
@@ -186,7 +183,6 @@ public class ThreadedLRUCacheStrategy<K, V> implements Map<K, V>, Closeable {
             throw new IllegalArgumentException("Capacity must be at least 1.");
         }
         this.capacity = capacity;
-        this.softCap = (int) (capacity * SOFT_CAP_RATIO);
         this.hardCap = (int) (capacity * HARD_CAP_RATIO);
         this.cache = new ConcurrentHashMapNullSafe<>(capacity);
 
@@ -476,26 +472,35 @@ public class ThreadedLRUCacheStrategy<K, V> implements Map<K, V>, Closeable {
 
     @Override
     public V computeIfAbsent(K key, java.util.function.Function<? super K, ? extends V> mappingFunction) {
+        boolean[] inserted = {false};
         Node<K, V> node = cache.computeIfAbsent(key, k -> {
             V value = mappingFunction.apply(key);
-            return value != null ? new Node<>(key, value) : null;
+            if (value != null) {
+                inserted[0] = true;
+                return new Node<>(key, value);
+            }
+            return null;
         });
         if (node != null) {
-            node.updateTimestamp();
-            // Amortized eviction check (same logic as put())
-            int inserts = insertsSinceEviction.incrementAndGet();
-            if (inserts >= EVICTION_BATCH_SIZE) {
-                if (insertsSinceEviction.compareAndSet(inserts, 0)) {
-                    int size = cache.size();
-                    if (size > capacity) {
-                        tryEvict(Math.min(EVICTION_BATCH_SIZE, size - capacity));
+            if (inserted[0]) {
+                // New entry - amortized eviction check (same logic as put())
+                int inserts = insertsSinceEviction.incrementAndGet();
+                if (inserts >= EVICTION_BATCH_SIZE) {
+                    if (insertsSinceEviction.compareAndSet(inserts, 0)) {
+                        int size = cache.size();
+                        if (size > capacity) {
+                            tryEvict(Math.min(EVICTION_BATCH_SIZE, size - capacity));
+                        }
                     }
                 }
-            }
-            // Hard cap enforcement - MUST evict
-            int size = cache.size();
-            if (size >= hardCap) {
-                forceEvict(size - capacity);
+                // Hard cap enforcement - MUST evict
+                int size = cache.size();
+                if (size >= hardCap) {
+                    forceEvict(size - capacity);
+                }
+            } else {
+                // Existing entry - just update timestamp
+                node.updateTimestamp();
             }
             return node.value;
         }

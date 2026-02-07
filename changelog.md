@@ -1,6 +1,13 @@
 ### Revision History
 
 #### 4.91.0 (unreleased)
+* **PERFORMANCE**: `ThreadedLRUCacheStrategy.computeIfAbsent()` - Eliminated unnecessary eviction checks on cache hits
+  * `computeIfAbsent()` incremented `insertsSinceEviction` on every call, including cache hits
+  * This triggered unnecessary eviction scans even when no new entry was added
+  * Fixed by tracking whether the mapping function was invoked, only running eviction logic on actual inserts
+* **CLEANUP**: `ThreadedLRUCacheStrategy` - Removed unused `softCap` field and `SOFT_CAP_RATIO` constant
+  * The "Zone C probabilistic inline eviction" described in the Javadoc was never implemented
+  * Updated Javadoc to accurately describe the actual eviction zones
 * **BUG FIX**: `LockingLRUCacheStrategy.clear()` - Concurrent `get()` could corrupt the linked list after `clear()`
   * `clear()` reset the head/tail sentinels but did not null out removed nodes' `prev`/`next` links
   * A concurrent `get()` using `tryLock` could call `moveToHead()` on a node with stale links, splicing ghost nodes into the live list

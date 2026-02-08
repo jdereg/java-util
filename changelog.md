@@ -1,21 +1,9 @@
 ### Revision History
 
-#### 4.92.0 (unreleased)
-* **PERFORMANCE**: `CaseInsensitiveMap` - Eliminated global LRU cache bottleneck in `convertKey()` hot path
-  * Every `get()`/`put()`/`containsKey()` call went through `CaseInsensitiveString.of()`, which performed a `ConcurrentHashMap.get()` + LRU bookkeeping (node promotion, timestamp update) on a shared global cache — more expensive than the thing it cached
-  * `CaseInsensitiveString` is a lightweight wrapper (String reference + pre-computed hash, ~20-30ns to construct) while the cache lookup cost ~60-100ns per operation
-  * Fixed by constructing `CaseInsensitiveString` directly in `convertKey()` and `convertKeys()`, bypassing the cache entirely
-  * **Result**: CaseInsensitiveMap(HashMap) went from 8.77x slower than TreeMap(CASE_INSENSITIVE_ORDER) to 4.86x faster (~43x relative improvement)
-* **BUG FIX**: `CaseInsensitiveString.equals()` - Hash code of 0 skipped string comparison
-  * The guard `(hash == 0 || hash == cis.hash)` treated 0 as "uncomputed" and bypassed the hash comparison, but the hash is eagerly computed in the constructor and 0 is a valid hash value
-  * Two different strings that both hash to 0 would incorrectly compare as equal (skipping `equalsIgnoreCase`)
-  * Fixed by simplifying to `hash == cis.hash` — equal objects must have equal hashes
-* **CLEANUP**: `CaseInsensitiveMap` - Removed `CaseInsensitiveString` global cache infrastructure
-  * The LRU cache (5,000-entry `ConcurrentHashMap` + linked-list nodes + background cleanup thread) added memory overhead and contention across all `CaseInsensitiveMap` instances with no performance benefit
-  * Removed: `COMMON_STRINGS_REF`, `DEFAULT_CACHE_SIZE`, `DEFAULT_MAX_STRING_LENGTH`, `trimCache()`, `parseIntSafely()`, static initializer, probabilistic caching logic
-  * `CaseInsensitiveString.of()` now delegates directly to `new CaseInsensitiveString(s)`
-  * Deprecated as no-ops (for backwards compatibility): `replaceCache()`, `resetCacheToDefault()`, `setMaxCacheLengthString()`
-  * System properties `caseinsensitive.cache.size` and `caseinsensitive.max.string.length` no longer have any effect
+#### 4.92.0 - 2026-02-08
+* **PERFORMANCE**: `CaseInsensitiveMap` - Significant speedup by removing the global LRU cache and constructing `CaseInsensitiveString` wrappers directly on the heap. The cache's `ConcurrentHashMap` lookup + LRU bookkeeping cost more per call than simply creating the lightweight wrapper. CaseInsensitiveMap(HashMap) is now ~4x faster than TreeMap(CASE_INSENSITIVE_ORDER), up from ~9x slower.
+* **BUG FIX**: `CaseInsensitiveString.equals()` - Fixed incorrect equality when hash code was 0 (skipped `equalsIgnoreCase()` check).
+* **CLEANUP**: Deprecated `replaceCache()`, `resetCacheToDefault()`, and `setMaxCacheLengthString()` as no-ops. System properties `caseinsensitive.cache.size` and `caseinsensitive.max.string.length` no longer have any effect.
 
 #### 4.91.0 - 2026-02-08
 * **BUG FIX**: `DeepEquals` - Enum constants with class bodies misclassified as `TYPE_MISMATCH`

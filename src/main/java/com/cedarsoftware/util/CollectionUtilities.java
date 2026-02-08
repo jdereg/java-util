@@ -189,7 +189,8 @@ public class CollectionUtilities {
         // Pre-size the ArrayList to avoid resizing and avoid Collections.addAll() overhead
         List<T> list = new ArrayList<>(items.length);
         for (T item : items) {
-            list.add(item); // This will throw NPE if item is null, as documented
+            Objects.requireNonNull(item, "Null elements are not permitted");
+            list.add(item);
         }
         return Collections.unmodifiableList(list);
     }
@@ -223,7 +224,8 @@ public class CollectionUtilities {
         // Pre-size the LinkedHashSet to avoid resizing and avoid Collections.addAll() overhead
         Set<T> set = new LinkedHashSet<>(items.length);
         for (T item : items) {
-            set.add(item); // This will throw NPE if item is null, as documented
+            Objects.requireNonNull(item, "Null elements are not permitted");
+            set.add(item);
         }
         return Collections.unmodifiableSet(set);
     }

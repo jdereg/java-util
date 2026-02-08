@@ -1,6 +1,9 @@
 ### Revision History
 
 #### 4.91.0 (unreleased)
+* **BUG FIX**: `CollectionUtilities.listOf()` / `setOf()` - Null elements silently accepted despite documented NPE
+  * Both methods documented `@throws NullPointerException` for null elements (matching `List.of()`/`Set.of()` contract), but `ArrayList.add(null)` and `LinkedHashSet.add(null)` do not throw
+  * Fixed by adding explicit `Objects.requireNonNull()` checks in both methods
 * **BUG FIX**: `ClassUtilities` - `CLASS_NOT_FOUND_SENTINEL` using `Void.class` masked legitimate `java.lang.Void` lookups
   * The "class not found" cache sentinel was `Void.class`, so the first `forName("java.lang.Void", cl)` call succeeded, but subsequent calls found `Void.class` in the cache, matched the sentinel, and incorrectly threw `ClassNotFoundException`
   * Fixed by replacing the sentinel with a private inner class (`ClassNotFoundSentinel`) that can never collide with any real class

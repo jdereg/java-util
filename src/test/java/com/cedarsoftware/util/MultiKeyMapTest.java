@@ -418,10 +418,10 @@ public class MultiKeyMapTest {
         assertEquals("array with empty string", map.get(new String[]{""}));
         assertTrue(map.containsKey(new String[]{""}));
         
-        // Test collection with null element
-        map.put(CollectionUtilities.listOf((String) null), "collection with null");
-        assertEquals("collection with null", map.get(CollectionUtilities.listOf((String) null)));
-        assertTrue(map.containsKey(CollectionUtilities.listOf((String) null)));
+        // Test collection with null element (listOf rejects nulls like List.of, so use singletonList)
+        map.put(Collections.singletonList(null), "collection with null");
+        assertEquals("collection with null", map.get(Collections.singletonList(null)));
+        assertTrue(map.containsKey(Collections.singletonList(null)));
         
         // Test collection with empty string element
         map.put(CollectionUtilities.listOf(""), "collection with empty string");

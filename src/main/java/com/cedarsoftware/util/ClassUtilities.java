@@ -227,9 +227,10 @@ public class ClassUtilities {
         return (cl != null) ? cl : getClassLoader(ClassUtilities.class);
     }
     
-    // Sentinel class to indicate "class not found" in the cache.
-    // Using Void.class as it cannot be instantiated and is never a valid lookup result.
-    private static final Class<?> CLASS_NOT_FOUND_SENTINEL = Void.class;
+    // Private sentinel class to indicate "class not found" in the cache.
+    // Using a dedicated inner class avoids collisions with any real class (including java.lang.Void).
+    private static final class ClassNotFoundSentinel { }
+    private static final Class<?> CLASS_NOT_FOUND_SENTINEL = ClassNotFoundSentinel.class;
 
     private static Class<?> fromCache(String name, ClassLoader cl) {
         // Check global aliases first (primitive types and user-defined aliases)

@@ -1,6 +1,9 @@
 ### Revision History
 
 #### 4.91.0 (unreleased)
+* **BUG FIX**: `ClassUtilities` - `CLASS_NOT_FOUND_SENTINEL` using `Void.class` masked legitimate `java.lang.Void` lookups
+  * The "class not found" cache sentinel was `Void.class`, so the first `forName("java.lang.Void", cl)` call succeeded, but subsequent calls found `Void.class` in the cache, matched the sentinel, and incorrectly threw `ClassNotFoundException`
+  * Fixed by replacing the sentinel with a private inner class (`ClassNotFoundSentinel`) that can never collide with any real class
 * **BUG FIX**: `RegexUtilities.getRegexTimeoutMilliseconds()` - `NumberFormatException` on invalid system property
   * Unlike the boolean config methods which gracefully handle invalid input, this method threw an unhandled `NumberFormatException` if `cedarsoftware.regex.timeout.milliseconds` was set to a non-numeric value
   * Fixed by catching `NumberFormatException` and falling back to the default timeout (5000ms)

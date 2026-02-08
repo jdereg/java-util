@@ -297,11 +297,11 @@ public class ClassValueMap<V> extends AbstractMap<Class<?>, V> implements Concur
 
     @Override
     public void clear() {
-        // Snapshot keys while they exist (needed for cache invalidation).
+        // Snapshot keys as a flat array (avoids HashSet hashing/allocation overhead).
         // We must clear backingMap BEFORE invalidating cache to prevent a race condition:
         // If we invalidate cache first, a concurrent get() could repopulate the cache
         // from the still-populated backingMap, leaving permanently stale entries.
-        Set<Class<?>> keys = new java.util.HashSet<>(backingMap.keySet());
+        Object[] keys = backingMap.keySet().toArray();
 
         // Clear backing stores first - any concurrent get() will now see empty state
         backingMap.clear();
@@ -312,8 +312,8 @@ public class ClassValueMap<V> extends AbstractMap<Class<?>, V> implements Concur
         // - Hit the cache (temporary stale read during clear operation)
         // - Miss the cache and call computeValue, which sees empty backingMap → returns NO_VALUE
         // After clear() completes, all subsequent get() calls see correct state.
-        for (Class<?> key : keys) {
-            cache.remove(key);
+        for (Object key : keys) {
+            cache.remove((Class<?>) key);
         }
     }
 
@@ -336,6 +336,16 @@ public class ClassValueMap<V> extends AbstractMap<Class<?>, V> implements Concur
             }
         }
         return backingMap.containsValue(value == null ? NULL_VALUE : value);
+    }
+
+    @Override
+    public void forEach(java.util.function.BiConsumer<? super Class<?>, ? super V> action) {
+        java.util.Objects.requireNonNull(action);
+        Object nullKeyStored = nullKeyStore.get();
+        if (nullKeyStored != NO_NULL_KEY_MAPPING) {
+            action.accept(null, unmaskNullKeyValue(nullKeyStored));
+        }
+        backingMap.forEach((key, value) -> action.accept(key, unmaskNull(value)));
     }
 
     @Override
@@ -413,6 +423,104 @@ public class ClassValueMap<V> extends AbstractMap<Class<?>, V> implements Concur
             cache.remove(key);
         }
         return unmaskNull(prev);
+    }
+
+    /**
+     * {@inheritDoc}
+     * <p>
+     * Overridden to correctly handle null-value mappings. The default ConcurrentMap implementation
+     * cannot distinguish between "key absent" and "key maps to null" (both return null from get()),
+     * causing the computed value to be returned without actually being stored when a null-value
+     * mapping exists.
+     */
+    @Override
+    public V computeIfAbsent(Class<?> key, java.util.function.Function<? super Class<?>, ? extends V> mappingFunction) {
+        java.util.Objects.requireNonNull(mappingFunction);
+        if (key == null) {
+            Object current = nullKeyStore.get();
+            if (current != NO_NULL_KEY_MAPPING && current != NULL_FOR_NULL_KEY) {
+                return unmaskNullKeyValue(current);  // Non-null value exists
+            }
+            // Absent or null-mapped — per Map spec, treat both as "compute"
+            V newValue = mappingFunction.apply(null);
+            if (newValue == null) {
+                return null;
+            }
+            // CAS to install computed value (only if still absent or null-mapped)
+            while (true) {
+                current = nullKeyStore.get();
+                if (current != NO_NULL_KEY_MAPPING && current != NULL_FOR_NULL_KEY) {
+                    return unmaskNullKeyValue(current);  // Another thread installed non-null
+                }
+                if (nullKeyStore.compareAndSet(current, maskNullKeyValue(newValue))) {
+                    return newValue;
+                }
+            }
+        }
+        // Non-null key: fast path via ClassValue cache
+        V existing = get(key);
+        if (existing != null) {
+            return existing;
+        }
+        // Delegate to backingMap.compute() for atomicity — holds bucket lock while computing.
+        // NULL_VALUE in backingMap means "key maps to null"; per Map.computeIfAbsent spec
+        // we treat that the same as absent ("or is mapped to null").
+        boolean[] changed = {false};
+        Object result = backingMap.compute(key, (k, oldRaw) -> {
+            if (oldRaw != null && oldRaw != NULL_VALUE) {
+                return oldRaw;  // Non-null value exists, keep it
+            }
+            V newValue = mappingFunction.apply(k);
+            if (newValue == null) {
+                return oldRaw;  // Don't change state if function returns null
+            }
+            changed[0] = true;
+            return newValue;  // Non-null computed value (no masking needed)
+        });
+        if (changed[0]) {
+            cache.remove(key);
+        }
+        return unmaskNull(result);
+    }
+
+    /**
+     * {@inheritDoc}
+     * <p>
+     * Overridden to correctly handle null-value mappings. The default ConcurrentMap implementation
+     * uses {@code putIfAbsent()} when {@code get()} returns null, but {@code putIfAbsent()} returns
+     * null for both "inserted successfully" and "existing value is null," causing incorrect behavior.
+     */
+    @Override
+    public V compute(Class<?> key, java.util.function.BiFunction<? super Class<?>, ? super V, ? extends V> remappingFunction) {
+        java.util.Objects.requireNonNull(remappingFunction);
+        if (key == null) {
+            while (true) {
+                Object current = nullKeyStore.get();
+                V oldValue = (current == NO_NULL_KEY_MAPPING) ? null : unmaskNullKeyValue(current);
+                V newValue = remappingFunction.apply(null, oldValue);
+                Object replacement = (newValue == null) ? NO_NULL_KEY_MAPPING : maskNullKeyValue(newValue);
+                if (nullKeyStore.compareAndSet(current, replacement)) {
+                    return newValue;
+                }
+                // CAS failed, retry with current state
+            }
+        }
+        // Non-null key: delegate to backingMap.compute() for atomicity
+        boolean[] changed = {false};
+        Object result = backingMap.compute(key, (k, oldRaw) -> {
+            V oldValue = (oldRaw == null) ? null : unmaskNull(oldRaw);
+            V newValue = remappingFunction.apply(k, oldValue);
+            if (newValue == null) {
+                changed[0] = (oldRaw != null);  // Changed if there was a mapping to remove
+                return null;  // Remove mapping
+            }
+            changed[0] = true;
+            return maskNull(newValue);
+        });
+        if (changed[0]) {
+            cache.remove(key);
+        }
+        return unmaskNull(result);
     }
 
     @Override
@@ -581,6 +689,11 @@ public class ClassValueMap<V> extends AbstractMap<Class<?>, V> implements Concur
             @Override
             public Collection<V> values() {
                 return Collections.unmodifiableCollection(thisMap.values());
+            }
+
+            @Override
+            public boolean containsValue(Object value) {
+                return thisMap.containsValue(value); // Avoids AbstractMap's slow entrySet scan
             }
 
             @Override

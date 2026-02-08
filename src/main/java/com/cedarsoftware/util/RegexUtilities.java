@@ -119,7 +119,15 @@ public final class RegexUtilities {
      * @return timeout in milliseconds (default: 5000)
      */
     public static long getRegexTimeoutMilliseconds() {
-        return Long.parseLong(System.getProperty(REGEX_TIMEOUT_MS_PROPERTY, String.valueOf(DEFAULT_TIMEOUT_MS)));
+        String value = System.getProperty(REGEX_TIMEOUT_MS_PROPERTY);
+        if (value != null) {
+            try {
+                return Long.parseLong(value);
+            } catch (NumberFormatException ignored) {
+                // Fall through to default
+            }
+        }
+        return DEFAULT_TIMEOUT_MS;
     }
 
     // ========== Pattern Caching Methods ==========

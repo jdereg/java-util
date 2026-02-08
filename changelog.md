@@ -1,6 +1,9 @@
 ### Revision History
 
 #### 4.91.0 (unreleased)
+* **BUG FIX**: `RegexUtilities.getRegexTimeoutMilliseconds()` - `NumberFormatException` on invalid system property
+  * Unlike the boolean config methods which gracefully handle invalid input, this method threw an unhandled `NumberFormatException` if `cedarsoftware.regex.timeout.milliseconds` was set to a non-numeric value
+  * Fixed by catching `NumberFormatException` and falling back to the default timeout (5000ms)
 * **BUG FIX**: `ReflectionUtils.isTrustedCaller()` - Dangerous class security check was always bypassed
   * `isTrustedCaller()` found `ReflectionUtils` itself on the call stack, which always matched the `com.cedarsoftware.util.` trusted prefix
   * This made `isDangerousClass()` always return `false`, completely disabling the dangerous class security feature even when enabled

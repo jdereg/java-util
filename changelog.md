@@ -1,6 +1,9 @@
 ### Revision History
 
 #### 4.91.0 (unreleased)
+* **BUG FIX**: `MultiKeyMap` - Concurrent resize lost entries due to stripe lock / bucket mismatch
+  * `getStripeIndex()` computed the stripe from `(spread(hash) & bucketMask) & STRIPE_MASK`, where `bucketMask` depends on the current table size. Between computing the stripe and acquiring the lock, a concurrent resize could replace `buckets` with a larger table. The `*NoLock` methods then re-read the new table and computed a bucket index that mapped to a **different stripe**, allowing two threads to modify the same bucket concurrently — a lost-update race that silently dropped entries
+  * Fixed by making `getStripeIndex()` table-size-independent (`spread(hash) & STRIPE_MASK`), enforcing minimum capacity >= `STRIPE_COUNT` so same-bucket always means same-stripe, and using the locally captured table reference consistently in `putNoLock()` / `removeNoLock()`
 * **BUG FIX**: `UrlUtilities.setCookies()` - Error message incorrectly said "AFTER" instead of "BEFORE" calling `connect()`
   * The `IllegalStateException` handler told users to call `setCookies()` *after* connecting, but cookies must be set *before* `connect()` — the opposite of what the message said
   * Fixed by changing "AFTER" to "BEFORE" in the error message

@@ -508,8 +508,10 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             throw new IllegalArgumentException("Illegal initial capacity: " + builder.capacity);
         }
 
-        // Ensure capacity is a power of 2, following HashMap's behavior
-        int actualCapacity = tableSizeFor(builder.capacity);
+        // Ensure capacity is a power of 2 AND at least STRIPE_COUNT.
+        // The minimum guarantees that table mask >= STRIPE_MASK, so entries
+        // in the same bucket always map to the same stripe lock.
+        int actualCapacity = Math.max(tableSizeFor(builder.capacity), STRIPE_COUNT);
         this.buckets = new AtomicReferenceArray<>(actualCapacity);
         // Store the ACTUAL capacity, not the requested one, to avoid confusion
         this.capacity = actualCapacity;
@@ -1000,11 +1002,13 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     }
 
     private int getStripeIndex(int hash) {
-        // Use bucket index for stripe selection to reduce false contention
-        // between independent buckets that happen to have same low-order hash bits
-        final AtomicReferenceArray<MultiKey<V>[]> table = buckets;  // Volatile read of buckets
-        final int mask = table.length() - 1;  // Array length is immutable
-        return (spread(hash) & mask) & STRIPE_MASK;
+        // Stripe is determined solely by the hash, independent of table size.
+        // This is safe because the constructor enforces capacity >= STRIPE_COUNT,
+        // guaranteeing that all entries in the same bucket share the same stripe
+        // (same low-order bits up to STRIPE_MASK).  Being table-size-independent
+        // also eliminates a race window between computing the stripe and acquiring
+        // the lock: a concurrent resize can no longer redirect us to a wrong stripe.
+        return spread(hash) & STRIPE_MASK;
     }
 
     private ReentrantLock getStripeLock(int hash) {
@@ -3195,7 +3199,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         MultiKey<V>[] chain = table.get(index);
 
         if (chain == null) {
-            buckets.set(index, new MultiKey[]{newKey});
+            table.set(index, new MultiKey[]{newKey});
             atomicSize.incrementAndGet();
             updateMaxChainLength(1);
             return null;
@@ -3208,14 +3212,14 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                 // Create new array with replaced element - never mutate published array
                 MultiKey<V>[] newChain = chain.clone();
                 newChain[i] = newKey;
-                buckets.set(index, newChain);
+                table.set(index, newChain);
                 return old;
             }
         }
 
         MultiKey<V>[] newChain = Arrays.copyOf(chain, chain.length + 1);
         newChain[chain.length] = newKey;
-        buckets.set(index, newChain);
+        table.set(index, newChain);
         atomicSize.incrementAndGet();
         updateMaxChainLength(newChain.length);
         return null;
@@ -3427,7 +3431,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             if (e.hash == hash && keysMatch(e, removeKey.keys)) {
                 V old = e.value;
                 if (chain.length == 1) {
-                    buckets.set(index, null);
+                    table.set(index, null);
                 } else {
                     // Create new array without the removed element - never mutate published array
                     MultiKey<V>[] newChain = new MultiKey[chain.length - 1];
@@ -3435,7 +3439,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                     System.arraycopy(chain, 0, newChain, 0, i);
                     // Copy elements after the removed one
                     System.arraycopy(chain, i + 1, newChain, i, chain.length - i - 1);
-                    buckets.set(index, newChain);
+                    table.set(index, newChain);
                 }
                 atomicSize.decrementAndGet();
                 return old;

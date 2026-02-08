@@ -39,6 +39,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class MultiKeyMapSetPerformanceTest {
 
     @Test
+    @org.junit.jupiter.api.condition.EnabledIfSystemProperty(named = "performRelease", matches = "true")
     void testSetVsListInsertionPerformance() {
         MultiKeyMap<String> map = new MultiKeyMap<>();
         int iterations = 10000;

@@ -210,6 +210,7 @@ public class MultiKeyMapAtomicTypesTest {
     }
     
     @Test
+    @org.junit.jupiter.api.condition.EnabledIfSystemProperty(named = "performRelease", matches = "true")
     void testAtomicTypesPerformance() {
         MultiKeyMap<String> map = MultiKeyMap.<String>builder().valueBasedEquality(true).build();
         

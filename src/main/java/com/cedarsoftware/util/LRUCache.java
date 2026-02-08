@@ -85,10 +85,8 @@ public class LRUCache<K, V> implements Map<K, V> {
         }
         if (strategyType == StrategyType.THREADED) {
             strategy = new ThreadedLRUCacheStrategy<>(capacity);
-        } else if (strategyType == StrategyType.LOCKING) {
-            strategy = new LockingLRUCacheStrategy<>(capacity);
         } else {
-            throw new IllegalArgumentException("Unsupported strategy type: " + strategyType);
+            strategy = new LockingLRUCacheStrategy<>(capacity);
         }
     }
 
@@ -111,11 +109,10 @@ public class LRUCache<K, V> implements Map<K, V> {
      * @return the maximum number of entries in the cache.
      */
     public int getCapacity() {
-        if (strategy instanceof ThreadedLRUCacheStrategy) {
-            return ((ThreadedLRUCacheStrategy<K, V>) strategy).getCapacity();
-        } else {
+        if (strategy instanceof LockingLRUCacheStrategy) {
             return ((LockingLRUCacheStrategy<K, V>) strategy).getCapacity();
         }
+        return ((ThreadedLRUCacheStrategy<K, V>) strategy).getCapacity();
     }
     
     /**
@@ -229,12 +226,8 @@ public class LRUCache<K, V> implements Map<K, V> {
     }
 
     /**
-     * Shuts down this cache, releasing any resources associated with the scheduling of cleanup tasks.
-     * For ThreadedLRUCacheStrategy, this cancels the scheduled purge task.
-     * For LockingLRUCacheStrategy, this is a no-op.
-     * <p>
-     * This method should be called when the cache is no longer needed, especially when
-     * replacing a cache with a new instance, to prevent accumulation of orphaned scheduled tasks.
+     * Shuts down this cache. For the THREADED strategy, this removes the cache from the
+     * shared cleanup thread's registry. For the LOCKING strategy, this is a no-op.
      */
     public void shutdown() {
         if (strategy instanceof ThreadedLRUCacheStrategy) {

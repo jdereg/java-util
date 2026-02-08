@@ -18,7 +18,6 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.locks.LockSupport;
 
 import com.cedarsoftware.util.ConcurrentHashMapNullSafe;
 import com.cedarsoftware.util.ConcurrentSet;
@@ -28,24 +27,32 @@ import com.cedarsoftware.util.MapUtilities;
  * This class provides a thread-safe Least Recently Used (LRU) cache API that evicts the least recently used items
  * once a threshold is met. It implements the {@code Map} interface for convenience.
  * <p>
- * <b>Algorithm:</b> This implementation uses a zone-based eviction strategy with sample-15 approximate LRU:
+ * <b>Algorithm:</b> This implementation uses pure delegation for all mutating operations ({@code put()},
+ * {@code putIfAbsent()}, {@code computeIfAbsent()}) — they delegate directly to the underlying
+ * {@code ConcurrentHashMap} with zero eviction overhead, providing raw CHM speed for writes.
+ * <p>
+ * <b>Background Eviction ("Elves"):</b> A shared daemon thread wakes every 500ms and services all registered
+ * caches. For each cache over capacity, the elves work within a <b>time budget</b> (10ms per cache per cycle),
+ * performing sample-10 evictions until the cache is back at capacity or the budget is exhausted.
  * <ul>
- *   <li><b>Zone A (0 to capacity):</b> Normal operation, no eviction needed</li>
- *   <li><b>Zone B (capacity to 2x):</b> Amortized inline eviction + background cleanup brings cache back to capacity</li>
- *   <li><b>Zone C (2x+):</b> Hard cap - evict before insert to maintain bounded memory</li>
+ *   <li><b>Self-limiting CPU:</b> Max ~2% of one core (10ms per 500ms cycle per cache).</li>
+ *   <li><b>Adapts to cache size:</b> Large caches with expensive iteration do fewer evictions per cycle;
+ *       small caches do more.</li>
+ *   <li><b>No unbounded work:</b> The elves never spend more than 10ms on a single cache per cycle.</li>
  * </ul>
  * <p>
- * <b>Sample-15 Eviction:</b> Instead of sorting all entries (O(n log n)), we sample 15 random entries and evict
- * the oldest one. This provides ~99% accuracy compared to true LRU (based on Redis research) with O(1) cost.
+ * <b>Trade-off:</b> The cache may temporarily exceed its capacity during burst inserts. The elves will
+ * drain it back to capacity asynchronously. Users choosing the THREADED strategy accept this approximate
+ * capacity behavior in exchange for zero-overhead writes.
+ * <p>
+ * <b>Sample-10 Eviction:</b> Instead of sorting all entries (O(n log n)), we sample 10 entries and evict
+ * the oldest one. This provides ~95-99% accuracy compared to true LRU (based on Redis research) with O(1) cost.
  * <p>
  * <b>Probabilistic Timestamp Updates:</b> To minimize overhead, timestamps are updated probabilistically (~12.5%
  * of accesses). This dramatically reduces the cost of volatile writes and System.nanoTime() calls while maintaining
  * approximate LRU behavior. Frequently accessed entries will still have their timestamps updated regularly.
  * <p>
- * <b>Memory Guarantee:</b> The cache will never exceed 2x the specified capacity, allowing users to size
- * their cache with predictable worst-case memory usage.
- * <p>
- * The Threaded strategy allows for O(1) access for get(), put(), and remove() without blocking in the common case.
+ * The Threaded strategy allows for O(1) access for get(), put(), and remove() without blocking.
  * It uses {@code ConcurrentHashMapNullSafe} internally for null key/value support.
  * <p>
  * LRUCache supports {@code null} for both key and value.
@@ -74,15 +81,13 @@ import com.cedarsoftware.util.MapUtilities;
  */
 public class ThreadedLRUCacheStrategy<K, V> implements Map<K, V>, Closeable {
     private static final int DEFAULT_CLEANUP_INTERVAL_MS = 500;
-    private static final int SAMPLE_SIZE = 15;  // Sample size for approximate LRU (99% accuracy per Redis research)
-    private static final double HARD_CAP_RATIO = 2.0;  // Hard cap - evict before insert
+    private static final int SAMPLE_SIZE = 10;  // Sample size for approximate LRU (~95-99% accuracy per Redis research)
+    private static final long CLEANUP_BUDGET_NS = 10_000_000L;  // 10ms per cache per cleanup cycle
 
     private final int capacity;
-    private final int hardCap;   // 2.0x capacity - hard limit, evict before insert
     private final ConcurrentMap<K, Node<K, V>> cache;
     private final WeakReference<ThreadedLRUCacheStrategy<K, V>> selfRef;
     private final AtomicBoolean closed = new AtomicBoolean(false);
-    private final AtomicBoolean cleanupInProgress = new AtomicBoolean(false);
 
     // Shared infrastructure for ALL cache instances
     private static final Set<WeakReference<ThreadedLRUCacheStrategy<?, ?>>> ALL_CACHES =
@@ -128,7 +133,7 @@ public class ThreadedLRUCacheStrategy<K, V> implements Map<K, V>, Closeable {
      * <ul>
      *   <li>{@code value} is never modified after construction</li>
      *   <li>{@code timestamp} is used for approximate LRU ordering only - stale reads are acceptable
-     *       given the existing approximations (sample-15 eviction, probabilistic updates)</li>
+     *       given the existing approximations (sample-10 eviction, probabilistic updates)</li>
      * </ul>
      * The initial write in the constructor is visible to other threads after the Node reference
      * is published through ConcurrentHashMap (which provides the necessary memory barriers).
@@ -166,14 +171,10 @@ public class ThreadedLRUCacheStrategy<K, V> implements Map<K, V>, Closeable {
     /**
      * Create a ThreadedLRUCacheStrategy with the specified capacity.
      * <p>
-     * The cache uses a zone-based eviction strategy:
-     * <ul>
-     *   <li>Up to capacity: No eviction needed</li>
-     *   <li>Capacity to 2x: Amortized inline eviction + background cleanup</li>
-     *   <li>At 2x capacity: Hard cap with evict-before-insert</li>
-     * </ul>
-     * <p>
-     * Memory usage is guaranteed to never exceed 2x the specified capacity.
+     * All mutating operations ({@code put()}, {@code putIfAbsent()}, {@code computeIfAbsent()})
+     * delegate directly to the underlying ConcurrentHashMap with zero eviction overhead.
+     * A background cleanup thread ("elves") runs every 500ms to drain surplus entries using
+     * time-budgeted sample-10 eviction.
      *
      * @param capacity int maximum size for the LRU cache.
      * @throws IllegalArgumentException if capacity is less than 1
@@ -183,7 +184,6 @@ public class ThreadedLRUCacheStrategy<K, V> implements Map<K, V>, Closeable {
             throw new IllegalArgumentException("Capacity must be at least 1.");
         }
         this.capacity = capacity;
-        this.hardCap = (int) (capacity * HARD_CAP_RATIO);
         this.cache = new ConcurrentHashMapNullSafe<>(capacity);
 
         ensureSchedulerRunning();
@@ -234,34 +234,36 @@ public class ThreadedLRUCacheStrategy<K, V> implements Map<K, V>, Closeable {
     }
 
     /**
-     * Background cleanup - runs every 500ms.
-     * Zone A: Do nothing
-     * Zone B/C/D: Evict using sample-15 until at capacity
+     * Background cleanup — the "elves" strategy.
+     * <p>
+     * Called every 500ms by the shared daemon thread. Works within a time budget
+     * (10ms per cache per cycle), performing sample-10 evictions until the cache
+     * is back at capacity or the budget is exhausted.
+     * <p>
+     * At ~500ns per sample-10 eviction, 10ms budget ≈ 20K evictions per cycle.
+     * A 100K surplus drains in ~5 cycles (~2.5s). This is acceptable because
+     * puts are never blocked — the user chose THREADED knowing capacity is approximate.
      */
     private void backgroundCleanup() {
-        if (!cleanupInProgress.compareAndSet(false, true)) {
+        int size = cache.size();
+        if (size <= capacity) {
             return;
         }
-        try {
-            int size = cache.size();
-            // Zone A: Nothing to do
-            if (size <= capacity) {
-                return;
+
+        long deadline = System.nanoTime() + CLEANUP_BUDGET_NS;
+        while (cache.size() > capacity) {
+            if (!evictOldestUsingSample()) {
+                break;  // Cache is empty or eviction failed
             }
-            // Zone B/C/D: Evict until at capacity
-            while (cache.size() > capacity) {
-                if (!evictOldestUsingSample()) {
-                    break;  // Cache is empty or couldn't evict
-                }
+            if (System.nanoTime() >= deadline) {
+                break;  // Time's up — resume next cycle
             }
-        } finally {
-            cleanupInProgress.set(false);
         }
     }
 
     /**
-     * Evicts the oldest entry from a sample of SAMPLE_SIZE (15) entries.
-     * This provides ~99% LRU accuracy with O(1) cost (based on Redis research).
+     * Evicts the oldest entry from a sample of SAMPLE_SIZE (10) entries.
+     * This provides ~95-99% LRU accuracy with O(1) cost (based on Redis research).
      *
      * @return true if an entry was evicted, false if cache is empty
      */
@@ -366,87 +368,15 @@ public class ThreadedLRUCacheStrategy<K, V> implements Map<K, V>, Closeable {
         return null;
     }
 
-    // Counter for amortized eviction - evict every N inserts when over capacity
-    private static final int EVICTION_BATCH_SIZE = 16;
-    private final java.util.concurrent.atomic.AtomicInteger insertsSinceEviction =
-        new java.util.concurrent.atomic.AtomicInteger(0);
-
     /**
-     * Associates the specified value with the specified key in this cache.
-     * <p>
-     * Uses amortized eviction: instead of evicting on every insert when full,
-     * we batch evictions every EVICTION_BATCH_SIZE inserts. This provides:
-     * <ul>
-     *   <li>Predictable performance (eviction cost spread across many inserts)</li>
-     *   <li>Memory bounded (never exceeds hardCap)</li>
-     *   <li>LRU behavior preserved (old entries evicted, new entries cached)</li>
-     * </ul>
+     * Pure delegation to ConcurrentHashMap — zero eviction overhead.
+     * The background "elves" handle all eviction asynchronously.
      */
     @Override
     public V put(K key, V value) {
-        // Create node and insert directly - Node creation is cheap (uses logical clock)
         Node<K, V> newNode = new Node<>(key, value);
         Node<K, V> oldNode = cache.put(key, newNode);
-
-        if (oldNode != null) {
-            // Replacement - return old value (no eviction needed)
-            return oldNode.value;
-        }
-
-        // New entry - check if eviction needed (amortized: every EVICTION_BATCH_SIZE inserts)
-        int inserts = insertsSinceEviction.incrementAndGet();
-        if (inserts >= EVICTION_BATCH_SIZE) {
-            if (insertsSinceEviction.compareAndSet(inserts, 0)) {
-                int size = cache.size();
-                if (size > capacity) {
-                    tryEvict(Math.min(EVICTION_BATCH_SIZE, size - capacity));
-                }
-            }
-        }
-
-        // Hard cap enforcement - MUST evict if at 2x capacity (memory guarantee)
-        int size = cache.size();
-        if (size >= hardCap) {
-            forceEvict(size - capacity);
-        }
-
-        return null;
-    }
-
-    /**
-     * Try to evict entries. Skips if another thread is already evicting.
-     * Used for amortized eviction where skipping is acceptable.
-     */
-    private void tryEvict(int count) {
-        if (count <= 0) return;
-        if (!cleanupInProgress.compareAndSet(false, true)) {
-            return;  // Another thread is evicting - skip
-        }
-        try {
-            for (int i = 0; i < count && cache.size() > capacity; i++) {
-                if (!evictOldestUsingSample()) break;
-            }
-        } finally {
-            cleanupInProgress.set(false);
-        }
-    }
-
-    /**
-     * Force eviction - blocks until we can evict. Used for hard cap enforcement.
-     */
-    private void forceEvict(int count) {
-        if (count <= 0) return;
-        // Spin until we acquire the lock - hard cap MUST be enforced
-        while (!cleanupInProgress.compareAndSet(false, true)) {
-            LockSupport.parkNanos(1000);  // 1μs - lower CPU than Thread.yield()
-        }
-        try {
-            for (int i = 0; i < count && cache.size() > capacity; i++) {
-                if (!evictOldestUsingSample()) break;
-            }
-        } finally {
-            cleanupInProgress.set(false);
-        }
+        return (oldNode != null) ? oldNode.value : null;
     }
 
     @Override
@@ -470,6 +400,10 @@ public class ThreadedLRUCacheStrategy<K, V> implements Map<K, V>, Closeable {
         return null;
     }
 
+    /**
+     * Pure delegation to ConcurrentHashMap — zero eviction overhead.
+     * The background "elves" handle all eviction asynchronously.
+     */
     @Override
     public V computeIfAbsent(K key, java.util.function.Function<? super K, ? extends V> mappingFunction) {
         boolean[] inserted = {false};
@@ -482,24 +416,7 @@ public class ThreadedLRUCacheStrategy<K, V> implements Map<K, V>, Closeable {
             return null;
         });
         if (node != null) {
-            if (inserted[0]) {
-                // New entry - amortized eviction check (same logic as put())
-                int inserts = insertsSinceEviction.incrementAndGet();
-                if (inserts >= EVICTION_BATCH_SIZE) {
-                    if (insertsSinceEviction.compareAndSet(inserts, 0)) {
-                        int size = cache.size();
-                        if (size > capacity) {
-                            tryEvict(Math.min(EVICTION_BATCH_SIZE, size - capacity));
-                        }
-                    }
-                }
-                // Hard cap enforcement - MUST evict
-                int size = cache.size();
-                if (size >= hardCap) {
-                    forceEvict(size - capacity);
-                }
-            } else {
-                // Existing entry - just update timestamp
+            if (!inserted[0]) {
                 node.updateTimestamp();
             }
             return node.value;
@@ -507,6 +424,10 @@ public class ThreadedLRUCacheStrategy<K, V> implements Map<K, V>, Closeable {
         return null;
     }
 
+    /**
+     * Pure delegation to ConcurrentHashMap — zero eviction overhead.
+     * The background "elves" handle all eviction asynchronously.
+     */
     @Override
     public V putIfAbsent(K key, V value) {
         Node<K, V> newNode = new Node<>(key, value);
@@ -514,21 +435,6 @@ public class ThreadedLRUCacheStrategy<K, V> implements Map<K, V>, Closeable {
         if (oldNode != null) {
             oldNode.updateTimestamp();
             return oldNode.value;
-        }
-        // New entry was added - amortized eviction check (same logic as put())
-        int inserts = insertsSinceEviction.incrementAndGet();
-        if (inserts >= EVICTION_BATCH_SIZE) {
-            if (insertsSinceEviction.compareAndSet(inserts, 0)) {
-                int size = cache.size();
-                if (size > capacity) {
-                    tryEvict(Math.min(EVICTION_BATCH_SIZE, size - capacity));
-                }
-            }
-        }
-        // Hard cap enforcement - MUST evict
-        int size = cache.size();
-        if (size >= hardCap) {
-            forceEvict(size - capacity);
         }
         return null;
     }

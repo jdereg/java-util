@@ -1,6 +1,12 @@
 ### Revision History
 
 #### 4.91.0 (unreleased)
+* **BUG FIX**: `TTLCache.put()` - Always returned `null` instead of the previous value
+  * `unlink(oldEntry.node)` sets `node.value = null` before the return value was read, so `put()` always returned `null` even when replacing an existing entry
+  * Fixed by saving the old value before calling `unlink()`
+* **BUG FIX**: `TTLCache.equals()` - Returned `false` incorrectly when expired-but-not-yet-purged entries existed
+  * `equals()` delegated to `AbstractSet.equals()` which short-circuits on `entrySet().size()` mismatch; `size()` included expired entries but the iterator skipped them
+  * Fixed by rewriting `equals()` as a single-pass comparison over non-expired entries, avoiding the size/iterator inconsistency entirely
 * **BUG FIX**: `TrackingMap.remove(key, value)` / `replace(key, oldValue, newValue)` - Non-concurrent fallbacks returned `true` for absent keys when value was `null`
   * Both fallback paths used `Objects.equals(curValue, value)` without checking `containsKey()`, so `Objects.equals(null, null)` matched absent keys
   * `remove("absent", null)` incorrectly returned `true`; `replace("absent", null, "x")` returned `true` and **inserted a spurious entry**

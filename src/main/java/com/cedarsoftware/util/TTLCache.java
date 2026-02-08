@@ -302,8 +302,10 @@ public class TTLCache<K, V> implements Map<K, V>, AutoCloseable {
         lock.lock();
         try {
             CacheEntry<K, V> oldEntry = cacheMap.put(key, newEntry);
+            V oldValue = null;
 
             if (oldEntry != null) {
+                oldValue = oldEntry.node.value;
                 // Remove the old node from the LRU chain
                 unlink(oldEntry.node);
             }
@@ -318,7 +320,7 @@ public class TTLCache<K, V> implements Map<K, V>, AutoCloseable {
                 }
             }
 
-            return oldEntry != null ? oldEntry.node.value : null;
+            return oldValue;
         } finally {
             lock.unlock();
         }
@@ -681,6 +683,10 @@ public class TTLCache<K, V> implements Map<K, V>, AutoCloseable {
 
     /**
      * Compares the specified object with this cache for equality.
+     * Only non-expired entries are considered. This is a single-pass comparison
+     * that does not rely on {@code entrySet().size()}, avoiding the mismatch
+     * between the raw map size (which may include expired entries) and the
+     * iterator (which skips them).
      */
     @Override
     public boolean equals(Object o) {
@@ -691,7 +697,22 @@ public class TTLCache<K, V> implements Map<K, V>, AutoCloseable {
         lock.lock();
 
         try {
-            return entrySet().equals(other.entrySet());
+            long currentTime = System.currentTimeMillis();
+            int count = 0;
+            for (CacheEntry<K, V> entry : cacheMap.values()) {
+                if (entry.expiryTime >= currentTime) {
+                    K key = entry.node.key;
+                    V value = entry.node.value;
+                    if (!other.containsKey(key)) {
+                        return false;
+                    }
+                    if (!Objects.equals(value, other.get(key))) {
+                        return false;
+                    }
+                    count++;
+                }
+            }
+            return count == other.size();
         } finally {
             lock.unlock();
         }

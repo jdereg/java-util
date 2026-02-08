@@ -172,9 +172,6 @@ public class DeepEquals {
     private static final Pattern UUID_PATTERN = Pattern.compile(
             "^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$");
     
-    private static final double SCALE_DOUBLE = 1e12;  // Aligned with DOUBLE_EPSILON (1/epsilon)
-    private static final float SCALE_FLOAT = 1e6f;     // Aligned with FLOAT_EPSILON (1/epsilon)
-
     // ThreadLocal stack of Sets to handle re-entrant formatValue() calls
     // Each re-entrant call gets its own Set for circular reference detection
     private static final ThreadLocal<Deque<Set<Object>>> formattingStack =
@@ -597,7 +594,9 @@ public class DeepEquals {
             final Class<?> key2Class = key2.getClass();
 
             // Handle Enums - they are singletons, use reference equality
-            if (key1Class.isEnum() && key2Class.isEnum()) {
+            // Use instanceof Enum (not Class.isEnum()) because enum constants with class bodies
+            // have an anonymous subclass whose Class.isEnum() returns false.
+            if (key1 instanceof Enum && key2 instanceof Enum) {
                 if (key1 != key2) {  // Enum comparison is always == (same as Enum.equals)
                     stack.addFirst(new ItemsToCompare(key1, key2, itemsToCompare, Difference.VALUE_MISMATCH));
                     return false;
@@ -606,7 +605,9 @@ public class DeepEquals {
             }
 
             // Handle primitive wrappers, String, Date, Class, UUID, URL, URI, Temporal classes, etc.
-            if (Converter.isSimpleTypeConversionSupported(key1Class)) {
+            // Both sides must be simple types to use this fast path; when only one side is simple,
+            // fall through to the container/class-equality checks for a correct TYPE_MISMATCH report.
+            if (Converter.isSimpleTypeConversionSupported(key1Class) && Converter.isSimpleTypeConversionSupported(key2Class)) {
                 // Special handling for URL: compare by string representation to avoid DNS resolution
                 // Java's URL.equals() performs DNS lookup which causes flaky tests and CI failures
                 if (key1 instanceof URL && key2 instanceof URL) {
@@ -1061,12 +1062,28 @@ public class DeepEquals {
 
         // Push elements in reverse order so element 0 is compared first
         // Due to LIFO stack behavior, this means early termination on first mismatch
-        List<?> list1 = (col1 instanceof List) ? (List<?>) col1 : new ArrayList<>(col1);
-        List<?> list2 = (col2 instanceof List) ? (List<?>) col2 : new ArrayList<>(col2);
-        
-        for (int i = list1.size() - 1; i >= 0; i--) {
-            stack.addFirst(new ItemsToCompare(list1.get(i), list2.get(i), 
-                    new int[]{i}, currentItem, Difference.COLLECTION_ELEMENT_MISMATCH));
+        if (col1 instanceof List && col2 instanceof List) {
+            // Both are Lists — use indexed access directly (no copy needed)
+            List<?> list1 = (List<?>) col1;
+            List<?> list2 = (List<?>) col2;
+            for (int i = list1.size() - 1; i >= 0; i--) {
+                stack.addFirst(new ItemsToCompare(list1.get(i), list2.get(i),
+                        new int[]{i}, currentItem, Difference.COLLECTION_ELEMENT_MISMATCH));
+            }
+        } else {
+            // At least one is a Deque (not a List) — use forward iteration to avoid O(n) copy,
+            // then reverse the collected items so element 0 is compared first via LIFO stack.
+            int size = col1.size();
+            ItemsToCompare[] items = new ItemsToCompare[size];
+            Iterator<?> it1 = col1.iterator();
+            Iterator<?> it2 = col2.iterator();
+            for (int i = 0; i < size; i++) {
+                items[i] = new ItemsToCompare(it1.next(), it2.next(),
+                        new int[]{i}, currentItem, Difference.COLLECTION_ELEMENT_MISMATCH);
+            }
+            for (int i = size - 1; i >= 0; i--) {
+                stack.addFirst(items[i]);
+            }
         }
 
         return true;
@@ -1479,7 +1496,8 @@ public class DeepEquals {
      * @return true if numbers are nearly equal within epsilon, false otherwise.
      */
     private static boolean nearlyEqual(double a, double b) {
-        // Fast path: bitwise equality handles NaN==NaN, +0.0==-0.0
+        // Fast path: bitwise equality handles NaN==NaN (doubleToLongBits normalizes NaN).
+        // Note: +0.0 and -0.0 have different bit patterns and are handled by the tolerance check below.
         if (Double.doubleToLongBits(a) == Double.doubleToLongBits(b)) {
             return true;
         }
@@ -1507,7 +1525,8 @@ public class DeepEquals {
      * @return true if numbers are nearly equal within epsilon, false otherwise.
      */
     private static boolean nearlyEqual(float a, float b) {
-        // Fast path: bitwise equality handles NaN==NaN, +0.0f==-0.0f
+        // Fast path: bitwise equality handles NaN==NaN (floatToIntBits normalizes NaN).
+        // Note: +0.0f and -0.0f have different bit patterns and are handled by the tolerance check below.
         if (Float.floatToIntBits(a) == Float.floatToIntBits(b)) {
             return true;
         }

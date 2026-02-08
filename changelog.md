@@ -1,6 +1,19 @@
 ### Revision History
 
 #### 4.91.0 (unreleased)
+* **BUG FIX**: `DeepEquals` - Enum constants with class bodies misclassified as `TYPE_MISMATCH`
+  * `Class.isEnum()` returns `false` for anonymous subclasses created by enum constants with bodies (e.g., `FOO { @Override ... }`)
+  * Two different enum constants from the same enum with bodies bypassed the enum reference-equality check and fell through to the class-equality check, producing `TYPE_MISMATCH` instead of `VALUE_MISMATCH`
+  * Fixed by using `instanceof Enum` instead of `Class.isEnum()`, which correctly handles anonymous enum subclasses
+* **BUG FIX**: `DeepEquals` - Asymmetric simple-type check produced order-dependent error messages
+  * Only `key1`'s type was checked for the simple-type fast path; when `key1` was a simple type (e.g., `String`) but `key2` was a complex type (e.g., `List`), the comparison entered the simple-type branch based on `key1` alone
+  * `deepEquals("hello", list)` produced `VALUE_MISMATCH` while `deepEquals(list, "hello")` produced `COLLECTION_TYPE_MISMATCH` for the same comparison
+  * Fixed by requiring both sides to be simple types before entering the fast path, falling through to container/class-equality checks for correct symmetric `TYPE_MISMATCH` reporting
+* **PERFORMANCE**: `DeepEquals.decomposeOrderedCollection()` - Eliminated unnecessary `ArrayList` copy for Deque comparisons
+  * When comparing two Deques (not Lists), both collections were copied to `ArrayList` (O(n) allocation + copy) just for index-based access
+  * Fixed by using iterator-based forward traversal with an array buffer for Deques, while preserving direct indexed access for Lists
+* **CLEANUP**: `DeepEquals` - Removed unused `SCALE_DOUBLE` and `SCALE_FLOAT` constants (dead code from prior refactoring)
+* **CLEANUP**: `DeepEquals` - Fixed misleading comments in `nearlyEqual()` methods that incorrectly stated bitwise equality handles `+0.0 == -0.0` (it does not; the tolerance check handles it)
 * **BUG FIX**: `MultiKeyMap` - Concurrent resize lost entries due to stripe lock / bucket mismatch
   * `getStripeIndex()` computed the stripe from `(spread(hash) & bucketMask) & STRIPE_MASK`, where `bucketMask` depends on the current table size. Between computing the stripe and acquiring the lock, a concurrent resize could replace `buckets` with a larger table. The `*NoLock` methods then re-read the new table and computed a bucket index that mapped to a **different stripe**, allowing two threads to modify the same bucket concurrently — a lost-update race that silently dropped entries
   * Fixed by making `getStripeIndex()` table-size-independent (`spread(hash) & STRIPE_MASK`), enforcing minimum capacity >= `STRIPE_COUNT` so same-bucket always means same-stripe, and using the locally captured table reference consistently in `putNoLock()` / `removeNoLock()`

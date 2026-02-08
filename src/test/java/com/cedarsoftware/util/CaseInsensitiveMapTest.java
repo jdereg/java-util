@@ -65,8 +65,6 @@ class CaseInsensitiveMapTest
     private static final Logger LOG = Logger.getLogger(CaseInsensitiveMapTest.class.getName());
     @AfterEach
     public void cleanup() {
-        // Reset cache to default for other tests
-        CaseInsensitiveMap.resetCacheToDefault();
     }
 
     @Test
@@ -1529,7 +1527,7 @@ class CaseInsensitiveMapTest
         CaseInsensitiveMap<String, Object>.CaseInsensitiveEntry entry1 = (CaseInsensitiveMap<String, Object>.CaseInsensitiveEntry) map.entrySet().iterator().next();
         CaseInsensitiveMap<String, Object>.CaseInsensitiveEntry entry2 = (CaseInsensitiveMap<String, Object>.CaseInsensitiveEntry) newMap.entrySet().iterator().next();
 
-        assertSame(entry1.getOriginalKey(), entry2.getOriginalKey());
+        assertEquals(entry1.getOriginalKey(), entry2.getOriginalKey());
     }
 
     @Test
@@ -2492,72 +2490,24 @@ void testComputeIfAbsent() {
     }
 
     @Test
-    public void testCacheReplacement() {
-        // Create initial strings and verify they're cached
-        CaseInsensitiveMap<String, String> map1 = new CaseInsensitiveMap<>();
-        map1.put("test1", "value1");
-        map1.put("test2", "value2");
-
-        // Create a new cache with different capacity
-        LRUCache<String, CaseInsensitiveMap.CaseInsensitiveString> newCache = new LRUCache<>(500);
-
-        // Replace the cache
-        CaseInsensitiveMap.replaceCache(newCache);
-
-        // Create new map after cache replacement
-        CaseInsensitiveMap<String, String> map2 = new CaseInsensitiveMap<>();
-        map2.put("test3", "value3");
-        map2.put("test4", "value4");
-
-        // Verify all maps still work correctly
-        assertTrue(map1.containsKey("TEST1")); // Case-insensitive check
-        assertTrue(map1.containsKey("TEST2"));
-        assertTrue(map2.containsKey("TEST3"));
-        assertTrue(map2.containsKey("TEST4"));
-
-        // Verify values are preserved
-        assertEquals("value1", map1.get("TEST1"));
-        assertEquals("value2", map1.get("TEST2"));
-        assertEquals("value3", map2.get("TEST3"));
-        assertEquals("value4", map2.get("TEST4"));
-    }
-
-    @Test
-    public void testReplaceCacheWithNull() {
-        assertThrows(NullPointerException.class, () -> CaseInsensitiveMap.replaceCache((LRUCache<String, CaseInsensitiveMap.CaseInsensitiveString>) null));
-    }
-
-    @Test
-    public void testStringCachingBasedOnLength() {
-        // Test string shorter than max length (should be cached)
+    public void testDeprecatedCacheMethodsAreNoOps() {
+        // These deprecated methods should not throw — they are no-ops for backwards compatibility
+        CaseInsensitiveMap.replaceCache(new ConcurrentHashMap<>(), 100);
+        CaseInsensitiveMap.replaceCache(new ConcurrentHashMap<>());
+        CaseInsensitiveMap.resetCacheToDefault();
         CaseInsensitiveMap.setMaxCacheLengthString(10);
-        String shortString = "short";
-        Map<String, String> map = new CaseInsensitiveMap<>();
-        map.put(shortString, "value1");
-        map.put(shortString.toUpperCase(), "value2");
 
-        // Since the string is cached, both keys should reference the same CaseInsensitiveString instance
-        assertTrue(map.containsKey(shortString) && map.containsKey(shortString.toUpperCase()),
-                "Same short string should use cached instance");
-
-        // Test string longer than max length (should not be cached)
-        String longString = "this_is_a_very_long_string_that_exceeds_max_length";
-        map.put(longString, "value3");
-        map.put(longString.toUpperCase(), "value4");
-
-        // Even though not cached, the map should still work correctly
-        assertTrue(map.containsKey(longString) && map.containsKey(longString.toUpperCase()),
-                "Long string should work despite not being cached");
-        CaseInsensitiveMap.setMaxCacheLengthString(100);
+        // Maps still work correctly after calling deprecated methods
+        CaseInsensitiveMap<String, String> map = new CaseInsensitiveMap<>();
+        map.put("test1", "value1");
+        assertTrue(map.containsKey("TEST1"));
+        assertEquals("value1", map.get("TEST1"));
     }
 
     @Test
     public void testCachingBehavior() {
-        // Note: max cache length is now configured via system property at JVM startup
-        // -Dcaseinsensitive.max.string.length=100 (default is 100)
         CaseInsensitiveMap<String, String> map = new CaseInsensitiveMap<>();
 
-        // Add a key < 100 chars (default max length)
         String originalKey = "TestString12";
         map.put(originalKey, "value1");
 
@@ -2575,8 +2525,9 @@ void testComputeIfAbsent() {
         wrapped = map.getWrappedMap();
         Object newWrapper = wrapped.keySet().iterator().next();
 
-        // Assert same wrapper was reused from cache (string is under default max length of 100)
-        assertSame(originalWrapper, newWrapper, "Cached CaseInsensitiveString instance should be reused");
+        // CaseInsensitiveString instances are constructed directly (not cached) for performance,
+        // so we verify value equality rather than identity equality
+        assertEquals(originalWrapper, newWrapper, "CaseInsensitiveString wrappers should be equal");
     }
 
     @Test
@@ -2604,9 +2555,7 @@ void testComputeIfAbsent() {
     
     @Test
     public void testSetMaxCacheLengthStringIsDeprecatedNoOp() {
-        // setMaxCacheLengthString is now deprecated and has no effect
-        // Max length is configured via system property: -Dcaseinsensitive.max.string.length=100
-        // This should not throw - it's a no-op for backwards compatibility
+        // Deprecated no-op — should not throw
         CaseInsensitiveMap.setMaxCacheLengthString(9);
         CaseInsensitiveMap.setMaxCacheLengthString(100);
     }

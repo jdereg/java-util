@@ -1,6 +1,23 @@
 ### Revision History
 
-#### 4.91.0
+#### 4.92.0 (unreleased)
+* **PERFORMANCE**: `CaseInsensitiveMap` - Eliminated global LRU cache bottleneck in `convertKey()` hot path
+  * Every `get()`/`put()`/`containsKey()` call went through `CaseInsensitiveString.of()`, which performed a `ConcurrentHashMap.get()` + LRU bookkeeping (node promotion, timestamp update) on a shared global cache — more expensive than the thing it cached
+  * `CaseInsensitiveString` is a lightweight wrapper (String reference + pre-computed hash, ~20-30ns to construct) while the cache lookup cost ~60-100ns per operation
+  * Fixed by constructing `CaseInsensitiveString` directly in `convertKey()` and `convertKeys()`, bypassing the cache entirely
+  * **Result**: CaseInsensitiveMap(HashMap) went from 8.77x slower than TreeMap(CASE_INSENSITIVE_ORDER) to 4.86x faster (~43x relative improvement)
+* **BUG FIX**: `CaseInsensitiveString.equals()` - Hash code of 0 skipped string comparison
+  * The guard `(hash == 0 || hash == cis.hash)` treated 0 as "uncomputed" and bypassed the hash comparison, but the hash is eagerly computed in the constructor and 0 is a valid hash value
+  * Two different strings that both hash to 0 would incorrectly compare as equal (skipping `equalsIgnoreCase`)
+  * Fixed by simplifying to `hash == cis.hash` — equal objects must have equal hashes
+* **CLEANUP**: `CaseInsensitiveMap` - Removed `CaseInsensitiveString` global cache infrastructure
+  * The LRU cache (5,000-entry `ConcurrentHashMap` + linked-list nodes + background cleanup thread) added memory overhead and contention across all `CaseInsensitiveMap` instances with no performance benefit
+  * Removed: `COMMON_STRINGS_REF`, `DEFAULT_CACHE_SIZE`, `DEFAULT_MAX_STRING_LENGTH`, `trimCache()`, `parseIntSafely()`, static initializer, probabilistic caching logic
+  * `CaseInsensitiveString.of()` now delegates directly to `new CaseInsensitiveString(s)`
+  * Deprecated as no-ops (for backwards compatibility): `replaceCache()`, `resetCacheToDefault()`, `setMaxCacheLengthString()`
+  * System properties `caseinsensitive.cache.size` and `caseinsensitive.max.string.length` no longer have any effect
+
+#### 4.91.0 - 2026-02-08
 * **BUG FIX**: `DeepEquals` - Enum constants with class bodies misclassified as `TYPE_MISMATCH`
   * `Class.isEnum()` returns `false` for anonymous subclasses created by enum constants with bodies (e.g., `FOO { @Override ... }`)
   * Two different enum constants from the same enum with bodies bypassed the enum reference-equality check and fell through to the class-equality check, producing `TYPE_MISMATCH` instead of `VALUE_MISMATCH`
@@ -272,7 +289,7 @@
 * **PERFORMANCE**: `CompactMap` - Cache size in iterator
   * Replaced `size()` calls in `hasNext()` and `advance()` with the already-tracked `expectedSize` field, avoiding `instanceof` dispatch on every iteration step
 
-#### 4.90.0 2026-02-02
+#### 4.90.0 - 2026-02-02
 * **BUG FIX**: `DeepEquals` - URL comparison now uses string representation instead of `URL.equals()`
   * Java's `URL.equals()` performs DNS resolution which causes flaky CI failures
   * Now compares URLs using `toExternalForm()` for reliable, deterministic comparison

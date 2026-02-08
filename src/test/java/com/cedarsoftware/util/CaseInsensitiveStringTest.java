@@ -5,31 +5,23 @@ import java.io.ByteArrayOutputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
-import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class CaseInsensitiveStringTest {
 
-    @AfterEach
-    public void cleanup() {
-        CaseInsensitiveMap.resetCacheToDefault();
-    }
-
     @Test
-    void testOfCaching() {
+    void testOfFactory() {
         CaseInsensitiveMap.CaseInsensitiveString first = CaseInsensitiveMap.CaseInsensitiveString.of("Alpha");
         CaseInsensitiveMap.CaseInsensitiveString second = CaseInsensitiveMap.CaseInsensitiveString.of("Alpha");
-        assertSame(first, second);
+        assertEquals(first, second);
 
         CaseInsensitiveMap.CaseInsensitiveString diffCase = CaseInsensitiveMap.CaseInsensitiveString.of("ALPHA");
-        assertNotSame(first, diffCase);
         assertEquals(first, diffCase);
 
         assertThrows(IllegalArgumentException.class, () -> CaseInsensitiveMap.CaseInsensitiveString.of(null));

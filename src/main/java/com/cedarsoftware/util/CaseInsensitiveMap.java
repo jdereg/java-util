@@ -26,7 +26,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ConcurrentNavigableMap;
 import java.util.concurrent.ConcurrentSkipListMap;
-import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
@@ -66,8 +65,8 @@ import java.util.function.Function;
  *       operations including {@code putIfAbsent()}, {@code replace()}, and bulk operations with parallelism control.</li>
  *   <li><b>Customizable Backing Map:</b> Allows developers to specify the backing map implementation or automatically
  *       chooses one based on the provided source map.</li>
- *   <li><b>Thread-Safe Case-Insensitive String Cache:</b> Efficiently reuses {@code CaseInsensitiveString} instances
- *       to minimize memory usage and improve performance.</li>
+ *   <li><b>Lightweight Key Wrapping:</b> {@code CaseInsensitiveString} instances are constructed directly for each
+ *       operation, avoiding the overhead of a global cache while remaining cheap to allocate and GC.</li>
  * </ul>
  *
  * <h2>Usage Examples</h2>
@@ -109,8 +108,8 @@ import java.util.function.Function;
  *
  * <h2>Performance Considerations</h2>
  * <ul>
- *   <li>The {@code CaseInsensitiveString} cache reduces object creation overhead for frequently used keys.</li>
- *   <li>For extremely long keys, caching is bypassed to avoid memory exhaustion.</li>
+ *   <li>{@code CaseInsensitiveString} instances are lightweight wrappers (a String reference + pre-computed hash)
+ *       and are constructed directly for each operation, avoiding global cache overhead.</li>
  *   <li>Performance is comparable to the backing map implementation used.</li>
  * </ul>
  *
@@ -127,8 +126,7 @@ import java.util.function.Function;
  *   <li><strong>Non-Thread-Safe Backing Maps:</strong> When backed by non-concurrent implementations
  *       ({@link LinkedHashMap}, {@link HashMap}, {@link TreeMap}, etc.), concurrent operations work
  *       correctly but require external synchronization for thread safety.</li>
- *   <li><strong>String Cache:</strong> The case-insensitive string cache is thread-safe and can be
- *       safely accessed from multiple threads regardless of the backing map.</li>
+ *   <li><strong>Key Wrapping:</strong> {@code CaseInsensitiveString} construction is stateless and thread-safe.</li>
  * </ul>
  * <p>
  * <strong>Recommendation:</strong> For multi-threaded applications, explicitly choose a concurrent
@@ -137,8 +135,7 @@ import java.util.function.Function;
  *
  * <h2>Additional Notes</h2>
  * <ul>
- *   <li>String keys longer than 100 characters are not cached by default. This limit can be adjusted using
- *       {@link #setMaxCacheLengthString(int)}.</li>
+ *   <li>All String keys are handled uniformly regardless of length.</li>
  * </ul>
  *
  * @param <K> the type of keys maintained by this map (String keys are case-insensitive)
@@ -254,100 +251,48 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
     }
 
     /**
-     * Replaces the current cache used for CaseInsensitiveString instances with a new LRUCache.
-     * This operation is thread-safe due to the atomic nature of the cache field.
-     * When replacing the cache:
-     * - The old cache is shut down to release scheduled cleanup resources (if LRUCache)
-     * - Existing CaseInsensitiveString instances in maps remain valid
-     * - The new cache will begin populating with strings as they are accessed
-     * - There may be temporary duplicate CaseInsensitiveString instances during transition
-     *
-     * @param lruCache the new LRUCache instance to use for caching CaseInsensitiveString objects
-     * @throws NullPointerException if the provided cache is null
+     * @param lruCache ignored
+     * @deprecated CaseInsensitiveString caching has been removed. This method is a no-op.
      */
+    @Deprecated
     public static void replaceCache(LRUCache<String, CaseInsensitiveString> lruCache) {
-        Objects.requireNonNull(lruCache, "Cache cannot be null");
-        Map<String, CaseInsensitiveString> oldCache = CaseInsensitiveString.COMMON_STRINGS_REF.getAndSet(lruCache);
-        // Note: LRUCache tracks its own capacity internally via getCapacity()
-        if (oldCache instanceof LRUCache) {
-            ((LRUCache<String, CaseInsensitiveString>) oldCache).shutdown();
-        }
+        // No-op: CaseInsensitiveString instances are now constructed directly (no cache)
     }
 
     /**
-     * Replaces the current cache used for CaseInsensitiveString instances with a new ConcurrentHashMap.
-     * This provides maximum performance by avoiding LRU tracking overhead.
-     * When replacing the cache:
-     * - The old cache is shut down to release scheduled cleanup resources (if LRUCache)
-     * - Existing CaseInsensitiveString instances in maps remain valid
-     * - The new cache will begin populating with strings as they are accessed
-     * - Cache size is bounded by batch eviction when capacity is exceeded
-     * <p>
-     * Note: The capacity parameter is ignored. Cache capacity is configured via the system property
-     * {@code -Dcaseinsensitive.cache.size=5000} at JVM startup.
-     *
-     * @param cache the new ConcurrentHashMap instance to use for caching CaseInsensitiveString objects
-     * @param capacity ignored - use system property {@code caseinsensitive.cache.size} instead
-     * @throws NullPointerException if the provided cache is null
-     * @deprecated Use {@link #replaceCache(ConcurrentHashMap)} instead. Capacity is now configured via system property.
+     * @param cache ignored
+     * @param capacity ignored
+     * @deprecated CaseInsensitiveString caching has been removed. This method is a no-op.
      */
     @Deprecated
     public static void replaceCache(ConcurrentHashMap<String, CaseInsensitiveString> cache, int capacity) {
-        replaceCache(cache);
+        // No-op: CaseInsensitiveString instances are now constructed directly (no cache)
     }
 
     /**
-     * Replaces the current cache used for CaseInsensitiveString instances with a new ConcurrentHashMap.
-     * This provides maximum performance by avoiding LRU tracking overhead.
-     * When replacing the cache:
-     * - The old cache is shut down to release scheduled cleanup resources (if LRUCache)
-     * - Existing CaseInsensitiveString instances in maps remain valid
-     * - The new cache will begin populating with strings as they are accessed
-     * - Cache size is bounded by batch eviction when default capacity is exceeded
-     *
-     * @param cache the new ConcurrentHashMap instance to use for caching CaseInsensitiveString objects
-     * @throws NullPointerException if the provided cache is null
+     * @param cache ignored
+     * @deprecated CaseInsensitiveString caching has been removed. This method is a no-op.
      */
+    @Deprecated
     public static void replaceCache(ConcurrentHashMap<String, CaseInsensitiveString> cache) {
-        Objects.requireNonNull(cache, "Cache cannot be null");
-        Map<String, CaseInsensitiveString> oldCache = CaseInsensitiveString.COMMON_STRINGS_REF.getAndSet(cache);
-        if (oldCache instanceof LRUCache) {
-            ((LRUCache<String, CaseInsensitiveString>) oldCache).shutdown();
-        }
+        // No-op: CaseInsensitiveString instances are now constructed directly (no cache)
     }
 
     /**
-     * Resets the CaseInsensitiveString cache to its default state: an LRUCache with
-     * default capacity using the THREADED strategy. This is useful for testing to ensure
-     * a clean state between tests.
-     * <p>
-     * The default uses LRUCache for bounded memory with true LRU eviction.
-     * Cache size and max string length are configured via system properties at JVM startup:
-     * <ul>
-     *   <li>{@code -Dcaseinsensitive.cache.size=5000}</li>
-     *   <li>{@code -Dcaseinsensitive.max.string.length=100}</li>
-     * </ul>
+     * @deprecated CaseInsensitiveString caching has been removed. This method is a no-op.
      */
+    @Deprecated
     public static void resetCacheToDefault() {
-        Map<String, CaseInsensitiveString> oldCache = CaseInsensitiveString.COMMON_STRINGS_REF.getAndSet(
-                new LRUCache<>(CaseInsensitiveString.DEFAULT_CACHE_SIZE, LRUCache.StrategyType.THREADED));
-        if (oldCache instanceof LRUCache) {
-            ((LRUCache<String, CaseInsensitiveString>) oldCache).shutdown();
-        }
+        // No-op: CaseInsensitiveString instances are now constructed directly (no cache)
     }
 
     /**
-     * Sets the maximum string length for which CaseInsensitiveString instances will be cached.
-     * <p>
-     * Note: This method is deprecated and has no effect. Configure max string length via the
-     * system property {@code -Dcaseinsensitive.max.string.length=100} at JVM startup.
-     *
-     * @param length ignored - use system property {@code caseinsensitive.max.string.length} instead
-     * @deprecated Use system property {@code -Dcaseinsensitive.max.string.length=100} instead.
+     * @param length ignored
+     * @deprecated CaseInsensitiveString caching has been removed. This method is a no-op.
      */
     @Deprecated
     public static void setMaxCacheLengthString(int length) {
-        // No-op: max string length is now configured via system property at startup
+        // No-op: CaseInsensitiveString instances are now constructed directly (no cache)
     }
 
     /**
@@ -1072,131 +1017,20 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
         private final String original;
         private final int hash;
 
-        // Configuration values with system property overrides
-        private static final int DEFAULT_CACHE_SIZE = parseIntSafely(
-            System.getProperty("caseinsensitive.cache.size", "5000"), 5000);
-        private static final int DEFAULT_MAX_STRING_LENGTH = parseIntSafely(
-            System.getProperty("caseinsensitive.max.string.length", "100"), 100);
-
-        // Helper method to safely parse integers from system properties using Converter
-        private static int parseIntSafely(String value, int defaultValue) {
-            try {
-                return Converter.convert(value, int.class);
-            } catch (Exception e) {
-                return defaultValue;
-            }
-        }
-            
-        // Add static cache for common strings - use AtomicReference for thread safety
-        // Using LRUCache for bounded memory with true LRU eviction
-        private static final AtomicReference<Map<String, CaseInsensitiveString>> COMMON_STRINGS_REF =
-            new AtomicReference<>(new LRUCache<>(DEFAULT_CACHE_SIZE, LRUCache.StrategyType.THREADED));
-
-        // Configurable via system properties at startup:
-        //   -Dcaseinsensitive.max.string.length=100
-        //   -Dcaseinsensitive.cache.size=5000
-        private static final int maxCacheLengthString = DEFAULT_MAX_STRING_LENGTH;
-        private static final int cacheCapacity = DEFAULT_CACHE_SIZE;
-
-        // Pre-computed flag to avoid instanceof check on every cache miss
-        // This is safe because the cache type is set at class initialization and never changes
-        private static final boolean isLruCache = COMMON_STRINGS_REF.get() instanceof LRUCache;
-
-        // Pre-populate with common values
-        static {
-            String[] commonValues = {
-                    // Boolean values
-                    "true", "false",
-                    // Numbers
-                    "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10",
-                    // Common strings in business applications
-                    "id", "name", "code", "type", "status", "date", "value", "amount",
-                    "yes", "no", "null", "none"
-            };
-            Map<String, CaseInsensitiveString> initialCache = COMMON_STRINGS_REF.get();
-            for (String value : commonValues) {
-                initialCache.put(value, new CaseInsensitiveString(value));
-            }
-        }
-
         /**
-         * Factory method to get a CaseInsensitiveString, using cached instances when possible.
-         * This method guarantees that the same CaseInsensitiveString instance will be returned
-         * for equal strings (ignoring case) as long as they're within the maxCacheLengthString limit.
+         * Factory method that creates a new CaseInsensitiveString.
+         *
+         * @param s the string to wrap
+         * @return a new CaseInsensitiveString wrapping the given string
+         * @throws IllegalArgumentException if s is null
          */
         public static CaseInsensitiveString of(String s) {
             if (s == null) {
                 throw new IllegalArgumentException("Cannot convert null to CaseInsensitiveString");
             }
-
-            // Skip caching for very long strings to prevent memory issues
-            if (s.length() > maxCacheLengthString) {
-                return new CaseInsensitiveString(s);
-            }
-
-            // Get current cache atomically and use it consistently
-            Map<String, CaseInsensitiveString> cache = COMMON_STRINGS_REF.get();
-
-            // Fast path: check if already cached (avoids computeIfAbsent overhead)
-            CaseInsensitiveString cached = cache.get(s);
-            if (cached != null) {
-                return cached;
-            }
-
-            // Slow path: compute if absent
-            // For LRUCache, use probabilistic caching when at capacity
-            // This allows the cache to slowly adapt to new working sets without
-            // paying eviction cost on every miss
-            if (isLruCache) {
-                LRUCache<String, CaseInsensitiveString> lruCache = (LRUCache<String, CaseInsensitiveString>) cache;
-                if (lruCache.size() >= cacheCapacity) {
-                    // Cache is full - only try to cache ~12.5% of new entries
-                    // Use ThreadLocalRandom instead of System.nanoTime() to avoid syscall overhead
-                    if ((ThreadLocalRandom.current().nextInt() & 0x7) == 0) {
-                        return cache.computeIfAbsent(s, CaseInsensitiveString::new);
-                    }
-                    // Skip caching this time to avoid eviction overhead
-                    return new CaseInsensitiveString(s);
-                }
-                return cache.computeIfAbsent(s, CaseInsensitiveString::new);
-            }
-
-            // For ConcurrentHashMap, use putIfAbsent with manual size management
-            CaseInsensitiveString newValue = new CaseInsensitiveString(s);
-            CaseInsensitiveString existing = ((ConcurrentHashMap<String, CaseInsensitiveString>) cache).putIfAbsent(s, newValue);
-            if (existing != null) {
-                return existing;  // Another thread beat us - use their value
-            }
-
-            // Check if cache needs trimming (batch eviction when 20% over capacity)
-            int currentSize = cache.size();
-            if (currentSize > cacheCapacity + (cacheCapacity / 5)) {
-                // Evict ~20% of entries (rare, amortized over many operations)
-                trimCache(cache, cacheCapacity);
-            }
-
-            return newValue;
+            return new CaseInsensitiveString(s);
         }
 
-        /**
-         * Trims the cache to the target capacity by removing entries.
-         * Uses a simple strategy: remove entries until we're at 80% of capacity.
-         */
-        private static void trimCache(Map<String, CaseInsensitiveString> cache, int targetCapacity) {
-            int targetSize = (int) (targetCapacity * 0.8);
-            int toRemove = cache.size() - targetSize;
-            if (toRemove <= 0) return;
-
-            // Remove entries (ConcurrentHashMap iteration is weakly consistent, which is fine here)
-            int removed = 0;
-            for (String key : cache.keySet()) {
-                if (removed >= toRemove) break;
-                cache.remove(key);
-                removed++;
-            }
-        }
-
-        // Private constructor - use CaseInsensitiveString.of(sourceString) factory method instead
         CaseInsensitiveString(String string) {
             original = string;
             hash = StringUtilities.hashCodeIgnoreCase(string);
@@ -1235,8 +1069,8 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
             }
             if (other instanceof CaseInsensitiveString) {
                 CaseInsensitiveString cis = (CaseInsensitiveString) other;
-                // Only compare strings if hash codes match
-                return hash == cis.hash && (hash == 0 || original.equalsIgnoreCase(cis.original));
+                // Fast reject: different hash codes can never be equal
+                return hash == cis.hash && original.equalsIgnoreCase(cis.original);
             }
             if (other instanceof String) {
                 String str = (String) other;
@@ -1751,7 +1585,10 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
     @SuppressWarnings("unchecked")
     private K convertKey(Object key) {
         if (key instanceof String) {
-            return (K) CaseInsensitiveString.of((String) key);
+            // Construct directly — bypasses the global LRU cache whose ConcurrentHashMap.get()
+            // + LRU bookkeeping overhead per call exceeds the cost of a lightweight allocation
+            // + hashCodeIgnoreCase() computation.  Short-lived lookup keys are cheap to GC.
+            return (K) new CaseInsensitiveString((String) key);
         }
         return (K) key;
     }
@@ -1771,7 +1608,7 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
         Object[] convertedKeys = new Object[len];
         for (int i = 0; i < len; i++) {
             if (keys[i] instanceof String) {
-                convertedKeys[i] = CaseInsensitiveString.of((String) keys[i]);
+                convertedKeys[i] = new CaseInsensitiveString((String) keys[i]);
             } else {
                 convertedKeys[i] = keys[i];
             }

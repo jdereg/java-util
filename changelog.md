@@ -1,6 +1,13 @@
 ### Revision History
 
 #### 4.91.0 (unreleased)
+* **BUG FIX**: `UrlUtilities.setCookies()` - Error message incorrectly said "AFTER" instead of "BEFORE" calling `connect()`
+  * The `IllegalStateException` handler told users to call `setCookies()` *after* connecting, but cookies must be set *before* `connect()` — the opposite of what the message said
+  * Fixed by changing "AFTER" to "BEFORE" in the error message
+* **BUG FIX**: `UrlUtilities` - `NumberFormatException` on invalid system properties for max download size / max content length
+  * Four methods (`getConfiguredMaxDownloadSize()`, `getConfiguredMaxContentLength()`, `getMaxDownloadSize()`, `getMaxContentLength()`) called `Long.parseLong()` / `Integer.parseInt()` without catching `NumberFormatException`
+  * A non-numeric system property value (e.g., `urlutilities.max.download.size=abc`) crashed with an unhandled exception instead of falling back to the default
+  * Fixed by catching `NumberFormatException` and falling through to the default value
 * **BUG FIX**: `TTLCache.put()` - Always returned `null` instead of the previous value
   * `unlink(oldEntry.node)` sets `node.value = null` before the return value was read, so `put()` always returned `null` even when replacing an existing entry
   * Fixed by saving the old value before calling `unlink()`

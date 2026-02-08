@@ -124,10 +124,12 @@ public final class UrlUtilities {
     private static long getConfiguredMaxDownloadSize() {
         String prop = System.getProperty("urlutilities.max.download.size");
         if (prop != null) {
-            long configured = Long.parseLong(prop);
-            if (configured > 0) {
-                return configured;
-            }
+            try {
+                long configured = Long.parseLong(prop);
+                if (configured > 0) {
+                    return configured;
+                }
+            } catch (NumberFormatException ignored) { }
         }
         // If no system property set, use programmatically set value when security enabled
         return isSecurityEnabled() ? maxDownloadSize : Long.MAX_VALUE;
@@ -136,10 +138,12 @@ public final class UrlUtilities {
     private static int getConfiguredMaxContentLength() {
         String prop = System.getProperty("urlutilities.max.content.length");
         if (prop != null) {
-            int configured = Integer.parseInt(prop);
-            if (configured > 0) {
-                return configured;
-            }
+            try {
+                int configured = Integer.parseInt(prop);
+                if (configured > 0) {
+                    return configured;
+                }
+            } catch (NumberFormatException ignored) { }
         }
         // If no system property set, use programmatically set value when security enabled
         return isSecurityEnabled() ? maxContentLength : Integer.MAX_VALUE;
@@ -319,10 +323,12 @@ public final class UrlUtilities {
         // Check if there's an explicit system property override
         String prop = System.getProperty("urlutilities.max.download.size");
         if (prop != null) {
-            long configured = Long.parseLong(prop);
-            if (configured > 0) {
-                return configured;
-            }
+            try {
+                long configured = Long.parseLong(prop);
+                if (configured > 0) {
+                    return configured;
+                }
+            } catch (NumberFormatException ignored) { }
         }
         // Otherwise return programmatically set value
         return maxDownloadSize;
@@ -351,10 +357,12 @@ public final class UrlUtilities {
         // Check if there's an explicit system property override
         String prop = System.getProperty("urlutilities.max.content.length");
         if (prop != null) {
-            int configured = Integer.parseInt(prop);
-            if (configured > 0) {
-                return configured;
-            }
+            try {
+                int configured = Integer.parseInt(prop);
+                if (configured > 0) {
+                    return configured;
+                }
+            } catch (NumberFormatException ignored) { }
         }
         // Otherwise return programmatically set value
         return maxContentLength;
@@ -686,7 +694,7 @@ public final class UrlUtilities {
         } catch (IllegalStateException e) {
             ExceptionUtilities.uncheckedThrow(new IOException(
                     "Illegal State! Cookies cannot be set on a URLConnection that is already connected. " +
-                            "Only call setCookies(java.net.URLConnection) AFTER calling java.net.URLConnection.connect()."));
+                            "Only call setCookies(java.net.URLConnection) BEFORE calling java.net.URLConnection.connect()."));
         }
     }
 

@@ -1,6 +1,10 @@
 ### Revision History
 
 #### 4.91.0 (unreleased)
+* **BUG FIX**: `TrackingMap.remove(key, value)` / `replace(key, oldValue, newValue)` - Non-concurrent fallbacks returned `true` for absent keys when value was `null`
+  * Both fallback paths used `Objects.equals(curValue, value)` without checking `containsKey()`, so `Objects.equals(null, null)` matched absent keys
+  * `remove("absent", null)` incorrectly returned `true`; `replace("absent", null, "x")` returned `true` and **inserted a spurious entry**
+  * Fixed by adding the `containsKey` guard matching the JDK's default `Map.remove(key, value)` and `Map.replace(key, old, new)` contracts
 * **BUG FIX**: `StringUtilities.regionEqualsIgnoreCase()` - ASCII case folding matched non-letter characters
   * The condition `(c1 - 'A') <= 25` used signed arithmetic, so it was true for all chars from NUL (0) through 'Z' (90), not just 'A'-'Z'
   * This caused false positives for 6 non-letter character pairs (e.g., ';' matched '[', '@' matched '`') when comparing non-String CharSequences case-insensitively

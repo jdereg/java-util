@@ -388,11 +388,11 @@ public class TrackingMap<K, V> implements Map<K, V> {
             // Fallback for non-concurrent maps with synchronization
             synchronized (this) {
                 Object curValue = internalMap.get(key);
-                if (Objects.equals(curValue, value)) {
+                if (!Objects.equals(curValue, value) || (curValue == null && !internalMap.containsKey(key))) {
+                    removed = false;
+                } else {
                     internalMap.remove(key);
                     removed = true;
-                } else {
-                    removed = false;
                 }
             }
         }
@@ -419,11 +419,11 @@ public class TrackingMap<K, V> implements Map<K, V> {
         // Fallback for non-concurrent maps with synchronization
         synchronized (this) {
             Object curValue = internalMap.get(key);
-            if (Objects.equals(curValue, oldValue)) {
-                internalMap.put(key, newValue);
-                return true;
+            if (!Objects.equals(curValue, oldValue) || (curValue == null && !internalMap.containsKey(key))) {
+                return false;
             }
-            return false;
+            internalMap.put(key, newValue);
+            return true;
         }
     }
 

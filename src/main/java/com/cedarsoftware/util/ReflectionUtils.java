@@ -473,22 +473,29 @@ public final class ReflectionUtils {
     
     /**
      * Checks if the current caller is from a trusted package (java-util library).
-     * 
-     * @return true if the caller is trusted
+     * Skips frames from ReflectionUtils itself (always on the stack) to find
+     * the actual external caller chain.
+     *
+     * @return true if a caller other than ReflectionUtils is from the trusted package
      */
     private static boolean isTrustedCaller() {
+        String thisClassName = ReflectionUtils.class.getName();
         StackTraceElement[] stack = Thread.currentThread().getStackTrace();
-        
-        // Look through the call stack for trusted callers
+
         for (StackTraceElement element : stack) {
             String className = element.getClassName();
-            
-            // Allow calls from java-util library itself, including ReflectionUtils
+
+            // Skip ReflectionUtils frames (always present) and Thread.getStackTrace
+            if (className.equals(thisClassName) || className.equals("java.lang.Thread")) {
+                continue;
+            }
+
+            // Check if any other caller is from the trusted java-util package
             if (className.startsWith("com.cedarsoftware.util.")) {
                 return true;
             }
         }
-        
+
         return false;
     }
     

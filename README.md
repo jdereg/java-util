@@ -626,15 +626,15 @@ implementation 'com.cedarsoftware:java-util:LATEST_VERSION'
 
 ### 🚀 Framework Integration Examples
 
-For comprehensive framework integration examples including Spring, Jakarta EE, Spring Boot Auto-Configuration, Microservices, Testing, and Performance Monitoring, see **[frameworks.md](frameworks.md)**.
+For comprehensive framework integration examples including Spring, Jakarta EE, Spring Boot Auto-Configuration, Microservices, Testing, and Performance Monitoring.
 
 Key integrations include:
-- **Spring Framework** - Configuration beans and case-insensitive property handling
-- **Jakarta EE/JEE** - CDI producers and validation services  
-- **Spring Boot** - Auto-configuration with corrected cache constructors
-- **Microservices** - Service discovery and cloud-native configuration
-- **Testing** - Enhanced test comparisons with DeepEquals
-- **Monitoring** - Micrometer metrics integration
+- **[Spring Framework](frameworks.md#spring-framework-integration)** - Configuration beans and case-insensitive property handling
+- **[Jakarta EE/JEE](frameworks.md#jakarta-ee--jee-integration)** - CDI producers and validation services
+- **[Spring Boot](frameworks.md#spring-boot-auto-configuration)** - Auto-configuration with corrected cache constructors
+- **[Microservices](frameworks.md#microservices--cloud-native)** - Service discovery and cloud-native configuration
+- **[Testing](frameworks.md#testing-integration)** - Enhanced test comparisons with DeepEquals
+- **[Monitoring](frameworks.md#performance-monitoring-integration)** - Micrometer metrics integration
 
 ## Feature Options
 

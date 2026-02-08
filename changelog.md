@@ -1,6 +1,13 @@
 ### Revision History
 
 #### 4.91.0 (unreleased)
+* **BUG FIX**: `StringUtilities.regionEqualsIgnoreCase()` - ASCII case folding matched non-letter characters
+  * The condition `(c1 - 'A') <= 25` used signed arithmetic, so it was true for all chars from NUL (0) through 'Z' (90), not just 'A'-'Z'
+  * This caused false positives for 6 non-letter character pairs (e.g., ';' matched '[', '@' matched '`') when comparing non-String CharSequences case-insensitively
+  * Fixed by using explicit range check: `c1 >= 'A' && c1 <= 'Z'`
+* **BUG FIX**: `StringUtilities.wildcardToRegexString()` - `+` not escaped in generated regex
+  * The regex quantifier `+` was not in the escape list, so a wildcard like `"a+b"` produced regex `^a+b$` matching `"ab"`, `"aab"`, etc. instead of only the literal `"a+b"`
+  * Fixed by adding `+` to the set of escaped regex metacharacters
 * **BUG FIX**: `CollectionUtilities.listOf()` / `setOf()` - Null elements silently accepted despite documented NPE
   * Both methods documented `@throws NullPointerException` for null elements (matching `List.of()`/`Set.of()` contract), but `ArrayList.add(null)` and `LinkedHashSet.add(null)` do not throw
   * Fixed by adding explicit `Objects.requireNonNull()` checks in both methods

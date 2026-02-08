@@ -355,9 +355,9 @@ public final class StringUtilities {
                 return regionEqualsIgnoreCaseSlow(a, aOff + i, b, bOff + i, len - i);
             }
 
-            // Fold ASCII A..Z → a..z via arithmetic (fast and branch-friendly)
-            if ((c1 - 'A') <= 25) c1 += 32;
-            if ((c2 - 'A') <= 25) c2 += 32;
+            // Fold ASCII A..Z → a..z
+            if (c1 >= 'A' && c1 <= 'Z') c1 += 32;
+            if (c2 >= 'A' && c2 <= 'Z') c2 += 32;
             if (c1 != c2) return false;
             i++;
         }
@@ -675,6 +675,7 @@ public final class StringUtilities {
                 case '}':
                 case '|':
                 case '\\':
+                case '+':
                     s.append('\\');
                     s.append(c);
                     break;

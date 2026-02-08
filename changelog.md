@@ -1,6 +1,6 @@
 ### Revision History
 
-#### 4.91.0 (unreleased)
+#### 4.91.0
 * **BUG FIX**: `DeepEquals` - Enum constants with class bodies misclassified as `TYPE_MISMATCH`
   * `Class.isEnum()` returns `false` for anonymous subclasses created by enum constants with bodies (e.g., `FOO { @Override ... }`)
   * Two different enum constants from the same enum with bodies bypassed the enum reference-equality check and fell through to the class-equality check, producing `TYPE_MISMATCH` instead of `VALUE_MISMATCH`

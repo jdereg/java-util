@@ -717,7 +717,10 @@ public final class IOUtilities {
                     return null; // unreachable
                 }
             } else if ("deflate".equalsIgnoreCase(enc)) {
-                is = new InflaterInputStream(is, new Inflater(), TRANSFER_BUFFER);
+                // Use default Inflater (no-arg InflaterInputStream constructor variant)
+                // so that InflaterInputStream.close() properly calls Inflater.end(),
+                // avoiding a native memory leak.
+                is = new InflaterInputStream(is);
             }
         }
 

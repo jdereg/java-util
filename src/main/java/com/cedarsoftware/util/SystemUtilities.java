@@ -626,6 +626,10 @@ public final class SystemUtilities {
             ExceptionUtilities.uncheckedThrow(e);
         }
 
+        if (en == null) {
+            return interfaces;
+        }
+
         while (en.hasMoreElements()) {
             NetworkInterface ni = en.nextElement();
             try {

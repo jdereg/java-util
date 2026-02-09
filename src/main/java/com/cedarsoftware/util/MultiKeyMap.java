@@ -1064,6 +1064,10 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      */
     public V getMultiKey(Object k1, Object k2) {
         Object[] key = LOOKUP_KEY_2.get();
+        if (key[0] != null || key[1] != null) {
+            // Reentrant call detected — allocate to avoid corrupting the outer call's key
+            return get(new Object[]{k1, k2});
+        }
         key[0] = k1;
         key[1] = k2;
         try {
@@ -1084,6 +1088,9 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      */
     public V getMultiKey(Object k1, Object k2, Object k3) {
         Object[] key = LOOKUP_KEY_3.get();
+        if (key[0] != null || key[1] != null || key[2] != null) {
+            return get(new Object[]{k1, k2, k3});
+        }
         key[0] = k1;
         key[1] = k2;
         key[2] = k3;
@@ -1107,6 +1114,9 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      */
     public V getMultiKey(Object k1, Object k2, Object k3, Object k4) {
         Object[] key = LOOKUP_KEY_4.get();
+        if (key[0] != null || key[1] != null || key[2] != null || key[3] != null) {
+            return get(new Object[]{k1, k2, k3, k4});
+        }
         key[0] = k1;
         key[1] = k2;
         key[2] = k3;
@@ -1133,6 +1143,9 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      */
     public V getMultiKey(Object k1, Object k2, Object k3, Object k4, Object k5) {
         Object[] key = LOOKUP_KEY_5.get();
+        if (key[0] != null || key[1] != null || key[2] != null || key[3] != null || key[4] != null) {
+            return get(new Object[]{k1, k2, k3, k4, k5});
+        }
         key[0] = k1;
         key[1] = k2;
         key[2] = k3;
@@ -3251,6 +3264,9 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      */
     public boolean containsMultiKey(Object k1, Object k2) {
         Object[] key = LOOKUP_KEY_2.get();
+        if (key[0] != null || key[1] != null) {
+            return containsKey(new Object[]{k1, k2});
+        }
         key[0] = k1;
         key[1] = k2;
         try {
@@ -3271,6 +3287,9 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      */
     public boolean containsMultiKey(Object k1, Object k2, Object k3) {
         Object[] key = LOOKUP_KEY_3.get();
+        if (key[0] != null || key[1] != null || key[2] != null) {
+            return containsKey(new Object[]{k1, k2, k3});
+        }
         key[0] = k1;
         key[1] = k2;
         key[2] = k3;
@@ -3294,6 +3313,9 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      */
     public boolean containsMultiKey(Object k1, Object k2, Object k3, Object k4) {
         Object[] key = LOOKUP_KEY_4.get();
+        if (key[0] != null || key[1] != null || key[2] != null || key[3] != null) {
+            return containsKey(new Object[]{k1, k2, k3, k4});
+        }
         key[0] = k1;
         key[1] = k2;
         key[2] = k3;
@@ -3320,6 +3342,9 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      */
     public boolean containsMultiKey(Object k1, Object k2, Object k3, Object k4, Object k5) {
         Object[] key = LOOKUP_KEY_5.get();
+        if (key[0] != null || key[1] != null || key[2] != null || key[3] != null || key[4] != null) {
+            return containsKey(new Object[]{k1, k2, k3, k4, k5});
+        }
         key[0] = k1;
         key[1] = k2;
         key[2] = k3;

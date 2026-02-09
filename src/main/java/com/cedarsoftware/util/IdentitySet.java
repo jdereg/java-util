@@ -206,6 +206,12 @@ public class IdentitySet<T> extends AbstractSet<T> {
         final Object[] oldElements = elements;
         final int oldCapacity = oldElements.length;
 
+        if (oldCapacity >= MAX_CAPACITY) {
+            // Already at maximum capacity — raise the threshold to prevent further resize attempts
+            threshold = Integer.MAX_VALUE;
+            return;
+        }
+
         final int newCapacity = oldCapacity << 1;
         elements = new Object[newCapacity];
         mask = newCapacity - 1;

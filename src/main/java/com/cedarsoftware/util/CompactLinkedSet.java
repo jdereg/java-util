@@ -65,13 +65,13 @@ public class CompactLinkedSet<E> extends CompactSet<E> {
     }
 
     /**
-     * Indicates that this set is case-insensitive.
+     * Indicates that this set is case-sensitive.
      *
-     * @return {@code true} to denote case-insensitive behavior
+     * @return {@code false} to denote case-sensitive behavior
      */
     @Override
     protected boolean isCaseInsensitive() {
-        return true;
+        return false;
     }
 
 }

@@ -82,7 +82,7 @@ import com.cedarsoftware.util.MapUtilities;
 public class ThreadedLRUCacheStrategy<K, V> implements Map<K, V>, Closeable {
     private static final int DEFAULT_CLEANUP_INTERVAL_MS = 500;
     private static final int SAMPLE_SIZE = 10;  // Sample size for approximate LRU (~95-99% accuracy per Redis research)
-    private static final long CLEANUP_BUDGET_NS = 10_000_000L;  // 10ms per cache per cleanup cycle
+    private static final long CYCLE_BUDGET_NS = 400_000_000L;  // 400ms global budget per 500ms cycle (~80% duty during overload)
 
     private final int capacity;
     private final ConcurrentMap<K, Node<K, V>> cache;
@@ -210,19 +210,31 @@ public class ThreadedLRUCacheStrategy<K, V> implements Map<K, V>, Closeable {
 
     /**
      * Background cleanup task that runs every 500ms.
-     * Iterates all registered caches and cleans those over capacity.
+     * <p>
+     * Uses a global time budget (400ms out of 500ms cycle) shared across all caches.
+     * Drains one cache at a time for CPU cache locality — staying on one cache keeps
+     * its ConcurrentHashMap memory pages hot in L1/L2 cache, avoiding costly page
+     * thrashing from switching between caches.
+     * <p>
+     * The 100ms gap (500ms cycle - 400ms budget) ensures the scheduled task never
+     * piles up. During overload, the elf runs at ~80% duty cycle on one core.
+     * When all caches are at capacity, the elf returns immediately and sleeps.
      */
     private static void cleanupAllCaches() {
+        long deadline = System.nanoTime() + CYCLE_BUDGET_NS;
         try {
             Iterator<WeakReference<ThreadedLRUCacheStrategy<?, ?>>> iter = ALL_CACHES.iterator();
             while (iter.hasNext()) {
+                if (System.nanoTime() >= deadline) {
+                    break;  // Global budget exhausted — resume next cycle
+                }
                 WeakReference<ThreadedLRUCacheStrategy<?, ?>> ref = iter.next();
                 ThreadedLRUCacheStrategy<?, ?> cache = ref.get();
                 if (cache == null) {
                     iter.remove();
                 } else if (!cache.closed.get()) {
                     try {
-                        cache.backgroundCleanup();
+                        cache.backgroundCleanup(deadline);
                     } catch (Exception e) {
                         // Don't let one cache's failure stop cleanup of others
                     }
@@ -236,27 +248,27 @@ public class ThreadedLRUCacheStrategy<K, V> implements Map<K, V>, Closeable {
     /**
      * Background cleanup — the "elves" strategy.
      * <p>
-     * Called every 500ms by the shared daemon thread. Works within a time budget
-     * (10ms per cache per cycle), performing sample-10 evictions until the cache
-     * is back at capacity or the budget is exhausted.
+     * Drains this cache back to capacity using sample-10 evictions, working until
+     * the cache is healthy or the global deadline is reached. The caller passes
+     * the deadline so that all caches share a single time budget per cycle.
      * <p>
-     * At ~500ns per sample-10 eviction, 10ms budget ≈ 20K evictions per cycle.
-     * A 100K surplus drains in ~5 cycles (~2.5s). This is acceptable because
-     * puts are never blocked — the user chose THREADED knowing capacity is approximate.
+     * At ~500ns per sample-10 eviction, a 400ms budget ≈ 800K evictions per cycle.
+     * A 100K surplus drains in under one cycle. Puts are never blocked — the user
+     * chose THREADED knowing capacity is approximate.
+     *
+     * @param deadline absolute nanoTime after which the elf should stop
      */
-    private void backgroundCleanup() {
-        int size = cache.size();
-        if (size <= capacity) {
+    private void backgroundCleanup(long deadline) {
+        if (cache.size() <= capacity) {
             return;
         }
 
-        long deadline = System.nanoTime() + CLEANUP_BUDGET_NS;
         while (cache.size() > capacity) {
             if (!evictOldestUsingSample()) {
                 break;  // Cache is empty or eviction failed
             }
             if (System.nanoTime() >= deadline) {
-                break;  // Time's up — resume next cycle
+                break;  // Global budget exhausted — resume next cycle
             }
         }
     }
@@ -299,7 +311,7 @@ public class ThreadedLRUCacheStrategy<K, V> implements Map<K, V>, Closeable {
      * Forces an immediate cleanup of this cache (for testing).
      */
     public void forceCleanup() {
-        backgroundCleanup();
+        backgroundCleanup(System.nanoTime() + CYCLE_BUDGET_NS);
     }
 
     /**

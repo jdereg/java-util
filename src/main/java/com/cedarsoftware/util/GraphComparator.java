@@ -698,7 +698,7 @@ public class GraphComparator
                 final Object srcValue = ArrayUtilities.getElement(delta.srcValue, i);
                 if (srcValue == null && targetValue != null ||
                         srcValue != null && targetValue == null ||
-                        !srcValue.equals(targetValue)) {
+                        srcValue != null && !srcValue.equals(targetValue)) {
                     copyArrayElement(delta, deltas, srcPtr, srcValue, targetValue, i);
                 }
             } else {

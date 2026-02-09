@@ -76,9 +76,9 @@ public final class RegexUtilities {
     private static final long DEFAULT_TIMEOUT_MS = 5000L;
 
     // Pattern caches - separate caches for different flag combinations
-    private static final Map<String, Pattern> PATTERN_CACHE = new ConcurrentHashMap<>();
-    private static final Map<String, Pattern> PATTERN_CACHE_CI = new ConcurrentHashMap<>();
-    private static final Map<PatternCacheKey, Pattern> PATTERN_CACHE_FLAGS = new ConcurrentHashMap<>();
+    private static final Map<String, Pattern> PATTERN_CACHE = new ConcurrentHashMapNullSafe<>();
+    private static final Map<String, Pattern> PATTERN_CACHE_CI = new ConcurrentHashMapNullSafe<>();
+    private static final Map<PatternCacheKey, Pattern> PATTERN_CACHE_FLAGS = new ConcurrentHashMapNullSafe<>();
 
     // Invalid pattern tracking to avoid repeated compilation errors
     private static final Set<String> INVALID_PATTERNS = ConcurrentHashMap.newKeySet();
@@ -153,7 +153,6 @@ public final class RegexUtilities {
             try {
                 return Pattern.compile(r);
             } catch (PatternSyntaxException e) {
-                // Cache the invalid pattern to avoid repeated compilation attempts
                 INVALID_PATTERNS.add(r);
                 return null;
             }
@@ -185,7 +184,6 @@ public final class RegexUtilities {
             try {
                 return Pattern.compile(r, Pattern.CASE_INSENSITIVE);
             } catch (PatternSyntaxException e) {
-                // Cache the invalid pattern to avoid repeated compilation attempts
                 INVALID_PATTERNS.add(r);
                 return null;
             }
@@ -223,7 +221,6 @@ public final class RegexUtilities {
             try {
                 return Pattern.compile(k.regex, k.flags);
             } catch (PatternSyntaxException e) {
-                // Cache the invalid pattern to avoid repeated compilation attempts
                 INVALID_PATTERN_KEYS.add(k);
                 return null;
             }

@@ -61,7 +61,7 @@ final class DateConversions {
 
     static java.sql.Date toSqlDate(Object from, Converter converter) {
         return java.sql.Date.valueOf(
-                ((Date) from).toInstant()
+                toInstant(from, converter)
                         .atZone(converter.getOptions().getZoneId())
                         .toLocalDate()
         );
@@ -129,7 +129,7 @@ final class DateConversions {
 
     static Year toYear(Object from, Converter converter) {
         return Year.from(
-                ((Date) from).toInstant()
+                toInstant(from, converter)
                         .atZone(converter.getOptions().getZoneId())
                         .toLocalDate()
         );
@@ -137,7 +137,7 @@ final class DateConversions {
 
     static YearMonth toYearMonth(Object from, Converter converter) {
         return YearMonth.from(
-                ((Date) from).toInstant()
+                toInstant(from, converter)
                         .atZone(converter.getOptions().getZoneId())
                         .toLocalDate()
         );
@@ -145,15 +145,14 @@ final class DateConversions {
 
     static MonthDay toMonthDay(Object from, Converter converter) {
         return MonthDay.from(
-                ((Date) from).toInstant()
+                toInstant(from, converter)
                         .atZone(converter.getOptions().getZoneId())
                         .toLocalDate()
         );
     }
-    
+
     static String toString(Object from, Converter converter) {
-        Date date = (Date) from;
-        Instant instant = date.toInstant();   // Convert legacy Date to Instant
+        Instant instant = toInstant(from, converter);
         return MILLIS_FMT.format(instant);
     }
 

@@ -275,10 +275,13 @@ final class ArrayConversions {
             for (Enum<?> value : enumSet) {
                 setElement(array, i++, value.name());
             }
-        } else if (componentType == Integer.class || componentType == int.class ||
-                componentType == Long.class || componentType == long.class) {
+        } else if (componentType == Integer.class || componentType == int.class) {
             for (Enum<?> value : enumSet) {
                 setElement(array, i++, value.ordinal());
+            }
+        } else if (componentType == Long.class || componentType == long.class) {
+            for (Enum<?> value : enumSet) {
+                setElement(array, i++, (long) value.ordinal());
             }
         } else if (componentType == Short.class || componentType == short.class) {
             for (Enum<?> value : enumSet) {

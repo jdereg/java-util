@@ -180,8 +180,12 @@ final class CollectionHandling {
         BASE_FACTORIES.put(LinkedBlockingQueue.class, size -> new LinkedBlockingQueue<>(size));
         BASE_FACTORIES.put(PriorityBlockingQueue.class, size -> new PriorityBlockingQueue<>(size));
         BASE_FACTORIES.put(LinkedTransferQueue.class, size -> new LinkedTransferQueue<>());
-        BASE_FACTORIES.put(SynchronousQueue.class, size -> new SynchronousQueue<>());
-        BASE_FACTORIES.put(DelayQueue.class, size -> new DelayQueue<>());
+        BASE_FACTORIES.put(SynchronousQueue.class, size -> {
+            throw new IllegalArgumentException("SynchronousQueue cannot be used as a conversion target because it has zero capacity and cannot hold elements.");
+        });
+        BASE_FACTORIES.put(DelayQueue.class, size -> {
+            throw new IllegalArgumentException("DelayQueue cannot be used as a conversion target because it requires elements implementing java.util.concurrent.Delayed.");
+        });
 
         // Standard JDK Queue implementations
         BASE_FACTORIES.put(ArrayDeque.class, size -> new ArrayDeque<>(size));
@@ -336,7 +340,13 @@ final class CollectionHandling {
     }
 
     private static int sizeOrDefault(Object source) {
-        return source instanceof Collection ? ((Collection<?>) source).size() : 16;
+        if (source instanceof Collection) {
+            return ((Collection<?>) source).size();
+        }
+        if (source != null && source.getClass().isArray()) {
+            return java.lang.reflect.Array.getLength(source);
+        }
+        return 16;
     }
 
     private static Class<?> getElementTypeFromSource(Object source) {

@@ -1,6 +1,13 @@
 ### Revision History
 
 #### 4.93.0 (Unreleased)
+* **BUG FIX**: `ArrayConversions.enumSetToArray()` - `ArrayStoreException` when converting `EnumSet` to `Long[]`. Ordinal values (autoboxed `Integer`) were stored directly into `Long[]` arrays. Split `Integer`/`Long` branches and added explicit `(long)` cast.
+* **BUG FIX**: `CollectionHandling.sizeOrDefault()` - `ArrayBlockingQueue` overflow when converting arrays with >16 elements. `sizeOrDefault()` only handled `Collection` sources, returning hardcoded 16 for arrays. Added `Array.getLength()` path for array sources.
+* **BUG FIX**: `CollectionHandling` - `SynchronousQueue` and `DelayQueue` now throw descriptive `IllegalArgumentException` when used as conversion targets, instead of silently failing at runtime (`Queue full` / `ClassCastException`).
+* **BUG FIX**: `MapConversions.toThrowable()` - `ClassCastException` when `causeMessage` map entry was a non-String value (e.g., `Integer`). Replaced unchecked `(String)` cast with `.toString()`.
+* **BUG FIX**: `MapConversions.analyzeTarget()` - Failed to detect `UnmodifiableSortedMap`, `UnmodifiableNavigableMap`, and their synchronized/checked variants. `endsWith("$UnmodifiableMap")` missed inner class names like `$UnmodifiableSortedMap`. Changed to `contains("$Unmodifiable") && endsWith("Map")` (and similarly for Synchronized, Checked, Empty, Singleton).
+* **BUG FIX**: `MapConversions.toColor()` - Packed `rgb` integer ignored explicit `alpha` map entry. When both `rgb` and `alpha` keys were present, alpha bits from the packed int (often 0) overwrote the explicit alpha value. Now decomposes RGB channels and applies explicit alpha separately.
+* **BUG FIX**: `MapConversions.copyEntries()` - Caught all `Exception` types, silently swallowing errors during map entry copying. Narrowed to `ClassCastException | NullPointerException` (the only exceptions `Map.put()` throws for incompatible entries).
 * **JAVA 25+ PREP**: `Unsafe` - Added `ReflectionFactory.newConstructorForSerialization()` as preferred strategy for constructor-bypassing instantiation, falling back to `sun.misc.Unsafe` only when ReflectionFactory is unavailable. Caches serialization constructors per class.
 * **BUG FIX**: `RegexUtilities` - Pattern caches used `ConcurrentHashMap` which rejects null from `computeIfAbsent`, causing `NullPointerException` on every invalid regex pattern. Switched to `ConcurrentHashMapNullSafe`.
 * **BUG FIX**: `GraphComparator.processPrimitiveArray()` - `NullPointerException` when both source and target array elements were null (missing null guard before `.equals()` call).

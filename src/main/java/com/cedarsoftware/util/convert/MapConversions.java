@@ -441,7 +441,8 @@ final class MapConversions {
             Object causeValue = namedParams.get(CAUSE);
             if (causeValue instanceof String) {
                 String causeClassName = (String) causeValue;
-                String causeMessage = (String) namedParams.get(CAUSE_MESSAGE);
+                Object causeMessageRaw = namedParams.get(CAUSE_MESSAGE);
+                String causeMessage = causeMessageRaw == null ? null : causeMessageRaw.toString();
 
                 if (StringUtilities.hasContent(causeClassName)) {
                     Class<?> causeClass = ClassUtilities.forName(causeClassName, ClassUtilities.getClassLoader(MapConversions.class));
@@ -788,11 +789,13 @@ final class MapConversions {
         String typeName = toType.getName();
         
         // Collections wrapper types (require static factory methods)
-        target.isEmptyMap = typeName.endsWith("$EmptyMap");
-        target.isSingletonMap = typeName.endsWith("$SingletonMap");
-        target.isUnmodifiableMap = typeName.endsWith("$UnmodifiableMap");
-        target.isSynchronizedMap = typeName.endsWith("$SynchronizedMap");
-        target.isCheckedMap = typeName.endsWith("$CheckedMap");
+        // Use contains + endsWith("Map") to catch sorted/navigable variants
+        // e.g., $UnmodifiableSortedMap, $UnmodifiableNavigableMap
+        target.isEmptyMap = typeName.contains("$Empty") && typeName.endsWith("Map");
+        target.isSingletonMap = typeName.contains("$Singleton") && typeName.endsWith("Map");
+        target.isUnmodifiableMap = typeName.contains("$Unmodifiable") && typeName.endsWith("Map");
+        target.isSynchronizedMap = typeName.contains("$Synchronized") && typeName.endsWith("Map");
+        target.isCheckedMap = typeName.contains("$Checked") && typeName.endsWith("Map");
         
         // Interface types (need concrete implementation selection)
         target.isConcurrentMapInterface = toType.getName().equals("java.util.concurrent.ConcurrentMap");
@@ -942,8 +945,9 @@ final class MapConversions {
             
             try {
                 target.put(key, value);
-            } catch (Exception e) {
-                // Skip entries that can't be added (e.g., ClassCastException for TreeMap)
+            } catch (ClassCastException | NullPointerException e) {
+                // Skip entries incompatible with target map (e.g., uncomparable keys in TreeMap,
+                // null keys/values in ConcurrentHashMap)
                 continue;
             }
         }
@@ -1121,7 +1125,15 @@ final class MapConversions {
         // Try packed RGB value
         if (map.containsKey(RGB)) {
             int rgb = converter.convert(map.get(RGB), Integer.class);
-            return new Color(rgb, map.containsKey(ALPHA));
+            if (map.containsKey(ALPHA)) {
+                // Explicit alpha overrides any alpha bits in the packed int
+                int a = converter.convert(map.get(ALPHA), int.class);
+                int r = (rgb >> 16) & 0xFF;
+                int g = (rgb >> 8) & 0xFF;
+                int b = rgb & 0xFF;
+                return new Color(r, g, b, a);
+            }
+            return new Color(rgb);
         }
 
         // Try standard key-based dispatch for hex strings or other formats

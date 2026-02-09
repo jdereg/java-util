@@ -87,7 +87,7 @@ final class NumberConversions {
     
     static String floatToString(Object from, Converter converter) {
         float x = (float) from;
-        if (x == 0f) {
+        if (Float.floatToRawIntBits(x) == 0) {
             return "0";
         }
         return from.toString();
@@ -103,7 +103,7 @@ final class NumberConversions {
 
     static String doubleToString(Object from, Converter converter) {
         double x = (double) from;
-        if (x == 0d) {
+        if (Double.doubleToRawLongBits(x) == 0L) {
             return "0";
         }
         return from.toString();
@@ -135,6 +135,9 @@ final class NumberConversions {
 
     static BigInteger floatingPointToBigInteger(Object from, Converter converter) {
         double d = toDouble(from, converter);
+        if (Double.isNaN(d) || Double.isInfinite(d)) {
+            throw new IllegalArgumentException("Cannot convert " + d + " to BigInteger");
+        }
         String s = String.format("%.0f", (d > 0.0) ? Math.floor(d) : Math.ceil(d));
         return new BigInteger(s);
     }
@@ -451,7 +454,7 @@ final class NumberConversions {
 
     static Year toYear(Object from, Converter converter) {
         Number number = (Number) from;
-        return Year.of(number.shortValue());
+        return Year.of(number.intValue());
     }
 
     /**

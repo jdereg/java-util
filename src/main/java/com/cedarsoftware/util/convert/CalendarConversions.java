@@ -45,30 +45,39 @@ import com.cedarsoftware.util.DateUtilities;
  */
 final class CalendarConversions {
 
+    private static final DateTimeFormatter OFFSET_FMT = new DateTimeFormatterBuilder()
+            .appendPattern("yyyy-MM-dd'T'HH:mm:ss")
+            .appendFraction(ChronoField.NANO_OF_SECOND, 0, 9, true)
+            .appendPattern("XXX")
+            .toFormatter();
+
+    private static final DateTimeFormatter ZONE_FMT = new DateTimeFormatterBuilder()
+            .appendPattern("yyyy-MM-dd'T'HH:mm:ss")
+            .appendFraction(ChronoField.NANO_OF_SECOND, 0, 9, true)
+            .appendPattern("XXX'['VV']'")
+            .toFormatter();
+
     private CalendarConversions() {}
 
     static Long toLong(Object from, Converter converter) {
-        return ((Calendar) from).getTime().getTime();
+        return ((Calendar) from).getTimeInMillis();
     }
 
     static AtomicLong toAtomicLong(Object from, Converter converter) {
-        return new AtomicLong(((Calendar) from).getTime().getTime());
+        return new AtomicLong(((Calendar) from).getTimeInMillis());
     }
 
     static double toDouble(Object from, Converter converter) {
-        Calendar calendar = (Calendar) from;
-        long epochMillis = calendar.getTime().getTime();
-        return epochMillis / 1000.0;
+        return ((Calendar) from).getTimeInMillis() / 1000.0;
     }
 
     static BigDecimal toBigDecimal(Object from, Converter converter) {
-        Calendar cal = (Calendar) from;
-        long epochMillis = cal.getTime().getTime();
+        long epochMillis = ((Calendar) from).getTimeInMillis();
         return new BigDecimal(epochMillis).divide(BigDecimal.valueOf(1000));
     }
 
     static BigInteger toBigInteger(Object from, Converter converter) {
-        return BigInteger.valueOf(((Calendar) from).getTime().getTime());
+        return BigInteger.valueOf(((Calendar) from).getTimeInMillis());
     }
 
     static Date toDate(Object from, Converter converter) {
@@ -76,11 +85,7 @@ final class CalendarConversions {
     }
 
     static java.sql.Date toSqlDate(Object from, Converter converter) {
-        return java.sql.Date.valueOf(
-                ((Calendar) from).toInstant()
-                        .atZone(converter.getOptions().getZoneId())
-                        .toLocalDate()
-        );
+        return java.sql.Date.valueOf(toZonedDateTime(from, converter).toLocalDate());
     }
 
     static Timestamp toTimestamp(Object from, Converter converter) {
@@ -129,27 +134,15 @@ final class CalendarConversions {
     }
 
     static Year toYear(Object from, Converter converter) {
-        return Year.from(
-                ((Calendar) from).toInstant()
-                        .atZone(converter.getOptions().getZoneId())
-                        .toLocalDate()
-        );
+        return Year.from(toZonedDateTime(from, converter).toLocalDate());
     }
 
     static YearMonth toYearMonth(Object from, Converter converter) {
-        return YearMonth.from(
-                ((Calendar) from).toInstant()
-                        .atZone(converter.getOptions().getZoneId())
-                        .toLocalDate()
-        );
+        return YearMonth.from(toZonedDateTime(from, converter).toLocalDate());
     }
 
     static MonthDay toMonthDay(Object from, Converter converter) {
-        return MonthDay.from(
-                ((Calendar) from).toInstant()
-                        .atZone(converter.getOptions().getZoneId())
-                        .toLocalDate()
-        );
+        return MonthDay.from(toZonedDateTime(from, converter).toLocalDate());
     }
 
     static String toString(Object from, Converter converter) {
@@ -165,23 +158,10 @@ final class CalendarConversions {
             }
         }
 
-        // Build a formatter with optional fractional seconds.
-        // In JDK8, the last parameter of appendFraction is a boolean.
-        // With minWidth=0, no output (not even a decimal) is produced when there are no fractional seconds.
         if (zdt.getZone() instanceof ZoneOffset) {
-            DateTimeFormatter offsetFormatter = new DateTimeFormatterBuilder()
-                    .appendPattern("yyyy-MM-dd'T'HH:mm:ss")
-                    .appendFraction(ChronoField.NANO_OF_SECOND, 0, 9, true)
-                    .appendPattern("XXX")
-                    .toFormatter();
-            return offsetFormatter.format(zdt);
+            return OFFSET_FMT.format(zdt);
         } else {
-            DateTimeFormatter zoneFormatter = new DateTimeFormatterBuilder()
-                    .appendPattern("yyyy-MM-dd'T'HH:mm:ss")
-                    .appendFraction(ChronoField.NANO_OF_SECOND, 0, 9, true)
-                    .appendPattern("XXX'['VV']'")
-                    .toFormatter();
-            return zoneFormatter.format(zdt);
+            return ZONE_FMT.format(zdt);
         }
     }
 

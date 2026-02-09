@@ -598,6 +598,7 @@ public final class Converter {
         CONVERSION_DB.put(pair(BigDecimal.class, java.sql.Date.class), BigDecimalConversions::toSqlDate);
         CONVERSION_DB.put(pair(java.sql.Date.class, java.sql.Date.class), SqlDateConversions::toSqlDate);
         CONVERSION_DB.put(pair(Date.class, java.sql.Date.class), DateConversions::toSqlDate);
+        CONVERSION_DB.put(pair(Calendar.class, java.sql.Date.class), CalendarConversions::toSqlDate);
         CONVERSION_DB.put(pair(Timestamp.class, java.sql.Date.class), TimestampConversions::toSqlDate);
         CONVERSION_DB.put(pair(Duration.class, java.sql.Date.class), DurationConversions::toSqlDate);
         CONVERSION_DB.put(pair(Instant.class, java.sql.Date.class), InstantConversions::toSqlDate);
@@ -978,6 +979,7 @@ public final class Converter {
         CONVERSION_DB.put(pair(MonthDay.class, MonthDay.class), Converter::identity);
         CONVERSION_DB.put(pair(java.sql.Date.class, MonthDay.class), SqlDateConversions::toMonthDay);
         CONVERSION_DB.put(pair(Date.class, MonthDay.class), DateConversions::toMonthDay);
+        CONVERSION_DB.put(pair(Calendar.class, MonthDay.class), CalendarConversions::toMonthDay);
         CONVERSION_DB.put(pair(Timestamp.class, MonthDay.class), TimestampConversions::toMonthDay);
         CONVERSION_DB.put(pair(LocalDate.class, MonthDay.class), LocalDateConversions::toMonthDay);
         CONVERSION_DB.put(pair(LocalDateTime.class, MonthDay.class), LocalDateTimeConversions::toMonthDay);
@@ -998,6 +1000,7 @@ public final class Converter {
         CONVERSION_DB.put(pair(YearMonth.class, YearMonth.class), Converter::identity);
         CONVERSION_DB.put(pair(java.sql.Date.class, YearMonth.class), SqlDateConversions::toYearMonth);
         CONVERSION_DB.put(pair(Date.class, YearMonth.class), DateConversions::toYearMonth);
+        CONVERSION_DB.put(pair(Calendar.class, YearMonth.class), CalendarConversions::toYearMonth);
         CONVERSION_DB.put(pair(Timestamp.class, YearMonth.class), TimestampConversions::toYearMonth);
         CONVERSION_DB.put(pair(LocalDate.class, YearMonth.class), LocalDateConversions::toYearMonth);
         CONVERSION_DB.put(pair(LocalDateTime.class, YearMonth.class), LocalDateTimeConversions::toYearMonth);
@@ -1074,6 +1077,7 @@ public final class Converter {
         CONVERSION_DB.put(pair(BigDecimal.class, Year.class), NumberConversions::toYear);
         CONVERSION_DB.put(pair(java.sql.Date.class, Year.class), SqlDateConversions::toYear);
         CONVERSION_DB.put(pair(Date.class, Year.class), DateConversions::toYear);
+        CONVERSION_DB.put(pair(Calendar.class, Year.class), CalendarConversions::toYear);
         CONVERSION_DB.put(pair(Timestamp.class, Year.class), TimestampConversions::toYear);
         CONVERSION_DB.put(pair(LocalDate.class, Year.class), LocalDateConversions::toYear);
         CONVERSION_DB.put(pair(LocalDateTime.class, Year.class), LocalDateTimeConversions::toYear);

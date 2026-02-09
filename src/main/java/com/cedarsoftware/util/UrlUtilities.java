@@ -437,8 +437,9 @@ public final class UrlUtilities {
         }
         
         // Check for unreasonably large declared content length
-        if (contentLength > maxContentLength) {
-            throw new SecurityException("Content-Length exceeds maximum allowed: " + contentLength + " > " + maxContentLength);
+        int maxAllowed = getConfiguredMaxContentLength();
+        if (contentLength > maxAllowed) {
+            throw new SecurityException("Content-Length exceeds maximum allowed: " + contentLength + " > " + maxAllowed);
         }
         
         // Check for invalid content length values (should not be less than -1)

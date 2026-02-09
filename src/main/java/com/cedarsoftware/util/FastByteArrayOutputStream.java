@@ -96,7 +96,12 @@ public class FastByteArrayOutputStream extends OutputStream {
         if ((off < 0) || (len < 0) || (off > b.length) || (off + len > b.length) || (off + len < 0)) {
             throw new IndexOutOfBoundsException();
         }
-        ensureCapacity(count + len);
+        int minCapacity = count + len;
+        // Detect integer overflow (count + len wrapped negative)
+        if (minCapacity < 0) {
+            throw new OutOfMemoryError("Required array size too large");
+        }
+        ensureCapacity(minCapacity);
         System.arraycopy(b, off, buf, count, len);
         count += len;
     }

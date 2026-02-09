@@ -437,8 +437,7 @@ public final class ArrayUtilities {
      *
      * @param <T>      the component type of the array
      * @param elements the elements to be stored in the array
-     * @return an array containing the provided elements
-     * @throws NullPointerException if the {@code elements} array is {@code null}
+     * @return an array containing the provided elements, or {@code null} if {@code elements} is {@code null}
      */
     @SafeVarargs
     public static <T> T[] createArray(T... elements) {

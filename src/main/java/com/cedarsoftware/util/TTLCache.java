@@ -496,29 +496,20 @@ public class TTLCache<K, V> implements Map<K, V>, AutoCloseable {
     }
 
     /**
-     * @return the number of non-expired entries currently stored
+     * @return the number of entries currently stored (may include expired entries
+     *         not yet purged by the background thread)
      */
     @Override
     public int size() {
-        long currentTime = System.currentTimeMillis();
-        int count = 0;
-        for (CacheEntry<K, V> entry : cacheMap.values()) {
-            if (entry.expiryTime >= currentTime) {
-                count++;
-            }
-        }
-        return count;
+        return cacheMap.size();
     }
 
     /**
-     * @return {@code true} if this cache contains no non-expired key-value mappings
+     * @return {@code true} if this cache contains no key-value mappings
      */
     @Override
     public boolean isEmpty() {
-        if (cacheMap.isEmpty()) {
-            return true;
-        }
-        return size() == 0;
+        return cacheMap.isEmpty();
     }
 
     /**

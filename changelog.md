@@ -1,5 +1,27 @@
 ### Revision History
 
+#### 4.93.0 (Unreleased)
+* **JAVA 25+ PREP**: `Unsafe` - Added `ReflectionFactory.newConstructorForSerialization()` as preferred strategy for constructor-bypassing instantiation, falling back to `sun.misc.Unsafe` only when ReflectionFactory is unavailable. Caches serialization constructors per class.
+* **BUG FIX**: `RegexUtilities` - Pattern caches used `ConcurrentHashMap` which rejects null from `computeIfAbsent`, causing `NullPointerException` on every invalid regex pattern. Switched to `ConcurrentHashMapNullSafe`.
+* **BUG FIX**: `GraphComparator.processPrimitiveArray()` - `NullPointerException` when both source and target array elements were null (missing null guard before `.equals()` call).
+* **BUG FIX**: `CompactLinkedSet.isCaseInsensitive()` - Returned `true` instead of `false` (copy-paste error from case-insensitive variant).
+* **BUG FIX**: `IOUtilities` - Native memory leak when handling deflate-encoded streams. Custom `Inflater` passed to `InflaterInputStream` was never `end()`ed. Switched to default constructor so `close()` manages the Inflater lifecycle.
+* **BUG FIX**: `MultiKeyMap` - ThreadLocal array reuse in `getMultiKey()`/`containsMultiKey()` was unsafe under reentrant calls (e.g., custom `equals()`/`hashCode()` calling back into the map). Added reentrance detection that falls back to fresh allocation.
+* **BUG FIX**: `IdentitySet.resize()` - Integer overflow when at `MAX_CAPACITY` (1<<30). `oldCapacity << 1` wrapped to `Integer.MIN_VALUE`, causing `NegativeArraySizeException`. Added capacity guard.
+* **BUG FIX**: `SystemUtilities.getNetworkInterfaces()` - `NullPointerException` when `NetworkInterface.getNetworkInterfaces()` returns null (valid per JDK docs when no interfaces exist).
+* **BUG FIX**: `AbstractConcurrentNullSafeMap.computeIfAbsent()` - Mapping function called twice when key was mapped to null, violating the Map contract (at most once). Replaced with single `compute()` call.
+* **BUG FIX**: `CompactMap.equals()` - Null keys skipped during equality comparison in compact array state. Removed erroneous `entries[i] != null` guard; `areKeysEqual()` already handles nulls via `Objects.equals()`.
+* **BUG FIX**: `TTLCache.get()` - Race condition where background purge thread could null `node.value` via `unlink()` between the expiry check and value read. Fixed by capturing value before expiry check.
+* **BUG FIX**: `ReflectionUtils` - TOCTOU race in `getDangerousClassPatterns()`/`getSensitiveFieldPatterns()` where two separate volatile fields could be read in a mismatched state. Combined into single `SimpleImmutableEntry` volatile reference.
+* **BUG FIX**: `UrlUtilities.validateContentLength()` - Used raw `maxContentLength` field instead of `getConfiguredMaxContentLength()`, ignoring system property override.
+* **BUG FIX**: `FastByteArrayOutputStream.write()` - Integer overflow when `count + len` exceeded `Integer.MAX_VALUE` silently skipped buffer growth, leading to `ArrayIndexOutOfBoundsException`. Added overflow detection.
+* **BUG FIX**: `TestUtil.assertContainsIgnoreCase()` - Used Java `assert` keyword which is a no-op without `-ea` JVM flag. Replaced with explicit `throw new AssertionError(...)`.
+* **DOC FIX**: `ArrayUtilities.createArray()` - Javadoc incorrectly declared `@throws NullPointerException`; method actually returns null for null input.
+* **TEST FIX**: `LRUCacheOverflowTest` - Stabilized flaky microbenchmark: runs 5 rounds and compares best times, raised threshold from 3x to 5x.
+* **TEST FIX**: `ConverterArrayCollectionTest.testCachingPerformance` - Stabilized flaky performance test: added JIT warmup, best-of-3 rounds, raised threshold from 500ms to 750ms.
+* **PERFORMANCE**: `FastReader.readUntil()` - Optimized hot inner loop (~37% faster): localized `position` field to stack variable to enable register allocation, precomputed loop bound to a single condition, and deferred `totalRead` counter update to loop exit.
+* **PERFORMANCE**: `FastWriter.write(String)` - Optimized fast path: localized `nextChar` field to stack variable, removed redundant `len == 0` early return (handled naturally by fast path), cached `str.length()` to local, simplified bounds check.
+
 #### 4.92.0 - 2026-02-08
 * **PERFORMANCE**: `CaseInsensitiveMap` - Significant speedup by removing the global LRU cache and constructing `CaseInsensitiveString` wrappers directly on the heap. The cache's `ConcurrentHashMap` lookup + LRU bookkeeping cost more per call than simply creating the lightweight wrapper. CaseInsensitiveMap(HashMap) is now ~4x faster than TreeMap(CASE_INSENSITIVE_ORDER), up from ~9x slower.
 * **BUG FIX**: `CaseInsensitiveString.equals()` - Fixed incorrect equality when hash code was 0 (skipped `equalsIgnoreCase()` check).

@@ -160,19 +160,20 @@ public final class FastReader extends Reader {
      * @param delim2 second delimiter character to stop at (typically backslash)
      * @return the number of characters read (not including delimiter), or -1 if EOF reached before any chars read
      */
-    public int readUntil(char[] dest, int off, int maxLen, char delim1, char delim2) {
+    public int readUntil(final char[] dest, int off, int maxLen, char delim1, char delim2) {
         if (in == null) {
             ExceptionUtilities.uncheckedThrow(new IOException("in is null"));
         }
 
         int totalRead = 0;
+        final char[] locBuf = buf;
 
         // First, drain any pushback buffer
         while (pushbackPosition < pushbackBufferSize && totalRead < maxLen) {
             char c = pushbackBuffer[pushbackPosition];
             if (c == delim1 || c == delim2) {
                 // Found delimiter in pushback - don't consume it
-                return totalRead > 0 ? totalRead : 0;
+                return Math.max(totalRead, 0);
             }
             dest[off++] = c;
             pushbackPosition++;
@@ -187,17 +188,22 @@ public final class FastReader extends Reader {
                 return totalRead > 0 ? totalRead : -1;
             }
 
-            // Scan current buffer for delimiters
-            while (position < limit && totalRead < maxLen) {
-                char c = buf[position];
+            // Single-pass loop with position localized to avoid per-char field write
+            int pos = position;
+            int end = pos + Math.min(limit - pos, maxLen - totalRead);
+            while (pos < end) {
+                char c = locBuf[pos];
                 if (c == delim1 || c == delim2) {
-                    // Found delimiter - don't consume it
+                    // Found delimiter — don't consume it
+                    totalRead += pos - position;
+                    position = pos;
                     return totalRead;
                 }
                 dest[off++] = c;
-                position++;
-                totalRead++;
+                pos++;
             }
+            totalRead += pos - position;
+            position = pos;
         }
 
         return totalRead;

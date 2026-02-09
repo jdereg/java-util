@@ -105,21 +105,18 @@ public final class FastWriter extends Writer {
         if (out == null) {
             ExceptionUtilities.uncheckedThrow(new IOException("FastWriter stream is closed"));
         }
-        if ((off < 0) || (off > str.length()) || (len < 0) ||
-                ((off + len) > str.length()) || ((off + len) < 0)) {
+        int strLen = str.length();
+        if ((off < 0) || (len < 0) || ((off + len) > strLen) || ((off + len) < 0)) {
             throw new IndexOutOfBoundsException();
         }
 
-        // Return early for empty strings
-        if (len == 0) {
-            return;
-        }
-
-        // Fast path for short strings that fit in buffer
-        if (nextChar + len <= cb.length) {
-            str.getChars(off, off + len, cb, nextChar);
-            nextChar += len;
-            if (nextChar == cb.length) {
+        // Fast path for short strings that fit in buffer (handles len == 0 naturally)
+        int nc = nextChar;
+        if (nc + len <= cb.length) {
+            str.getChars(off, off + len, cb, nc);
+            nc += len;
+            nextChar = nc;
+            if (nc == cb.length) {
                 flushBuffer();
             }
             return;

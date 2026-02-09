@@ -49,8 +49,9 @@ public class TestUtil
         for (String contain : contains) {
             String lowerContain = contain.toLowerCase();
             int idx = lowerSource.indexOf(lowerContain, offset);
-            String msg = "'" + contain + "' not found in '" + source + "' (searching from position " + offset + ")";
-            assert idx >= 0 : msg;
+            if (idx < 0) {
+                throw new AssertionError("'" + contain + "' not found in '" + source + "' (searching from position " + offset + ")");
+            }
             offset = idx + lowerContain.length();
         }
     }

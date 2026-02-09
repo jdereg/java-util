@@ -54,6 +54,11 @@ final class BigIntegerConversions {
             hex.insert(0, "0");
         }
 
+        // Values exceeding 128 bits cannot be represented as a UUID
+        if (hex.length() > 32) {
+            throw new IllegalArgumentException("Cannot convert BigInteger to UUID: value exceeds 128 bits");
+        }
+
         // Split into two 64-bit parts
         String highBitsHex = hex.substring(0, 16);
         String lowBitsHex = hex.substring(16, 32);

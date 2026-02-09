@@ -2664,14 +2664,13 @@ public class ClassUtilities {
         }
     }
 
-    // Try instantiation via unsafe (if turned on).  It is off by default.  Use
-    // ClassUtilities.setUseUnsafe(true) to enable it. This may result in heap-dumps
-    // for e.g. ConcurrentHashMap or can cause problems when the class is not initialized,
-    // that's why we try ordinary constructors first.
+    // Try instantiation via ReflectionFactory serialization constructor (if turned on).
+    // It is off by default.  Use ClassUtilities.setUseUnsafe(true) to enable it.
+    // This uses the same mechanism as ObjectInputStream — creates a synthetic constructor
+    // that runs Object.<init>() instead of the class's own constructors.
     private static Object tryUnsafeInstantiation(Class<?> c) {
         if (unsafeDepth.get() > 0) {
             try {
-                // Security: Apply security checks even in unsafe mode to prevent bypassing security controls
                 SecurityChecker.verifyClass(c);
                 return unsafe.allocateInstance(c);
             } catch (Exception ignored) {
@@ -2682,44 +2681,21 @@ public class ClassUtilities {
 
     /**
      * Turn on (or off) the 'unsafe' option of Class construction for the current thread only.
-     * This setting is thread-local and does not affect other threads. The unsafe option uses 
-     * internal JVM mechanisms to bypass constructors and should be used with extreme caution 
-     * as it may break on future JDKs or under strict security managers.
-     * 
-     * <p><strong>THREAD SAFETY:</strong> This setting uses ThreadLocal storage, so each thread
-     * maintains its own independent unsafe mode state. Enabling unsafe mode in one thread does
-     * not affect other threads. This is critical for multi-threaded environments like web servers
-     * where concurrent requests must not interfere with each other.</p>
-     * 
-     * <p><strong>SECURITY WARNING:</strong> Enabling unsafe instantiation bypasses normal Java
-     * security mechanisms, constructor validations, and initialization logic. This can lead to
-     * security vulnerabilities and unstable object states. Only enable in trusted environments
-     * where you have full control over the codebase and understand the security implications.</p>
-     * 
-     * <p>It is used when all constructors have been tried and the Java class could
-     * not be instantiated. Remember to disable unsafe mode when done (typically in a finally block)
-     * to avoid leaving the thread in an altered state.</p>
+     * When enabled, allows constructor-bypassing instantiation as a last resort when no
+     * suitable constructor can be found.
+     * <p>
+     * This uses {@code ReflectionFactory.newConstructorForSerialization()} — the same mechanism
+     * used by {@code ObjectInputStream} for deserialization. The synthetic constructor runs
+     * {@code Object.<init>()} and fields get Java default values (null/0/false).
+     * <p>
+     * This setting is thread-local and does not affect other threads.
      *
      * @param state boolean true = on, false = off (for the current thread only)
-     * @throws SecurityException if a security manager exists and denies the required permissions
      */
-    @SuppressWarnings("removal")
     public static void setUseUnsafe(boolean state) {
-        // Add security check for unsafe instantiation access
-        SecurityManager sm = System.getSecurityManager();
-        if (sm != null && state) {
-            // Use a custom permission for enabling unsafe operations in java-util
-            // The old "accessClassInPackage.sun.misc" check is outdated for modern JDKs
-            sm.checkPermission(new RuntimePermission("com.cedarsoftware.util.enableUnsafe"));
-        }
-
-        // Counter-based approach for reentrant support:
-        // - setUseUnsafe(true) increments the counter
-        // - setUseUnsafe(false) decrements the counter (but not below 0)
-        // - Unsafe mode is active when counter > 0
         if (state) {
             unsafeDepth.set(unsafeDepth.get() + 1);
-            // Initialize unsafe singleton on first enable
+            // Initialize singleton on first enable
             if (unsafe == null) {
                 synchronized (ClassUtilities.class) {
                     if (unsafe == null) {
@@ -2729,7 +2705,7 @@ public class ClassUtilities {
                             // Failed to initialize - revert the increment
                             unsafeDepth.set(unsafeDepth.get() - 1);
                             if (LOG.isLoggable(Level.FINE)) {
-                                LOG.log(Level.FINE, "Failed to initialize unsafe instantiation: " + e.getMessage());
+                                LOG.log(Level.FINE, "Failed to initialize ReflectionFactory instantiation: " + e.getMessage());
                             }
                         }
                     }

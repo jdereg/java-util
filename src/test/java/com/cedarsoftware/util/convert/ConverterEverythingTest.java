@@ -2998,8 +2998,8 @@ class ConverterEverythingTest {
                 {LocalDate.parse("1970-01-02"), Instant.parse("1970-01-01T15:00:00Z"), true},
         });
         TEST_DB.put(pair(OffsetDateTime.class, Instant.class), new Object[][]{
-                {odt("0000-01-01T00:00:00Z"), Instant.ofEpochMilli(-62167219200000L), true},
-                {odt("0000-01-01T00:00:00.001Z"), Instant.ofEpochMilli(-62167219199999L), true},
+                {odt("0000-01-01T00:00:00Z"), Instant.ofEpochMilli(-62167219200000L)},          // No reverse: Asia/Tokyo historical LMT offset (+09:18:59) differs from modern +09:00
+                {odt("0000-01-01T00:00:00.001Z"), Instant.ofEpochMilli(-62167219199999L)},      // No reverse: Asia/Tokyo historical LMT offset (+09:18:59) differs from modern +09:00
                 {odt("1969-12-31T23:59:59.999Z"), Instant.ofEpochMilli(-1), true},
                 {odt("1970-01-01T00:00:00Z"), Instant.ofEpochMilli(0), true},
                 {odt("1970-01-01T00:00:00.001Z"), Instant.ofEpochMilli(1), true},

@@ -1227,7 +1227,7 @@ public class CompactMap<K, V> implements Map<K, V> {
                 // Single scan: find key and retrieve value in one pass
                 boolean found = false;
                 for (int i = 0; i < len; i += 2) {
-                    if (entries[i] != null && areKeysEqual(thatKey, entries[i])) {
+                    if (areKeysEqual(thatKey, entries[i])) {
                         Object thisValue = entries[i + 1];
                         Object thatValue = entry.getValue();
                         if (thatValue == null || thisValue == null) {

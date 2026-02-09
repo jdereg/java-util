@@ -10,6 +10,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.util.AbstractMap;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -130,46 +131,45 @@ public final class ReflectionUtils {
         return isSecurityEnabled() ? DEFAULT_MAX_CACHE_SIZE : Integer.MAX_VALUE;
     }
     
-    // Cached dangerous class patterns - parsed once per property value
-    private static volatile String cachedDangerousClassProperty = null;
-    private static volatile Set<String> cachedDangerousClassPatterns = null;
-
-    // Cached sensitive field patterns - parsed once per property value (pre-processed: trimmed and lowercased)
-    private static volatile String cachedSensitiveFieldProperty = null;
-    private static volatile Set<String> cachedSensitiveFieldPatterns = null;
+    // Single volatile reference pairs a property string with its parsed pattern set,
+    // ensuring atomic visibility of both values (no TOCTOU race).
+    private static volatile Map.Entry<String, Set<String>> cachedDangerousClass = null;
+    private static volatile Map.Entry<String, Set<String>> cachedSensitiveField = null;
 
     private static Set<String> getDangerousClassPatterns() {
         String currentProperty = System.getProperty("reflectionutils.dangerous.class.patterns", DEFAULT_DANGEROUS_CLASS_PATTERNS);
-        // Check if property changed (or first access)
-        if (!currentProperty.equals(cachedDangerousClassProperty)) {
-            Set<String> set = new HashSet<>();
-            for (String pattern : currentProperty.split(",")) {
-                String trimmed = pattern.trim();
-                if (!trimmed.isEmpty()) {
-                    set.add(trimmed);
-                }
-            }
-            cachedDangerousClassPatterns = Collections.unmodifiableSet(set);
-            cachedDangerousClassProperty = currentProperty;
+        Map.Entry<String, Set<String>> holder = cachedDangerousClass;
+        if (holder != null && currentProperty.equals(holder.getKey())) {
+            return holder.getValue();
         }
-        return cachedDangerousClassPatterns;
+        Set<String> set = new HashSet<>();
+        for (String pattern : currentProperty.split(",")) {
+            String trimmed = pattern.trim();
+            if (!trimmed.isEmpty()) {
+                set.add(trimmed);
+            }
+        }
+        Set<String> patterns = Collections.unmodifiableSet(set);
+        cachedDangerousClass = new AbstractMap.SimpleImmutableEntry<>(currentProperty, patterns);
+        return patterns;
     }
 
     private static Set<String> getSensitiveFieldPatterns() {
         String currentProperty = System.getProperty("reflectionutils.sensitive.field.patterns", DEFAULT_SENSITIVE_FIELD_PATTERNS);
-        // Check if property changed (or first access)
-        if (!currentProperty.equals(cachedSensitiveFieldProperty)) {
-            Set<String> set = new HashSet<>();
-            for (String pattern : currentProperty.split(",")) {
-                String processed = pattern.trim().toLowerCase();
-                if (!processed.isEmpty()) {
-                    set.add(processed);
-                }
-            }
-            cachedSensitiveFieldPatterns = Collections.unmodifiableSet(set);
-            cachedSensitiveFieldProperty = currentProperty;
+        Map.Entry<String, Set<String>> holder = cachedSensitiveField;
+        if (holder != null && currentProperty.equals(holder.getKey())) {
+            return holder.getValue();
         }
-        return cachedSensitiveFieldPatterns;
+        Set<String> set = new HashSet<>();
+        for (String pattern : currentProperty.split(",")) {
+            String processed = pattern.trim().toLowerCase();
+            if (!processed.isEmpty()) {
+                set.add(processed);
+            }
+        }
+        Set<String> patterns = Collections.unmodifiableSet(set);
+        cachedSensitiveField = new AbstractMap.SimpleImmutableEntry<>(currentProperty, patterns);
+        return patterns;
     }
     
     private static final int CACHE_SIZE = Math.max(1, Math.min(getMaxCacheSize(),

@@ -338,13 +338,16 @@ public class TTLCache<K, V> implements Map<K, V>, AutoCloseable {
             return null;
         }
 
+        // Capture value before any concurrent purge can unlink the node and null it.
+        // The background purge thread calls unlink() which sets node.value = null,
+        // so we must read the value into a local variable first.
+        V value = entry.node.value;
+
         long currentTime = System.currentTimeMillis();
         if (entry.expiryTime < currentTime) {
             removeEntry((K)key);
             return null;
         }
-
-        V value = entry.node.value;
 
         boolean acquired = lock.tryLock();
         try {
@@ -493,19 +496,29 @@ public class TTLCache<K, V> implements Map<K, V>, AutoCloseable {
     }
 
     /**
-     * @return the number of entries currently stored
+     * @return the number of non-expired entries currently stored
      */
     @Override
     public int size() {
-        return cacheMap.size();
+        long currentTime = System.currentTimeMillis();
+        int count = 0;
+        for (CacheEntry<K, V> entry : cacheMap.values()) {
+            if (entry.expiryTime >= currentTime) {
+                count++;
+            }
+        }
+        return count;
     }
 
     /**
-     * @return {@code true} if this cache contains no key-value mappings
+     * @return {@code true} if this cache contains no non-expired key-value mappings
      */
     @Override
     public boolean isEmpty() {
-        return cacheMap.isEmpty();
+        if (cacheMap.isEmpty()) {
+            return true;
+        }
+        return size() == 0;
     }
 
     /**

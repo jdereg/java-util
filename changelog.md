@@ -33,6 +33,9 @@
 * **BUG FIX**: `PointConversions.toInteger()` / `toLong()` / `toBigInteger()` - Silently discarded the Y coordinate, returning only X. A 2D Point has no meaningful single-number representation. Now throws `IllegalArgumentException`, consistent with `toBigDecimal()` which already threw.
 * **BUG FIX**: `RectangleConversions.toInteger()` - Silent integer overflow when computing area (`width * height`). Replaced with `Math.multiplyExact()` which throws `ArithmeticException` on overflow.
 * **BUG FIX**: `RectangleConversions.toInsets()` - Silent integer overflow when computing `bottom` (`y + height`) and `right` (`x + width`). Replaced with `Math.addExact()` which throws `ArithmeticException` on overflow.
+* **BUG FIX**: `InsetsConversions.toInteger()` - Silent integer overflow when summing `top + left + bottom + right`. Replaced with chained `Math.addExact()` calls.
+* **BUG FIX**: `InsetsConversions.toDimension()` - Silent integer overflow when computing `left + right` (width) and `top + bottom` (height). Replaced with `Math.addExact()`.
+* **BUG FIX**: `InsetsConversions.toRectangle()` - Silent integer overflow when computing `right - left` (width) and `bottom - top` (height). Replaced with `Math.subtractExact()`.
 * **BUG FIX**: `ObjectConversions.convertFieldValueIterative()` - Complex nested objects inside collections, maps, and arrays were converted to `toString()` (e.g., `"Foo@1a2b3c4"`), losing all structured data. Now recursively converts them to Map representations preserving field names and values.
 * **PERFORMANCE**: `ObjectConversions.isRecord()` - `ReflectionUtils.getMethod(Class.class, "isRecord")` was called on every invocation. Cached the `Method` reference in a static final field.
 * **PERFORMANCE**: `ObjectConversions.convertToJsonCompatible()` - Numbers were round-tripped through `toString()` → `parseToMinimalNumericType()`, which could change types (e.g., `int 30` → `Long 30`). Standard numeric types now pass through directly.

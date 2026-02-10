@@ -94,7 +94,7 @@ final class InsetsConversions {
      */
     static Integer toInteger(Object from, Converter converter) {
         Insets insets = (Insets) from;
-        return insets.getTop() + insets.getLeft() + insets.getBottom() + insets.getRight();
+        return Math.addExact(Math.addExact(Math.addExact(insets.getTop(), insets.getLeft()), insets.getBottom()), insets.getRight());
     }
 
     /**
@@ -159,7 +159,7 @@ final class InsetsConversions {
      */
     static Dimension toDimension(Object from, Converter converter) {
         Insets insets = (Insets) from;
-        return new Dimension(insets.getLeft() + insets.getRight(), insets.getTop() + insets.getBottom());
+        return new Dimension(Math.addExact(insets.getLeft(), insets.getRight()), Math.addExact(insets.getTop(), insets.getBottom()));
     }
 
     /**
@@ -172,8 +172,8 @@ final class InsetsConversions {
         Insets insets = (Insets) from;
         // For insets, we interpret them as defining a rectangular area
         // where left/top are the position and right/bottom define the extent
-        int width = Math.max(0, insets.getRight() - insets.getLeft());
-        int height = Math.max(0, insets.getBottom() - insets.getTop());
+        int width = Math.max(0, Math.subtractExact(insets.getRight(), insets.getLeft()));
+        int height = Math.max(0, Math.subtractExact(insets.getBottom(), insets.getTop()));
         return new Rectangle(insets.getLeft(), insets.getTop(), width, height);
     }
 }

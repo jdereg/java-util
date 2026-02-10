@@ -74,36 +74,36 @@ final class PointConversions {
     }
 
     /**
-     * Convert Point to Integer (x value only, as Point doesn't have a natural single integer representation).
+     * Unsupported conversion from Point to Integer.
      * @param from Point instance
      * @param converter Converter instance
-     * @return X coordinate as integer value
+     * @return Never returns - throws exception
+     * @throws IllegalArgumentException Always thrown - a 2D Point cannot be meaningfully represented as a single Integer without data loss
      */
     static Integer toInteger(Object from, Converter converter) {
-        Point point = (Point) from;
-        return point.getX();
+        throw new IllegalArgumentException("Unsupported conversion from Point to Integer - no meaningful conversion exists without discarding the Y coordinate.");
     }
 
     /**
-     * Convert Point to Long (x value as long).
+     * Unsupported conversion from Point to Long.
      * @param from Point instance
      * @param converter Converter instance
-     * @return X coordinate as long value
+     * @return Never returns - throws exception
+     * @throws IllegalArgumentException Always thrown - a 2D Point cannot be meaningfully represented as a single Long without data loss
      */
     static Long toLong(Object from, Converter converter) {
-        Point point = (Point) from;
-        return (long) point.getX();
+        throw new IllegalArgumentException("Unsupported conversion from Point to Long - no meaningful conversion exists without discarding the Y coordinate.");
     }
 
     /**
-     * Convert Point to BigInteger (x value).
+     * Unsupported conversion from Point to BigInteger.
      * @param from Point instance
      * @param converter Converter instance
-     * @return BigInteger representation of x coordinate
+     * @return Never returns - throws exception
+     * @throws IllegalArgumentException Always thrown - a 2D Point cannot be meaningfully represented as a single BigInteger without data loss
      */
     static BigInteger toBigInteger(Object from, Converter converter) {
-        Point point = (Point) from;
-        return BigInteger.valueOf(point.getX());
+        throw new IllegalArgumentException("Unsupported conversion from Point to BigInteger - no meaningful conversion exists without discarding the Y coordinate.");
     }
 
     /**

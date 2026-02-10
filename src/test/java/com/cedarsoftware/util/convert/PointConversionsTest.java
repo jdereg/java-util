@@ -393,10 +393,43 @@ class PointConversionsTest {
     @Test
     void testBooleanPointRoundTrip_falseBlocked() {
         Boolean originalBoolean = Boolean.FALSE;
-        
+
         // Boolean -> Point should be blocked
         assertThatThrownBy(() -> converter.convert(originalBoolean, Point.class))
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessageContaining("Unsupported conversion, source type [Boolean");
+    }
+
+    // ========================================
+    // Bug: toInteger/toLong/toBigInteger silently discard Y
+    // (these are not registered in Converter, test directly)
+    // ========================================
+
+    @Test
+    void testToInteger_silentlyDiscardsY_shouldThrow() {
+        Point point = new Point(100, 200);
+        // Should throw because a Point cannot be meaningfully represented as a single integer
+        assertThatThrownBy(() -> PointConversions.toInteger(point, converter))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Point")
+                .hasMessageContaining("Integer");
+    }
+
+    @Test
+    void testToLong_silentlyDiscardsY_shouldThrow() {
+        Point point = new Point(100, 200);
+        assertThatThrownBy(() -> PointConversions.toLong(point, converter))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Point")
+                .hasMessageContaining("Long");
+    }
+
+    @Test
+    void testToBigInteger_silentlyDiscardsY_shouldThrow() {
+        Point point = new Point(100, 200);
+        assertThatThrownBy(() -> PointConversions.toBigInteger(point, converter))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Point")
+                .hasMessageContaining("BigInteger");
     }
 }

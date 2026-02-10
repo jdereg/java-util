@@ -1,5 +1,7 @@
 package com.cedarsoftware.util.convert;
 
+import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -8,8 +10,23 @@ import org.junit.jupiter.api.Test;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Tests for ObjectConversions to ensure Object to Map conversions work correctly.
- * TEMPORARILY DISABLED - Object to Map conversions not yet supported in Golden Idea state
+ * Tests for ObjectConversions bugs.
+ *
+ * @author John DeRegnaucourt (jdereg@gmail.com)
+ *         <br>
+ *         Copyright (c) Cedar Software LLC
+ *         <br><br>
+ *         Licensed under the Apache License, Version 2.0 (the "License");
+ *         you may not use this file except in compliance with the License.
+ *         You may obtain a copy of the License at
+ *         <br><br>
+ *         <a href="http://www.apache.org/licenses/LICENSE-2.0">License</a>
+ *         <br><br>
+ *         Unless required by applicable law or agreed to in writing, software
+ *         distributed under the License is distributed on an "AS IS" BASIS,
+ *         WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *         See the License for the specific language governing permissions and
+ *         limitations under the License.
  */
 class ObjectConversionsTest {
 
@@ -24,55 +41,70 @@ class ObjectConversionsTest {
     @Test
     void testSimpleObjectToMap() {
         TestObject obj = new TestObject("John", 30);
-        
+
         Map<String, Object> result = converter.convert(obj, Map.class);
-        
+
         assertThat(result).isNotNull();
         assertThat(result).containsEntry("name", "John");
-        assertThat(result).containsEntry("age", 30L); // MathUtilities converts int to Long
+        assertThat(result).containsEntry("age", 30);
     }
 
-    // @Test
-    void testNestedObjectToMap() {
-        NestedTestObject nested = new NestedTestObject("nested value");
-        TestObjectWithNested obj = new TestObjectWithNested("parent", nested);
-        
-        Map<String, Object> result = converter.convert(obj, Map.class);
-        
+    // ---- Bug #1: Complex nested objects in collections become toString() ----
+
+    @Test
+    void testNestedObjectInListPreservesStructure() {
+        OuterWithList outer = new OuterWithList();
+        Map<String, Object> result = converter.convert(outer, Map.class);
+
         assertThat(result).isNotNull();
-        assertThat(result).containsEntry("name", "parent");
-        assertThat(result).containsKey("nested");
-        
+        Object items = result.get("items");
+        assertThat(items).isInstanceOf(List.class);
+        List<?> itemList = (List<?>) items;
+        assertThat(itemList).hasSize(2);
+        // Each item should be a Map with structured data, NOT a toString() string
+        assertThat(itemList.get(0)).isInstanceOf(Map.class);
         @SuppressWarnings("unchecked")
-        Map<String, Object> nestedMap = (Map<String, Object>) result.get("nested");
-        assertThat(nestedMap).containsEntry("value", "nested value");
+        Map<String, Object> firstItem = (Map<String, Object>) itemList.get(0);
+        assertThat(firstItem).containsEntry("name", "hello");
+        assertThat(firstItem).containsEntry("value", 42);
     }
 
-    // @Test
-    void testPrimitiveToMap() {
-        Map<String, Object> result = converter.convert(42, Map.class);
-        
+    @Test
+    void testNestedObjectInArrayPreservesStructure() {
+        OuterWithArray outer = new OuterWithArray();
+        Map<String, Object> result = converter.convert(outer, Map.class);
+
         assertThat(result).isNotNull();
-        assertThat(result).containsEntry("_v", 42); // Uses "_v" key, preserves original Integer
-        assertThat(result).hasSize(1);
+        Object items = result.get("items");
+        assertThat(items).isInstanceOf(List.class);
+        List<?> itemList = (List<?>) items;
+        assertThat(itemList).hasSize(2);
+        assertThat(itemList.get(0)).isInstanceOf(Map.class);
     }
 
-    // @Test
-    void testStringToMap() {
-        // String has its own specific conversion that takes precedence over Object.class
-        // This test verifies that String conversion works (not using ObjectConversions)
-        Map<String, Object> result = converter.convert("ENUM_VALUE", Map.class);
-        
-        assertThat(result).isNotNull();
-        assertThat(result).containsEntry("name", "ENUM_VALUE"); // String enum-like conversion
-        assertThat(result).hasSize(1);
+    // ---- Bug #3: Numbers round-tripped through string parsing ----
+
+    @Test
+    void testIntegerNotDowncastOrUpcast() {
+        // Integer 30 should stay as Integer, not be round-tripped through
+        // toString() → parseToMinimalNumericType() which returns Long
+        TestObject obj = new TestObject("test", 30);
+        Map<String, Object> result = converter.convert(obj, Map.class);
+
+        Object age = result.get("age");
+        assertThat(age).isInstanceOf(Integer.class);
+        assertThat(age).isEqualTo(30);
     }
 
-    // @Test
-    void testNullObjectToMap() {
-        Map<String, Object> result = converter.convert(null, Map.class);
-        
-        assertThat(result).isNull();
+    @Test
+    void testLongNotDowncast() {
+        // Long value 100L should NOT be downcast to Integer through the string round-trip
+        LongHolder holder = new LongHolder();
+        Map<String, Object> result = converter.convert(holder, Map.class);
+
+        Object value = result.get("count");
+        assertThat(value).isInstanceOf(Long.class);
+        assertThat(value).isEqualTo(100L);
     }
 
     // Test classes
@@ -86,21 +118,20 @@ class ObjectConversionsTest {
         }
     }
 
-    public static class NestedTestObject {
-        public String value;
-
-        public NestedTestObject(String value) {
-            this.value = value;
-        }
+    public static class Inner {
+        public String name = "hello";
+        public int value = 42;
     }
 
-    public static class TestObjectWithNested {
-        public String name;
-        public NestedTestObject nested;
+    public static class OuterWithList {
+        public List<Inner> items = Arrays.asList(new Inner(), new Inner());
+    }
 
-        public TestObjectWithNested(String name, NestedTestObject nested) {
-            this.name = name;
-            this.nested = nested;
-        }
+    public static class OuterWithArray {
+        public Inner[] items = {new Inner(), new Inner()};
+    }
+
+    public static class LongHolder {
+        public long count = 100L;
     }
 }

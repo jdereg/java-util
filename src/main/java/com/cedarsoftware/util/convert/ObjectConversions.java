@@ -15,7 +15,6 @@ import java.util.Set;
 import com.cedarsoftware.util.ArrayUtilities;
 import com.cedarsoftware.util.ClassUtilities;
 import com.cedarsoftware.util.IdentitySet;
-import com.cedarsoftware.util.MathUtilities;
 import com.cedarsoftware.util.ReflectionUtils;
 import com.cedarsoftware.util.SystemUtilities;
 
@@ -196,48 +195,31 @@ final class ObjectConversions {
             Collection<?> collection = (Collection<?>) value;
             List<Object> result = new ArrayList<>();
             for (Object item : collection) {
-                if (item != null && !isPrimitiveOrWrapper(item.getClass()) && !(item instanceof String)) {
-                    // For complex objects in collections, we need to process them iteratively
-                    // For now, convert them to string representation to avoid complexity
-                    result.add(item.toString());
-                } else {
-                    result.add(convertToJsonCompatible(item));
-                }
+                result.add(convertElement(item, converter));
             }
             return result;
         }
-        
-        // Handle Maps  
+
+        // Handle Maps
         if (value instanceof Map) {
             Map<?, ?> map = (Map<?, ?>) value;
             Map<String, Object> result = new LinkedHashMap<>();
             for (Map.Entry<?, ?> entry : map.entrySet()) {
                 String key = entry.getKey() != null ? entry.getKey().toString() : null;
                 if (key != null) {
-                    Object entryValue = entry.getValue();
-                    if (entryValue != null && !isPrimitiveOrWrapper(entryValue.getClass()) && !(entryValue instanceof String)) {
-                        // For complex objects in maps, convert to string for simplicity
-                        result.put(key, entryValue.toString());
-                    } else {
-                        result.put(key, convertToJsonCompatible(entryValue));
-                    }
+                    result.put(key, convertElement(entry.getValue(), converter));
                 }
             }
             return result;
         }
-        
+
         // Handle arrays
         if (valueClass.isArray()) {
             List<Object> result = new ArrayList<>();
             int length = ArrayUtilities.getLength(value);
             for (int i = 0; i < length; i++) {
                 Object item = ArrayUtilities.getElement(value, i);
-                if (item != null && !isPrimitiveOrWrapper(item.getClass()) && !(item instanceof String)) {
-                    // For complex objects in arrays, convert to string for simplicity
-                    result.add(item.toString());
-                } else {
-                    result.add(convertToJsonCompatible(item));
-                }
+                result.add(convertElement(item, converter));
             }
             return result;
         }
@@ -257,31 +239,41 @@ final class ObjectConversions {
     }
     
     /**
-     * Converts primitives and wrappers to JSON-compatible types using MathUtilities for optimal numeric types.
+     * Converts a single element (from a collection, map value, or array) to its map-compatible form.
+     * Complex objects are recursively converted to Maps instead of losing structure via toString().
+     */
+    private static Object convertElement(Object item, Converter converter) {
+        if (item == null) {
+            return null;
+        }
+        if (item instanceof String) {
+            return item;
+        }
+        if (isPrimitiveOrWrapper(item.getClass())) {
+            return convertToJsonCompatible(item);
+        }
+        // Complex objects: recursively convert to Map representation
+        return objectToMapWithTarget(item, converter, Map.class);
+    }
+
+    /**
+     * Converts primitives and wrappers to JSON-compatible types, preserving original numeric types.
      */
     private static Object convertToJsonCompatible(Object value) {
         if (value == null) {
             return null;
         }
-        
-        // Handle numeric types with MathUtilities for optimal representation
-        if (value instanceof Number) {
-            // Convert to string and parse back to get minimal type  
-            String numberStr = value.toString();
-            try {
-                return MathUtilities.parseToMinimalNumericType(numberStr);
-            } catch (Exception e) {
-                // Fallback to original value
-                return value;
-            }
-        }
-        
-        // Boolean and String pass through
-        if (value instanceof Boolean || value instanceof String) {
+
+        // Standard numeric types pass through directly — no string round-trip needed
+        if (value instanceof Number || value instanceof Boolean) {
             return value;
         }
-        
-        // Everything else to String representation
+
+        if (value instanceof String) {
+            return value;
+        }
+
+        // Character and other types to String representation
         return value.toString();
     }
     
@@ -302,24 +294,28 @@ final class ObjectConversions {
         return ClassUtilities.isPrimitive(clazz);
     }
     
+    // Cached Method reference for Class.isRecord() — looked up once
+    private static final Method IS_RECORD_METHOD;
+    static {
+        Method m = null;
+        if (SystemUtilities.isJavaVersionAtLeast(14, 0)) {
+            try {
+                m = ReflectionUtils.getMethod(Class.class, "isRecord");
+            } catch (Exception ignored) { }
+        }
+        IS_RECORD_METHOD = m;
+    }
+
     /**
-     * Check if a class is a Record using SystemUtilities for version detection.
+     * Check if a class is a Record using cached reflection.
      */
     private static boolean isRecord(Class<?> clazz) {
-        // Records are only available in JDK 14+
-        if (!SystemUtilities.isJavaVersionAtLeast(14, 0)) {
+        if (IS_RECORD_METHOD == null) {
             return false;
         }
-        
         try {
-            // Use ReflectionUtils to check for Record class (available in JDK 14+)
-            Method isRecordMethod = ReflectionUtils.getMethod(Class.class, "isRecord");
-            if (isRecordMethod != null) {
-                return (Boolean) ReflectionUtils.call(clazz, isRecordMethod);
-            }
-            return false;
+            return (Boolean) ReflectionUtils.call(clazz, IS_RECORD_METHOD);
         } catch (Exception e) {
-            // Records not supported in this JVM
             return false;
         }
     }

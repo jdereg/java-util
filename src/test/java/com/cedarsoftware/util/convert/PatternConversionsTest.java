@@ -119,6 +119,43 @@ class PatternConversionsTest {
         );
     }
 
+    // ---- Bug: Pattern flags lost in toMap() round-trip ----
+
+    @Test
+    void testPatternToMap_shouldPreserveFlags() {
+        Pattern pattern = Pattern.compile("foo", Pattern.CASE_INSENSITIVE | Pattern.MULTILINE);
+        Map<String, Object> map = converter.convert(pattern, Map.class);
+
+        assertThat(map).containsKey("flags");
+        int flags = ((Number) map.get("flags")).intValue();
+        assertThat(flags).isEqualTo(Pattern.CASE_INSENSITIVE | Pattern.MULTILINE);
+    }
+
+    @Test
+    void testRoundTrip_patternWithFlags_shouldPreserve() {
+        Pattern original = Pattern.compile("bar", Pattern.DOTALL | Pattern.UNICODE_CASE);
+
+        Map<String, Object> map = converter.convert(original, Map.class);
+        Pattern restored = converter.convert(map, Pattern.class);
+
+        assertThat(restored.pattern()).isEqualTo(original.pattern());
+        assertThat(restored.flags()).isEqualTo(original.flags());
+    }
+
+    @Test
+    void testRoundTrip_flagsLost_caseInsensitiveBroken() {
+        Pattern original = Pattern.compile("foo", Pattern.CASE_INSENSITIVE);
+        assertThat(original.matcher("FOO").matches()).isTrue();
+
+        Map<String, Object> map = converter.convert(original, Map.class);
+        Pattern restored = converter.convert(map, Pattern.class);
+
+        assertThat(restored.flags()).isEqualTo(original.flags());
+        assertThat(restored.matcher("FOO").matches())
+                .as("Restored pattern should match case-insensitively (flags must be preserved)")
+                .isTrue();
+    }
+
     private void assertPattern(String pattern, String... matchingStrings) {
         Pattern p = converter.convert(pattern, Pattern.class);
         assertThat(p.pattern()).isEqualTo(pattern);

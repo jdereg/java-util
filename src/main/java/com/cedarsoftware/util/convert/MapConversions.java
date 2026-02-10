@@ -135,6 +135,7 @@ final class MapConversions {
     static final String LEFT = "left";
     static final String BOTTOM = "bottom";
     static final String RIGHT = "right";
+    static final String FLAGS = "flags";
     private static final Object NO_MATCH = new Object();
 
     private MapConversions() {}
@@ -234,7 +235,15 @@ final class MapConversions {
         return dispatch(from, converter, AtomicBoolean.class, VALUE_KEYS);
     }
 
+    @SuppressWarnings("unchecked")
     static Pattern toPattern(Object from, Converter converter) {
+        Map<String, Object> map = (Map<String, Object>) from;
+        Object flagsObj = map.get(FLAGS);
+        if (flagsObj != null) {
+            String pattern = (String) getValue(map, VALUE_KEYS);
+            int flags = converter.convert(flagsObj, int.class);
+            return Pattern.compile(pattern, flags);
+        }
         return dispatch(from, converter, Pattern.class, VALUE_KEYS);
     }
 

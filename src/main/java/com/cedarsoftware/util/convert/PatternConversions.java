@@ -33,6 +33,9 @@ final class PatternConversions {
         Pattern pattern = (Pattern) from;
         Map<String, Object> map = new LinkedHashMap<>();
         map.put(VALUE, pattern.pattern());
+        if (pattern.flags() != 0) {
+            map.put(MapConversions.FLAGS, pattern.flags());
+        }
         return map;
     }
 }

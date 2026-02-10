@@ -155,7 +155,7 @@ final class StringConversions {
         try {
             BigDecimal big = new BigDecimal(s);
             big = big.setScale(0, RoundingMode.DOWN);
-            if (big.compareTo(low) == -1 || big.compareTo(high) == 1) {
+            if (big.compareTo(low) < 0 || big.compareTo(high) > 0) {
                 return null;
             }
             return big.longValue();
@@ -224,7 +224,13 @@ final class StringConversions {
         boolean isAllDigits = matcher.matches();
         if (isAllDigits) {
             try {  // Treat as a String number, like "65" = 'A'
-                return (char) Integer.parseInt(str.trim());
+                int value = Integer.parseInt(str.trim());
+                if (value < Character.MIN_VALUE || value > Character.MAX_VALUE) {
+                    throw new IllegalArgumentException("Value '" + from + "' out of range for char (0-65535).");
+                }
+                return (char) value;
+            } catch (IllegalArgumentException e) {
+                throw e;
             } catch (Exception e) {
                 throw new IllegalArgumentException("Unable to parse '" + from + "' as a Character.", e);
             }
@@ -734,7 +740,8 @@ final class StringConversions {
 
         // Try rgb(r,g,b) format
         String original = ((String) from).trim();
-        if (original.startsWith("rgb(") && original.endsWith(")")) {
+        String lower = original.toLowerCase();
+        if (lower.startsWith("rgb(") && lower.endsWith(")")) {
             String values = original.substring(4, original.length() - 1);
             String[] components = values.split(",");
             if (components.length == 3) {
@@ -750,7 +757,7 @@ final class StringConversions {
         }
 
         // Try rgba(r,g,b,a) format
-        if (original.startsWith("rgba(") && original.endsWith(")")) {
+        if (lower.startsWith("rgba(") && lower.endsWith(")")) {
             String values = original.substring(5, original.length() - 1);
             String[] components = values.split(",");
             if (components.length == 4) {

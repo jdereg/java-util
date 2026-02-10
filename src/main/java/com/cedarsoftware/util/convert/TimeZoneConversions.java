@@ -1,5 +1,6 @@
 package com.cedarsoftware.util.convert;
 
+import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.LinkedHashMap;
@@ -45,9 +46,7 @@ final class TimeZoneConversions {
     }
 
     static ZoneOffset toZoneOffset(Object from, Converter converter) {
-        TimeZone tz = (TimeZone) from;
-        // Convert the raw offset (in milliseconds) to total seconds
-        int offsetSeconds = tz.getRawOffset() / 1000;
-        return ZoneOffset.ofTotalSeconds(offsetSeconds);
+        ZoneId zoneId = toZoneId(from, converter);
+        return zoneId.getRules().getOffset(Instant.now());
     }
 }

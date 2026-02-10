@@ -11,7 +11,6 @@ import java.time.MonthDay;
 import java.time.OffsetDateTime;
 import java.time.Year;
 import java.time.YearMonth;
-import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Calendar;
@@ -56,14 +55,11 @@ final class LocalDateConversions {
 
     static ZonedDateTime toZonedDateTime(Object from, Converter converter) {
         LocalDate localDate = (LocalDate) from;
-        return ZonedDateTime.of(localDate, LocalTime.parse("00:00:00"), converter.getOptions().getZoneId());
+        return ZonedDateTime.of(localDate, LocalTime.MIDNIGHT, converter.getOptions().getZoneId());
     }
-    
+
     static OffsetDateTime toOffsetDateTime(Object from, Converter converter) {
-        LocalDate localDate = (LocalDate) from;
-        TimeZone timeZone = converter.getOptions().getTimeZone();
-        ZoneOffset zoneOffset = ZoneOffset.ofTotalSeconds(timeZone.getOffset(System.currentTimeMillis()) / 1000);
-        return OffsetDateTime.of(localDate, LocalTime.parse("00:00:00"), zoneOffset);
+        return toZonedDateTime(from, converter).toOffsetDateTime();
     }
 
     static double toDouble(Object from, Converter converter) {
@@ -75,8 +71,7 @@ final class LocalDateConversions {
     }
 
     static Timestamp toTimestamp(Object from, Converter converter) {
-        LocalDate localDate = (LocalDate) from;
-        return new Timestamp(localDate.toEpochDay() * 86400 * 1000);
+        return Timestamp.from(toInstant(from, converter));
     }
 
     static Calendar toCalendar(Object from, Converter converter) {

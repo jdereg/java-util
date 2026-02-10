@@ -1077,7 +1077,7 @@ class ConverterTest
     void testLocalDateTimestamp(long epochMilli, ZoneId zoneId, LocalDate expected) {
         Converter converter = new Converter(createCustomZones(zoneId));
         Timestamp intermediate = converter.convert(expected, Timestamp.class);
-        assertTrue(intermediate.toInstant().toString().startsWith(expected.toString()));
+        assertThat(intermediate.getTime()).isEqualTo(epochMilli);
     }
 
     @ParameterizedTest

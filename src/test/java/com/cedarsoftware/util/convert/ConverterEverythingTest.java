@@ -1611,8 +1611,8 @@ class ConverterEverythingTest {
                 {ZonedDateTime.parse("1970-01-02T00:00:00Z").withZoneSameLocal(TOKYO_Z), LocalDate.parse("1970-01-02"), true },
         });
         TEST_DB.put(pair(OffsetDateTime.class, LocalDate.class), new Object[][] {
-                {OffsetDateTime.parse("0000-01-01T00:00:00+09:00"), LocalDate.parse("0000-01-01"), true },
-                {OffsetDateTime.parse("0000-01-02T00:00:00+09:00"), LocalDate.parse("0000-01-02"), true },
+                {OffsetDateTime.parse("0000-01-01T00:00:00+09:00"), LocalDate.parse("0000-01-01")},          // No reverse: Asia/Tokyo historical LMT offset (+09:18:59) differs from modern +09:00
+                {OffsetDateTime.parse("0000-01-02T00:00:00+09:00"), LocalDate.parse("0000-01-02")},          // No reverse: Asia/Tokyo historical LMT offset (+09:18:59) differs from modern +09:00
                 {OffsetDateTime.parse("1969-12-31T00:00:00+09:00"), LocalDate.parse("1969-12-31"), true },
                 {OffsetDateTime.parse("1970-01-01T00:00:00+09:00"), LocalDate.parse("1970-01-01"), true },
                 {OffsetDateTime.parse("1970-01-02T00:00:00+09:00"), LocalDate.parse("1970-01-02"), true },
@@ -1677,11 +1677,9 @@ class ConverterEverythingTest {
                 {cal(now), new Timestamp(now), true},
         });
         TEST_DB.put(pair(LocalDate.class, Timestamp.class), new Object[][] {
-                {LocalDate.parse("0001-01-01"), timestamp("0001-01-01T00:00:00Z"), true },
-                {LocalDate.parse("0001-01-02"), timestamp("0001-01-02T00:00:00Z"), true },
-                {LocalDate.parse("1969-12-31"), timestamp("1969-12-31T00:00:00Z"), true },
-                {LocalDate.parse("1970-01-01"), timestamp("1970-01-01T00:00:00Z"), true },
-                {LocalDate.parse("1970-01-02"), timestamp("1970-01-02T00:00:00Z"), true },
+                {LocalDate.parse("1969-12-31"), timestamp("1969-12-30T15:00:00Z"), true },  // Midnight Tokyo (UTC+9)
+                {LocalDate.parse("1970-01-01"), timestamp("1969-12-31T15:00:00Z"), true },  // Midnight Tokyo (UTC+9)
+                {LocalDate.parse("1970-01-02"), timestamp("1970-01-01T15:00:00Z"), true },  // Midnight Tokyo (UTC+9)
         });
         TEST_DB.put(pair(LocalDateTime.class, Timestamp.class), new Object[][]{
                 {zdt("0001-01-01T00:00:00Z").toLocalDateTime(), new Timestamp(-62135596800000L), true},

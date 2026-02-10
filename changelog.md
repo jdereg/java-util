@@ -36,6 +36,7 @@
 * **BUG FIX**: `InsetsConversions.toInteger()` - Silent integer overflow when summing `top + left + bottom + right`. Replaced with chained `Math.addExact()` calls.
 * **BUG FIX**: `InsetsConversions.toDimension()` - Silent integer overflow when computing `left + right` (width) and `top + bottom` (height). Replaced with `Math.addExact()`.
 * **BUG FIX**: `InsetsConversions.toRectangle()` - Silent integer overflow when computing `right - left` (width) and `bottom - top` (height). Replaced with `Math.subtractExact()`.
+* **PERFORMANCE**: `ConverterOptions.getCustomOptions()` / `getConverterOverrides()` - Default implementations allocated a new `HashMap<>()` on every call. Replaced with `Collections.emptyMap()` since the defaults represent empty, read-only maps.
 * **BUG FIX**: `ObjectConversions.convertFieldValueIterative()` - Complex nested objects inside collections, maps, and arrays were converted to `toString()` (e.g., `"Foo@1a2b3c4"`), losing all structured data. Now recursively converts them to Map representations preserving field names and values.
 * **PERFORMANCE**: `ObjectConversions.isRecord()` - `ReflectionUtils.getMethod(Class.class, "isRecord")` was called on every invocation. Cached the `Method` reference in a static final field.
 * **PERFORMANCE**: `ObjectConversions.convertToJsonCompatible()` - Numbers were round-tripped through `toString()` → `parseToMinimalNumericType()`, which could change types (e.g., `int 30` → `Long 30`). Standard numeric types now pass through directly.

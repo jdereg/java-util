@@ -5,7 +5,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.util.HashMap;
+import java.util.Collections;
 import java.util.Locale;
 import java.util.Map;
 import java.util.TimeZone;
@@ -98,7 +98,7 @@ public interface ConverterOptions {
      *
      * @return the map of custom options
      */
-    default Map<String, Object> getCustomOptions() { return new HashMap<>(); }
+    default Map<String, Object> getCustomOptions() { return Collections.emptyMap(); }
 
     /**
      * @return TimeZone expected on the target when finished (only for types that support ZoneId or TimeZone).
@@ -121,7 +121,7 @@ public interface ConverterOptions {
      * Overrides for converter conversions.
      * @return The Map of overrides.
      */
-    default Map<Converter.ConversionPair, Convert<?>> getConverterOverrides() { return new HashMap<>(); }
+    default Map<Converter.ConversionPair, Convert<?>> getConverterOverrides() { return Collections.emptyMap(); }
 
     /**
      * Maximum length allowed for enum constant names during String to Enum conversion.

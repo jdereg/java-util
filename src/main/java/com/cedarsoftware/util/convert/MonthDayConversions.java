@@ -110,9 +110,14 @@ final class MonthDayConversions {
     /**
      * Convert MonthDay to Byte in MMDD format.
      * For example, MonthDay.of(1, 1) becomes (byte) 101.
+     * Only January 1-27 (MMDD 101-127) fit in a byte.
      */
     static Byte toByte(Object from, Converter converter) {
-        return (byte) toInt(from, converter);
+        int mmdd = toInt(from, converter);
+        if (mmdd > Byte.MAX_VALUE) {
+            throw new IllegalArgumentException("Cannot convert MonthDay to Byte: MMDD value " + mmdd + " exceeds byte range (-128..127)");
+        }
+        return (byte) mmdd;
     }
 
     /**

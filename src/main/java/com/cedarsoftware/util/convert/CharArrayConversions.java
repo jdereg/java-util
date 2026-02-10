@@ -39,14 +39,6 @@ final class CharArrayConversions {
         return CharBuffer.wrap(chars);
     }
 
-    static StringBuffer toStringBuffer(Object from, Converter converter) {
-        return new StringBuffer(toCharBuffer(from, converter));
-    }
-
-    static StringBuilder toStringBuilder(Object from, Converter converter) {
-        return new StringBuilder(toCharBuffer(from, converter));
-    }
-
     static char[] toCharArray(Object from, Converter converter) {
         char[] chars = (char[])from;
         return Arrays.copyOf(chars, chars.length);

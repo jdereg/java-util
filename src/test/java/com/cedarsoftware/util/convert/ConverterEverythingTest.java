@@ -480,6 +480,19 @@ class ConverterEverythingTest {
                 {new BigInteger("170141183460469231731687303715884105727"), UUID.fromString("7fffffff-ffff-ffff-ffff-ffffffffffff"), true},
                 {new BigInteger("170141183460469231731687303715884105728"), UUID.fromString("80000000-0000-0000-0000-000000000000"), true},
         });
+        TEST_DB.put(pair(UUID.class, byte[].class), new Object[][]{
+                {new UUID(0L, 0L), new byte[]{0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0}, true},
+                {new UUID(0L, 1L), new byte[]{0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,1}, true},
+                {new UUID(1L, 0L), new byte[]{0,0,0,0,0,0,0,1, 0,0,0,0,0,0,0,0}, true},
+                {UUID.fromString("f0000000-0000-0000-0000-000000000001"), new byte[]{(byte)0xf0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,1}, true},
+        });
+        TEST_DB.put(pair(byte[].class, UUID.class), new Object[][]{
+                {new byte[]{0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0}, new UUID(0L, 0L), true},
+                {new byte[]{0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,1}, new UUID(0L, 1L), true},
+                {new byte[]{0,0,0,0,0,0,0,1, 0,0,0,0,0,0,0,0}, new UUID(1L, 0L), true},
+                {new byte[]{(byte)0xf0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,1}, UUID.fromString("f0000000-0000-0000-0000-000000000001"), true},
+                {new byte[]{1,2,3}, new IllegalArgumentException("byte[] must be exactly 16 bytes to convert to UUID, found 3")},
+        });
     }
 
     /**

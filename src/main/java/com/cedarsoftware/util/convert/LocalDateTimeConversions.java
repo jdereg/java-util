@@ -1,8 +1,6 @@
 package com.cedarsoftware.util.convert;
 
 import java.time.LocalDateTime;
-import java.time.OffsetDateTime;
-import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashMap;
@@ -32,12 +30,6 @@ final class LocalDateTimeConversions {
     static ZonedDateTime toZonedDateTime(Object from, Converter converter) {
         LocalDateTime ldt = (LocalDateTime) from;
         return ZonedDateTime.of(ldt, converter.getOptions().getZoneId());
-    }
-
-    static OffsetDateTime toOffsetDateTime(Object from, Converter converter) {
-        LocalDateTime ldt = (LocalDateTime) from;
-        ZoneOffset zoneOffset = ZoneOffset.ofTotalSeconds(converter.getOptions().getTimeZone().getOffset(System.currentTimeMillis()) / 1000);
-        return ldt.atOffset(zoneOffset);
     }
 
     static String toString(Object from, Converter converter) {

@@ -61,14 +61,6 @@ final class CharBufferConversions {
         return chars;
     }
 
-    static StringBuffer toStringBuffer(Object from, Converter converter) {
-        return new StringBuffer(toCharBuffer(from, converter));
-    }
-
-    static StringBuilder toStringBuilder(Object from, Converter converter) {
-        return new StringBuilder(toCharBuffer(from, converter));
-    }
-
     static Map<?, ?> toMap(Object from, Converter converter) {
         Map<String, Object> map = new LinkedHashMap<>();
         map.put(VALUE, toString(from, converter));

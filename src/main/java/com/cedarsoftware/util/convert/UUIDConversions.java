@@ -2,6 +2,7 @@ package com.cedarsoftware.util.convert;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.nio.ByteBuffer;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -48,6 +49,25 @@ final class UUIDConversions {
         UUID uuid = (UUID) from;
         // false if all zeros, true otherwise
         return uuid.getMostSignificantBits() != 0L || uuid.getLeastSignificantBits() != 0L;
+    }
+
+    static byte[] toByteArray(Object from, Converter converter) {
+        UUID uuid = (UUID) from;
+        ByteBuffer buffer = ByteBuffer.allocate(16);
+        buffer.putLong(uuid.getMostSignificantBits());
+        buffer.putLong(uuid.getLeastSignificantBits());
+        return buffer.array();
+    }
+
+    static UUID fromByteArray(Object from, Converter converter) {
+        byte[] bytes = (byte[]) from;
+        if (bytes.length != 16) {
+            throw new IllegalArgumentException("byte[] must be exactly 16 bytes to convert to UUID, found " + bytes.length);
+        }
+        ByteBuffer buffer = ByteBuffer.wrap(bytes);
+        long mostSigBits = buffer.getLong();
+        long leastSigBits = buffer.getLong();
+        return new UUID(mostSigBits, leastSigBits);
     }
 }
 

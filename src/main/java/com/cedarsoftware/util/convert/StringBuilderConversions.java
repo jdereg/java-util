@@ -20,8 +20,4 @@ package com.cedarsoftware.util.convert;
 final class StringBuilderConversions {
 
     private StringBuilderConversions() {}
-
-    static String toString(Object from, Converter converter) {
-        return from.toString();
-    }
 }

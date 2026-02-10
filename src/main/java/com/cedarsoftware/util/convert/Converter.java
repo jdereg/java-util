@@ -737,6 +737,7 @@ public final class Converter {
         CONVERSION_DB.put(pair(BigInteger.class, UUID.class), BigIntegerConversions::toUUID);
         CONVERSION_DB.put(pair(BigDecimal.class, UUID.class), BigDecimalConversions::toUUID);
         CONVERSION_DB.put(pair(Map.class, UUID.class), MapConversions::toUUID);
+        CONVERSION_DB.put(pair(byte[].class, UUID.class), UUIDConversions::fromByteArray);
 
         // Class conversions supported
         CONVERSION_DB.put(pair(Void.class, Class.class), VoidConversions::toNull);
@@ -1009,6 +1010,7 @@ public final class Converter {
         CONVERSION_DB.put(pair(byte[].class, byte[].class), Converter::identity);
         CONVERSION_DB.put(pair(File.class, byte[].class), FileConversions::toByteArray);
         CONVERSION_DB.put(pair(Path.class, byte[].class), PathConversions::toByteArray);
+        CONVERSION_DB.put(pair(UUID.class, byte[].class), UUIDConversions::toByteArray);
 
         // toCharArray
         CONVERSION_DB.put(pair(Void.class, char[].class), VoidConversions::toNull);

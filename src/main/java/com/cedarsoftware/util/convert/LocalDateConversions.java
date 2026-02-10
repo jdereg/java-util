@@ -2,9 +2,6 @@ package com.cedarsoftware.util.convert;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
-import java.time.MonthDay;
-import java.time.Year;
-import java.time.YearMonth;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashMap;
@@ -34,22 +31,6 @@ final class LocalDateConversions {
     static ZonedDateTime toZonedDateTime(Object from, Converter converter) {
         LocalDate localDate = (LocalDate) from;
         return ZonedDateTime.of(localDate, LocalTime.MIDNIGHT, converter.getOptions().getZoneId());
-    }
-
-    static java.sql.Date toSqlDate(Object from, Converter converter) {
-        return java.sql.Date.valueOf((LocalDate) from);
-    }
-
-    static Year toYear(Object from, Converter converter) {
-        return Year.from((LocalDate) from);
-    }
-
-    static YearMonth toYearMonth(Object from, Converter converter) {
-        return YearMonth.from((LocalDate) from);
-    }
-
-    static MonthDay toMonthDay(Object from, Converter converter) {
-        return MonthDay.from((LocalDate) from);
     }
 
     static String toString(Object from, Converter converter) {

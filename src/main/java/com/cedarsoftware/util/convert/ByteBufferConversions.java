@@ -63,14 +63,6 @@ final class ByteBufferConversions {
         return CharBufferConversions.toCharArray(toCharBuffer(from, converter), converter);
     }
 
-    static StringBuffer toStringBuffer(Object from, Converter converter) {
-        return new StringBuffer(toCharBuffer(from, converter));
-    }
-
-    static StringBuilder toStringBuilder(Object from, Converter converter) {
-        return new StringBuilder(toCharBuffer(from, converter));
-    }
-    
     static Map<?, ?> toMap(Object from, Converter converter) {
         ByteBuffer bytes = (ByteBuffer) from;
 

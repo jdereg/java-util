@@ -29,26 +29,4 @@ final class CharacterArrayConversions {
         }
         return builder.toString();
     }
-
-    static StringBuilder toStringBuilder(Object from, Converter converter) {
-        Character[] chars = (Character[]) from;
-        StringBuilder builder = new StringBuilder(chars.length);
-        for (Character ch : chars) {
-            if (ch != null) {
-                builder.append(ch.charValue());
-            }
-        }
-        return builder;
-    }
-
-    static StringBuffer toStringBuffer(Object from, Converter converter) {
-        Character[] chars = (Character[]) from;
-        StringBuffer buffer = new StringBuffer(chars.length);
-        for (Character ch : chars) {
-            if (ch != null) {
-                buffer.append(ch.charValue());
-            }
-        }
-        return buffer;
-    }
 }

@@ -8,6 +8,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 import com.cedarsoftware.util.geom.Dimension;
+import com.cedarsoftware.util.geom.Insets;
 import com.cedarsoftware.util.geom.Point;
 import com.cedarsoftware.util.geom.Rectangle;
 import org.junit.jupiter.api.BeforeEach;
@@ -415,10 +416,56 @@ class RectangleConversionsTest {
     @Test
     void testRectangleDimensionRoundTripBlocked() {
         Rectangle originalRectangle = new Rectangle(0, 0, 120, 80);
-        
+
         // Rectangle -> Dimension should be blocked
         assertThatThrownBy(() -> converter.convert(originalRectangle, Dimension.class))
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessageContaining("Unsupported conversion, source type [Rectangle");
+    }
+
+    // ========================================
+    // Bug: toInteger/toInsets int overflow
+    // (not registered in Converter, test directly)
+    // ========================================
+
+    @Test
+    void testToInteger_overflowShouldThrow() {
+        // 50000 * 50000 = 2,500,000,000 exceeds Integer.MAX_VALUE
+        Rectangle rectangle = new Rectangle(0, 0, 50000, 50000);
+        assertThatThrownBy(() -> RectangleConversions.toInteger(rectangle, converter))
+                .isInstanceOf(ArithmeticException.class);
+    }
+
+    @Test
+    void testToInteger_safeValues_shouldWork() {
+        Rectangle rectangle = new Rectangle(0, 0, 100, 200);
+        Integer result = RectangleConversions.toInteger(rectangle, converter);
+        assertThat(result).isEqualTo(20000);
+    }
+
+    @Test
+    void testToInsets_additionOverflowBottom_shouldThrow() {
+        // y + height overflows: Integer.MAX_VALUE + 1
+        Rectangle rectangle = new Rectangle(0, Integer.MAX_VALUE, 10, 1);
+        assertThatThrownBy(() -> RectangleConversions.toInsets(rectangle, converter))
+                .isInstanceOf(ArithmeticException.class);
+    }
+
+    @Test
+    void testToInsets_additionOverflowRight_shouldThrow() {
+        // x + width overflows: Integer.MAX_VALUE + 1
+        Rectangle rectangle = new Rectangle(Integer.MAX_VALUE, 0, 1, 10);
+        assertThatThrownBy(() -> RectangleConversions.toInsets(rectangle, converter))
+                .isInstanceOf(ArithmeticException.class);
+    }
+
+    @Test
+    void testToInsets_safeValues_shouldWork() {
+        Rectangle rectangle = new Rectangle(10, 20, 100, 50);
+        Insets result = RectangleConversions.toInsets(rectangle, converter);
+        assertThat(result.getTop()).isEqualTo(20);
+        assertThat(result.getLeft()).isEqualTo(10);
+        assertThat(result.getBottom()).isEqualTo(70);   // 20 + 50
+        assertThat(result.getRight()).isEqualTo(110);    // 10 + 100
     }
 }

@@ -94,7 +94,7 @@ final class RectangleConversions {
      */
     static Integer toInteger(Object from, Converter converter) {
         Rectangle rectangle = (Rectangle) from;
-        return rectangle.getWidth() * rectangle.getHeight();
+        return Math.multiplyExact(rectangle.getWidth(), rectangle.getHeight());
     }
 
     /**
@@ -170,9 +170,9 @@ final class RectangleConversions {
      */
     static Insets toInsets(Object from, Converter converter) {
         Rectangle rectangle = (Rectangle) from;
-        return new Insets(rectangle.getY(), rectangle.getX(), 
-                         rectangle.getY() + rectangle.getHeight(), 
-                         rectangle.getX() + rectangle.getWidth());
+        return new Insets(rectangle.getY(), rectangle.getX(),
+                         Math.addExact(rectangle.getY(), rectangle.getHeight()),
+                         Math.addExact(rectangle.getX(), rectangle.getWidth()));
     }
 
 }

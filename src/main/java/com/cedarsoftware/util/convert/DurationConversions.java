@@ -9,13 +9,11 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.OffsetDateTime;
-import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.TimeZone;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -103,32 +101,11 @@ final class DurationConversions {
     }
     
     static java.sql.Date toSqlDate(Object from, Converter converter) {
-        Duration duration = (Duration) from;
-        
-        // Add duration to epoch to get the target instant
-        Instant epoch = Instant.EPOCH;
-        Instant timeAfterDuration = epoch.plus(duration);
-        
-        // Convert to LocalDate in UTC to get day boundary alignment
-        // This ensures the result is always at 00:00:00 (start of day)
-        LocalDate localDate = timeAfterDuration.atOffset(ZoneOffset.UTC).toLocalDate();
-        
-        // Convert back to java.sql.Date
-        return java.sql.Date.valueOf(localDate);
+        return java.sql.Date.valueOf(toLocalDate(from, converter));
     }
     
     static OffsetDateTime toOffsetDateTime(Object from, Converter converter) {
-        Duration duration = (Duration) from;
-        TimeZone timeZone = converter.getOptions().getTimeZone();
-        
-        // Use current time for timezone offset calculation (consistent with other conversions)
-        ZoneOffset zoneOffset = ZoneOffset.ofTotalSeconds(timeZone.getOffset(System.currentTimeMillis()) / 1000);
-        
-        // Add duration to epoch to get the target instant
-        Instant epoch = Instant.EPOCH;
-        Instant timeAfterDuration = epoch.plus(duration);
-        
-        return timeAfterDuration.atOffset(zoneOffset);
+        return toZonedDateTime(from, converter).toOffsetDateTime();
     }
 
     static boolean toBoolean(Object from, Converter converter) {

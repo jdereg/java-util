@@ -3,6 +3,7 @@ package com.cedarsoftware.util.convert;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.TimeZone;
 
@@ -83,8 +84,8 @@ public class ConverterDurationToOffsetDateTimeTest {
     void testDurationToOffsetDateTimeCustomTimeZone() {
         ConverterOptions options = new DefaultConverterOptions() {
             @Override
-            public TimeZone getTimeZone() {
-                return TimeZone.getTimeZone("UTC");
+            public ZoneId getZoneId() {
+                return ZoneId.of("UTC");
             }
         };
         Converter converter = new Converter(options);

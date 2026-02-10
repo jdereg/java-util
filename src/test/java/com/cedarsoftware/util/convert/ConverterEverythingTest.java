@@ -9341,11 +9341,11 @@ class ConverterEverythingTest {
         
         // Removed Duration → int/Integer (not logical)
         
-        // Duration → java.sql.Date (day boundary aligned)
+        // Duration → java.sql.Date (day boundary in converter's zone = Tokyo)
         TEST_DB.put(pair(Duration.class, java.sql.Date.class), new Object[][]{
                 {Duration.ofSeconds(0), java.sql.Date.valueOf("1970-01-01")},
                 {Duration.ofSeconds(1), java.sql.Date.valueOf("1970-01-01")},
-                {Duration.ofSeconds(-1), java.sql.Date.valueOf("1969-12-31")},
+                {Duration.ofSeconds(-1), java.sql.Date.valueOf("1970-01-01")},   // -1s from epoch = 1969-12-31T23:59:59Z = 1970-01-01T08:59:59+09:00 = Jan 1 in Tokyo
                 {Duration.ofDays(1), java.sql.Date.valueOf("1970-01-02")},
                 {Duration.ofDays(-1), java.sql.Date.valueOf("1969-12-31")},
         });

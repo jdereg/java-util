@@ -301,7 +301,7 @@ final class UniversalConversions {
     // All Array Bridge Methods
     // ========================================
 
-    static byte[] byteArrayToByteArray(Object from, Converter converter) {
+    static Object byteArrayToByteArray(Object from, Converter converter) {
         if (from instanceof Byte[]) {
             Byte[] array = (Byte[]) from;
             byte[] result = new byte[array.length];
@@ -315,11 +315,11 @@ final class UniversalConversions {
             for (int i = 0; i < array.length; i++) {
                 result[i] = array[i];
             }
-            return (byte[]) (Object) result; // Type erasure workaround
+            return result;
         }
     }
 
-    static boolean[] booleanArrayToBooleanArray(Object from, Converter converter) {
+    static Object booleanArrayToBooleanArray(Object from, Converter converter) {
         if (from instanceof Boolean[]) {
             Boolean[] array = (Boolean[]) from;
             boolean[] result = new boolean[array.length];
@@ -333,11 +333,11 @@ final class UniversalConversions {
             for (int i = 0; i < array.length; i++) {
                 result[i] = array[i];
             }
-            return (boolean[]) (Object) result; // Type erasure workaround
+            return result;
         }
     }
 
-    static short[] shortArrayToShortArray(Object from, Converter converter) {
+    static Object shortArrayToShortArray(Object from, Converter converter) {
         if (from instanceof Short[]) {
             Short[] array = (Short[]) from;
             short[] result = new short[array.length];
@@ -351,11 +351,11 @@ final class UniversalConversions {
             for (int i = 0; i < array.length; i++) {
                 result[i] = array[i];
             }
-            return (short[]) (Object) result; // Type erasure workaround
+            return result;
         }
     }
 
-    static int[] integerArrayToIntArray(Object from, Converter converter) {
+    static Object integerArrayToIntArray(Object from, Converter converter) {
         if (from instanceof Integer[]) {
             Integer[] array = (Integer[]) from;
             int[] result = new int[array.length];
@@ -369,11 +369,11 @@ final class UniversalConversions {
             for (int i = 0; i < array.length; i++) {
                 result[i] = array[i];
             }
-            return (int[]) (Object) result; // Type erasure workaround
+            return result;
         }
     }
 
-    static long[] longArrayToLongArray(Object from, Converter converter) {
+    static Object longArrayToLongArray(Object from, Converter converter) {
         if (from instanceof Long[]) {
             Long[] array = (Long[]) from;
             long[] result = new long[array.length];
@@ -387,11 +387,11 @@ final class UniversalConversions {
             for (int i = 0; i < array.length; i++) {
                 result[i] = array[i];
             }
-            return (long[]) (Object) result; // Type erasure workaround
+            return result;
         }
     }
 
-    static float[] floatArrayToFloatArray(Object from, Converter converter) {
+    static Object floatArrayToFloatArray(Object from, Converter converter) {
         if (from instanceof Float[]) {
             Float[] array = (Float[]) from;
             float[] result = new float[array.length];
@@ -405,11 +405,11 @@ final class UniversalConversions {
             for (int i = 0; i < array.length; i++) {
                 result[i] = array[i];
             }
-            return (float[]) (Object) result; // Type erasure workaround
+            return result;
         }
     }
 
-    static double[] doubleArrayToDoubleArray(Object from, Converter converter) {
+    static Object doubleArrayToDoubleArray(Object from, Converter converter) {
         if (from instanceof Double[]) {
             Double[] array = (Double[]) from;
             double[] result = new double[array.length];
@@ -423,7 +423,7 @@ final class UniversalConversions {
             for (int i = 0; i < array.length; i++) {
                 result[i] = array[i];
             }
-            return (double[]) (Object) result; // Type erasure workaround
+            return result;
         }
     }
 
@@ -505,12 +505,7 @@ final class UniversalConversions {
      * Creates AtomicIntegerArray from int array for reverse bridge access.
      */
     static AtomicIntegerArray intArrayToAtomicIntegerArray(Object from, Converter converter) {
-        int[] array = (int[]) from;
-        AtomicIntegerArray result = new AtomicIntegerArray(array.length);
-        for (int i = 0; i < array.length; i++) {
-            result.set(i, array[i]);
-        }
-        return result;
+        return new AtomicIntegerArray((int[]) from);
     }
 
     /**
@@ -532,12 +527,7 @@ final class UniversalConversions {
      * Creates AtomicLongArray from long array for reverse bridge access.
      */
     static AtomicLongArray longArrayToAtomicLongArray(Object from, Converter converter) {
-        long[] array = (long[]) from;
-        AtomicLongArray result = new AtomicLongArray(array.length);
-        for (int i = 0; i < array.length; i++) {
-            result.set(i, array[i]);
-        }
-        return result;
+        return new AtomicLongArray((long[]) from);
     }
 
     /**
@@ -606,9 +596,7 @@ final class UniversalConversions {
     static int[] intBufferToIntArray(Object from, Converter converter) {
         IntBuffer buffer = (IntBuffer) from;
         int[] result = new int[buffer.remaining()];
-        buffer.mark();
-        buffer.get(result);
-        buffer.reset();
+        buffer.duplicate().get(result);
         return result;
     }
 
@@ -628,9 +616,7 @@ final class UniversalConversions {
     static long[] longBufferToLongArray(Object from, Converter converter) {
         LongBuffer buffer = (LongBuffer) from;
         long[] result = new long[buffer.remaining()];
-        buffer.mark();
-        buffer.get(result);
-        buffer.reset();
+        buffer.duplicate().get(result);
         return result;
     }
 
@@ -650,9 +636,7 @@ final class UniversalConversions {
     static float[] floatBufferToFloatArray(Object from, Converter converter) {
         FloatBuffer buffer = (FloatBuffer) from;
         float[] result = new float[buffer.remaining()];
-        buffer.mark();
-        buffer.get(result);
-        buffer.reset();
+        buffer.duplicate().get(result);
         return result;
     }
 
@@ -672,9 +656,7 @@ final class UniversalConversions {
     static double[] doubleBufferToDoubleArray(Object from, Converter converter) {
         DoubleBuffer buffer = (DoubleBuffer) from;
         double[] result = new double[buffer.remaining()];
-        buffer.mark();
-        buffer.get(result);
-        buffer.reset();
+        buffer.duplicate().get(result);
         return result;
     }
 
@@ -694,9 +676,7 @@ final class UniversalConversions {
     static short[] shortBufferToShortArray(Object from, Converter converter) {
         ShortBuffer buffer = (ShortBuffer) from;
         short[] result = new short[buffer.remaining()];
-        buffer.mark();
-        buffer.get(result);
-        buffer.reset();
+        buffer.duplicate().get(result);
         return result;
     }
 

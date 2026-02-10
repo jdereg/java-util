@@ -96,58 +96,6 @@ final class UniversalConversions {
     }
 
     /**
-     * AtomicBoolean → Map conversion.
-     * Creates a Map with the boolean value (not the AtomicBoolean wrapper).
-     */
-    static Map<String, Object> atomicBooleanToMap(Object from, Converter converter) {
-        Map<String, Object> target = new LinkedHashMap<>();
-        target.put(MapConversions.V, ((AtomicBoolean) from).get());
-        return target;
-    }
-
-    /**
-     * AtomicInteger → Map conversion.
-     * Creates a Map with the int value (not the AtomicInteger wrapper).
-     */
-    static Map<String, Object> atomicIntegerToMap(Object from, Converter converter) {
-        Map<String, Object> target = new LinkedHashMap<>();
-        target.put(MapConversions.V, ((AtomicInteger) from).get());
-        return target;
-    }
-
-    /**
-     * AtomicLong → Map conversion.
-     * Creates a Map with the long value (not the AtomicLong wrapper).
-     */
-    static Map<String, Object> atomicLongToMap(Object from, Converter converter) {
-        Map<String, Object> target = new LinkedHashMap<>();
-        target.put(MapConversions.V, ((AtomicLong) from).get());
-        return target;
-    }
-
-    // ========================================
-    // String Builder → String Bridge Methods
-    // ========================================
-
-    /**
-     * Universal bridge: StringBuilder → String.
-     * Extracts the String value from StringBuilder for further conversion.
-     */
-    static String stringBuilderToString(Object from, Converter converter) {
-        StringBuilder sb = (StringBuilder) from;
-        return sb.toString();
-    }
-
-    /**
-     * Universal bridge: StringBuffer → String.
-     * Extracts the String value from StringBuffer for further conversion.
-     */
-    static String stringBufferToString(Object from, Converter converter) {
-        StringBuffer sb = (StringBuffer) from;
-        return sb.toString();
-    }
-
-    /**
      * Universal bridge: CharSequence → String.
      * Extracts the String value from CharSequence for further conversion.
      */
@@ -246,36 +194,6 @@ final class UniversalConversions {
     }
 
     // ========================================
-    // Array Bridge Methods (Wrapper ↔ Primitive)
-    // ========================================
-
-    /**
-     * Universal bridge: Character[] → char[].
-     * Converts wrapper array to primitive array for bridge access to char[] conversions.
-     */
-    static char[] characterArrayToCharArray(Object from, Converter converter) {
-        Character[] chars = (Character[]) from;
-        char[] result = new char[chars.length];
-        for (int i = 0; i < chars.length; i++) {
-            result[i] = chars[i] != null ? chars[i] : '\u0000'; // Handle null elements
-        }
-        return result;
-    }
-
-    /**
-     * Universal reverse bridge: char[] → Character[].
-     * Converts primitive array to wrapper array for reverse bridge access.
-     */
-    static Character[] charArrayToCharacterArray(Object from, Converter converter) {
-        char[] chars = (char[]) from;
-        Character[] result = new Character[chars.length];
-        for (int i = 0; i < chars.length; i++) {
-            result[i] = chars[i];
-        }
-        return result;
-    }
-
-    // ========================================
     // Primitive ↔ Wrapper Bridge Methods
     // ========================================
 
@@ -295,191 +213,6 @@ final class UniversalConversions {
     static Object wrapperToPrimitive(Object from, Converter converter) {
         // Auto-unboxing will happen when the result is cast to the primitive type
         return from;
-    }
-
-    // ========================================
-    // All Array Bridge Methods
-    // ========================================
-
-    static Object byteArrayToByteArray(Object from, Converter converter) {
-        if (from instanceof Byte[]) {
-            Byte[] array = (Byte[]) from;
-            byte[] result = new byte[array.length];
-            for (int i = 0; i < array.length; i++) {
-                result[i] = array[i] != null ? array[i] : 0;
-            }
-            return result;
-        } else {
-            byte[] array = (byte[]) from;
-            Byte[] result = new Byte[array.length];
-            for (int i = 0; i < array.length; i++) {
-                result[i] = array[i];
-            }
-            return result;
-        }
-    }
-
-    static Object booleanArrayToBooleanArray(Object from, Converter converter) {
-        if (from instanceof Boolean[]) {
-            Boolean[] array = (Boolean[]) from;
-            boolean[] result = new boolean[array.length];
-            for (int i = 0; i < array.length; i++) {
-                result[i] = array[i] != null ? array[i] : false;
-            }
-            return result;
-        } else {
-            boolean[] array = (boolean[]) from;
-            Boolean[] result = new Boolean[array.length];
-            for (int i = 0; i < array.length; i++) {
-                result[i] = array[i];
-            }
-            return result;
-        }
-    }
-
-    static Object shortArrayToShortArray(Object from, Converter converter) {
-        if (from instanceof Short[]) {
-            Short[] array = (Short[]) from;
-            short[] result = new short[array.length];
-            for (int i = 0; i < array.length; i++) {
-                result[i] = array[i] != null ? array[i] : 0;
-            }
-            return result;
-        } else {
-            short[] array = (short[]) from;
-            Short[] result = new Short[array.length];
-            for (int i = 0; i < array.length; i++) {
-                result[i] = array[i];
-            }
-            return result;
-        }
-    }
-
-    static Object integerArrayToIntArray(Object from, Converter converter) {
-        if (from instanceof Integer[]) {
-            Integer[] array = (Integer[]) from;
-            int[] result = new int[array.length];
-            for (int i = 0; i < array.length; i++) {
-                result[i] = array[i] != null ? array[i] : 0;
-            }
-            return result;
-        } else {
-            int[] array = (int[]) from;
-            Integer[] result = new Integer[array.length];
-            for (int i = 0; i < array.length; i++) {
-                result[i] = array[i];
-            }
-            return result;
-        }
-    }
-
-    static Object longArrayToLongArray(Object from, Converter converter) {
-        if (from instanceof Long[]) {
-            Long[] array = (Long[]) from;
-            long[] result = new long[array.length];
-            for (int i = 0; i < array.length; i++) {
-                result[i] = array[i] != null ? array[i] : 0L;
-            }
-            return result;
-        } else {
-            long[] array = (long[]) from;
-            Long[] result = new Long[array.length];
-            for (int i = 0; i < array.length; i++) {
-                result[i] = array[i];
-            }
-            return result;
-        }
-    }
-
-    static Object floatArrayToFloatArray(Object from, Converter converter) {
-        if (from instanceof Float[]) {
-            Float[] array = (Float[]) from;
-            float[] result = new float[array.length];
-            for (int i = 0; i < array.length; i++) {
-                result[i] = array[i] != null ? array[i] : 0.0f;
-            }
-            return result;
-        } else {
-            float[] array = (float[]) from;
-            Float[] result = new Float[array.length];
-            for (int i = 0; i < array.length; i++) {
-                result[i] = array[i];
-            }
-            return result;
-        }
-    }
-
-    static Object doubleArrayToDoubleArray(Object from, Converter converter) {
-        if (from instanceof Double[]) {
-            Double[] array = (Double[]) from;
-            double[] result = new double[array.length];
-            for (int i = 0; i < array.length; i++) {
-                result[i] = array[i] != null ? array[i] : 0.0;
-            }
-            return result;
-        } else {
-            double[] array = (double[]) from;
-            Double[] result = new Double[array.length];
-            for (int i = 0; i < array.length; i++) {
-                result[i] = array[i];
-            }
-            return result;
-        }
-    }
-
-    // Reverse array conversions
-    static Integer[] intArrayToIntegerArray(Object from, Converter converter) {
-        int[] array = (int[]) from;
-        Integer[] result = new Integer[array.length];
-        for (int i = 0; i < array.length; i++) {
-            result[i] = array[i];
-        }
-        return result;
-    }
-
-    static Short[] shortArrayToShortArrayWrapper(Object from, Converter converter) {
-        short[] array = (short[]) from;
-        Short[] result = new Short[array.length];
-        for (int i = 0; i < array.length; i++) {
-            result[i] = array[i];
-        }
-        return result;
-    }
-
-    static Boolean[] booleanArrayToBooleanArrayWrapper(Object from, Converter converter) {
-        boolean[] array = (boolean[]) from;
-        Boolean[] result = new Boolean[array.length];
-        for (int i = 0; i < array.length; i++) {
-            result[i] = array[i];
-        }
-        return result;
-    }
-
-    static Long[] longArrayToLongArrayWrapper(Object from, Converter converter) {
-        long[] array = (long[]) from;
-        Long[] result = new Long[array.length];
-        for (int i = 0; i < array.length; i++) {
-            result[i] = array[i];
-        }
-        return result;
-    }
-
-    static Float[] floatArrayToFloatArrayWrapper(Object from, Converter converter) {
-        float[] array = (float[]) from;
-        Float[] result = new Float[array.length];
-        for (int i = 0; i < array.length; i++) {
-            result[i] = array[i];
-        }
-        return result;
-    }
-
-    static Double[] doubleArrayToDoubleArrayWrapper(Object from, Converter converter) {
-        double[] array = (double[]) from;
-        Double[] result = new Double[array.length];
-        for (int i = 0; i < array.length; i++) {
-            result[i] = array[i];
-        }
-        return result;
     }
 
     // ========================================
@@ -883,25 +616,6 @@ final class UniversalConversions {
     }
 
     /**
-     * BitSet → AtomicInteger conversion.
-     * Returns the lower 32 bits of the BitSet as an AtomicInteger.
-     */
-    static AtomicInteger bitSetToAtomicInteger(Object from, Converter converter) {
-        BitSet bitSet = (BitSet) from;
-        long[] longs = bitSet.toLongArray();
-        return new AtomicInteger(longs.length == 0 ? 0 : (int) longs[0]);
-    }
-
-    /**
-     * AtomicInteger → BitSet conversion.
-     * Creates a BitSet from the AtomicInteger value interpreted as a bitmask.
-     */
-    static BitSet atomicIntegerToBitSet(Object from, Converter converter) {
-        int value = ((AtomicInteger) from).get();
-        return BitSet.valueOf(new long[]{value & 0xFFFFFFFFL});
-    }
-
-    /**
      * BitSet → BigDecimal conversion.
      * Converts the BitSet to a BigInteger first, then to BigDecimal.
      * Handles BitSets of any size.
@@ -918,29 +632,6 @@ final class UniversalConversions {
     static BitSet bigDecimalToBitSet(Object from, Converter converter) {
         BigDecimal value = (BigDecimal) from;
         return bigIntegerToBitSet(value.toBigInteger(), converter);
-    }
-
-    /**
-     * BitSet → AtomicBoolean conversion.
-     * Returns AtomicBoolean(true) if any bit is set, AtomicBoolean(false) if empty.
-     */
-    static AtomicBoolean bitSetToAtomicBoolean(Object from, Converter converter) {
-        BitSet bitSet = (BitSet) from;
-        return new AtomicBoolean(!bitSet.isEmpty());
-    }
-
-    /**
-     * AtomicBoolean → BitSet conversion.
-     * AtomicBoolean(true) = BitSet with bit 0 set.
-     * AtomicBoolean(false) = empty BitSet.
-     */
-    static BitSet atomicBooleanToBitSet(Object from, Converter converter) {
-        AtomicBoolean value = (AtomicBoolean) from;
-        BitSet bitSet = new BitSet();
-        if (value.get()) {
-            bitSet.set(0);
-        }
-        return bitSet;
     }
 
     /**

@@ -2,9 +2,6 @@ package com.cedarsoftware.util.convert;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * @author Kenny Partlow (kpartlow@gmail.com)
@@ -59,18 +56,6 @@ final class CharacterConversions {
 
     static double toDouble(Object from, Converter converter) {
         return (char) from;
-    }
-
-    static AtomicInteger toAtomicInteger(Object from, Converter converter) {
-        return new AtomicInteger((char) from);
-    }
-
-    static AtomicLong toAtomicLong(Object from, Converter converter) {
-        return new AtomicLong((char) from);
-    }
-
-    static AtomicBoolean toAtomicBoolean(Object from, Converter converter) {
-        return new AtomicBoolean(toBoolean(from, converter));
     }
 
     static BigInteger toBigInteger(Object from, Converter converter) {

@@ -18,7 +18,6 @@ import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.TimeZone;
-import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * @author John DeRegnaucourt (jdereg@gmail.com)
@@ -45,14 +44,6 @@ public class SqlDateConversions {
                 .atStartOfDay(converter.getOptions().getZoneId())
                 .toInstant()
                 .toEpochMilli();
-    }
-
-    static AtomicLong toAtomicLong(Object from, Converter converter) {
-        java.sql.Date sqlDate = (java.sql.Date) from;
-        return new AtomicLong(sqlDate.toLocalDate()
-                .atStartOfDay(converter.getOptions().getZoneId())
-                .toInstant()
-                .toEpochMilli());
     }
 
     static double toDouble(Object from, Converter converter) {

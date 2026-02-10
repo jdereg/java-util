@@ -1,7 +1,5 @@
 package com.cedarsoftware.util.convert;
 
-import java.math.BigDecimal;
-import java.math.BigInteger;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -74,50 +72,6 @@ final class DimensionConversions {
     }
 
     /**
-     * Convert Dimension to Integer (area: width * height).
-     * @param from Dimension instance
-     * @param converter Converter instance
-     * @return Area as integer value
-     */
-    static Integer toInteger(Object from, Converter converter) {
-        Dimension dimension = (Dimension) from;
-        return Math.multiplyExact(dimension.getWidth(), dimension.getHeight());
-    }
-
-    /**
-     * Convert Dimension to Long (area: width * height as long).
-     * @param from Dimension instance
-     * @param converter Converter instance
-     * @return Area as long value
-     */
-    static Long toLong(Object from, Converter converter) {
-        Dimension dimension = (Dimension) from;
-        return (long) dimension.getWidth() * dimension.getHeight();
-    }
-
-    /**
-     * Convert Dimension to BigInteger (area).
-     * @param from Dimension instance
-     * @param converter Converter instance
-     * @return BigInteger representation of area
-     */
-    static BigInteger toBigInteger(Object from, Converter converter) {
-        Dimension dimension = (Dimension) from;
-        return BigInteger.valueOf((long) dimension.getWidth() * dimension.getHeight());
-    }
-
-    /**
-     * Unsupported conversion from Dimension to BigDecimal.
-     * @param from Dimension instance
-     * @param converter Converter instance
-     * @return Never returns - throws exception
-     * @throws IllegalArgumentException Always thrown to indicate unsupported conversion
-     */
-    static BigDecimal toBigDecimal(Object from, Converter converter) {
-        throw new IllegalArgumentException("Unsupported conversion from Dimension to BigDecimal - no meaningful conversion exists.");
-    }
-
-    /**
      * Convert Dimension to Point (width becomes x, height becomes y).
      * @param from Dimension instance
      * @param converter Converter instance
@@ -129,7 +83,7 @@ final class DimensionConversions {
     }
 
     /**
-     * Convert Dimension to Boolean. (0,0) → false, anything else → true.
+     * Convert Dimension to Boolean. (0,0) -> false, anything else -> true.
      * @param from Dimension instance
      * @param converter Converter instance
      * @return Boolean value
@@ -138,28 +92,6 @@ final class DimensionConversions {
         Dimension dimension = (Dimension) from;
         return dimension.getWidth() != 0 || dimension.getHeight() != 0;
     }
-
-    /**
-     * Convert Dimension to AtomicBoolean. (0,0) → false, anything else → true.
-     * @param from Dimension instance
-     * @param converter Converter instance
-     * @return AtomicBoolean value
-     */
-    static java.util.concurrent.atomic.AtomicBoolean toAtomicBoolean(Object from, Converter converter) {
-        return new java.util.concurrent.atomic.AtomicBoolean(toBoolean(from, converter));
-    }
-
-    /**
-     * Unsupported conversion from Dimension to AtomicLong.
-     * @param from Dimension instance
-     * @param converter Converter instance
-     * @return Never returns - throws exception
-     * @throws IllegalArgumentException Always thrown to indicate unsupported conversion
-     */
-    static java.util.concurrent.atomic.AtomicLong toAtomicLong(Object from, Converter converter) {
-        throw new IllegalArgumentException("Unsupported conversion from Dimension to AtomicLong - no meaningful conversion exists.");
-    }
-
 
     /**
      * Convert Dimension to Rectangle (size becomes dimensions, position is 0,0).

@@ -18,7 +18,6 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * @author Kenny Partlow (kpartlow@gmail.com)
@@ -75,10 +74,6 @@ final class LocalDateTimeConversions {
 
     static LocalTime toLocalTime(Object from, Converter converter) {
         return toZonedDateTime(from, converter).toLocalTime();
-    }
-
-    static AtomicLong toAtomicLong(Object from, Converter converter) {
-        return new AtomicLong(toLong(from, converter));
     }
 
     static Timestamp toTimestamp(Object from, Converter converter) {

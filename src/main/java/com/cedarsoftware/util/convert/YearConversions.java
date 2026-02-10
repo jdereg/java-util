@@ -6,8 +6,6 @@ import java.time.Year;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 
 import static com.cedarsoftware.util.convert.MapConversions.YEAR;
 
@@ -41,14 +39,6 @@ final class YearConversions {
 
     static int toInt(Object from, Converter converter) {
         return ((Year) from).getValue();
-    }
-
-    static AtomicInteger toAtomicInteger(Object from, Converter converter) {
-        return new AtomicInteger(toInt(from, converter));
-    }
-
-    static AtomicLong toAtomicLong(Object from, Converter converter) {
-        return new AtomicLong(toInt(from, converter));
     }
 
     static double toDouble(Object from, Converter converter) {

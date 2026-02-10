@@ -17,7 +17,6 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicLong;
 
 import static com.cedarsoftware.util.convert.MapConversions.ZONED_DATE_TIME;
 
@@ -77,10 +76,6 @@ final class ZonedDateTimeConversions {
     static OffsetDateTime toOffsetDateTime(Object from, Converter converter) {
         ZonedDateTime zdt = (ZonedDateTime) from;
         return zdt.toOffsetDateTime();
-    }
-
-    static AtomicLong toAtomicLong(Object from, Converter converter) {
-       return new AtomicLong(toLong(from, converter));
     }
 
     static Timestamp toTimestamp(Object from, Converter converter) {

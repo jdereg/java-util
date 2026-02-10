@@ -14,8 +14,6 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicLong;
 
 import static com.cedarsoftware.util.convert.MapConversions.DURATION;
 
@@ -70,10 +68,6 @@ final class DurationConversions {
         }
     }
 
-    static AtomicLong toAtomicLong(Object from, Converter converter) {
-        return new AtomicLong(toLong(from, converter));
-    }
-    
     static BigInteger toBigInteger(Object from, Converter converter) {
         Duration duration = (Duration) from;
         BigInteger epochSeconds = BigInteger.valueOf(duration.getSeconds());
@@ -115,10 +109,6 @@ final class DurationConversions {
 
     static Boolean toBooleanWrapper(Object from, Converter converter) {
         return toBoolean(from, converter);
-    }
-
-    static AtomicBoolean toAtomicBoolean(Object from, Converter converter) {
-        return new AtomicBoolean(toBoolean(from, converter));
     }
 
     static Calendar toCalendar(Object from, Converter converter) {

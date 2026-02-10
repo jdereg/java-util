@@ -19,7 +19,6 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * @author Kenny Partlow (kpartlow@gmail.com)
@@ -121,10 +120,6 @@ final class DateConversions {
     static BigInteger toBigInteger(Object from, Converter converter) {
         Date date = (Date) from;
         return BigInteger.valueOf(date.getTime());
-    }
-
-    static AtomicLong toAtomicLong(Object from, Converter converter) {
-        return new AtomicLong(toLong(from, converter));
     }
 
     static Year toYear(Object from, Converter converter) {

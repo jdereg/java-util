@@ -143,22 +143,6 @@ class BooleanConversionsTests {
         assertThat(actual.get()).isEqualTo(expected.get());
     }
 
-    @ParameterizedTest
-    @MethodSource("toIntegerParams")
-    void testToAtomicInteger(boolean value, int integer) {
-        AtomicInteger expected = new AtomicInteger(integer);;
-        AtomicInteger actual = BooleanConversions.toAtomicInteger(value, null);
-        assertThat(actual.get()).isEqualTo(expected.get());
-    }
-
-    @ParameterizedTest
-    @MethodSource("toLongParams")
-    void testToAtomicLong(boolean value, long expectedLong) {
-        AtomicLong expected = new AtomicLong(expectedLong);
-        AtomicLong actual = BooleanConversions.toAtomicLong(value, null);
-        assertThat(actual.get()).isEqualTo(expected.get());
-    }
-    
     private static Stream<Arguments> toBigDecimalParams() {
         return Stream.of(
                 Arguments.of(true, BigDecimal.ONE),

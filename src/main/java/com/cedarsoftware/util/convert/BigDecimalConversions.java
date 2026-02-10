@@ -8,17 +8,12 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.time.MonthDay;
 import java.time.OffsetDateTime;
 import java.time.OffsetTime;
 import java.time.ZonedDateTime;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.UUID;
-
-import com.cedarsoftware.util.geom.Dimension;
-import com.cedarsoftware.util.geom.Insets;
-import com.cedarsoftware.util.geom.Rectangle;
 
 /**
  * @author John DeRegnaucourt (jdereg@gmail.com)
@@ -134,49 +129,5 @@ final class BigDecimalConversions {
 
     static BigDecimal secondsAndNanosToDouble(long seconds, long nanos) {
         return BigDecimal.valueOf(seconds).add(BigDecimal.valueOf(nanos, 9));
-    }
-
-    /**
-     * Unsupported conversion from BigDecimal to MonthDay.
-     * @param from BigDecimal instance
-     * @param converter Converter instance
-     * @return Never returns - throws exception
-     * @throws IllegalArgumentException Always thrown to indicate unsupported conversion
-     */
-    static MonthDay toMonthDay(Object from, Converter converter) {
-        throw new IllegalArgumentException("Unsupported conversion from BigDecimal to MonthDay - no meaningful conversion exists.");
-    }
-
-    /**
-     * Unsupported conversion from BigDecimal to Insets.
-     * @param from BigDecimal instance
-     * @param converter Converter instance
-     * @return Never returns - throws exception
-     * @throws IllegalArgumentException Always thrown to indicate unsupported conversion
-     */
-    static Insets toInsets(Object from, Converter converter) {
-        throw new IllegalArgumentException("Unsupported conversion from BigDecimal to Insets - no meaningful conversion exists.");
-    }
-
-    /**
-     * Unsupported conversion from BigDecimal to Rectangle.
-     * @param from BigDecimal instance
-     * @param converter Converter instance
-     * @return Never returns - throws exception
-     * @throws IllegalArgumentException Always thrown to indicate unsupported conversion
-     */
-    static Rectangle toRectangle(Object from, Converter converter) {
-        throw new IllegalArgumentException("Unsupported conversion from BigDecimal to Rectangle - no meaningful conversion exists.");
-    }
-
-    /**
-     * Unsupported conversion from BigDecimal to Dimension.
-     * @param from BigDecimal instance
-     * @param converter Converter instance
-     * @return Never returns - throws exception
-     * @throws IllegalArgumentException Always thrown to indicate unsupported conversion
-     */
-    static Dimension toDimension(Object from, Converter converter) {
-        throw new IllegalArgumentException("Unsupported conversion from BigDecimal to Dimension - no meaningful conversion exists.");
     }
 }

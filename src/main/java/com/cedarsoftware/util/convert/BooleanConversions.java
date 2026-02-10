@@ -4,8 +4,6 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * @author John DeRegnaucourt (jdereg@gmail.com)
@@ -41,16 +39,6 @@ final class BooleanConversions {
     static Integer toInt(Object from, Converter converter) {
         Boolean b = (Boolean) from;
         return b ? CommonValues.INTEGER_ONE : CommonValues.INTEGER_ZERO;
-    }
-
-    static AtomicInteger toAtomicInteger(Object from, Converter converter) {
-        Boolean b = (Boolean) from;
-        return new AtomicInteger(b ? 1 : 0);
-    }
-
-    static AtomicLong toAtomicLong(Object from, Converter converter) {
-        Boolean b = (Boolean) from;
-        return new AtomicLong(b ? 1 : 0);
     }
 
     static AtomicBoolean toAtomicBoolean(Object from, Converter converter) {

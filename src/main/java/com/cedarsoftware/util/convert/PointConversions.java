@@ -1,14 +1,9 @@
 package com.cedarsoftware.util.convert;
 
-import java.math.BigDecimal;
-import java.math.BigInteger;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-import com.cedarsoftware.util.geom.Dimension;
-import com.cedarsoftware.util.geom.Insets;
 import com.cedarsoftware.util.geom.Point;
-import com.cedarsoftware.util.geom.Rectangle;
 
 /**
  * Conversions to and from com.cedarsoftware.util.Point.
@@ -74,62 +69,7 @@ final class PointConversions {
     }
 
     /**
-     * Unsupported conversion from Point to Integer.
-     * @param from Point instance
-     * @param converter Converter instance
-     * @return Never returns - throws exception
-     * @throws IllegalArgumentException Always thrown - a 2D Point cannot be meaningfully represented as a single Integer without data loss
-     */
-    static Integer toInteger(Object from, Converter converter) {
-        throw new IllegalArgumentException("Unsupported conversion from Point to Integer - no meaningful conversion exists without discarding the Y coordinate.");
-    }
-
-    /**
-     * Unsupported conversion from Point to Long.
-     * @param from Point instance
-     * @param converter Converter instance
-     * @return Never returns - throws exception
-     * @throws IllegalArgumentException Always thrown - a 2D Point cannot be meaningfully represented as a single Long without data loss
-     */
-    static Long toLong(Object from, Converter converter) {
-        throw new IllegalArgumentException("Unsupported conversion from Point to Long - no meaningful conversion exists without discarding the Y coordinate.");
-    }
-
-    /**
-     * Unsupported conversion from Point to BigInteger.
-     * @param from Point instance
-     * @param converter Converter instance
-     * @return Never returns - throws exception
-     * @throws IllegalArgumentException Always thrown - a 2D Point cannot be meaningfully represented as a single BigInteger without data loss
-     */
-    static BigInteger toBigInteger(Object from, Converter converter) {
-        throw new IllegalArgumentException("Unsupported conversion from Point to BigInteger - no meaningful conversion exists without discarding the Y coordinate.");
-    }
-
-    /**
-     * Unsupported conversion from Point to BigDecimal.
-     * @param from Point instance
-     * @param converter Converter instance
-     * @return Never returns - throws exception
-     * @throws IllegalArgumentException Always thrown to indicate unsupported conversion
-     */
-    static BigDecimal toBigDecimal(Object from, Converter converter) {
-        throw new IllegalArgumentException("Unsupported conversion from Point to BigDecimal - no meaningful conversion exists.");
-    }
-
-    /**
-     * Convert Point to Dimension (x becomes width, y becomes height).
-     * @param from Point instance
-     * @param converter Converter instance
-     * @return Dimension with width=x and height=y
-     */
-    static Dimension toDimension(Object from, Converter converter) {
-        Point point = (Point) from;
-        return new Dimension(point.getX(), point.getY());
-    }
-
-    /**
-     * Convert Point to Boolean. (0,0) → false, anything else → true.
+     * Convert Point to Boolean. (0,0) -> false, anything else -> true.
      * @param from Point instance
      * @param converter Converter instance
      * @return Boolean value
@@ -138,37 +78,4 @@ final class PointConversions {
         Point point = (Point) from;
         return point.getX() != 0 || point.getY() != 0;
     }
-
-    /**
-     * Convert Point to AtomicBoolean. (0,0) → false, anything else → true.
-     * @param from Point instance
-     * @param converter Converter instance
-     * @return AtomicBoolean value
-     */
-    static java.util.concurrent.atomic.AtomicBoolean toAtomicBoolean(Object from, Converter converter) {
-        return new java.util.concurrent.atomic.AtomicBoolean(toBoolean(from, converter));
-    }
-
-    /**
-     * Convert Point to Rectangle (x,y become position, size is 0,0).
-     * @param from Point instance
-     * @param converter Converter instance
-     * @return Rectangle with x=x, y=y, width=0, height=0
-     */
-    static Rectangle toRectangle(Object from, Converter converter) {
-        Point point = (Point) from;
-        return new Rectangle(point.getX(), point.getY(), 0, 0);
-    }
-
-    /**
-     * Convert Point to Insets (x becomes top, y becomes left, bottom and right are 0).
-     * @param from Point instance
-     * @param converter Converter instance
-     * @return Insets with top=x, left=y, bottom=0, right=0
-     */
-    static Insets toInsets(Object from, Converter converter) {
-        Point point = (Point) from;
-        return new Insets(point.getX(), point.getY(), 0, 0);
-    }
-
 }

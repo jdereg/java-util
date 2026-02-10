@@ -8,7 +8,6 @@ import java.time.format.DateTimeFormatter;
 import java.util.Calendar;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * @author John DeRegnaucourt (jdereg@gmail.com)
@@ -78,10 +77,6 @@ final class LocalTimeConversions {
         return new BigDecimal(lt.toNanoOfDay()).divide(BILLION, 9, RoundingMode.HALF_UP);
     }
 
-
-    static AtomicLong toAtomicLong(Object from, Converter converter) {
-        return new AtomicLong(toLong(from, converter));
-    }
 
     static String toString(Object from, Converter converter) {
         LocalTime localTime = (LocalTime) from;

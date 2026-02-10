@@ -44,43 +44,7 @@ class UniversalConversionsTest {
         return new Converter(options);
     }
 
-    // ---- Bug #1: else branches cast Wrapper[] to primitive[] — ClassCastException ----
-
-    @Test
-    void byteArrayToByteArray_primitiveInput_shouldReturnWrapperNotCrash() {
-        Converter conv = converter();
-        byte[] input = {1, 2, 3};
-        // The else branch tried (byte[]) (Object) Byte[], always ClassCastException
-        Object result = UniversalConversions.byteArrayToByteArray(input, conv);
-        // Should return Byte[] since input was byte[]
-        assertArrayEquals(new Byte[]{1, 2, 3}, (Byte[]) result);
-    }
-
-    @Test
-    void integerArrayToIntArray_primitiveInput_shouldReturnWrapperNotCrash() {
-        Converter conv = converter();
-        int[] input = {10, 20, 30};
-        Object result = UniversalConversions.integerArrayToIntArray(input, conv);
-        assertArrayEquals(new Integer[]{10, 20, 30}, (Integer[]) result);
-    }
-
-    @Test
-    void longArrayToLongArray_primitiveInput_shouldReturnWrapperNotCrash() {
-        Converter conv = converter();
-        long[] input = {100L, 200L};
-        Object result = UniversalConversions.longArrayToLongArray(input, conv);
-        assertArrayEquals(new Long[]{100L, 200L}, (Long[]) result);
-    }
-
-    @Test
-    void doubleArrayToDoubleArray_primitiveInput_shouldReturnWrapperNotCrash() {
-        Converter conv = converter();
-        double[] input = {1.5, 2.5};
-        Object result = UniversalConversions.doubleArrayToDoubleArray(input, conv);
-        assertArrayEquals(new Double[]{1.5, 2.5}, (Double[]) result);
-    }
-
-    // ---- Bug #2: NIO buffer mark()/reset() destroys pre-existing marks ----
+    // ---- NIO buffer mark()/reset() tests ----
 
     @Test
     void intBufferToIntArray_shouldPreserveExistingMark() {

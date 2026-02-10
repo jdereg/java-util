@@ -13,7 +13,6 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicLong;
 
 import static com.cedarsoftware.util.convert.MapConversions.INSTANT;
 
@@ -86,10 +85,6 @@ final class InstantConversions {
     static double toDouble(Object from, Converter converter) {
         Instant instant = (Instant) from;
         return BigDecimalConversions.secondsAndNanosToDouble(instant.getEpochSecond(), instant.getNano()).doubleValue();
-    }
-
-    static AtomicLong toAtomicLong(Object from, Converter converter) {
-        return new AtomicLong(toLong(from, converter));
     }
 
     static Timestamp toTimestamp(Object from, Converter converter) {

@@ -8,8 +8,6 @@ import java.time.OffsetTime;
 import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * @author John DeRegnaucourt (jdereg@gmail.com)
@@ -43,10 +41,6 @@ final class OffsetTimeConversions {
         return map;
     }
 
-    static int toInteger(Object from, Converter converter) {
-        return (int) toLong(from, converter);
-    }
-
     static long toLong(Object from, Converter converter) {
         OffsetTime ot = (OffsetTime) from;
         return ot.atDate(LocalDate.of(1970, 1, 1))
@@ -75,14 +69,6 @@ final class OffsetTimeConversions {
         BigDecimal nanos = BigDecimal.valueOf(epoch.getNano())
                 .divide(BigDecimalConversions.BILLION);
         return seconds.add(nanos);
-    }
-
-    static AtomicInteger toAtomicInteger(Object from, Converter converter) {
-        return new AtomicInteger((int) toLong(from, converter));
-    }
-
-    static AtomicLong toAtomicLong(Object from, Converter converter) {
-        return new AtomicLong(toLong(from, converter));
     }
 
     private static Instant getEpoch(OffsetTime ot) {

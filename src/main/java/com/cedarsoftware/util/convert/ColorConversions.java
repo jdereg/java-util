@@ -1,7 +1,6 @@
 package com.cedarsoftware.util.convert;
 
 import java.math.BigDecimal;
-import java.math.BigInteger;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -71,17 +70,6 @@ final class ColorConversions {
     static Long toLong(Object from, Converter converter) {
         Color color = (Color) from;
         return (long) color.getRGB();
-    }
-
-    /**
-     * Convert Color to BigInteger.
-     * @param from Color instance
-     * @param converter Converter instance
-     * @return BigInteger representation of packed RGB value
-     */
-    static BigInteger toBigInteger(Object from, Converter converter) {
-        Color color = (Color) from;
-        return BigInteger.valueOf(color.getRGB());
     }
 
     /**

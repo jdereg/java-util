@@ -43,24 +43,4 @@ final class UrlConversions {
             throw new IllegalArgumentException("Unable to convert URL to URI, input URL: " + url, e);
         }
     }
-
-    static java.io.File toFile(Object from, Converter converter) {
-        URL url = (URL) from;
-        try {
-            URI uri = url.toURI();
-            return new java.io.File(uri);
-        } catch (Exception e) {
-            throw new IllegalArgumentException("Unable to convert URL to File, input URL: " + url, e);
-        }
-    }
-
-    static java.nio.file.Path toPath(Object from, Converter converter) {
-        URL url = (URL) from;
-        try {
-            URI uri = url.toURI();
-            return java.nio.file.Paths.get(uri);
-        } catch (Exception e) {
-            throw new IllegalArgumentException("Unable to convert URL to Path, input URL: " + url, e);
-        }
-    }
 }

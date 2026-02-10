@@ -32,9 +32,6 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.TimeZone;
 import java.util.UUID;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -188,18 +185,6 @@ final class StringConversions {
         }
     }
 
-    static AtomicBoolean toAtomicBoolean(Object from, Converter converter) {
-        return new AtomicBoolean(toBoolean(from, converter));
-    }
-
-    static AtomicInteger toAtomicInteger(Object from, Converter converter) {
-        return new AtomicInteger(toInt(from, converter));
-    }
-
-    static AtomicLong toAtomicLong(Object from, Converter converter) {
-        return new AtomicLong(toLong(from, converter));
-    }
-    
     static Boolean toBoolean(Object from, Converter converter) {
         String str = (String) from;
         // faster equals check "true" and "false"

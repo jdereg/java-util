@@ -1,14 +1,9 @@
 package com.cedarsoftware.util.convert;
 
-import java.math.BigDecimal;
-import java.math.BigInteger;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-import com.cedarsoftware.util.geom.Dimension;
 import com.cedarsoftware.util.geom.Insets;
-import com.cedarsoftware.util.geom.Point;
-import com.cedarsoftware.util.geom.Rectangle;
 
 /**
  * Conversions to and from com.cedarsoftware.util.Insets.
@@ -76,51 +71,7 @@ final class InsetsConversions {
     }
 
     /**
-     * Convert Insets to Long (sum of all insets: top + left + bottom + right).
-     * @param from Insets instance
-     * @param converter Converter instance
-     * @return Sum as long value
-     */
-    static Long toLong(Object from, Converter converter) {
-        Insets insets = (Insets) from;
-        return (long) insets.getTop() + insets.getLeft() + insets.getBottom() + insets.getRight();
-    }
-
-    /**
-     * Convert Insets to Integer (sum of all insets: top + left + bottom + right).
-     * @param from Insets instance
-     * @param converter Converter instance
-     * @return Sum as integer value
-     */
-    static Integer toInteger(Object from, Converter converter) {
-        Insets insets = (Insets) from;
-        return Math.addExact(Math.addExact(Math.addExact(insets.getTop(), insets.getLeft()), insets.getBottom()), insets.getRight());
-    }
-
-    /**
-     * Convert Insets to BigInteger (sum of all insets).
-     * @param from Insets instance
-     * @param converter Converter instance
-     * @return BigInteger representation of sum
-     */
-    static BigInteger toBigInteger(Object from, Converter converter) {
-        Insets insets = (Insets) from;
-        return BigInteger.valueOf((long) insets.getTop() + insets.getLeft() + insets.getBottom() + insets.getRight());
-    }
-
-    /**
-     * Convert Insets to BigDecimal (sum of all insets).
-     * @param from Insets instance
-     * @param converter Converter instance
-     * @return BigDecimal representation of sum
-     */
-    static BigDecimal toBigDecimal(Object from, Converter converter) {
-        Insets insets = (Insets) from;
-        return BigDecimal.valueOf((long) insets.getTop() + insets.getLeft() + insets.getBottom() + insets.getRight());
-    }
-
-    /**
-     * Convert Insets to Boolean. (0,0,0,0) → false, anything else → true.
+     * Convert Insets to Boolean. (0,0,0,0) -> false, anything else -> true.
      * @param from Insets instance
      * @param converter Converter instance
      * @return Boolean value
@@ -128,52 +79,5 @@ final class InsetsConversions {
     static Boolean toBoolean(Object from, Converter converter) {
         Insets insets = (Insets) from;
         return insets.getTop() != 0 || insets.getLeft() != 0 || insets.getBottom() != 0 || insets.getRight() != 0;
-    }
-
-    /**
-     * Convert Insets to AtomicBoolean. (0,0,0,0) → false, anything else → true.
-     * @param from Insets instance
-     * @param converter Converter instance
-     * @return AtomicBoolean value
-     */
-    static java.util.concurrent.atomic.AtomicBoolean toAtomicBoolean(Object from, Converter converter) {
-        return new java.util.concurrent.atomic.AtomicBoolean(toBoolean(from, converter));
-    }
-
-    /**
-     * Convert Insets to Point (top becomes x, left becomes y).
-     * @param from Insets instance
-     * @param converter Converter instance
-     * @return Point with x=top and y=left
-     */
-    static Point toPoint(Object from, Converter converter) {
-        Insets insets = (Insets) from;
-        return new Point(insets.getTop(), insets.getLeft());
-    }
-
-    /**
-     * Convert Insets to Dimension (sum of horizontal and vertical insets).
-     * @param from Insets instance
-     * @param converter Converter instance
-     * @return Dimension with width=(left+right) and height=(top+bottom)
-     */
-    static Dimension toDimension(Object from, Converter converter) {
-        Insets insets = (Insets) from;
-        return new Dimension(Math.addExact(insets.getLeft(), insets.getRight()), Math.addExact(insets.getTop(), insets.getBottom()));
-    }
-
-    /**
-     * Convert Insets to Rectangle (insets become the bounds).
-     * @param from Insets instance
-     * @param converter Converter instance
-     * @return Rectangle with x=left, y=top, width=(right-left), height=(bottom-top)
-     */
-    static Rectangle toRectangle(Object from, Converter converter) {
-        Insets insets = (Insets) from;
-        // For insets, we interpret them as defining a rectangular area
-        // where left/top are the position and right/bottom define the extent
-        int width = Math.max(0, Math.subtractExact(insets.getRight(), insets.getLeft()));
-        int height = Math.max(0, Math.subtractExact(insets.getBottom(), insets.getTop()));
-        return new Rectangle(insets.getLeft(), insets.getTop(), width, height);
     }
 }

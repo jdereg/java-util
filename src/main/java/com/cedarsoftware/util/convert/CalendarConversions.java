@@ -2,13 +2,9 @@ package com.cedarsoftware.util.convert;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.sql.Timestamp;
-import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.LocalTime;
 import java.time.MonthDay;
-import java.time.OffsetDateTime;
 import java.time.Year;
 import java.time.YearMonth;
 import java.time.ZoneId;
@@ -18,10 +14,8 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
 import java.time.temporal.ChronoField;
 import java.util.Calendar;
-import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicLong;
 
 import com.cedarsoftware.util.DateUtilities;
 
@@ -59,18 +53,6 @@ final class CalendarConversions {
 
     private CalendarConversions() {}
 
-    static Long toLong(Object from, Converter converter) {
-        return ((Calendar) from).getTimeInMillis();
-    }
-
-    static AtomicLong toAtomicLong(Object from, Converter converter) {
-        return new AtomicLong(((Calendar) from).getTimeInMillis());
-    }
-
-    static double toDouble(Object from, Converter converter) {
-        return ((Calendar) from).getTimeInMillis() / 1000.0;
-    }
-
     static BigDecimal toBigDecimal(Object from, Converter converter) {
         long epochMillis = ((Calendar) from).getTimeInMillis();
         return new BigDecimal(epochMillis).divide(BigDecimal.valueOf(1000));
@@ -80,21 +62,8 @@ final class CalendarConversions {
         return BigInteger.valueOf(((Calendar) from).getTimeInMillis());
     }
 
-    static Date toDate(Object from, Converter converter) {
-        return ((Calendar) from).getTime();
-    }
-
     static java.sql.Date toSqlDate(Object from, Converter converter) {
         return java.sql.Date.valueOf(toZonedDateTime(from, converter).toLocalDate());
-    }
-
-    static Timestamp toTimestamp(Object from, Converter converter) {
-        return new Timestamp(((Calendar) from).getTimeInMillis());
-    }
-
-    static Instant toInstant(Object from, Converter converter) {
-        Calendar calendar = (Calendar) from;
-        return calendar.toInstant();
     }
 
     static ZonedDateTime toZonedDateTime(Object from, Converter converter) {
@@ -106,18 +75,8 @@ final class CalendarConversions {
         return toZonedDateTime(from, converter).toLocalDateTime();
     }
 
-    static OffsetDateTime toOffsetDateTime(Object from, Converter converter) {
-        Calendar cal = (Calendar) from;
-        OffsetDateTime offsetDateTime = cal.toInstant().atOffset(ZoneOffset.ofTotalSeconds(cal.getTimeZone().getOffset(cal.getTimeInMillis()) / 1000));
-        return offsetDateTime;
-    }
-
     static LocalDate toLocalDate(Object from, Converter converter) {
         return toZonedDateTime(from, converter).toLocalDate();
-    }
-
-    static LocalTime toLocalTime(Object from, Converter converter) {
-        return toZonedDateTime(from, converter).toLocalTime();
     }
 
     static Calendar clone(Object from, Converter converter) {

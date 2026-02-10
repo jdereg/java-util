@@ -18,7 +18,6 @@ import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.TimeZone;
-import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * @author Kenny Partlow (kpartlow@gmail.com)
@@ -64,10 +63,6 @@ final class LocalDateConversions {
 
     static double toDouble(Object from, Converter converter) {
         return toInstant(from, converter).toEpochMilli() / 1000d;
-    }
-
-    static AtomicLong toAtomicLong(Object from, Converter converter) {
-        return new AtomicLong(toLong(from, converter));
     }
 
     static Timestamp toTimestamp(Object from, Converter converter) {

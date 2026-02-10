@@ -1,13 +1,8 @@
 package com.cedarsoftware.util.convert;
 
-import java.math.BigDecimal;
-import java.math.BigInteger;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-import com.cedarsoftware.util.geom.Dimension;
-import com.cedarsoftware.util.geom.Insets;
-import com.cedarsoftware.util.geom.Point;
 import com.cedarsoftware.util.geom.Rectangle;
 
 /**
@@ -76,51 +71,7 @@ final class RectangleConversions {
     }
 
     /**
-     * Convert Rectangle to Long (area: width * height).
-     * @param from Rectangle instance
-     * @param converter Converter instance
-     * @return Area as long value
-     */
-    static Long toLong(Object from, Converter converter) {
-        Rectangle rectangle = (Rectangle) from;
-        return (long) rectangle.getWidth() * rectangle.getHeight();
-    }
-
-    /**
-     * Convert Rectangle to Integer (area: width * height).
-     * @param from Rectangle instance
-     * @param converter Converter instance
-     * @return Area as integer value
-     */
-    static Integer toInteger(Object from, Converter converter) {
-        Rectangle rectangle = (Rectangle) from;
-        return Math.multiplyExact(rectangle.getWidth(), rectangle.getHeight());
-    }
-
-    /**
-     * Convert Rectangle to BigInteger (area).
-     * @param from Rectangle instance
-     * @param converter Converter instance
-     * @return BigInteger representation of area
-     */
-    static BigInteger toBigInteger(Object from, Converter converter) {
-        Rectangle rectangle = (Rectangle) from;
-        return BigInteger.valueOf((long) rectangle.getWidth() * rectangle.getHeight());
-    }
-
-    /**
-     * Unsupported conversion from Rectangle to BigDecimal.
-     * @param from Rectangle instance
-     * @param converter Converter instance
-     * @return Never returns - throws exception
-     * @throws IllegalArgumentException Always thrown to indicate unsupported conversion
-     */
-    static BigDecimal toBigDecimal(Object from, Converter converter) {
-        throw new IllegalArgumentException("Unsupported conversion from Rectangle to BigDecimal - no meaningful conversion exists.");
-    }
-
-    /**
-     * Convert Rectangle to Boolean. (0,0,0,0) → false, anything else → true.
+     * Convert Rectangle to Boolean. (0,0,0,0) -> false, anything else -> true.
      * @param from Rectangle instance
      * @param converter Converter instance
      * @return Boolean value
@@ -129,50 +80,4 @@ final class RectangleConversions {
         Rectangle rectangle = (Rectangle) from;
         return rectangle.getX() != 0 || rectangle.getY() != 0 || rectangle.getWidth() != 0 || rectangle.getHeight() != 0;
     }
-
-    /**
-     * Convert Rectangle to AtomicBoolean. (0,0,0,0) → false, anything else → true.
-     * @param from Rectangle instance
-     * @param converter Converter instance
-     * @return AtomicBoolean value
-     */
-    static java.util.concurrent.atomic.AtomicBoolean toAtomicBoolean(Object from, Converter converter) {
-        return new java.util.concurrent.atomic.AtomicBoolean(toBoolean(from, converter));
-    }
-
-    /**
-     * Convert Rectangle to Point (x, y coordinates).
-     * @param from Rectangle instance
-     * @param converter Converter instance
-     * @return Point with x=x and y=y from Rectangle
-     */
-    static Point toPoint(Object from, Converter converter) {
-        Rectangle rectangle = (Rectangle) from;
-        return new Point(rectangle.getX(), rectangle.getY());
-    }
-
-    /**
-     * Convert Rectangle to Dimension (width, height).
-     * @param from Rectangle instance
-     * @param converter Converter instance
-     * @return Dimension with width=width and height=height from Rectangle
-     */
-    static Dimension toDimension(Object from, Converter converter) {
-        Rectangle rectangle = (Rectangle) from;
-        return new Dimension(rectangle.getWidth(), rectangle.getHeight());
-    }
-
-    /**
-     * Convert Rectangle to Insets (rectangle bounds become inset values).
-     * @param from Rectangle instance
-     * @param converter Converter instance
-     * @return Insets with top=y, left=x, bottom=y+height, right=x+width
-     */
-    static Insets toInsets(Object from, Converter converter) {
-        Rectangle rectangle = (Rectangle) from;
-        return new Insets(rectangle.getY(), rectangle.getX(),
-                         Math.addExact(rectangle.getY(), rectangle.getHeight()),
-                         Math.addExact(rectangle.getX(), rectangle.getWidth()));
-    }
-
 }

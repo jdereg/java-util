@@ -74,7 +74,11 @@ final class PathConversions {
      */
     static File toFile(Object from, Converter converter) {
         Path path = (Path) from;
-        return path.toFile();
+        try {
+            return path.toFile();
+        } catch (UnsupportedOperationException e) {
+            throw new IllegalArgumentException("Unable to convert Path to File, input Path: " + path, e);
+        }
     }
 
     /**

@@ -23,7 +23,9 @@ final class CharacterArrayConversions {
         Character[] chars = (Character[]) from;
         StringBuilder builder = new StringBuilder(chars.length);
         for (Character ch : chars) {
-            builder.append(ch);
+            if (ch != null) {
+                builder.append(ch.charValue());
+            }
         }
         return builder.toString();
     }
@@ -32,7 +34,9 @@ final class CharacterArrayConversions {
         Character[] chars = (Character[]) from;
         StringBuilder builder = new StringBuilder(chars.length);
         for (Character ch : chars) {
-            builder.append(ch);
+            if (ch != null) {
+                builder.append(ch.charValue());
+            }
         }
         return builder;
     }
@@ -41,7 +45,9 @@ final class CharacterArrayConversions {
         Character[] chars = (Character[]) from;
         StringBuffer buffer = new StringBuffer(chars.length);
         for (Character ch : chars) {
-            buffer.append(ch);
+            if (ch != null) {
+                buffer.append(ch.charValue());
+            }
         }
         return buffer;
     }

@@ -493,6 +493,19 @@ class ConverterEverythingTest {
                 {new byte[]{(byte)0xf0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,1}, UUID.fromString("f0000000-0000-0000-0000-000000000001"), true},
                 {new byte[]{1,2,3}, new IllegalArgumentException("byte[] must be exactly 16 bytes to convert to UUID, found 3")},
         });
+        TEST_DB.put(pair(UUID.class, ByteBuffer.class), new Object[][]{
+                {new UUID(0L, 0L), ByteBuffer.wrap(new byte[]{0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0}), true},
+                {new UUID(0L, 1L), ByteBuffer.wrap(new byte[]{0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,1}), true},
+                {new UUID(1L, 0L), ByteBuffer.wrap(new byte[]{0,0,0,0,0,0,0,1, 0,0,0,0,0,0,0,0}), true},
+                {UUID.fromString("f0000000-0000-0000-0000-000000000001"), ByteBuffer.wrap(new byte[]{(byte)0xf0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,1}), true},
+        });
+        TEST_DB.put(pair(ByteBuffer.class, UUID.class), new Object[][]{
+                {ByteBuffer.wrap(new byte[]{0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0}), new UUID(0L, 0L), true},
+                {ByteBuffer.wrap(new byte[]{0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,1}), new UUID(0L, 1L), true},
+                {ByteBuffer.wrap(new byte[]{0,0,0,0,0,0,0,1, 0,0,0,0,0,0,0,0}), new UUID(1L, 0L), true},
+                {ByteBuffer.wrap(new byte[]{(byte)0xf0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,1}), UUID.fromString("f0000000-0000-0000-0000-000000000001"), true},
+                {ByteBuffer.wrap(new byte[]{1,2,3}), new IllegalArgumentException("ByteBuffer must have exactly 16 bytes remaining to convert to UUID, found 3")},
+        });
     }
 
     /**

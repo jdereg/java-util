@@ -738,6 +738,7 @@ public final class Converter {
         CONVERSION_DB.put(pair(BigDecimal.class, UUID.class), BigDecimalConversions::toUUID);
         CONVERSION_DB.put(pair(Map.class, UUID.class), MapConversions::toUUID);
         CONVERSION_DB.put(pair(byte[].class, UUID.class), UUIDConversions::fromByteArray);
+        CONVERSION_DB.put(pair(ByteBuffer.class, UUID.class), UUIDConversions::fromByteBuffer);
 
         // Class conversions supported
         CONVERSION_DB.put(pair(Void.class, Class.class), VoidConversions::toNull);
@@ -1043,6 +1044,7 @@ public final class Converter {
         CONVERSION_DB.put(pair(char[].class, ByteBuffer.class), CharArrayConversions::toByteBuffer);
         CONVERSION_DB.put(pair(byte[].class, ByteBuffer.class), ByteArrayConversions::toByteBuffer);
         CONVERSION_DB.put(pair(Map.class, ByteBuffer.class), MapConversions::toByteBuffer);
+        CONVERSION_DB.put(pair(UUID.class, ByteBuffer.class), UUIDConversions::toByteBuffer);
 
         // toYear
         CONVERSION_DB.put(pair(Void.class, Year.class), NumberConversions::nullToYear);
@@ -2312,7 +2314,7 @@ public final class Converter {
      * Overload of {@link #isSimpleTypeConversionSupported(Class, Class)} that checks
      * if the specified class is considered a simple type.
      * Results are cached for fast subsequent lookups when no custom overrides exist.
-     * 
+     *
      * <p>If custom converter overrides exist for the specified type, this method returns false,
      * regardless of inheritance-based conversion support. This ensures that user-defined custom
      * converters take precedence over automatic simple type conversions.</p>

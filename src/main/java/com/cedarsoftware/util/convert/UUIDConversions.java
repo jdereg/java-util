@@ -69,5 +69,24 @@ final class UUIDConversions {
         long leastSigBits = buffer.getLong();
         return new UUID(mostSigBits, leastSigBits);
     }
+
+    static ByteBuffer toByteBuffer(Object from, Converter converter) {
+        UUID uuid = (UUID) from;
+        ByteBuffer buffer = ByteBuffer.allocate(16);
+        buffer.putLong(uuid.getMostSignificantBits());
+        buffer.putLong(uuid.getLeastSignificantBits());
+        buffer.flip();
+        return buffer;
+    }
+
+    static UUID fromByteBuffer(Object from, Converter converter) {
+        ByteBuffer buffer = ((ByteBuffer) from).asReadOnlyBuffer();
+        if (buffer.remaining() != 16) {
+            throw new IllegalArgumentException("ByteBuffer must have exactly 16 bytes remaining to convert to UUID, found " + buffer.remaining());
+        }
+        long mostSigBits = buffer.getLong();
+        long leastSigBits = buffer.getLong();
+        return new UUID(mostSigBits, leastSigBits);
+    }
 }
 

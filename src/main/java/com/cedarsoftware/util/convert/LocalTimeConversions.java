@@ -4,6 +4,8 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.math.RoundingMode;
 import java.time.LocalTime;
+import java.time.OffsetTime;
+import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.Calendar;
 import java.util.LinkedHashMap;
@@ -77,6 +79,12 @@ final class LocalTimeConversions {
         return new BigDecimal(lt.toNanoOfDay()).divide(BILLION, 9, RoundingMode.HALF_UP);
     }
 
+
+    static OffsetTime toOffsetTime(Object from, Converter converter) {
+        LocalTime lt = (LocalTime) from;
+        ZoneOffset offset = converter.getOptions().getZoneId().getRules().getOffset(java.time.Instant.now());
+        return lt.atOffset(offset);
+    }
 
     static String toString(Object from, Converter converter) {
         LocalTime localTime = (LocalTime) from;

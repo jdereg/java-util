@@ -679,6 +679,11 @@ class ConverterEverythingTest {
                 {odt("1970-01-01T00:00Z"), OffsetTime.parse("09:00+09:00")},
                 {odt("1970-01-01T00:00:00.000000001Z"), OffsetTime.parse("09:00:00.000000001+09:00")},
         });
+        TEST_DB.put(pair(LocalTime.class, OffsetTime.class), new Object[][]{
+                {LocalTime.of(0, 0), OffsetTime.of(0, 0, 0, 0, TOKYO_ZO), false},
+                {LocalTime.of(12, 30, 45), OffsetTime.of(12, 30, 45, 0, TOKYO_ZO), false},
+                {LocalTime.of(23, 59, 59, 999999999), OffsetTime.of(23, 59, 59, 999999999, TOKYO_ZO), false},
+        });
     }
 
     /**
@@ -1547,6 +1552,12 @@ class ConverterEverythingTest {
         TEST_DB.put(pair(LocalTime.class, Integer.class), new Object[][]{
                 {LocalTime.parse("12:34:56.123456789"), new IllegalArgumentException("Unsupported conversion, source type [LocalTime (12:34:56.123456789)] target type 'Integer'")},
         });
+        TEST_DB.put(pair(OffsetTime.class, LocalTime.class), new Object[][]{
+                {OffsetTime.of(0, 0, 0, 0, TOKYO_ZO), LocalTime.of(0, 0), false},
+                {OffsetTime.of(12, 30, 45, 0, TOKYO_ZO), LocalTime.of(12, 30, 45), false},
+                {OffsetTime.of(23, 59, 59, 999999999, TOKYO_ZO), LocalTime.of(23, 59, 59, 999999999), false},
+                {OffsetTime.of(10, 15, 30, 0, ZoneOffset.of("+01:00")), LocalTime.of(10, 15, 30), false},
+        });
     }
 
     /**
@@ -1629,6 +1640,11 @@ class ConverterEverythingTest {
                 {mapOf(LOCAL_DATE, "1970-01-02"), LocalDate.parse("1970-01-02"), true},
                 {mapOf(VALUE, "2024-03-18"), LocalDate.parse("2024-03-18")},
                 {mapOf(V, "2024/03/18"), LocalDate.parse("2024-03-18")},
+        });
+        TEST_DB.put(pair(LocalDate.class, LocalTime.class), new Object[][] {
+                {LocalDate.of(1970, 1, 1), LocalTime.MIDNIGHT, false},
+                {LocalDate.of(2023, 6, 15), LocalTime.MIDNIGHT, false},
+                {LocalDate.of(1969, 12, 31), LocalTime.MIDNIGHT, false},
         });
     }
 
@@ -2106,6 +2122,156 @@ class ConverterEverythingTest {
                 {mapOf(VALUE, "2024-01"), YearMonth.of(2024, 1)},
                 {mapOf(YEAR_MONTH, "2024-12"), YearMonth.of(2024, 12), true},
         });
+
+        // Numeric → YearMonth (YYYYMM decoding)
+        TEST_DB.put(pair(Short.class, YearMonth.class), new Object[][]{
+                {(short) 2401, YearMonth.of(24, 1), true},
+                {(short) 2406, YearMonth.of(24, 6), true},
+                {(short) 2412, YearMonth.of(24, 12), true},
+        });
+        TEST_DB.put(pair(Integer.class, YearMonth.class), new Object[][]{
+                {202401, YearMonth.of(2024, 1), true},
+                {202406, YearMonth.of(2024, 6), true},
+                {202412, YearMonth.of(2024, 12), true},
+                {188801, YearMonth.of(1888, 1), true},
+        });
+        TEST_DB.put(pair(Long.class, YearMonth.class), new Object[][]{
+                {202401L, YearMonth.of(2024, 1), true},
+                {202406L, YearMonth.of(2024, 6), true},
+                {202412L, YearMonth.of(2024, 12), true},
+        });
+        TEST_DB.put(pair(Float.class, YearMonth.class), new Object[][]{
+                {202401f, YearMonth.of(2024, 1), true},
+                {202406f, YearMonth.of(2024, 6), true},
+                {202412f, YearMonth.of(2024, 12), true},
+        });
+        TEST_DB.put(pair(Double.class, YearMonth.class), new Object[][]{
+                {202401d, YearMonth.of(2024, 1), true},
+                {202406d, YearMonth.of(2024, 6), true},
+                {202412d, YearMonth.of(2024, 12), true},
+        });
+        TEST_DB.put(pair(BigInteger.class, YearMonth.class), new Object[][]{
+                {BigInteger.valueOf(202401), YearMonth.of(2024, 1), true},
+                {BigInteger.valueOf(202406), YearMonth.of(2024, 6), true},
+                {BigInteger.valueOf(202412), YearMonth.of(2024, 12), true},
+        });
+        TEST_DB.put(pair(BigDecimal.class, YearMonth.class), new Object[][]{
+                {BigDecimal.valueOf(202401), YearMonth.of(2024, 1), true},
+                {BigDecimal.valueOf(202406), YearMonth.of(2024, 6), true},
+                {BigDecimal.valueOf(202412), YearMonth.of(2024, 12), true},
+        });
+
+        // YearMonth → numeric (YYYYMM encoding)
+        TEST_DB.put(pair(YearMonth.class, Short.class), new Object[][]{
+                {YearMonth.of(24, 1), (short) 2401, true},
+                {YearMonth.of(24, 6), (short) 2406, true},
+                {YearMonth.of(24, 12), (short) 2412, true},
+        });
+        TEST_DB.put(pair(YearMonth.class, Integer.class), new Object[][]{
+                {YearMonth.of(2024, 1), 202401, true},
+                {YearMonth.of(2024, 6), 202406, true},
+                {YearMonth.of(2024, 12), 202412, true},
+                {YearMonth.of(1888, 1), 188801, true},
+        });
+        TEST_DB.put(pair(YearMonth.class, Long.class), new Object[][]{
+                {YearMonth.of(2024, 1), 202401L, true},
+                {YearMonth.of(2024, 6), 202406L, true},
+                {YearMonth.of(2024, 12), 202412L, true},
+        });
+        TEST_DB.put(pair(YearMonth.class, Float.class), new Object[][]{
+                {YearMonth.of(2024, 1), 202401f, true},
+                {YearMonth.of(2024, 6), 202406f, true},
+                {YearMonth.of(2024, 12), 202412f, true},
+        });
+        TEST_DB.put(pair(YearMonth.class, Double.class), new Object[][]{
+                {YearMonth.of(2024, 1), 202401d, true},
+                {YearMonth.of(2024, 6), 202406d, true},
+                {YearMonth.of(2024, 12), 202412d, true},
+        });
+        TEST_DB.put(pair(YearMonth.class, BigInteger.class), new Object[][]{
+                {YearMonth.of(2024, 1), BigInteger.valueOf(202401), true},
+                {YearMonth.of(2024, 6), BigInteger.valueOf(202406), true},
+                {YearMonth.of(2024, 12), BigInteger.valueOf(202412), true},
+        });
+        TEST_DB.put(pair(YearMonth.class, BigDecimal.class), new Object[][]{
+                {YearMonth.of(2024, 1), BigDecimal.valueOf(202401), true},
+                {YearMonth.of(2024, 6), BigDecimal.valueOf(202406), true},
+                {YearMonth.of(2024, 12), BigDecimal.valueOf(202412), true},
+        });
+
+        // YearMonth → primitive types (bridge-generated via wrapper surrogates)
+        TEST_DB.put(pair(YearMonth.class, short.class), new Object[][]{
+                {YearMonth.of(24, 1), (short) 2401},
+                {YearMonth.of(24, 6), (short) 2406},
+                {YearMonth.of(24, 12), (short) 2412},
+        });
+        TEST_DB.put(pair(YearMonth.class, int.class), new Object[][]{
+                {YearMonth.of(2024, 1), 202401},
+                {YearMonth.of(2024, 6), 202406},
+                {YearMonth.of(2024, 12), 202412},
+        });
+        TEST_DB.put(pair(YearMonth.class, long.class), new Object[][]{
+                {YearMonth.of(2024, 1), 202401L},
+                {YearMonth.of(2024, 6), 202406L},
+                {YearMonth.of(2024, 12), 202412L},
+        });
+        TEST_DB.put(pair(YearMonth.class, float.class), new Object[][]{
+                {YearMonth.of(2024, 1), 202401f},
+                {YearMonth.of(2024, 6), 202406f},
+                {YearMonth.of(2024, 12), 202412f},
+        });
+        TEST_DB.put(pair(YearMonth.class, double.class), new Object[][]{
+                {YearMonth.of(2024, 1), 202401d},
+                {YearMonth.of(2024, 6), 202406d},
+                {YearMonth.of(2024, 12), 202412d},
+        });
+        TEST_DB.put(pair(YearMonth.class, AtomicInteger.class), new Object[][]{
+                {YearMonth.of(2024, 1), new AtomicInteger(202401)},
+                {YearMonth.of(2024, 6), new AtomicInteger(202406)},
+                {YearMonth.of(2024, 12), new AtomicInteger(202412)},
+        });
+        TEST_DB.put(pair(YearMonth.class, AtomicLong.class), new Object[][]{
+                {YearMonth.of(2024, 1), new AtomicLong(202401)},
+                {YearMonth.of(2024, 6), new AtomicLong(202406)},
+                {YearMonth.of(2024, 12), new AtomicLong(202412)},
+        });
+
+        // Primitive types → YearMonth (bridge-generated via wrapper surrogates)
+        TEST_DB.put(pair(short.class, YearMonth.class), new Object[][]{
+                {(short) 2401, YearMonth.of(24, 1)},
+                {(short) 2406, YearMonth.of(24, 6)},
+                {(short) 2412, YearMonth.of(24, 12)},
+        });
+        TEST_DB.put(pair(int.class, YearMonth.class), new Object[][]{
+                {202401, YearMonth.of(2024, 1)},
+                {202406, YearMonth.of(2024, 6)},
+                {202412, YearMonth.of(2024, 12)},
+        });
+        TEST_DB.put(pair(long.class, YearMonth.class), new Object[][]{
+                {202401L, YearMonth.of(2024, 1)},
+                {202406L, YearMonth.of(2024, 6)},
+                {202412L, YearMonth.of(2024, 12)},
+        });
+        TEST_DB.put(pair(float.class, YearMonth.class), new Object[][]{
+                {202401f, YearMonth.of(2024, 1)},
+                {202406f, YearMonth.of(2024, 6)},
+                {202412f, YearMonth.of(2024, 12)},
+        });
+        TEST_DB.put(pair(double.class, YearMonth.class), new Object[][]{
+                {202401d, YearMonth.of(2024, 1)},
+                {202406d, YearMonth.of(2024, 6)},
+                {202412d, YearMonth.of(2024, 12)},
+        });
+        TEST_DB.put(pair(AtomicInteger.class, YearMonth.class), new Object[][]{
+                {new AtomicInteger(202401), YearMonth.of(2024, 1)},
+                {new AtomicInteger(202406), YearMonth.of(2024, 6)},
+                {new AtomicInteger(202412), YearMonth.of(2024, 12)},
+        });
+        TEST_DB.put(pair(AtomicLong.class, YearMonth.class), new Object[][]{
+                {new AtomicLong(202401), YearMonth.of(2024, 1)},
+                {new AtomicLong(202406), YearMonth.of(2024, 6)},
+                {new AtomicLong(202412), YearMonth.of(2024, 12)},
+        });
     }
 
     /**
@@ -2347,7 +2513,12 @@ class ConverterEverythingTest {
                 {BigInteger.valueOf(615), MonthDay.of(6, 15)},
                 {BigInteger.valueOf(229), MonthDay.of(2, 29)},  // leap day
         });
-
+        TEST_DB.put(pair(BigDecimal.class, MonthDay.class), new Object[][]{
+                {BigDecimal.valueOf(101), MonthDay.of(1, 1)},
+                {BigDecimal.valueOf(1231), MonthDay.of(12, 31)},
+                {BigDecimal.valueOf(615), MonthDay.of(6, 15)},
+                {BigDecimal.valueOf(229), MonthDay.of(2, 29)},  // leap day
+        });
 
         TEST_DB.put(pair(AtomicInteger.class, MonthDay.class), new Object[][]{
                 {new AtomicInteger(101), MonthDay.of(1, 1)},
@@ -2363,6 +2534,80 @@ class ConverterEverythingTest {
                 {new AtomicLong(229), MonthDay.of(2, 29)},  // leap day
         });
 
+        // MonthDay → numeric (MMDD encoding)
+        TEST_DB.put(pair(MonthDay.class, Short.class), new Object[][]{
+                {MonthDay.of(1, 1), (short) 101, true},
+                {MonthDay.of(6, 15), (short) 615, true},
+                {MonthDay.of(12, 31), (short) 1231, true},
+        });
+        TEST_DB.put(pair(MonthDay.class, Integer.class), new Object[][]{
+                {MonthDay.of(1, 1), 101, true},
+                {MonthDay.of(6, 15), 615, true},
+                {MonthDay.of(12, 31), 1231, true},
+                {MonthDay.of(2, 29), 229, true},
+        });
+        TEST_DB.put(pair(MonthDay.class, Long.class), new Object[][]{
+                {MonthDay.of(1, 1), 101L, true},
+                {MonthDay.of(6, 15), 615L, true},
+                {MonthDay.of(12, 31), 1231L, true},
+        });
+        TEST_DB.put(pair(MonthDay.class, Float.class), new Object[][]{
+                {MonthDay.of(1, 1), 101f, true},
+                {MonthDay.of(6, 15), 615f, true},
+                {MonthDay.of(12, 31), 1231f, true},
+        });
+        TEST_DB.put(pair(MonthDay.class, Double.class), new Object[][]{
+                {MonthDay.of(1, 1), 101d, true},
+                {MonthDay.of(6, 15), 615d, true},
+                {MonthDay.of(12, 31), 1231d, true},
+        });
+        TEST_DB.put(pair(MonthDay.class, BigInteger.class), new Object[][]{
+                {MonthDay.of(1, 1), BigInteger.valueOf(101), true},
+                {MonthDay.of(6, 15), BigInteger.valueOf(615), true},
+                {MonthDay.of(12, 31), BigInteger.valueOf(1231), true},
+        });
+        TEST_DB.put(pair(MonthDay.class, BigDecimal.class), new Object[][]{
+                {MonthDay.of(1, 1), BigDecimal.valueOf(101), true},
+                {MonthDay.of(6, 15), BigDecimal.valueOf(615), true},
+                {MonthDay.of(12, 31), BigDecimal.valueOf(1231), true},
+        });
+
+        // MonthDay → primitive types (bridge-generated via wrapper surrogates)
+        TEST_DB.put(pair(MonthDay.class, short.class), new Object[][]{
+                {MonthDay.of(1, 1), (short) 101},
+                {MonthDay.of(6, 15), (short) 615},
+                {MonthDay.of(12, 31), (short) 1231},
+        });
+        TEST_DB.put(pair(MonthDay.class, int.class), new Object[][]{
+                {MonthDay.of(1, 1), 101},
+                {MonthDay.of(6, 15), 615},
+                {MonthDay.of(12, 31), 1231},
+        });
+        TEST_DB.put(pair(MonthDay.class, long.class), new Object[][]{
+                {MonthDay.of(1, 1), 101L},
+                {MonthDay.of(6, 15), 615L},
+                {MonthDay.of(12, 31), 1231L},
+        });
+        TEST_DB.put(pair(MonthDay.class, float.class), new Object[][]{
+                {MonthDay.of(1, 1), 101f},
+                {MonthDay.of(6, 15), 615f},
+                {MonthDay.of(12, 31), 1231f},
+        });
+        TEST_DB.put(pair(MonthDay.class, double.class), new Object[][]{
+                {MonthDay.of(1, 1), 101d},
+                {MonthDay.of(6, 15), 615d},
+                {MonthDay.of(12, 31), 1231d},
+        });
+        TEST_DB.put(pair(MonthDay.class, AtomicInteger.class), new Object[][]{
+                {MonthDay.of(1, 1), new AtomicInteger(101)},
+                {MonthDay.of(6, 15), new AtomicInteger(615)},
+                {MonthDay.of(12, 31), new AtomicInteger(1231)},
+        });
+        TEST_DB.put(pair(MonthDay.class, AtomicLong.class), new Object[][]{
+                {MonthDay.of(1, 1), new AtomicLong(101)},
+                {MonthDay.of(6, 15), new AtomicLong(615)},
+                {MonthDay.of(12, 31), new AtomicLong(1231)},
+        });
     }
 
     /**
@@ -3020,6 +3265,24 @@ class ConverterEverythingTest {
                 { mapOf(VALUE, "1969-12-31T23:59:59.999Z"), Instant.parse("1969-12-31T23:59:59.999Z")},
                 { mapOf(VALUE, "1970-01-01T00:00:00Z"), Instant.parse("1970-01-01T00:00:00Z")},
                 { mapOf(V, "1970-01-01T00:00:00.001Z"), Instant.parse("1970-01-01T00:00:00.001Z")},
+        });
+        TEST_DB.put(pair(Instant.class, Year.class), new Object[][] {
+                {Instant.parse("1888-01-01T15:00:00Z"), Year.of(1888), false},    // 1888-01-02 00:00 Tokyo
+                {Instant.parse("1969-12-30T15:00:00Z"), Year.of(1969), false},    // 1969-12-31 00:00 Tokyo
+                {Instant.parse("1969-12-31T15:00:00Z"), Year.of(1970), false},    // 1970-01-01 00:00 Tokyo
+                {Instant.parse("2023-06-14T15:00:00Z"), Year.of(2023), false},    // 2023-06-15 00:00 Tokyo
+        });
+        TEST_DB.put(pair(Instant.class, YearMonth.class), new Object[][] {
+                {Instant.parse("1888-01-01T15:00:00Z"), YearMonth.of(1888, 1), false},    // 1888-01-02 00:00 Tokyo
+                {Instant.parse("1969-12-30T15:00:00Z"), YearMonth.of(1969, 12), false},   // 1969-12-31 00:00 Tokyo
+                {Instant.parse("1969-12-31T15:00:00Z"), YearMonth.of(1970, 1), false},    // 1970-01-01 00:00 Tokyo
+                {Instant.parse("2023-06-14T15:00:00Z"), YearMonth.of(2023, 6), false},    // 2023-06-15 00:00 Tokyo
+        });
+        TEST_DB.put(pair(Instant.class, MonthDay.class), new Object[][] {
+                {Instant.parse("1888-01-01T15:00:00Z"), MonthDay.of(1, 2), false},    // 1888-01-02 00:00 Tokyo
+                {Instant.parse("1969-12-30T15:00:00Z"), MonthDay.of(12, 31), false},  // 1969-12-31 00:00 Tokyo
+                {Instant.parse("1969-12-31T15:00:00Z"), MonthDay.of(1, 1), false},    // 1970-01-01 00:00 Tokyo
+                {Instant.parse("2023-06-14T15:00:00Z"), MonthDay.of(6, 15), false},   // 2023-06-15 00:00 Tokyo
         });
     }
 

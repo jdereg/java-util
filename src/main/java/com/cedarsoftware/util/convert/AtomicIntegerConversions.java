@@ -27,9 +27,4 @@ final class AtomicIntegerConversions {
         AtomicInteger atomicInt = (AtomicInteger) from;
         return new AtomicInteger(atomicInt.intValue());
     }
-
-//    static Year toYear(Object from, Converter converter) {
-//        AtomicInteger atomicInt = (AtomicInteger) from;
-//        return Year.of(atomicInt.intValue());
-//    }
 }

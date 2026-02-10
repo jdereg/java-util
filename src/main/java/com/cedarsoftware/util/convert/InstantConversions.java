@@ -4,10 +4,6 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.sql.Timestamp;
 import java.time.Instant;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
-import java.time.OffsetDateTime;
 import java.time.ZonedDateTime;
 import java.util.Calendar;
 import java.util.Date;
@@ -34,7 +30,7 @@ import static com.cedarsoftware.util.convert.MapConversions.INSTANT;
  *         limitations under the License.
  */
 final class InstantConversions {
-    
+
     // Feature option constants for modern time class precision control
     public static final String MODERN_TIME_LONG_PRECISION = "modern.time.long.precision";
 
@@ -46,28 +42,23 @@ final class InstantConversions {
         target.put(INSTANT, instant.toString());  // Uses ISO-8601 format
         return target;
     }
-    
+
     static ZonedDateTime toZonedDateTime(Object from, Converter converter) {
         return ((Instant)from).atZone(converter.getOptions().getZoneId());
     }
 
-    static OffsetDateTime toOffsetDateTime(Object from, Converter converter) {
-        Instant instant = (Instant) from;
-        return instant.atZone(converter.getOptions().getZoneId()).toOffsetDateTime();
-    }
-
     static long toLong(Object from, Converter converter) {
         Instant instant = (Instant) from;
-        
+
         // Check for precision override (system property takes precedence)
         String systemPrecision = System.getProperty("cedarsoftware.converter." + MODERN_TIME_LONG_PRECISION);
         String precision = systemPrecision;
-        
+
         // Fall back to converter options if no system property
         if (precision == null) {
             precision = converter.getOptions().getCustomOption(MODERN_TIME_LONG_PRECISION);
         }
-        
+
         // Default to milliseconds if no override specified
         if (Converter.PRECISION_NANOS.equals(precision)) {
             BigInteger seconds = BigInteger.valueOf(instant.getEpochSecond());
@@ -77,7 +68,7 @@ final class InstantConversions {
             return instant.toEpochMilli(); // Default: milliseconds
         }
     }
-    
+
     /**
      * @return double number of seconds.  The fractional part represents sub-second precision, with
      * nanosecond level support.
@@ -89,14 +80,6 @@ final class InstantConversions {
 
     static Timestamp toTimestamp(Object from, Converter converter) {
         return Timestamp.from((Instant) from);
-    }
-
-    static java.sql.Date toSqlDate(Object from, Converter converter) {
-        return java.sql.Date.valueOf(
-                ((Instant) from)
-                        .atZone(converter.getOptions().getZoneId())
-                        .toLocalDate()
-        );
     }
 
     static Date toDate(Object from, Converter converter) {
@@ -120,17 +103,5 @@ final class InstantConversions {
     static BigDecimal toBigDecimal(Object from, Converter converter) {
         Instant instant = (Instant) from;
         return BigDecimalConversions.secondsAndNanosToDouble(instant.getEpochSecond(), instant.getNano());
-    }
-
-    static LocalDateTime toLocalDateTime(Object from, Converter converter) {
-        return toZonedDateTime(from, converter).toLocalDateTime();
-    }
-
-    static LocalDate toLocalDate(Object from, Converter converter) {
-        return toZonedDateTime(from, converter).toLocalDate();
-    }
-
-    static LocalTime toLocalTime(Object from, Converter converter) {
-        return toZonedDateTime(from, converter).toLocalTime();
     }
 }

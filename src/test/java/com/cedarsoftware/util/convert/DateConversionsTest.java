@@ -1,13 +1,8 @@
 package com.cedarsoftware.util.convert;
 
-import java.time.MonthDay;
-import java.time.Year;
-import java.time.YearMonth;
-
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 /**
@@ -38,10 +33,6 @@ class DateConversionsTest {
         converter = new Converter(new DefaultConverterOptions());
     }
 
-    // ---- Bug #1: toString/toYear/toYearMonth/toMonthDay call date.toInstant() directly ----
-    // java.sql.Date.toInstant() throws UnsupportedOperationException.
-    // These methods should use the safe toInstant(from, converter) helper.
-
     @Test
     void toString_sqlDate_shouldNotThrowUnsupportedOperationException() {
         // java.sql.Date representing 2024-06-15
@@ -52,43 +43,11 @@ class DateConversionsTest {
         assertNotNull(result);
     }
 
-    @Test
-    void toYear_sqlDate_shouldNotThrowUnsupportedOperationException() {
-        java.sql.Date sqlDate = java.sql.Date.valueOf("2024-06-15");
-
-        Year result = DateConversions.toYear(sqlDate, converter);
-        assertEquals(Year.of(2024), result);
-    }
-
-    @Test
-    void toYearMonth_sqlDate_shouldNotThrowUnsupportedOperationException() {
-        java.sql.Date sqlDate = java.sql.Date.valueOf("2024-06-15");
-
-        YearMonth result = DateConversions.toYearMonth(sqlDate, converter);
-        assertEquals(YearMonth.of(2024, 6), result);
-    }
-
-    @Test
-    void toMonthDay_sqlDate_shouldNotThrowUnsupportedOperationException() {
-        java.sql.Date sqlDate = java.sql.Date.valueOf("2024-06-15");
-
-        MonthDay result = DateConversions.toMonthDay(sqlDate, converter);
-        assertEquals(MonthDay.of(6, 15), result);
-    }
-
     // Verify the methods still work for regular java.util.Date
     @Test
     void toString_utilDate_stillWorks() {
         java.util.Date date = new java.util.Date(1718409600000L); // 2024-06-15 approx
         String result = DateConversions.toString(date, converter);
-        assertNotNull(result);
-    }
-
-    @Test
-    void toYear_utilDate_stillWorks() {
-        // Use a date well within 2024
-        java.util.Date date = new java.util.Date(1718409600000L);
-        Year result = DateConversions.toYear(date, converter);
         assertNotNull(result);
     }
 }

@@ -1,23 +1,14 @@
 package com.cedarsoftware.util.convert;
 
-import java.math.BigDecimal;
-import java.math.BigInteger;
-import java.sql.Timestamp;
-import java.time.Instant;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.MonthDay;
-import java.time.OffsetDateTime;
 import java.time.Year;
 import java.time.YearMonth;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.Calendar;
-import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.TimeZone;
 
 /**
  * @author Kenny Partlow (kpartlow@gmail.com)
@@ -40,58 +31,13 @@ final class LocalDateConversions {
 
     private LocalDateConversions() {}
 
-    static Instant toInstant(Object from, Converter converter) {
-        return toZonedDateTime(from, converter).toInstant();
-    }
-
-    static long toLong(Object from, Converter converter) {
-        return toInstant(from, converter).toEpochMilli();
-    }
-
-    static LocalDateTime toLocalDateTime(Object from, Converter converter) {
-        return toZonedDateTime(from, converter).toLocalDateTime();
-    }
-
     static ZonedDateTime toZonedDateTime(Object from, Converter converter) {
         LocalDate localDate = (LocalDate) from;
         return ZonedDateTime.of(localDate, LocalTime.MIDNIGHT, converter.getOptions().getZoneId());
     }
 
-    static OffsetDateTime toOffsetDateTime(Object from, Converter converter) {
-        return toZonedDateTime(from, converter).toOffsetDateTime();
-    }
-
-    static double toDouble(Object from, Converter converter) {
-        return toInstant(from, converter).toEpochMilli() / 1000d;
-    }
-
-    static Timestamp toTimestamp(Object from, Converter converter) {
-        return Timestamp.from(toInstant(from, converter));
-    }
-
-    static Calendar toCalendar(Object from, Converter converter) {
-        ZonedDateTime time = toZonedDateTime(from, converter);
-        Calendar calendar = Calendar.getInstance(converter.getOptions().getTimeZone());
-        calendar.setTimeInMillis(time.toInstant().toEpochMilli());
-        return calendar;
-    }
-
     static java.sql.Date toSqlDate(Object from, Converter converter) {
         return java.sql.Date.valueOf((LocalDate) from);
-    }
-
-    static Date toDate(Object from, Converter converter) {
-        return new Date(toLong(from, converter));
-    }
-
-    static BigInteger toBigInteger(Object from, Converter converter) {
-        Instant instant = toInstant(from, converter);
-        return InstantConversions.toBigInteger(instant, converter);
-    }
-
-    static BigDecimal toBigDecimal(Object from, Converter converter) {
-        Instant instant = toInstant(from, converter);
-        return InstantConversions.toBigDecimal(instant, converter);
     }
 
     static Year toYear(Object from, Converter converter) {

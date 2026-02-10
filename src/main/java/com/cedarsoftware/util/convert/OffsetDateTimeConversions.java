@@ -4,14 +4,8 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.sql.Timestamp;
 import java.time.Instant;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
-import java.time.MonthDay;
 import java.time.OffsetDateTime;
 import java.time.OffsetTime;
-import java.time.Year;
-import java.time.YearMonth;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Calendar;
@@ -66,18 +60,6 @@ final class OffsetDateTimeConversions {
         return InstantConversions.toBigDecimal(instant, converter);
     }
 
-    static LocalDateTime toLocalDateTime(Object from, Converter converter) {
-        return toZonedDateTime(from, converter).toLocalDateTime();
-    }
-
-    static LocalDate toLocalDate(Object from, Converter converter) {
-        return toZonedDateTime(from, converter).toLocalDate();
-    }
-
-    static LocalTime toLocalTime(Object from, Converter converter) {
-        return toZonedDateTime(from, converter).toLocalTime();
-    }
-
     static Timestamp toTimestamp(Object from, Converter converter) {
         OffsetDateTime odt = (OffsetDateTime) from;
         return Timestamp.from(odt.toInstant());
@@ -87,14 +69,6 @@ final class OffsetDateTimeConversions {
         Calendar calendar = Calendar.getInstance(converter.getOptions().getTimeZone());
         calendar.setTimeInMillis(toLong(from, converter));
         return calendar;
-    }
-
-    static java.sql.Date toSqlDate(Object from, Converter converter) {
-        return java.sql.Date.valueOf(
-                ((OffsetDateTime) from)
-                        .atZoneSameInstant(converter.getOptions().getZoneId())
-                        .toLocalDate()
-        );
     }
 
     static ZonedDateTime toZonedDateTime(Object from, Converter converter) {
@@ -108,30 +82,6 @@ final class OffsetDateTimeConversions {
     static OffsetTime toOffsetTime(Object from, Converter converter) {
         OffsetDateTime dateTime = (OffsetDateTime) from;
         return dateTime.toOffsetTime();
-    }
-
-    static Year toYear(Object from, Converter converter) {
-        return Year.from(
-                ((OffsetDateTime) from)
-                        .atZoneSameInstant(converter.getOptions().getZoneId())
-                        .toLocalDate()
-        );
-    }
-
-    static YearMonth toYearMonth(Object from, Converter converter) {
-        return YearMonth.from(
-                ((OffsetDateTime) from)
-                        .atZoneSameInstant(converter.getOptions().getZoneId())
-                        .toLocalDate()
-        );
-    }
-
-    static MonthDay toMonthDay(Object from, Converter converter) {
-        return MonthDay.from(
-                ((OffsetDateTime) from)
-                        .atZoneSameInstant(converter.getOptions().getZoneId())
-                        .toLocalDate()
-        );
     }
 
     static String toString(Object from, Converter converter) {

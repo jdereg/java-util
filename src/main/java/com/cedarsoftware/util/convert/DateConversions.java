@@ -5,13 +5,6 @@ import java.math.BigInteger;
 import java.math.RoundingMode;
 import java.sql.Timestamp;
 import java.time.Instant;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
-import java.time.MonthDay;
-import java.time.OffsetDateTime;
-import java.time.Year;
-import java.time.YearMonth;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
@@ -43,7 +36,7 @@ final class DateConversions {
             .toFormatter();
 
     private DateConversions() {}
-    
+
     static ZonedDateTime toZonedDateTime(Object from, Converter converter) {
         Date date = (Date) from;
         return Instant.ofEpochMilli(date.getTime()).atZone(converter.getOptions().getZoneId());
@@ -56,14 +49,6 @@ final class DateConversions {
     static double toDouble(Object from, Converter converter) {
         Date date = (Date) from;
         return date.getTime() / 1000.0;
-    }
-
-    static java.sql.Date toSqlDate(Object from, Converter converter) {
-        return java.sql.Date.valueOf(
-                toInstant(from, converter)
-                        .atZone(converter.getOptions().getZoneId())
-                        .toLocalDate()
-        );
     }
 
     static Date toDate(Object from, Converter converter) {
@@ -95,55 +80,9 @@ final class DateConversions {
         }
     }
 
-    static OffsetDateTime toOffsetDateTime(Object from, Converter converter) {
-        return toInstant(from, converter).atZone(converter.getOptions().getZoneId()).toOffsetDateTime();
-    }
-
-    static LocalDateTime toLocalDateTime(Object from, Converter converter) {
-        return toZonedDateTime(from, converter).toLocalDateTime();
-    }
-
-    static LocalDate toLocalDate(Object from, Converter converter) {
-        return toZonedDateTime(from, converter).toLocalDate();
-    }
-
-    static LocalTime toLocalTime(Object from, Converter converter) {
-        Instant instant = toInstant(from, converter);
-
-        // Convert Instant to LocalDateTime
-        LocalDateTime localDateTime = LocalDateTime.ofInstant(instant, converter.getOptions().getZoneId());
-
-        // Extract the LocalTime from LocalDateTime
-        return localDateTime.toLocalTime();
-    }
-
     static BigInteger toBigInteger(Object from, Converter converter) {
         Date date = (Date) from;
         return BigInteger.valueOf(date.getTime());
-    }
-
-    static Year toYear(Object from, Converter converter) {
-        return Year.from(
-                toInstant(from, converter)
-                        .atZone(converter.getOptions().getZoneId())
-                        .toLocalDate()
-        );
-    }
-
-    static YearMonth toYearMonth(Object from, Converter converter) {
-        return YearMonth.from(
-                toInstant(from, converter)
-                        .atZone(converter.getOptions().getZoneId())
-                        .toLocalDate()
-        );
-    }
-
-    static MonthDay toMonthDay(Object from, Converter converter) {
-        return MonthDay.from(
-                toInstant(from, converter)
-                        .atZone(converter.getOptions().getZoneId())
-                        .toLocalDate()
-        );
     }
 
     static String toString(Object from, Converter converter) {

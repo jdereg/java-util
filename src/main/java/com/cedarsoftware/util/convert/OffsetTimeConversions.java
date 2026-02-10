@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.OffsetTime;
 import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashMap;
@@ -28,6 +29,10 @@ import java.util.Map;
  */
 final class OffsetTimeConversions {
     private OffsetTimeConversions() {}
+
+    static LocalTime toLocalTime(Object from, Converter converter) {
+        return ((OffsetTime) from).toLocalTime();
+    }
 
     static String toString(Object from, Converter converter) {
         OffsetTime offsetTime = (OffsetTime) from;

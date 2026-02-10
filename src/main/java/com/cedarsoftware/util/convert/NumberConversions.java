@@ -9,6 +9,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.MonthDay;
+import java.time.YearMonth;
 import java.time.OffsetDateTime;
 import java.time.OffsetTime;
 import java.time.Year;
@@ -336,6 +337,24 @@ final class NumberConversions {
      * @return MonthDay instance
      * @throws IllegalArgumentException if the number is not in valid MMDD format
      */
+    static YearMonth toYearMonth(Object from, Converter converter) {
+        Number number = (Number) from;
+        int value = number.intValue();
+
+        int year = value / 100;
+        int month = value % 100;
+
+        if (month < 1 || month > 12) {
+            throw new IllegalArgumentException("Invalid month in YYYYMM format: " + month + " (from " + value + ")");
+        }
+
+        try {
+            return YearMonth.of(year, month);
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Invalid YYYYMM format: " + value + " - " + e.getMessage(), e);
+        }
+    }
+
     static MonthDay toMonthDay(Object from, Converter converter) {
         Number number = (Number) from;
         int value = number.intValue();

@@ -1,5 +1,7 @@
 package com.cedarsoftware.util.convert;
 
+import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.time.YearMonth;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -26,6 +28,35 @@ import static com.cedarsoftware.util.convert.MapConversions.YEAR_MONTH;
 final class YearMonthConversions {
 
     private YearMonthConversions() {}
+
+    static int toInt(Object from, Converter converter) {
+        YearMonth ym = (YearMonth) from;
+        return ym.getYear() * 100 + ym.getMonthValue();
+    }
+
+    static long toLong(Object from, Converter converter) {
+        return toInt(from, converter);
+    }
+
+    static short toShort(Object from, Converter converter) {
+        return (short) toInt(from, converter);
+    }
+
+    static double toDouble(Object from, Converter converter) {
+        return toInt(from, converter);
+    }
+
+    static float toFloat(Object from, Converter converter) {
+        return toInt(from, converter);
+    }
+
+    static BigInteger toBigInteger(Object from, Converter converter) {
+        return BigInteger.valueOf(toInt(from, converter));
+    }
+
+    static BigDecimal toBigDecimal(Object from, Converter converter) {
+        return BigDecimal.valueOf(toInt(from, converter));
+    }
 
     static Map toMap(Object from, Converter converter) {
         YearMonth yearMonth = (YearMonth) from;

@@ -333,4 +333,26 @@ class DimensionConversionsTest {
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessageContaining("Unsupported conversion, source type [Boolean");
     }
+
+    // ========================================
+    // Bug: toInteger overflow on width * height
+    // (toInteger is not registered in Converter,
+    //  so we test the static method directly)
+    // ========================================
+
+    @Test
+    void testDimensionToInteger_overflowShouldThrow() {
+        // 50000 * 50000 = 2,500,000,000 which exceeds Integer.MAX_VALUE (2,147,483,647)
+        Dimension dimension = new Dimension(50000, 50000);
+        assertThatThrownBy(() -> DimensionConversions.toInteger(dimension, converter))
+                .isInstanceOf(ArithmeticException.class);
+    }
+
+    @Test
+    void testDimensionToInteger_maxSafeValues_shouldWork() {
+        // 46340 * 46340 = 2,147,395,600 which is within Integer.MAX_VALUE
+        Dimension dimension = new Dimension(46340, 46340);
+        Integer result = DimensionConversions.toInteger(dimension, converter);
+        assertThat(result).isEqualTo(46340 * 46340);
+    }
 }

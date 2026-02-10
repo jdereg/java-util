@@ -81,7 +81,7 @@ final class DimensionConversions {
      */
     static Integer toInteger(Object from, Converter converter) {
         Dimension dimension = (Dimension) from;
-        return dimension.getWidth() * dimension.getHeight();
+        return Math.multiplyExact(dimension.getWidth(), dimension.getHeight());
     }
 
     /**

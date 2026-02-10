@@ -117,7 +117,7 @@ final class EnumConversions {
     }
 
     @SuppressWarnings("unchecked")
-    static <T extends Enum<T>> EnumSet<T> toEnumSet(Object from, Class<?> target) {
+    static <T extends Enum<T>> EnumSet<T> toEnumSet(Object from, Converter converter, Class<?> target) {
         if (!target.isEnum()) {
             throw new IllegalArgumentException("target type " + target.getName() + " must be an Enum, which instructs the EnumSet type to create.");
         }
@@ -126,9 +126,9 @@ final class EnumConversions {
         EnumSet<T> enumSet = EnumSet.noneOf(enumClass);
 
         if (from instanceof Collection) {
-            processElements((Collection<?>) from, enumSet, enumClass);
+            processElements((Collection<?>) from, enumSet, enumClass, converter);
         } else if (from.getClass().isArray()) {
-            processArrayElements(from, enumSet, enumClass);
+            processArrayElements(from, enumSet, enumClass, converter);
         } else {
             throw new IllegalArgumentException("Source must be a Collection or Array, found: " + from.getClass().getName());
         }
@@ -136,33 +136,38 @@ final class EnumConversions {
         return enumSet;
     }
 
-    private static <T extends Enum<T>> void processArrayElements(Object array, EnumSet<T> enumSet, Class<T> enumClass) {
+    private static <T extends Enum<T>> void processArrayElements(Object array, EnumSet<T> enumSet, Class<T> enumClass, Converter converter) {
         int length = ArrayUtilities.getLength(array);
         T[] enumConstants = null;  // Lazy initialization
 
         for (int i = 0; i < length; i++) {
             Object element = ArrayUtilities.getElement(array, i);
             if (element != null) {
-                enumConstants = processElement(element, enumSet, enumClass, enumConstants);
+                enumConstants = processElement(element, enumSet, enumClass, enumConstants, converter);
             }
         }
     }
 
-    private static <T extends Enum<T>> void processElements(Collection<?> collection, EnumSet<T> enumSet, Class<T> enumClass) {
+    private static <T extends Enum<T>> void processElements(Collection<?> collection, EnumSet<T> enumSet, Class<T> enumClass, Converter converter) {
         T[] enumConstants = null;  // Lazy initialization
 
         for (Object element : collection) {
             if (element != null) {
-                enumConstants = processElement(element, enumSet, enumClass, enumConstants);
+                enumConstants = processElement(element, enumSet, enumClass, enumConstants, converter);
             }
         }
     }
 
-    private static <T extends Enum<T>> T[] processElement(Object element, EnumSet<T> enumSet, Class<T> enumClass, T[] enumConstants) {
+    private static <T extends Enum<T>> T[] processElement(Object element, EnumSet<T> enumSet, Class<T> enumClass, T[] enumConstants, Converter converter) {
         if (enumClass.isInstance(element)) {
             enumSet.add(enumClass.cast(element));
         } else if (element instanceof String) {
-            enumSet.add(Enum.valueOf(enumClass, (String) element));
+            String enumName = ((String) element).trim();
+            int maxLength = converter.getOptions().getMaxEnumNameLength();
+            if (enumName.length() > maxLength) {
+                throw new IllegalArgumentException("Enum name too long (" + enumName.length() + " chars, max " + maxLength + ") for enum " + enumClass.getName());
+            }
+            enumSet.add(Enum.valueOf(enumClass, enumName));
         } else if (element instanceof Number) {
             // Lazy load enum constants when first numeric value is encountered
             if (enumConstants == null) {

@@ -2,6 +2,9 @@ package com.cedarsoftware.util.convert;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.time.ZoneId;
+import java.util.Arrays;
+import java.util.EnumSet;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -285,5 +288,49 @@ class EnumConversionsTest {
     void getSupportedConversions_includesNumberToEnum() {
         java.util.Map<String, java.util.Set<String>> conversions = Converter.getSupportedConversions();
         assertThat(conversions.get("Number")).contains("Enum");
+    }
+
+    // ---- Bug: processElement() bypasses maxEnumNameLength for String elements in collections ----
+
+    @Test
+    void toEnumSet_stringElement_shouldEnforceMaxEnumNameLength() {
+        // Configure a converter with a small maxEnumNameLength
+        ConverterOptions options = new ConverterOptions() {
+            @Override
+            public <T> T getCustomOption(String name) { return null; }
+
+            @Override
+            public ZoneId getZoneId() { return ZoneId.of("UTC"); }
+
+            @Override
+            public int getMaxEnumNameLength() { return 5; }
+        };
+        Converter conv = new Converter(options);
+
+        // "MONDAY" is 6 chars, exceeding the max of 5
+        // stringToEnum() would reject this, but processElement() bypasses the guard
+        assertThatThrownBy(() -> conv.convert(Arrays.asList("MONDAY"), Day.class))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("too long");
+    }
+
+    @Test
+    void toEnumSet_stringElement_withinLimit_shouldWork() {
+        ConverterOptions options = new ConverterOptions() {
+            @Override
+            public <T> T getCustomOption(String name) { return null; }
+
+            @Override
+            public ZoneId getZoneId() { return ZoneId.of("UTC"); }
+
+            @Override
+            public int getMaxEnumNameLength() { return 10; }
+        };
+        Converter conv = new Converter(options);
+
+        // "MONDAY" is 6 chars, within the limit of 10
+        @SuppressWarnings("unchecked")
+        EnumSet<Day> result = (EnumSet<Day>) (Object) conv.convert(Arrays.asList("MONDAY"), Day.class);
+        assertThat(result).contains(Day.MONDAY);
     }
 }

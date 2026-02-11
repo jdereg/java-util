@@ -28,6 +28,10 @@ import static com.cedarsoftware.util.convert.MapConversions.ZONE;
  *         limitations under the License.
  */
 final class TimeZoneConversions {
+    static TimeZone copy(Object from, Converter converter) {
+        return (TimeZone) ((TimeZone) from).clone();
+    }
+
     static String toString(Object from, Converter converter) {
         TimeZone timezone = (TimeZone)from;
         return timezone.getID();

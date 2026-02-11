@@ -427,6 +427,13 @@ final class UniversalConversions {
     // ========================================
 
     /**
+     * Copy a BitSet to a new BitSet instance.
+     */
+    static BitSet copyBitSet(Object from, Converter converter) {
+        return (BitSet) ((BitSet) from).clone();
+    }
+
+    /**
      * Universal bridge: BitSet → boolean[].
      * Extracts the boolean array from BitSet for universal array system access.
      */

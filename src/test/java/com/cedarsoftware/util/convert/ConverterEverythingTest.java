@@ -215,7 +215,6 @@ class ConverterEverythingTest {
         immutable.add(MonthDay.class);
         immutable.add(YearMonth.class);
         immutable.add(Locale.class);
-        immutable.add(TimeZone.class);
 
         loadCollectionTest();
         loadNumberTest();

@@ -903,7 +903,7 @@ public final class Converter {
 
         // TimeZone Conversions
         CONVERSION_DB.put(pair(Void.class, TimeZone.class), VoidConversions::toNull);
-        CONVERSION_DB.put(pair(TimeZone.class, TimeZone.class), Converter::identity);
+        CONVERSION_DB.put(pair(TimeZone.class, TimeZone.class), TimeZoneConversions::copy);
         CONVERSION_DB.put(pair(String.class, TimeZone.class), StringConversions::toTimeZone);
         CONVERSION_DB.put(pair(Map.class, TimeZone.class), MapConversions::toTimeZone);
         CONVERSION_DB.put(pair(ZoneId.class, TimeZone.class), ZoneIdConversions::toTimeZone);
@@ -996,10 +996,12 @@ public final class Converter {
 
         // toStringBuffer
         CONVERSION_DB.put(pair(Void.class, StringBuffer.class), VoidConversions::toNull);
+        CONVERSION_DB.put(pair(StringBuffer.class, StringBuffer.class), StringBufferConversions::copy);
         CONVERSION_DB.put(pair(String.class, StringBuffer.class), StringConversions::toStringBuffer);
 
         // toStringBuilder - Bridge through String
         CONVERSION_DB.put(pair(Void.class, StringBuilder.class), VoidConversions::toNull);
+        CONVERSION_DB.put(pair(StringBuilder.class, StringBuilder.class), StringBuilderConversions::copy);
         CONVERSION_DB.put(pair(String.class, StringBuilder.class), StringConversions::toStringBuilder);
 
         // toByteArray
@@ -1008,7 +1010,7 @@ public final class Converter {
         CONVERSION_DB.put(pair(ByteBuffer.class, byte[].class), ByteBufferConversions::toByteArray);
         CONVERSION_DB.put(pair(CharBuffer.class, byte[].class), CharBufferConversions::toByteArray);
         CONVERSION_DB.put(pair(char[].class, byte[].class), (from, converter) -> ArrayConversions.arrayToArray(from, byte[].class, converter));
-        CONVERSION_DB.put(pair(byte[].class, byte[].class), Converter::identity);
+        CONVERSION_DB.put(pair(byte[].class, byte[].class), ByteArrayConversions::copy);
         CONVERSION_DB.put(pair(File.class, byte[].class), FileConversions::toByteArray);
         CONVERSION_DB.put(pair(Path.class, byte[].class), PathConversions::toByteArray);
         CONVERSION_DB.put(pair(UUID.class, byte[].class), UUIDConversions::toByteArray);

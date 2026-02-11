@@ -26,6 +26,11 @@ final class ByteArrayConversions {
 
     private ByteArrayConversions() {}
 
+    static byte[] copy(Object from, Converter converter) {
+        byte[] bytes = (byte[]) from;
+        return java.util.Arrays.copyOf(bytes, bytes.length);
+    }
+
     static String toString(Object from, Converter converter) {
         byte[] bytes = (byte[])from;
         return (bytes == null) ? StringUtilities.EMPTY : new String(bytes, converter.getOptions().getCharset());

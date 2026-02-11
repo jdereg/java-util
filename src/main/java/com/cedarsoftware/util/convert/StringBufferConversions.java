@@ -20,4 +20,8 @@ package com.cedarsoftware.util.convert;
 final class StringBufferConversions {
 
     private StringBufferConversions() {}
+
+    static StringBuffer copy(Object from, Converter converter) {
+        return new StringBuffer(((StringBuffer) from).toString());
+    }
 }

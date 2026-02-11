@@ -1,6 +1,6 @@
 ### Revision History
 
-#### 4.93.0 (Unreleased)
+#### 4.93.0 - 2026-02-10
 * **BUG FIX**: `ArrayConversions.enumSetToArray()` - `ArrayStoreException` when converting `EnumSet` to `Long[]`. Ordinal values (autoboxed `Integer`) were stored directly into `Long[]` arrays. Split `Integer`/`Long` branches and added explicit `(long)` cast.
 * **BUG FIX**: `CollectionHandling.sizeOrDefault()` - `ArrayBlockingQueue` overflow when converting arrays with >16 elements. `sizeOrDefault()` only handled `Collection` sources, returning hardcoded 16 for arrays. Added `Array.getLength()` path for array sources.
 * **BUG FIX**: `CollectionHandling` - `SynchronousQueue` and `DelayQueue` now throw descriptive `IllegalArgumentException` when used as conversion targets, instead of silently failing at runtime (`Queue full` / `ClassCastException`).

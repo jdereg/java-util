@@ -248,27 +248,67 @@ public class ThreadedLRUCacheStrategy<K, V> implements Map<K, V>, Closeable {
     /**
      * Background cleanup — the "elves" strategy.
      * <p>
-     * Drains this cache back to capacity using sample-10 evictions, working until
-     * the cache is healthy or the global deadline is reached. The caller passes
-     * the deadline so that all caches share a single time budget per cycle.
+     * Drains this cache back to capacity using one of two strategies:
+     * <ul>
+     *   <li><b>Bulk eviction</b> (surplus &gt; capacity): Uses a single iterator pass with
+     *       {@code iterator.remove()}, avoiding per-eviction hash lookups and iterator creation.
+     *       LRU accuracy is sacrificed for speed — acceptable when 50%+ of entries must go.</li>
+     *   <li><b>Sample-10 eviction</b> (surplus &le; capacity): Samples 10 entries and evicts the
+     *       oldest, providing ~95-99% LRU accuracy with O(1) cost per eviction.</li>
+     * </ul>
      * <p>
-     * At ~500ns per sample-10 eviction, a 400ms budget ≈ 800K evictions per cycle.
-     * A 100K surplus drains in under one cycle. Puts are never blocked — the user
-     * chose THREADED knowing capacity is approximate.
+     * The caller passes a deadline so that all caches share a single time budget per cycle.
+     * Puts are never blocked — the user chose THREADED knowing capacity is approximate.
      *
      * @param deadline absolute nanoTime after which the elf should stop
      */
     private void backgroundCleanup(long deadline) {
-        if (cache.size() <= capacity) {
+        int size = cache.size();
+        if (size <= capacity) {
             return;
         }
 
-        while (cache.size() > capacity) {
-            if (!evictOldestUsingSample()) {
-                break;  // Cache is empty or eviction failed
+        int surplus = size - capacity;
+        if (surplus > capacity) {
+            // Massive overshoot — use fast bulk eviction via iterator removal.
+            // When >50% of entries must be evicted, LRU accuracy matters less than speed.
+            bulkEvict(surplus, deadline);
+        } else {
+            // Moderate overshoot — use sample-10 for good LRU accuracy.
+            while (cache.size() > capacity) {
+                if (!evictOldestUsingSample()) {
+                    break;  // Cache is empty or eviction failed
+                }
+                if (System.nanoTime() >= deadline) {
+                    break;  // Global budget exhausted — resume next cycle
+                }
             }
-            if (System.nanoTime() >= deadline) {
-                break;  // Global budget exhausted — resume next cycle
+        }
+    }
+
+    /**
+     * Fast bulk eviction using a single iterator pass.
+     * <p>
+     * Removes entries via {@code iterator.remove()}, which operates directly on the
+     * underlying ConcurrentHashMap without a second hash lookup. The budget is checked
+     * every 1024 removals to minimize {@code System.nanoTime()} overhead.
+     * <p>
+     * This is used when the cache is massively over capacity (more than 2&times;).
+     * At that scale, ~100-300ns per removal allows millions of evictions per cycle.
+     *
+     * @param surplus  number of entries to remove
+     * @param deadline absolute nanoTime after which the elf should stop
+     */
+    private void bulkEvict(int surplus, long deadline) {
+        Iterator<Node<K, V>> it = cache.values().iterator();
+        int removed = 0;
+        while (it.hasNext() && removed < surplus) {
+            it.next();
+            it.remove();
+            removed++;
+            // Check budget every 1024 removals to minimize System.nanoTime() overhead
+            if ((removed & 0x3FF) == 0 && System.nanoTime() >= deadline) {
+                break;
             }
         }
     }

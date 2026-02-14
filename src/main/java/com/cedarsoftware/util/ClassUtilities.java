@@ -1602,16 +1602,13 @@ public class ClassUtilities {
         // PHASE 1: Find exact type matches - highest priority
         findExactMatches(valueArray, valueUsed, parameters, parameterMatched, result);
 
-        // PHASE 2: Find assignable type matches with inheritance
+        // PHASE 2: Find assignable type matches with inheritance (includes primitive/wrapper via ClassHierarchyInfo)
         findInheritanceMatches(valueArray, valueUsed, parameters, parameterMatched, result);
 
-        // PHASE 3: Find primitive/wrapper matches
-        findPrimitiveWrapperMatches(valueArray, valueUsed, parameters, parameterMatched, result);
-
-        // PHASE 4: Find convertible type matches
+        // PHASE 3: Find convertible type matches
         findConvertibleMatches(converter, valueArray, valueUsed, parameters, parameterMatched, result);
 
-        // PHASE 5: Fill remaining unmatched parameters with defaults or nulls
+        // PHASE 4: Fill remaining unmatched parameters with defaults or nulls
         fillRemainingParameters(converter, parameters, parameterMatched, result, allowNulls);
 
         return result;
@@ -1625,156 +1622,128 @@ public class ClassUtilities {
                                                       Parameter[] parameters, boolean allowNulls) {
         int fixedParamCount = parameters.length - 1;
         Object[] result = new Object[parameters.length];
-        
+
         // Get the varargs component type
         Class<?> varargsType = parameters[fixedParamCount].getType();
         Class<?> componentType = varargsType.getComponentType();
-        
+
         // Special case: if we have exactly the right number of arguments and the last one
         // is already an array of the correct type, use it directly as the varargs array
-        if (valueArray.length == parameters.length && valueArray.length > 0) {
+        if (valueArray.length == parameters.length) {
             Object lastArg = valueArray[valueArray.length - 1];
             if (lastArg != null && varargsType.isInstance(lastArg)) {
-                // The last argument is already the right array type
-                // Match fixed parameters first
+                // The last argument is already the right array type — match fixed parameters first
                 if (fixedParamCount > 0) {
-                    Parameter[] fixedParams = Arrays.copyOf(parameters, fixedParamCount);
                     Object[] fixedValues = Arrays.copyOf(valueArray, fixedParamCount);
-                    boolean[] valueUsed = new boolean[fixedValues.length];
-                    boolean[] parameterMatched = new boolean[fixedParamCount];
-                    
-                    findExactMatches(fixedValues, valueUsed, fixedParams, parameterMatched, result);
-                    findInheritanceMatches(fixedValues, valueUsed, fixedParams, parameterMatched, result);
-                    findPrimitiveWrapperMatches(fixedValues, valueUsed, fixedParams, parameterMatched, result);
-                    findConvertibleMatches(converter, fixedValues, valueUsed, fixedParams, parameterMatched, result);
-                    fillRemainingParameters(converter, fixedParams, parameterMatched, result, allowNulls);
+                    matchFixedParameters(converter, fixedValues, parameters, fixedParamCount, result, allowNulls);
                 }
-                // Use the array directly as the varargs parameter
                 result[fixedParamCount] = lastArg;
                 return result;
             }
         }
-        
-        // If we have fixed parameters, match them first
+
+        // Determine which values are available for varargs after fixed parameter matching
+        Object[] varargsSource;
         if (fixedParamCount > 0) {
-            // Create temporary arrays for fixed parameter matching
-            Parameter[] fixedParams = Arrays.copyOf(parameters, fixedParamCount);
             boolean[] valueUsed = new boolean[valueArray.length];
-            boolean[] parameterMatched = new boolean[fixedParamCount];
-            
-            // Match fixed parameters
-            findExactMatches(valueArray, valueUsed, fixedParams, parameterMatched, result);
-            findInheritanceMatches(valueArray, valueUsed, fixedParams, parameterMatched, result);
-            findPrimitiveWrapperMatches(valueArray, valueUsed, fixedParams, parameterMatched, result);
-            findConvertibleMatches(converter, valueArray, valueUsed, fixedParams, parameterMatched, result);
-            fillRemainingParameters(converter, fixedParams, parameterMatched, result, allowNulls);
-            
+            matchFixedParameters(converter, valueArray, valueUsed, parameters, fixedParamCount, result, allowNulls);
+
             // Collect unused values for varargs
-            List<Object> varargsValues = new ArrayList<>();
+            List<Object> unused = new ArrayList<>();
             for (int i = 0; i < valueArray.length; i++) {
                 if (!valueUsed[i]) {
-                    varargsValues.add(valueArray[i]);
+                    unused.add(valueArray[i]);
                 }
             }
-            
-            // Check if we have a single unused value that is already an array of the right type
-            if (varargsValues.size() == 1 && varargsType.isInstance(varargsValues.get(0))) {
-                result[fixedParamCount] = varargsValues.get(0);
-            } else {
-                // Create and fill the varargs array
-                Object varargsArray = Array.newInstance(componentType, varargsValues.size());
-                for (int i = 0; i < varargsValues.size(); i++) {
-                    Object value = varargsValues.get(i);
-                    if (value != null && !componentType.isInstance(value)) {
-                        try {
-                            value = converter.convert(value, componentType);
-                        } catch (Exception e) {
-                            // Conversion failed, keep original value
-                        }
-                    }
-                    // Guard against ArrayStoreException
-                    if (value != null && !componentType.isInstance(value)) {
-                        // For primitives, we can't use isInstance check, so just try to set
-                        if (componentType.isPrimitive()) {
-                            try {
-                                // Convert to primitive type if needed
-                                value = converter.convert(value, componentType);
-                            } catch (Exception e) {
-                                // Conversion failed - for primitives, we can't store null
-                                // Use default value for primitive
-                                value = getArgForType(converter, componentType);
-                            }
-                        } else {
-                            // For reference types, if still incompatible after conversion attempt,
-                            // try one more conversion or set to null
-                            try {
-                                value = converter.convert(value, componentType);
-                            } catch (Exception e) {
-                                // Can't convert - for varargs, we'll be lenient and use null
-                                value = null;
-                            }
-                        }
-                    }
-                    try {
-                        ArrayUtilities.setElement(varargsArray, i, value);
-                    } catch (IllegalArgumentException ex) {
-                        // Last-chance guard for exotic conversions - use default safely
-                        ArrayUtilities.setElement(varargsArray, i, getArgForType(converter, componentType));
-                    }
-                }
-                result[fixedParamCount] = varargsArray;
-            }
+            varargsSource = unused.toArray();
         } else {
-            // No fixed parameters - check if the single argument is already the right array type
-            if (valueArray.length == 1 && varargsType.isInstance(valueArray[0])) {
-                result[0] = valueArray[0];
-            } else {
-                // All arguments go into the varargs array
-                Object varargsArray = Array.newInstance(componentType, valueArray.length);
-                for (int i = 0; i < valueArray.length; i++) {
-                    Object value = valueArray[i];
-                    if (value != null && !componentType.isInstance(value)) {
-                        try {
-                            value = converter.convert(value, componentType);
-                        } catch (Exception e) {
-                            // Conversion failed, keep original value
-                        }
-                    }
-                    // Guard against ArrayStoreException
-                    if (value != null && !componentType.isInstance(value)) {
-                        // For primitives, we can't use isInstance check, so just try to set
-                        if (componentType.isPrimitive()) {
-                            try {
-                                // Convert to primitive type if needed
-                                value = converter.convert(value, componentType);
-                            } catch (Exception e) {
-                                // Conversion failed - for primitives, we can't store null
-                                // Use default value for primitive
-                                value = getArgForType(converter, componentType);
-                            }
-                        } else {
-                            // For reference types, if still incompatible after conversion attempt,
-                            // try one more conversion or set to null
-                            try {
-                                value = converter.convert(value, componentType);
-                            } catch (Exception e) {
-                                // Can't convert - for varargs, we'll be lenient and use null
-                                value = null;
-                            }
-                        }
-                    }
+            varargsSource = valueArray;
+        }
+
+        // Pack remaining values into the varargs array
+        if (varargsSource.length == 1 && varargsType.isInstance(varargsSource[0])) {
+            result[fixedParamCount] = varargsSource[0];
+        } else {
+            result[fixedParamCount] = packVarargsArray(converter, varargsSource, componentType);
+        }
+
+        return result;
+    }
+
+    /**
+     * Match fixed (non-varargs) parameters using the standard matching pipeline.
+     * Variant that does not expose the valueUsed array (for the pre-matched array case).
+     */
+    private static void matchFixedParameters(Converter converter, Object[] values,
+                                             Parameter[] parameters, int fixedParamCount,
+                                             Object[] result, boolean allowNulls) {
+        Parameter[] fixedParams = Arrays.copyOf(parameters, fixedParamCount);
+        boolean[] valueUsed = new boolean[values.length];
+        boolean[] parameterMatched = new boolean[fixedParamCount];
+
+        findExactMatches(values, valueUsed, fixedParams, parameterMatched, result);
+        findInheritanceMatches(values, valueUsed, fixedParams, parameterMatched, result);
+        findConvertibleMatches(converter, values, valueUsed, fixedParams, parameterMatched, result);
+        fillRemainingParameters(converter, fixedParams, parameterMatched, result, allowNulls);
+    }
+
+    /**
+     * Match fixed (non-varargs) parameters using the standard matching pipeline.
+     * Variant that populates the caller's valueUsed array so unused values can be collected.
+     */
+    private static void matchFixedParameters(Converter converter, Object[] values, boolean[] valueUsed,
+                                             Parameter[] parameters, int fixedParamCount,
+                                             Object[] result, boolean allowNulls) {
+        Parameter[] fixedParams = Arrays.copyOf(parameters, fixedParamCount);
+        boolean[] parameterMatched = new boolean[fixedParamCount];
+
+        findExactMatches(values, valueUsed, fixedParams, parameterMatched, result);
+        findInheritanceMatches(values, valueUsed, fixedParams, parameterMatched, result);
+        findConvertibleMatches(converter, values, valueUsed, fixedParams, parameterMatched, result);
+        fillRemainingParameters(converter, fixedParams, parameterMatched, result, allowNulls);
+    }
+
+    /**
+     * Convert and pack values into a typed array for varargs parameters.
+     * Handles type conversion, primitive defaults, and ArrayStoreException guards.
+     */
+    private static Object packVarargsArray(Converter converter, Object[] values, Class<?> componentType) {
+        Object array = Array.newInstance(componentType, values.length);
+        for (int i = 0; i < values.length; i++) {
+            Object value = values[i];
+            // Try to convert if not already the right type
+            if (value != null && !componentType.isInstance(value)) {
+                try {
+                    value = converter.convert(value, componentType);
+                } catch (Exception e) {
+                    // Conversion failed, keep original value
+                }
+            }
+            // Guard against ArrayStoreException for still-incompatible values.
+            // Note: isInstance() always returns false for primitive componentTypes (e.g., int.class),
+            // so we must re-attempt conversion for primitives even if the first conversion succeeded.
+            if (value != null && !componentType.isInstance(value)) {
+                if (componentType.isPrimitive()) {
                     try {
-                        ArrayUtilities.setElement(varargsArray, i, value);
-                    } catch (IllegalArgumentException ex) {
-                        // Last-chance guard for exotic conversions - use default safely
-                        ArrayUtilities.setElement(varargsArray, i, getArgForType(converter, componentType));
+                        value = converter.convert(value, componentType);
+                    } catch (Exception e) {
+                        value = getArgForType(converter, componentType);
+                    }
+                } else {
+                    try {
+                        value = converter.convert(value, componentType);
+                    } catch (Exception e) {
+                        value = null;
                     }
                 }
-                result[0] = varargsArray;
+            }
+            try {
+                ArrayUtilities.setElement(array, i, value);
+            } catch (IllegalArgumentException ex) {
+                ArrayUtilities.setElement(array, i, getArgForType(converter, componentType));
             }
         }
-        
-        return result;
+        return array;
     }
 
     /**
@@ -1851,35 +1820,6 @@ public class ClassUtilities {
                 result[i] = values[bestValueIndex];
                 parameterMatched[i] = true;
                 valueUsed[bestValueIndex] = true;
-            }
-        }
-    }
-
-    /**
-     * Find matches between primitives and their wrapper types
-     */
-    private static void findPrimitiveWrapperMatches(Object[] values, boolean[] valueUsed,
-                                                    Parameter[] parameters, boolean[] parameterMatched,
-                                                    Object[] result) {
-        for (int i = 0; i < parameters.length; i++) {
-            if (parameterMatched[i]) continue;
-
-            Class<?> paramType = parameters[i].getType();
-
-            for (int j = 0; j < values.length; j++) {
-                if (valueUsed[j]) continue;
-
-                Object value = values[j];
-                if (value == null) continue;
-
-                Class<?> valueClass = value.getClass();
-
-                if (doesOneWrapTheOther(paramType, valueClass)) {
-                    result[i] = value;
-                    parameterMatched[i] = true;
-                    valueUsed[j] = true;
-                    break;
-                }
             }
         }
     }
@@ -3050,6 +2990,17 @@ public class ClassUtilities {
                         }
                     }
                 }
+            }
+
+            // Add primitive/wrapper counterpart at distance 1 so that inheritance matching
+            // handles boxing/unboxing (e.g., Integer value → int parameter) without a separate phase.
+            Class<?> counterpart = PRIMITIVE_TO_WRAPPER.get(key);
+            if (counterpart == null) {
+                counterpart = WRAPPER_TO_PRIMITIVE.get(key);
+            }
+            if (counterpart != null && !distanceMap.containsKey(counterpart)) {
+                distanceMap.put(counterpart, 1);
+                allSupertypes.add(counterpart);
             }
 
             return new ClassHierarchyInfo(Collections.unmodifiableSet(allSupertypes),

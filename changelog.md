@@ -1,5 +1,11 @@
 ### Revision History
 
+#### 4.94.0 - 2026-02-14
+* **PERFORMANCE**: `ClassUtilities` - Simplified the constructor argument matching pipeline from 5 phases to 4 by folding primitive/wrapper matching into the inheritance matching phase. `ClassHierarchyInfo` now includes the primitive/wrapper counterpart at distance 1 (e.g., `Integer`'s hierarchy includes `int` at distance 1), so `findInheritanceMatches()` handles boxing/unboxing naturally. Removed the separate `findPrimitiveWrapperMatches()` phase.
+* **CLEANUP**: `ClassUtilities` - Deduplicated varargs argument matching code. Extracted `matchFixedParameters()` and `packVarargsArray()` helpers from `matchArgumentsWithVarargs()`, eliminating ~65 lines of duplicated conversion/packing logic between the "has fixed params" and "no fixed params" branches.
+* **IMPROVEMENT**: `Converter` - Bridge conversion expansion now iterates until convergence, ensuring all reachable multi-hop conversion paths are discovered regardless of surrogate pair definition order. Previously used a single forward+reverse pass which was sufficient for current pair definitions but fragile to future additions. The convergence loop terminates after 1 iteration for current types (zero cost), but automatically handles deeper chains if new surrogate pairs are added.
+* **MAINTENANCE**: Version bump to 4.94.0, json-io test dependency updated to 4.93.0.
+
 #### 4.93.0 - 2026-02-10
 * **BUG FIX**: `ArrayConversions.enumSetToArray()` - `ArrayStoreException` when converting `EnumSet` to `Long[]`. Ordinal values (autoboxed `Integer`) were stored directly into `Long[]` arrays. Split `Integer`/`Long` branches and added explicit `(long)` cast.
 * **BUG FIX**: `CollectionHandling.sizeOrDefault()` - `ArrayBlockingQueue` overflow when converting arrays with >16 elements. `sizeOrDefault()` only handled `Collection` sources, returning hardcoded 16 for arrays. Added `Array.getLength()` path for array sources.

@@ -1403,11 +1403,19 @@ public final class Converter {
      * <p>
      * This method will discover the AtomicInteger → String path and add it to CONVERSION_DB
      * as a composite conversion function.
+     * <p>
+     * The expansion iterates until convergence — each pass may discover new entries that enable
+     * further bridging in the next pass. For example, the forward pass creates AtomicInteger → Long
+     * (via Integer), and the reverse pass then creates AtomicInteger → AtomicLong (via Long).
+     * Iterating ensures all reachable multi-hop paths are discovered regardless of definition order.
      */
     private static void expandBridgeConversions() {
-        // Expand all configured surrogate bridges in both directions
-        expandSurrogateBridges(BridgeDirection.SURROGATE_TO_PRIMARY);
-        expandSurrogateBridges(BridgeDirection.PRIMARY_TO_SURROGATE);
+        int prevSize;
+        do {
+            prevSize = CONVERSION_DB.size();
+            expandSurrogateBridges(BridgeDirection.SURROGATE_TO_PRIMARY);
+            expandSurrogateBridges(BridgeDirection.PRIMARY_TO_SURROGATE);
+        } while (CONVERSION_DB.size() > prevSize);
     }
 
     /**

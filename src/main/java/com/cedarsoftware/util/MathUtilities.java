@@ -428,8 +428,20 @@ public final class MathUtilities
      */
     public static Number parseToMinimalNumericType(String numStr)
     {
+        return parseToMinimalNumericType((CharSequence) Objects.requireNonNull(numStr, "numStr"));
+    }
+
+    /**
+     * Parses a character sequence representation of a number into the most appropriate numeric type.
+     * This overload avoids intermediate String construction for callers that already hold a StringBuilder.
+     *
+     * @param numStr the sequence to parse, must not be null
+     * @return the parsed number in its most appropriate type
+     */
+    public static Number parseToMinimalNumericType(CharSequence numStr)
+    {
         Objects.requireNonNull(numStr, "numStr");
-        
+
         // Security check: validate string length
         int maxStringLength = getMaxStringLength();
         if (maxStringLength > 0 && numStr.length() > maxStringLength)
@@ -437,51 +449,63 @@ public final class MathUtilities
             throw new SecurityException("String length exceeds maximum allowed: " + maxStringLength);
         }
 
-        boolean negative = false;
-        boolean positive = false;
-        int index = 0;
-        if (numStr.startsWith("-"))
-        {
-            negative = true;
-            index = 1;
-        }
-        else if (numStr.startsWith("+"))
-        {
-            positive = true;
-            index = 1;
+        final int len = numStr.length();
+        int start = 0;
+        if (len > 0) {
+            char first = numStr.charAt(0);
+            if (first == '-' || first == '+') {
+                start = 1;
+            }
         }
 
-        StringBuilder digits = new StringBuilder(numStr.length() - index);
-        int len = numStr.length();
-        while (index < len && numStr.charAt(index) == '0' && index + 1 < len && Character.isDigit(numStr.charAt(index + 1)))
+        // Trim integer leading zeros (keeping one zero before non-digit, e.g., "000.1" -> "0.1")
+        while (start + 1 < len
+                && numStr.charAt(start) == '0'
+                && Character.isDigit(numStr.charAt(start + 1)))
         {
-            index++;
+            start++;
         }
-        digits.append(numStr.substring(index));
-        if (digits.length() == 0)
-        {
-            digits.append('0');
-        }
-        numStr = (negative ? "-" : (positive ? "+" : "")) + digits.toString();
 
         boolean hasDecimalPoint = false;
         boolean hasExponent = false;
+        boolean inExponent = false;
+        boolean exponentSignAllowed = false;
+        boolean exponentHasDigits = false;
         int mantissaSize = 0;
-        StringBuilder exponentValue = new StringBuilder();
-        len = numStr.length();
+        int exponentSign = 1;
+        long exponentAbs = 0;
+        boolean exponentOverflow = false;
 
-        for (int i = 0; i < len; i++) {
+        for (int i = start; i < len; i++) {
             char c = numStr.charAt(i);
             if (c == '.') {
                 hasDecimalPoint = true;
+                inExponent = false;
+                exponentSignAllowed = false;
             } else if (c == 'e' || c == 'E') {
                 hasExponent = true;
-            } else if (c >= '0' && c <= '9') {
-                if (!hasExponent) {
-                    mantissaSize++; // Count digits in the mantissa only
-                } else {
-                    exponentValue.append(c);
+                inExponent = true;
+                exponentSignAllowed = true;
+                exponentHasDigits = false;
+                exponentSign = 1;
+                exponentAbs = 0;
+                exponentOverflow = false;
+            } else if (inExponent) {
+                if (exponentSignAllowed && (c == '+' || c == '-')) {
+                    exponentSign = c == '-' ? -1 : 1;
+                    exponentSignAllowed = false;
+                } else if (c >= '0' && c <= '9') {
+                    exponentSignAllowed = false;
+                    exponentHasDigits = true;
+                    if (!exponentOverflow) {
+                        exponentAbs = exponentAbs * 10L + (c - '0');
+                        if (exponentAbs > Integer.MAX_VALUE) {
+                            exponentOverflow = true;
+                        }
+                    }
                 }
+            } else if (c >= '0' && c <= '9') {
+                mantissaSize++;
             }
         }
 
@@ -491,9 +515,9 @@ public final class MathUtilities
             {
                 try
                 {
-                    if (exponentValue.length() == 0 || Math.abs(Integer.parseInt(exponentValue.toString())) < 308)
+                    if (!hasExponent || (exponentHasDigits && !exponentOverflow && Math.abs(exponentSign * (int) exponentAbs) < 308))
                     {
-                        return Double.parseDouble(numStr);
+                        return Double.parseDouble(numStr.toString());
                     }
                 }
                 catch (NumberFormatException ignore)
@@ -501,12 +525,13 @@ public final class MathUtilities
                     // fall through to BigDecimal
                 }
             }
-            return new BigDecimal(numStr);
+            return new BigDecimal(numStr.toString());
         } else {
-            if (numStr.length() < 19) {
-                return Long.parseLong(numStr);
+            int digitCount = len - start;
+            if (digitCount < 19) {
+                return Long.parseLong(numStr.toString());
             }
-            BigInteger bigInt = new BigInteger(numStr);
+            BigInteger bigInt = new BigInteger(numStr.toString());
             if (bigInt.compareTo(BIG_INT_LONG_MIN) >= 0 && bigInt.compareTo(BIG_INT_LONG_MAX) <= 0) {
                 return bigInt.longValue(); // Correctly convert BigInteger back to Long if within range
             } else {

@@ -341,6 +341,22 @@ class MathUtilitiesTest
     }
 
     @Test
+    void testParseToMinimalNumericTypeCharSequenceOverload()
+    {
+        CharSequence chars = new StringBuilder("000123");
+        Number n = MathUtilities.parseToMinimalNumericType(chars);
+        assertEquals(123L, n);
+    }
+
+    @Test
+    void testParseToMinimalNumericTypeCharSequenceScientific()
+    {
+        CharSequence chars = new StringBuilder("1e309");
+        Number n = MathUtilities.parseToMinimalNumericType(chars);
+        assertEquals(new BigDecimal("1e309"), n);
+    }
+
+    @Test
     void testNextPermutationSequence()
     {
         List<Integer> list = new ArrayList<>(Arrays.asList(1, 2, 3));

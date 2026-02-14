@@ -1,6 +1,8 @@
 ### Revision History
 
 #### 4.94.0 - 2026-02-14
+* **PERFORMANCE**: `MathUtilities.parseToMinimalNumericType()` numeric analysis was refactored to a single-pass scan with no intermediate `StringBuilder`/substring reconstruction on the hot path.
+* **PERFORMANCE**: Added `MathUtilities.parseToMinimalNumericType(CharSequence)` overload so callers with buffered number text can avoid extra conversion work before numeric type selection.
 * **PERFORMANCE**: Added reusable-buffer constructors for high-throughput JSON pipelines:
   * `FastByteArrayOutputStream(byte[] initialBuffer)`
   * `FastWriter(Writer out, char[] buffer)`

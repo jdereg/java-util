@@ -446,6 +446,59 @@ public class ClassUtilities {
      * - null (not in map) = not yet determined
      */
     private static final Map<Class<?>, Optional<Constructor<?>>> SUCCESSFUL_CONSTRUCTOR_CACHE = new ClassValueMap<>();
+    private static final Map<Class<?>, Map<ArgumentShapeKey, Optional<ConstructorPlan>>> CONSTRUCTOR_PLAN_CACHE = new ClassValueMap<>();
+
+    private static final class NullArgType { }
+    private static final Class<?> NULL_ARG_TYPE = NullArgType.class;
+
+    private static final class ArgumentShapeKey {
+        private final Class<?>[] argTypes;
+        private final int hash;
+
+        private ArgumentShapeKey(Class<?>[] argTypes) {
+            this.argTypes = argTypes;
+            this.hash = Arrays.hashCode(argTypes);
+        }
+
+        static ArgumentShapeKey from(Object[] suppliedArgs) {
+            if (suppliedArgs.length == 0) {
+                return new ArgumentShapeKey(ArrayUtilities.EMPTY_CLASS_ARRAY);
+            }
+            Class<?>[] types = new Class<?>[suppliedArgs.length];
+            for (int i = 0; i < suppliedArgs.length; i++) {
+                Object arg = suppliedArgs[i];
+                types[i] = (arg == null) ? NULL_ARG_TYPE : arg.getClass();
+            }
+            return new ArgumentShapeKey(types);
+        }
+
+        @Override
+        public int hashCode() {
+            return hash;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) {
+                return true;
+            }
+            if (!(o instanceof ArgumentShapeKey)) {
+                return false;
+            }
+            ArgumentShapeKey other = (ArgumentShapeKey) o;
+            return Arrays.equals(argTypes, other.argTypes);
+        }
+    }
+
+    private static final class ConstructorPlan {
+        private final Constructor<?> constructor;
+        private final boolean allowNullsFirst;
+
+        private ConstructorPlan(Constructor<?> constructor, boolean allowNullsFirst) {
+            this.constructor = constructor;
+            this.allowNullsFirst = allowNullsFirst;
+        }
+    }
 
     /**
      * Cache for class hierarchy information
@@ -1617,34 +1670,40 @@ public class ClassUtilities {
      */
     private static Object[] matchArgumentsToParameters(Converter converter, Object[] valueArray,
                                                        Parameter[] parameters, boolean allowNulls) {
-        if (parameters == null || parameters.length == 0) {
+        return matchArgumentsToParameters(converter, valueArray, parameters, 0, parameters.length, allowNulls);
+    }
+
+    private static Object[] matchArgumentsToParameters(Converter converter, Object[] valueArray,
+                                                       Parameter[] parameters, int paramOffset,
+                                                       int paramCount, boolean allowNulls) {
+        if (parameters == null || paramCount <= 0) {
             return ArrayUtilities.EMPTY_OBJECT_ARRAY; // Reuse a static empty array
         }
 
         // Check if the last parameter is varargs and handle specially
-        boolean isVarargs = parameters[parameters.length - 1].isVarArgs();
+        boolean isVarargs = parameters[paramOffset + paramCount - 1].isVarArgs();
         if (isVarargs) {
-            return matchArgumentsWithVarargs(converter, valueArray, parameters, allowNulls);
+            return matchArgumentsWithVarargs(converter, valueArray, parameters, paramOffset, paramCount, allowNulls);
         }
 
         // Create result array and tracking arrays
-        Object[] result = new Object[parameters.length];
-        boolean[] parameterMatched = new boolean[parameters.length];
+        Object[] result = new Object[paramCount];
+        boolean[] parameterMatched = new boolean[paramCount];
 
         // For tracking available values (more efficient than repeated removal from list)
         boolean[] valueUsed = new boolean[valueArray.length];
 
         // PHASE 1: Find exact type matches - highest priority
-        findExactMatches(valueArray, valueUsed, parameters, parameterMatched, result);
+        findExactMatches(valueArray, valueUsed, parameters, paramOffset, paramCount, parameterMatched, result, 0, valueArray.length);
 
         // PHASE 2: Find assignable type matches with inheritance (includes primitive/wrapper via ClassHierarchyInfo)
-        findInheritanceMatches(valueArray, valueUsed, parameters, parameterMatched, result);
+        findInheritanceMatches(valueArray, valueUsed, parameters, paramOffset, paramCount, parameterMatched, result, 0, valueArray.length);
 
         // PHASE 3: Find convertible type matches
-        findConvertibleMatches(converter, valueArray, valueUsed, parameters, parameterMatched, result);
+        findConvertibleMatches(converter, valueArray, valueUsed, parameters, paramOffset, paramCount, parameterMatched, result, 0, valueArray.length);
 
         // PHASE 4: Fill remaining unmatched parameters with defaults or nulls
-        fillRemainingParameters(converter, parameters, parameterMatched, result, allowNulls);
+        fillRemainingParameters(converter, parameters, paramOffset, paramCount, parameterMatched, result, allowNulls);
 
         return result;
     }
@@ -1654,23 +1713,24 @@ public class ClassUtilities {
      * then packs remaining arguments into the varargs array.
      */
     private static Object[] matchArgumentsWithVarargs(Converter converter, Object[] valueArray,
-                                                      Parameter[] parameters, boolean allowNulls) {
-        int fixedParamCount = parameters.length - 1;
-        Object[] result = new Object[parameters.length];
+                                                      Parameter[] parameters, int paramOffset,
+                                                      int paramCount, boolean allowNulls) {
+        int fixedParamCount = paramCount - 1;
+        Object[] result = new Object[paramCount];
 
         // Get the varargs component type
-        Class<?> varargsType = parameters[fixedParamCount].getType();
+        Class<?> varargsType = parameters[paramOffset + fixedParamCount].getType();
         Class<?> componentType = varargsType.getComponentType();
 
         // Special case: if we have exactly the right number of arguments and the last one
         // is already an array of the correct type, use it directly as the varargs array
-        if (valueArray.length == parameters.length) {
+        if (valueArray.length == paramCount) {
             Object lastArg = valueArray[valueArray.length - 1];
             if (lastArg != null && varargsType.isInstance(lastArg)) {
                 // The last argument is already the right array type — match fixed parameters first
                 if (fixedParamCount > 0) {
-                    Object[] fixedValues = Arrays.copyOf(valueArray, fixedParamCount);
-                    matchFixedParameters(converter, fixedValues, parameters, fixedParamCount, result, allowNulls);
+                    matchFixedParameters(converter, valueArray, 0, fixedParamCount,
+                            parameters, paramOffset, fixedParamCount, result, allowNulls);
                 }
                 result[fixedParamCount] = lastArg;
                 return result;
@@ -1681,16 +1741,24 @@ public class ClassUtilities {
         Object[] varargsSource;
         if (fixedParamCount > 0) {
             boolean[] valueUsed = new boolean[valueArray.length];
-            matchFixedParameters(converter, valueArray, valueUsed, parameters, fixedParamCount, result, allowNulls);
+            matchFixedParameters(converter, valueArray, 0, valueArray.length, valueUsed,
+                    parameters, paramOffset, fixedParamCount, result, allowNulls);
 
-            // Collect unused values for varargs
-            List<Object> unused = new ArrayList<>();
+            // Collect unused values for varargs using a pre-sized array to avoid intermediate list allocations
+            int unusedCount = 0;
             for (int i = 0; i < valueArray.length; i++) {
                 if (!valueUsed[i]) {
-                    unused.add(valueArray[i]);
+                    unusedCount++;
                 }
             }
-            varargsSource = unused.toArray();
+            Object[] unused = new Object[unusedCount];
+            int out = 0;
+            for (int i = 0; i < valueArray.length; i++) {
+                if (!valueUsed[i]) {
+                    unused[out++] = valueArray[i];
+                }
+            }
+            varargsSource = unused;
         } else {
             varargsSource = valueArray;
         }
@@ -1710,32 +1778,32 @@ public class ClassUtilities {
      * Variant that does not expose the valueUsed array (for the pre-matched array case).
      */
     private static void matchFixedParameters(Converter converter, Object[] values,
-                                             Parameter[] parameters, int fixedParamCount,
+                                             int valueStartInclusive, int valueEndExclusive,
+                                             Parameter[] parameters, int paramOffset, int fixedParamCount,
                                              Object[] result, boolean allowNulls) {
-        Parameter[] fixedParams = Arrays.copyOf(parameters, fixedParamCount);
         boolean[] valueUsed = new boolean[values.length];
         boolean[] parameterMatched = new boolean[fixedParamCount];
 
-        findExactMatches(values, valueUsed, fixedParams, parameterMatched, result);
-        findInheritanceMatches(values, valueUsed, fixedParams, parameterMatched, result);
-        findConvertibleMatches(converter, values, valueUsed, fixedParams, parameterMatched, result);
-        fillRemainingParameters(converter, fixedParams, parameterMatched, result, allowNulls);
+        findExactMatches(values, valueUsed, parameters, paramOffset, fixedParamCount, parameterMatched, result, valueStartInclusive, valueEndExclusive);
+        findInheritanceMatches(values, valueUsed, parameters, paramOffset, fixedParamCount, parameterMatched, result, valueStartInclusive, valueEndExclusive);
+        findConvertibleMatches(converter, values, valueUsed, parameters, paramOffset, fixedParamCount, parameterMatched, result, valueStartInclusive, valueEndExclusive);
+        fillRemainingParameters(converter, parameters, paramOffset, fixedParamCount, parameterMatched, result, allowNulls);
     }
 
     /**
      * Match fixed (non-varargs) parameters using the standard matching pipeline.
      * Variant that populates the caller's valueUsed array so unused values can be collected.
      */
-    private static void matchFixedParameters(Converter converter, Object[] values, boolean[] valueUsed,
-                                             Parameter[] parameters, int fixedParamCount,
+    private static void matchFixedParameters(Converter converter, Object[] values,
+                                             int valueStartInclusive, int valueEndExclusive, boolean[] valueUsed,
+                                             Parameter[] parameters, int paramOffset, int fixedParamCount,
                                              Object[] result, boolean allowNulls) {
-        Parameter[] fixedParams = Arrays.copyOf(parameters, fixedParamCount);
         boolean[] parameterMatched = new boolean[fixedParamCount];
 
-        findExactMatches(values, valueUsed, fixedParams, parameterMatched, result);
-        findInheritanceMatches(values, valueUsed, fixedParams, parameterMatched, result);
-        findConvertibleMatches(converter, values, valueUsed, fixedParams, parameterMatched, result);
-        fillRemainingParameters(converter, fixedParams, parameterMatched, result, allowNulls);
+        findExactMatches(values, valueUsed, parameters, paramOffset, fixedParamCount, parameterMatched, result, valueStartInclusive, valueEndExclusive);
+        findInheritanceMatches(values, valueUsed, parameters, paramOffset, fixedParamCount, parameterMatched, result, valueStartInclusive, valueEndExclusive);
+        findConvertibleMatches(converter, values, valueUsed, parameters, paramOffset, fixedParamCount, parameterMatched, result, valueStartInclusive, valueEndExclusive);
+        fillRemainingParameters(converter, parameters, paramOffset, fixedParamCount, parameterMatched, result, allowNulls);
     }
 
     /**
@@ -1785,16 +1853,15 @@ public class ClassUtilities {
      * Find exact type matches between values and parameters
      */
     private static void findExactMatches(Object[] values, boolean[] valueUsed,
-                                         Parameter[] parameters, boolean[] parameterMatched,
-                                         Object[] result) {
-        int valLen = values.length;
-        int paramLen = parameters.length;
-        for (int i = 0; i < paramLen; i++) {
+                                         Parameter[] parameters, int paramOffset, int paramCount,
+                                         boolean[] parameterMatched, Object[] result,
+                                         int valueStartInclusive, int valueEndExclusive) {
+        for (int i = 0; i < paramCount; i++) {
             if (parameterMatched[i]) continue;
 
-            Class<?> paramType = parameters[i].getType();
+            Class<?> paramType = parameters[paramOffset + i].getType();
 
-            for (int j = 0; j < valLen; j++) {
+            for (int j = valueStartInclusive; j < valueEndExclusive; j++) {
                 if (valueUsed[j]) continue;
 
                 Object value = values[j];
@@ -1812,14 +1879,15 @@ public class ClassUtilities {
      * Find matches based on inheritance relationships
      */
     private static void findInheritanceMatches(Object[] values, boolean[] valueUsed,
-                                               Parameter[] parameters, boolean[] parameterMatched,
-                                               Object[] result) {
+                                               Parameter[] parameters, int paramOffset, int paramCount,
+                                               boolean[] parameterMatched, Object[] result,
+                                               int valueStartInclusive, int valueEndExclusive) {
         // Cache ClassHierarchyInfo lookups for unique value classes to avoid repeated map lookups
         // This optimization is beneficial when the same value class appears multiple times
         Map<Class<?>, ClassHierarchyInfo> valueClassCache = new HashMap<>();
         
         // Pre-cache hierarchy info for all non-null, unused values
-        for (int j = 0; j < values.length; j++) {
+        for (int j = valueStartInclusive; j < valueEndExclusive; j++) {
             if (!valueUsed[j] && values[j] != null) {
                 Class<?> valueClass = values[j].getClass();
                 valueClassCache.computeIfAbsent(valueClass, ClassUtilities::getClassHierarchyInfo);
@@ -1827,14 +1895,14 @@ public class ClassUtilities {
         }
         
         // For each unmatched parameter, find the best inheritance match
-        for (int i = 0; i < parameters.length; i++) {
+        for (int i = 0; i < paramCount; i++) {
             if (parameterMatched[i]) continue;
 
-            Class<?> paramType = parameters[i].getType();
+            Class<?> paramType = parameters[paramOffset + i].getType();
             int bestDistance = Integer.MAX_VALUE;
             int bestValueIndex = -1;
 
-            for (int j = 0; j < values.length; j++) {
+            for (int j = valueStartInclusive; j < valueEndExclusive; j++) {
                 if (valueUsed[j]) continue;
 
                 Object value = values[j];
@@ -1863,14 +1931,15 @@ public class ClassUtilities {
      * Find matches that require type conversion
      */
     private static void findConvertibleMatches(Converter converter, Object[] values, boolean[] valueUsed,
-                                               Parameter[] parameters, boolean[] parameterMatched,
-                                               Object[] result) {
-        for (int i = 0; i < parameters.length; i++) {
+                                               Parameter[] parameters, int paramOffset, int paramCount,
+                                               boolean[] parameterMatched, Object[] result,
+                                               int valueStartInclusive, int valueEndExclusive) {
+        for (int i = 0; i < paramCount; i++) {
             if (parameterMatched[i]) continue;
 
-            Class<?> paramType = parameters[i].getType();
+            Class<?> paramType = parameters[paramOffset + i].getType();
 
-            for (int j = 0; j < values.length; j++) {
+            for (int j = valueStartInclusive; j < valueEndExclusive; j++) {
                 if (valueUsed[j]) continue;
 
                 Object value = values[j];
@@ -1897,12 +1966,13 @@ public class ClassUtilities {
      * Fill any remaining unmatched parameters with default values or nulls
      */
     private static void fillRemainingParameters(Converter converter, Parameter[] parameters,
+                                                int paramOffset, int paramCount,
                                                 boolean[] parameterMatched, Object[] result,
                                                 boolean allowNulls) {
-        for (int i = 0; i < parameters.length; i++) {
+        for (int i = 0; i < paramCount; i++) {
             if (parameterMatched[i]) continue;
 
-            Parameter parameter = parameters[i];
+            Parameter parameter = parameters[paramOffset + i];
             Class<?> paramType = parameter.getType();
 
             if (allowNulls && !paramType.isPrimitive()) {
@@ -2418,6 +2488,27 @@ public class ClassUtilities {
         
         // Prepare arguments
         List<Object> normalizedArgs = argumentValues == null ? new ArrayList<>() : new ArrayList<>(argumentValues);
+        Object[] suppliedArgs = normalizedArgs.isEmpty() ? ArrayUtilities.EMPTY_OBJECT_ARRAY : normalizedArgs.toArray();
+        ArgumentShapeKey argumentShapeKey = ArgumentShapeKey.from(suppliedArgs);
+        Map<ArgumentShapeKey, Optional<ConstructorPlan>> classPlanCache = getConstructorPlanCache(c);
+
+        Optional<ConstructorPlan> cachedPlanResult = classPlanCache.get(argumentShapeKey);
+        if (cachedPlanResult != null) {
+            if (!cachedPlanResult.isPresent()) {
+                Object instance = tryUnsafeInstantiation(c);
+                if (instance != null) {
+                    return instance;
+                }
+                throw new IllegalArgumentException("Unable to instantiate (cached): " + c.getName());
+            }
+
+            try {
+                return invokeConstructorWithPlan(converter, suppliedArgs, cachedPlanResult.get());
+            } catch (Exception ignored) {
+                // Evict stale plan and continue with normal constructor discovery.
+                classPlanCache.remove(argumentShapeKey);
+            }
+        }
         
         // Fast-path: zero-arg constructor - common case that avoids the whole matching pipeline
         if (normalizedArgs.isEmpty()) {
@@ -2426,6 +2517,7 @@ public class ClassUtilities {
                 trySetAccessible(noArg);
                 Object instance = noArg.newInstance();
                 SUCCESSFUL_CONSTRUCTOR_CACHE.put(c, Optional.of(noArg));
+                classPlanCache.put(argumentShapeKey, Optional.of(new ConstructorPlan(noArg, false)));
                 return instance;
             } catch (NoSuchMethodException ignored) {
                 // No no-arg constructor, fall through to normal logic
@@ -2436,11 +2528,8 @@ public class ClassUtilities {
             }
         }
 
-        // Convert to array once to avoid repeated toArray() calls
-        Object[] suppliedArgs = normalizedArgs.isEmpty() ? ArrayUtilities.EMPTY_OBJECT_ARRAY : normalizedArgs.toArray();
-
         // Check if we have a previously cached result for this class
-        Optional<Constructor<?>> cachedResult = SUCCESSFUL_CONSTRUCTOR_CACHE.get(c);
+        Optional<Constructor<?>> cachedResult = suppliedArgs.length == 0 ? SUCCESSFUL_CONSTRUCTOR_CACHE.get(c) : null;
 
         if (cachedResult != null) {
             if (!cachedResult.isPresent()) {
@@ -2460,10 +2549,14 @@ public class ClassUtilities {
                 // Try both approaches with the cached constructor
                 try {
                     Object[] argsNonNull = matchArgumentsToParameters(converter, suppliedArgs, parameters, false);
-                    return cachedConstructor.newInstance(argsNonNull);
+                    Object instance = cachedConstructor.newInstance(argsNonNull);
+                    classPlanCache.put(argumentShapeKey, Optional.of(new ConstructorPlan(cachedConstructor, false)));
+                    return instance;
                 } catch (Exception e) {
                     Object[] argsNull = matchArgumentsToParameters(converter, suppliedArgs, parameters, true);
-                    return cachedConstructor.newInstance(argsNull);
+                    Object instance = cachedConstructor.newInstance(argsNull);
+                    classPlanCache.put(argumentShapeKey, Optional.of(new ConstructorPlan(cachedConstructor, true)));
+                    return instance;
                 }
             } catch (Exception ignored) {
                 // If cached constructor fails, continue with regular instantiation
@@ -2503,18 +2596,19 @@ public class ClassUtilities {
                                     // Simple case: only takes enclosing instance
                                     Object instance = constructor.newInstance(enclosingInstance);
                                     SUCCESSFUL_CONSTRUCTOR_CACHE.put(c, Optional.of(constructor));
+                                    classPlanCache.put(argumentShapeKey, Optional.of(new ConstructorPlan(constructor, false)));
                                     return instance;
                                 } else {
                                     // Complex case: takes enclosing instance plus more arguments
                                     // Create arguments array with enclosing instance first
-                                    Parameter[] restParams = Arrays.copyOfRange(params, 1, params.length);
-                                    Object[] restArgs = matchArgumentsToParameters(converter, suppliedArgs, restParams, false);
+                                    Object[] restArgs = matchArgumentsToParameters(converter, suppliedArgs, params, 1, params.length - 1, false);
                                     Object[] allArgs = new Object[params.length];
                                     allArgs[0] = enclosingInstance;
                                     System.arraycopy(restArgs, 0, allArgs, 1, restArgs.length);
 
                                     Object instance = constructor.newInstance(allArgs);
                                     SUCCESSFUL_CONSTRUCTOR_CACHE.put(c, Optional.of(constructor));
+                                    classPlanCache.put(argumentShapeKey, Optional.of(new ConstructorPlan(constructor, false)));
                                     return instance;
                                 }
                             } catch (Exception e) {
@@ -2554,6 +2648,7 @@ public class ClassUtilities {
 
                 // Cache this successful constructor for future use
                 SUCCESSFUL_CONSTRUCTOR_CACHE.put(c, Optional.of(constructor));
+                classPlanCache.put(argumentShapeKey, Optional.of(new ConstructorPlan(constructor, false)));
                 return instance;
             } catch (Exception e1) {
                 exceptions.add(e1);
@@ -2565,6 +2660,7 @@ public class ClassUtilities {
 
                     // Cache this successful constructor for future use
                     SUCCESSFUL_CONSTRUCTOR_CACHE.put(c, Optional.of(constructor));
+                    classPlanCache.put(argumentShapeKey, Optional.of(new ConstructorPlan(constructor, true)));
                     return instance;
                 } catch (Exception e2) {
                     exceptions.add(e2);
@@ -2576,8 +2672,11 @@ public class ClassUtilities {
         // Last resort: try unsafe instantiation
         Object instance = tryUnsafeInstantiation(c);
         if (instance != null) {
+            classPlanCache.put(argumentShapeKey, Optional.empty());
             return instance;
         }
+
+        classPlanCache.put(argumentShapeKey, Optional.empty());
 
         // If we get here, we couldn't create the instance
         String msg = "Unable to instantiate: " + c.getName();
@@ -2600,6 +2699,35 @@ public class ClassUtilities {
         }
 
         throw new IllegalArgumentException(msg);
+    }
+
+    private static Map<ArgumentShapeKey, Optional<ConstructorPlan>> getConstructorPlanCache(Class<?> c) {
+        Map<ArgumentShapeKey, Optional<ConstructorPlan>> planCache = CONSTRUCTOR_PLAN_CACHE.get(c);
+        if (planCache == null) {
+            planCache = new ConcurrentHashMap<>();
+            CONSTRUCTOR_PLAN_CACHE.put(c, planCache);
+        }
+        return planCache;
+    }
+
+    private static Object invokeConstructorWithPlan(Converter converter, Object[] suppliedArgs, ConstructorPlan plan) throws Exception {
+        Parameter[] parameters = plan.constructor.getParameters();
+        if (plan.allowNullsFirst) {
+            try {
+                Object[] argsNull = matchArgumentsToParameters(converter, suppliedArgs, parameters, true);
+                return plan.constructor.newInstance(argsNull);
+            } catch (Exception ignored) {
+                Object[] argsNonNull = matchArgumentsToParameters(converter, suppliedArgs, parameters, false);
+                return plan.constructor.newInstance(argsNonNull);
+            }
+        }
+        try {
+            Object[] argsNonNull = matchArgumentsToParameters(converter, suppliedArgs, parameters, false);
+            return plan.constructor.newInstance(argsNonNull);
+        } catch (Exception ignored) {
+            Object[] argsNull = matchArgumentsToParameters(converter, suppliedArgs, parameters, true);
+            return plan.constructor.newInstance(argsNull);
+        }
     }
 
     // Cache for tracking which AccessibleObjects we've already tried to make accessible
@@ -3131,6 +3259,7 @@ public class ClassUtilities {
         GLOBAL_ALIASES.putAll(BUILTIN_ALIASES);
         GLOBAL_ALIASES.putAll(USER_ALIASES);
         SUCCESSFUL_CONSTRUCTOR_CACHE.clear();
+        CONSTRUCTOR_PLAN_CACHE.clear();
         CLASS_HIERARCHY_CACHE.clear();
         accessibilityCache.clear();
         osgiClassLoaders.clear();

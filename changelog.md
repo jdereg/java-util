@@ -1,6 +1,8 @@
 ### Revision History
 
 #### 4.94.0 - 2026-02-14
+* **PERFORMANCE**: `ClassUtilities.newInstance()` now caches constructor selection by argument shape (argument count + runtime type/null shape) via `ConstructorPlan` entries, avoiding repeated constructor re-selection/mismatch work when the same class is instantiated with different argument signatures.
+* **PERFORMANCE**: `ClassUtilities.newInstance()` varargs matching no longer allocates intermediate parameter/value copies (`Arrays.copyOf(...)`, `unused.toArray()`, and parameter slice copies). Matching now uses index ranges and pre-sized arrays, reducing allocation pressure in constructor-heavy workloads.
 * **SECURITY FIX**: `ClassUtilities.forName()` - Blocked-class checks now apply to array component types for both Java-style names (`java.lang.Runtime[]`) and JVM descriptors (`[Ljava/lang/Runtime;`), including when a custom `ClassLoader` is supplied. Added component-type verification after load so blocked classes cannot be exposed through array wrappers.
 * **SECURITY/PERFORMANCE**: `ClassUtilities` - Bounded negative class-name cache entries per class loader (`MAX_NEGATIVE_CLASS_CACHE_ENTRIES`) to prevent unbounded memory growth from repeated unique class-miss lookups.
 * **PERFORMANCE**: `ClassUtilities.validateAndNormalizeResourcePath()` - Replaced `split("/")` traversal-segment check with a single-pass scan and switched case-folding to `Locale.ROOT`.

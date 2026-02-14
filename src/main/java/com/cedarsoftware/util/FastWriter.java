@@ -45,6 +45,20 @@ public final class FastWriter extends Writer {
         this.nextChar = 0;
     }
 
+    /**
+     * Create writer using a caller-provided char buffer.
+     * The provided array is used directly (no copy).
+     */
+    public FastWriter(Writer out, char[] buffer) {
+        super(out);
+        if (buffer == null || buffer.length == 0) {
+            throw new IllegalArgumentException("Buffer cannot be null or empty");
+        }
+        this.out = out;
+        this.cb = buffer;
+        this.nextChar = 0;
+    }
+
     private void flushBuffer() {
         if (nextChar == 0) {
             return;

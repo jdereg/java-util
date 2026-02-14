@@ -55,6 +55,28 @@ public final class FastReader extends Reader {
         this.pushbackPosition = pushbackBufferSize; // Start from the end of pushbackBuffer
     }
 
+    /**
+     * Create reader using caller-provided buffers.
+     * Arrays are used directly (no copy).
+     */
+    public FastReader(Reader in, char[] buffer, char[] pushbackBuffer) {
+        super(in);
+        if (buffer == null || buffer.length == 0) {
+            throw new IllegalArgumentException("buffer must be non-null and non-empty");
+        }
+        if (pushbackBuffer == null) {
+            throw new IllegalArgumentException("pushbackBuffer must be non-null");
+        }
+        this.in = in;
+        this.bufferSize = buffer.length;
+        this.pushbackBufferSize = pushbackBuffer.length;
+        this.buf = buffer;
+        this.pushbackBuffer = pushbackBuffer;
+        this.position = 0;
+        this.limit = 0;
+        this.pushbackPosition = this.pushbackBufferSize;
+    }
+
     private void fill() {
         // Once EOF is reached, avoid re-reading.
         if (limit == -1) {

@@ -1,6 +1,11 @@
 ### Revision History
 
 #### 4.94.0 - 2026-02-14
+* **PERFORMANCE**: Added reusable-buffer constructors for high-throughput JSON pipelines:
+  * `FastByteArrayOutputStream(byte[] initialBuffer)`
+  * `FastWriter(Writer out, char[] buffer)`
+  * `FastReader(Reader in, char[] buffer, char[] pushbackBuffer)`
+  These allow caller-managed buffer reuse and reduce repeated `byte[]`/`char[]` allocations in hot String read/write loops.
 * **PERFORMANCE**: `ClassUtilities.newInstance()` now caches constructor selection by argument shape (argument count + runtime type/null shape) via `ConstructorPlan` entries, avoiding repeated constructor re-selection/mismatch work when the same class is instantiated with different argument signatures.
 * **PERFORMANCE**: `ClassUtilities.newInstance()` varargs matching no longer allocates intermediate parameter/value copies (`Arrays.copyOf(...)`, `unused.toArray()`, and parameter slice copies). Matching now uses index ranges and pre-sized arrays, reducing allocation pressure in constructor-heavy workloads.
 * **SECURITY FIX**: `ClassUtilities.forName()` - Blocked-class checks now apply to array component types for both Java-style names (`java.lang.Runtime[]`) and JVM descriptors (`[Ljava/lang/Runtime;`), including when a custom `ClassLoader` is supplied. Added component-type verification after load so blocked classes cannot be exposed through array wrappers.

@@ -48,6 +48,17 @@ public class FastByteArrayOutputStream extends OutputStream {
         buf = new byte[size];
     }
 
+    /**
+     * Create stream using a caller-provided initial buffer.
+     * The provided array is used directly (no copy).
+     */
+    public FastByteArrayOutputStream(byte[] initialBuffer) {
+        if (initialBuffer == null || initialBuffer.length == 0) {
+            throw new IllegalArgumentException("Initial buffer cannot be null or empty");
+        }
+        this.buf = initialBuffer;
+    }
+
     private void ensureCapacity(int minCapacity) {
         if (minCapacity - buf.length > 0) {
             grow(minCapacity);

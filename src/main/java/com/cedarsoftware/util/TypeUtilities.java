@@ -184,7 +184,12 @@ public class TypeUtilities {
      */
     public static Type resolveType(Type rootContext, Type typeToResolve) {
         Map.Entry<Type, Type> key = new AbstractMap.SimpleImmutableEntry<>(rootContext, typeToResolve);
-        return TYPE_RESOLVE_CACHE.computeIfAbsent(key, k -> resolveType(rootContext, rootContext, typeToResolve, new IdentitySet<>()));
+        Type resolved = TYPE_RESOLVE_CACHE.get(key);
+        if (resolved == null) {
+            resolved = resolveType(rootContext, rootContext, typeToResolve, new IdentitySet<>());
+            TYPE_RESOLVE_CACHE.put(key, resolved);
+        }
+        return resolved;
     }
 
     /**
@@ -195,7 +200,12 @@ public class TypeUtilities {
      * @return the array class (e.g., String[].class for String.class)
      */
     private static Class<?> getArrayClass(Class<?> componentClass) {
-        return ARRAY_CLASS_CACHE.computeIfAbsent(componentClass, c -> Array.newInstance(c, 0).getClass());
+        Class<?> arrayClass = ARRAY_CLASS_CACHE.get(componentClass);
+        if (arrayClass == null) {
+            arrayClass = Array.newInstance(componentClass, 0).getClass();
+            ARRAY_CLASS_CACHE.put(componentClass, arrayClass);
+        }
+        return arrayClass;
     }
 
     /**

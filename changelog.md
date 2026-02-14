@@ -19,6 +19,7 @@
 * **CLEANUP**: `ClassUtilities` - Deduplicated varargs argument matching code. Extracted `matchFixedParameters()` and `packVarargsArray()` helpers from `matchArgumentsWithVarargs()`, eliminating ~65 lines of duplicated conversion/packing logic between the "has fixed params" and "no fixed params" branches.
 * **IMPROVEMENT**: `Converter` - Bridge conversion expansion now iterates until convergence, ensuring all reachable multi-hop conversion paths are discovered regardless of surrogate pair definition order. Previously used a single forward+reverse pass which was sufficient for current pair definitions but fragile to future additions. The convergence loop terminates after 1 iteration for current types (zero cost), but automatically handles deeper chains if new surrogate pairs are added.
 * **IMPROVEMENT**: `Converter` - Added full `BitSet` simple-type bridge support by registering `BitSet <-> String` surrogate/primary pairs, direct `Map -> BitSet` conversion, and `BitSet -> BitSet` copy conversion semantics. Expanded `ConverterEverythingTest` BitSet cross-product coverage so missing BitSet conversion pairs are auto-filled and verified.
+* **MAINTENANCE**: Verified `Converter.isConversionSupportedFor(source, target)` as the compatibility predicate for json-io scalar fast-path converter gating, enabling downstream simplification away from pair-form "simple type" checks while preserving conversion behavior.
 * **MAINTENANCE**: Version bump to 4.94.0, json-io test dependency updated to 4.93.0.
 
 #### 4.93.0 - 2026-02-10

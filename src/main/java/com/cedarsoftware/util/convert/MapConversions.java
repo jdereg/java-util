@@ -23,6 +23,7 @@ import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.Base64;
+import java.util.BitSet;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.Currency;
@@ -205,6 +206,10 @@ final class MapConversions {
 
     static BigInteger toBigInteger(Object from, Converter converter) {
         return dispatch(from, converter, BigInteger.class, VALUE_KEYS);
+    }
+
+    static BitSet toBitSet(Object from, Converter converter) {
+        return dispatch(from, converter, BitSet.class, VALUE_KEYS);
     }
 
     static String toString(Object from, Converter converter) {

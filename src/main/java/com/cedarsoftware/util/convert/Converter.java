@@ -551,6 +551,7 @@ public final class Converter {
         CONVERSION_DB.put(pair(Color.class, BigDecimal.class), ColorConversions::toBigDecimal);
         CONVERSION_DB.put(pair(Calendar.class, BigDecimal.class), CalendarConversions::toBigDecimal);
         CONVERSION_DB.put(pair(Map.class, BigDecimal.class), MapConversions::toBigDecimal);
+        CONVERSION_DB.put(pair(Map.class, BitSet.class), MapConversions::toBitSet);
         CONVERSION_DB.put(pair(String.class, BigDecimal.class), StringConversions::toBigDecimal);
         CONVERSION_DB.put(pair(Year.class, BigDecimal.class), YearConversions::toBigDecimal);
         CONVERSION_DB.put(pair(MonthDay.class, BigDecimal.class), MonthDayConversions::toBigDecimal);
@@ -1178,6 +1179,7 @@ public final class Converter {
         // ========================================
 
         // BitSet ↔ boolean[] bridges
+        CONVERSION_DB.put(pair(BitSet.class, BitSet.class), UniversalConversions::copyBitSet);
         CONVERSION_DB.put(pair(BitSet.class, boolean[].class), UniversalConversions::bitSetToBooleanArray);
         CONVERSION_DB.put(pair(boolean[].class, BitSet.class), UniversalConversions::booleanArrayToBitSet);
 
@@ -1298,6 +1300,10 @@ public final class Converter {
                     new SurrogatePrimaryPair(CharSequence.class, String.class,
                             UniversalConversions::charSequenceToString, null),
 
+                    // BitSet -> String (lossless binary form)
+                    new SurrogatePrimaryPair(BitSet.class, String.class,
+                            UniversalConversions::bitSetToString, null),
+
                     // Resource identifiers → URI (lossless via URL.toURI())
                     new SurrogatePrimaryPair(URL.class, URI.class,
                             UrlConversions::toURI, null),
@@ -1357,6 +1363,10 @@ public final class Converter {
                             UniversalConversions::stringToStringBuilder),
                     new SurrogatePrimaryPair(String.class, CharSequence.class, null,
                             UniversalConversions::stringToCharSequence),
+
+                    // String -> BitSet (inverse of binary BitSet string form)
+                    new SurrogatePrimaryPair(String.class, BitSet.class, null,
+                            UniversalConversions::stringToBitSet),
 
                     // URI → URL (convert URI to URL for legacy compatibility)
                     new SurrogatePrimaryPair(URI.class, URL.class, null,

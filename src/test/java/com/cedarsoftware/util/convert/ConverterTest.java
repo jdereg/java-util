@@ -25,6 +25,7 @@ import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Collection;
 import java.util.Date;
+import java.util.BitSet;
 import java.util.GregorianCalendar;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -4340,10 +4341,27 @@ class ConverterTest
     void testSingleArgSupport()
     {
         assert converter.isSimpleTypeConversionSupported(String.class);
+        assert converter.isSimpleTypeConversionSupported(BitSet.class);
         assert !converter.isSimpleTypeConversionSupported(Map.class);
 
         assert converter.isConversionSupportedFor(UUID.class);
         assert !converter.isConversionSupportedFor(Map.class);
+    }
+
+    @Test
+    void testBitSetToBitSetReturnsCopy() {
+        BitSet source = new BitSet();
+        source.set(1);
+        source.set(3);
+        source.set(5);
+
+        BitSet converted = converter.convert(source, BitSet.class);
+        assertNotNull(converted);
+        assertEquals(source, converted);
+        assertFalse(source == converted, "BitSet->BitSet conversion must return a new instance");
+
+        converted.set(7);
+        assertFalse(source.get(7), "Mutating converted BitSet must not affect source");
     }
 
     @Test

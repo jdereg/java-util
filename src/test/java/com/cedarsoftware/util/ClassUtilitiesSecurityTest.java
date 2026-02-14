@@ -167,6 +167,33 @@ public class ClassUtilitiesSecurityTest {
                   exception.getMessage().contains("load"),
                   "Should block dangerous class loading");
     }
+
+    @Test
+    public void testForName_blockedJavaStyleArray_throwsException() {
+        SecurityException exception = assertThrows(SecurityException.class, () -> {
+            ClassUtilities.forName("java.lang.Runtime[]", null);
+        });
+        assertTrue(exception.getMessage().contains("denied") || exception.getMessage().contains("security"),
+                "Should block Java-style array names whose component type is dangerous");
+    }
+
+    @Test
+    public void testForName_blockedDescriptorArray_withClassLoader_throwsException() {
+        ClassLoader cl = ClassUtilities.getClassLoader();
+        SecurityException slashDescriptorException = assertThrows(SecurityException.class, () -> {
+            ClassUtilities.forName("[Ljava/lang/Runtime;", cl);
+        });
+        assertTrue(slashDescriptorException.getMessage().contains("denied")
+                        || slashDescriptorException.getMessage().contains("security"),
+                "Should block slash-form JVM descriptor arrays for dangerous component types");
+
+        SecurityException dotDescriptorException = assertThrows(SecurityException.class, () -> {
+            ClassUtilities.forName("[Ljava.lang.Runtime;", cl);
+        });
+        assertTrue(dotDescriptorException.getMessage().contains("denied")
+                        || dotDescriptorException.getMessage().contains("security"),
+                "Should block dot-form JVM descriptor arrays for dangerous component types");
+    }
     
     @Test
     public void testForName_safeClass_works() throws Exception {

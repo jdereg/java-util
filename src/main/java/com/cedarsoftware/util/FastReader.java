@@ -25,6 +25,7 @@ import java.io.Reader;
  *         limitations under the License.
  */
 public final class FastReader extends Reader {
+    private static final int MAX_CONSECUTIVE_ZERO_READS = 3;
     private Reader in;
     private final char[] buf;
     private final int bufferSize;
@@ -61,7 +62,16 @@ public final class FastReader extends Reader {
         }
         if (position >= limit) {
             try {
-                limit = in.read(buf, 0, bufferSize);
+                int zeroReads = 0;
+                while (true) {
+                    limit = in.read(buf, 0, bufferSize);
+                    if (limit != 0) {
+                        break;
+                    }
+                    if (++zeroReads >= MAX_CONSECUTIVE_ZERO_READS) {
+                        ExceptionUtilities.uncheckedThrow(new IOException("Underlying Reader repeatedly returned 0 characters"));
+                    }
+                }
             } catch (IOException e) {
                 ExceptionUtilities.uncheckedThrow(e);
             }

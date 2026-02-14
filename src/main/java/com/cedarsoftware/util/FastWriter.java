@@ -62,9 +62,6 @@ public final class FastWriter extends Writer {
         if (out == null) {
             ExceptionUtilities.uncheckedThrow(new IOException("FastWriter stream is closed"));
         }
-        if (nextChar >= cb.length) {
-            flushBuffer();
-        }
         cb[nextChar++] = (char) c;
         if (nextChar >= cb.length) {
             flushBuffer();
@@ -98,6 +95,9 @@ public final class FastWriter extends Writer {
         }
         System.arraycopy(cbuf, off, cb, nextChar, len);
         nextChar += len;
+        if (nextChar == cb.length) {
+            flushBuffer();
+        }
     }
 
     @Override

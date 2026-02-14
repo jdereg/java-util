@@ -97,6 +97,55 @@ class FastReaderTest {
         assertThrows(IOException.class, () -> fastReader.read());
     }
 
+    @Test
+    void testReadHandlesTransientZeroLengthUnderlyingReads() throws IOException {
+        Reader flaky = new Reader() {
+            private final String data = "abc";
+            private int idx;
+            private int zeroReads;
+
+            @Override
+            public int read(char[] cbuf, int off, int len) {
+                if (idx >= data.length()) {
+                    return -1;
+                }
+                if (zeroReads < 2) {
+                    zeroReads++;
+                    return 0;
+                }
+                cbuf[off] = data.charAt(idx++);
+                return 1;
+            }
+
+            @Override
+            public void close() {
+            }
+        };
+
+        fastReader = new FastReader(flaky, CUSTOM_BUFFER_SIZE, CUSTOM_PUSHBACK_SIZE);
+        assertEquals('a', fastReader.read());
+        assertEquals('b', fastReader.read());
+        assertEquals('c', fastReader.read());
+        assertEquals(-1, fastReader.read());
+    }
+
+    @Test
+    void testReadFailsAfterRepeatedZeroLengthUnderlyingReads() {
+        Reader broken = new Reader() {
+            @Override
+            public int read(char[] cbuf, int off, int len) {
+                return 0;
+            }
+
+            @Override
+            public void close() {
+            }
+        };
+
+        fastReader = new FastReader(broken, CUSTOM_BUFFER_SIZE, CUSTOM_PUSHBACK_SIZE);
+        assertThrows(IOException.class, () -> fastReader.read());
+    }
+
     // Pushback Tests
     @Test
     void testPushbackAndRead() throws IOException {

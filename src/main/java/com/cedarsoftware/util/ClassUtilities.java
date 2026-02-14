@@ -215,6 +215,7 @@ public class ClassUtilities {
     private static final class LoaderCache {
         final ConcurrentMap<String, WeakReference<Class<?>>> cache = new ConcurrentHashMap<>(2048);
         final ReferenceQueue<Class<?>> queue = new ReferenceQueue<>();
+        final AtomicInteger negativeEntryCount = new AtomicInteger();
     }
 
     private ClassUtilities() {
@@ -231,6 +232,7 @@ public class ClassUtilities {
     // Using a dedicated inner class avoids collisions with any real class (including java.lang.Void).
     private static final class ClassNotFoundSentinel { }
     private static final Class<?> CLASS_NOT_FOUND_SENTINEL = ClassNotFoundSentinel.class;
+    private static final int MAX_NEGATIVE_CLASS_CACHE_ENTRIES = 4096;
 
     private static Class<?> fromCache(String name, ClassLoader cl) {
         // Check global aliases first (primitive types and user-defined aliases)
@@ -267,8 +269,16 @@ public class ClassUtilities {
         // Opportunistically drain dead references (lock-free, uses CAS-based removal)
         drainQueue(holder);
 
-        // Cache the sentinel to indicate "class not found" - use strong reference since Void.class is permanent
-        holder.cache.put(name, new WeakReference<>(CLASS_NOT_FOUND_SENTINEL));
+        // Bound negative-cache growth to prevent memory pressure with many unique missing class names.
+        if (holder.negativeEntryCount.get() >= MAX_NEGATIVE_CLASS_CACHE_ENTRIES) {
+            return;
+        }
+
+        // Cache the sentinel to indicate "class not found" - sentinel class is strongly reachable.
+        WeakReference<Class<?>> prior = holder.cache.putIfAbsent(name, new WeakReference<>(CLASS_NOT_FOUND_SENTINEL));
+        if (prior == null) {
+            holder.negativeEntryCount.incrementAndGet();
+        }
     }
     
     // Helper to get or create loader cache holder with proper synchronization
@@ -291,7 +301,10 @@ public class ClassUtilities {
         drainQueue(holder);
 
         // Lock-free cache update using ConcurrentHashMap
-        holder.cache.put(name, new NamedWeakRef(name, c, holder.queue));
+        WeakReference<Class<?>> previous = holder.cache.put(name, new NamedWeakRef(name, c, holder.queue));
+        if (isNotFoundEntry(previous)) {
+            decrementNegativeCount(holder);
+        }
     }
     
     /**
@@ -307,6 +320,27 @@ public class ClassUtilities {
                 // This prevents race conditions where another thread added a new entry with the same name.
                 holder.cache.remove(namedRef.name, namedRef);
             }
+        }
+    }
+
+    private static boolean isNotFoundEntry(WeakReference<Class<?>> ref) {
+        return ref != null && ref.get() == CLASS_NOT_FOUND_SENTINEL;
+    }
+
+    private static void decrementNegativeCount(LoaderCache holder) {
+        int count;
+        do {
+            count = holder.negativeEntryCount.get();
+            if (count <= 0) {
+                return;
+            }
+        } while (!holder.negativeEntryCount.compareAndSet(count, count - 1));
+    }
+
+    private static void removeCacheEntry(LoaderCache holder, String name) {
+        WeakReference<Class<?>> removed = holder.cache.remove(name);
+        if (isNotFoundEntry(removed)) {
+            decrementNegativeCount(holder);
         }
     }
 
@@ -752,8 +786,7 @@ public class ClassUtilities {
         // prevent stale per-loader mappings for this alias
         synchronized (NAME_CACHE) {
             for (LoaderCache holder : NAME_CACHE.values()) {
-                // ConcurrentHashMap.remove() is thread-safe, no additional sync needed
-                holder.cache.remove(alias);
+                removeCacheEntry(holder, alias);
             }
         }
     }
@@ -773,8 +806,7 @@ public class ClassUtilities {
         }
         synchronized (NAME_CACHE) {
             for (LoaderCache holder : NAME_CACHE.values()) {
-                // ConcurrentHashMap.remove() is thread-safe, no additional sync needed
-                holder.cache.remove(alias);
+                removeCacheEntry(holder, alias);
             }
         }
     }
@@ -941,8 +973,8 @@ public class ClassUtilities {
             }
         }
 
-        // Perform full security check on loaded class
-        SecurityChecker.verifyClass(c);
+        // Perform full security check on loaded class/component type.
+        verifyClassAndArrayComponent(c);
 
         toCache(name, classLoader, c);
         return c;
@@ -980,6 +1012,9 @@ public class ClassUtilities {
                 case "float":   element = float.class;   break;
                 case "double":  element = double.class;  break;
                 default:
+                    if (SecurityChecker.isSecurityBlockedName(base)) {
+                        throw new SecurityException("Class loading denied for security reasons: " + base);
+                    }
                     if (classLoader != null) {
                         element = classLoader.loadClass(base);
                     } else {
@@ -1024,14 +1059,14 @@ public class ClassUtilities {
                     }
                     // Convert JVM descriptor format (java/lang/String) to Java format (java.lang.String)
                     String className = name.substring(dims + 1, name.length() - 1).replace('/', '.');
+                    if (SecurityChecker.isSecurityBlockedName(className)) {
+                        throw new SecurityException("Class loading denied for security reasons: " + className);
+                    }
                     if (classLoader != null) {
                         element = classLoader.loadClass(className);
                     } else {
                         // Use the standard classloader resolution which handles OSGi/JPMS properly
                         ClassLoader cl = getClassLoader(ClassUtilities.class);
-                        if (SecurityChecker.isSecurityBlockedName(className)) {
-                            throw new SecurityException("Class loading denied for security reasons: " + className);
-                        }
                         element = Class.forName(className, false, cl);
                     }
                     break;
@@ -2774,7 +2809,7 @@ public class ClassUtilities {
         
         // Security: Block percent-encoded traversal sequences before normalization
         // Check for %2e%2e (percent-encoded ..) and %2e%2E and other case variations
-        String lowerPath = resourceName.toLowerCase();
+        String lowerPath = resourceName.toLowerCase(Locale.ROOT);
         if (lowerPath.contains("%2e%2e") || lowerPath.contains("%252e") || 
             lowerPath.contains("%2e.") || lowerPath.contains(".%2e")) {
             throw new SecurityException("Invalid resource path contains encoded traversal sequence: " + resourceName);
@@ -2800,11 +2835,17 @@ public class ClassUtilities {
             throw new SecurityException("Absolute/UNC paths not allowed: " + resourceName);
         }
         
-        // Security: Block ".." path segments (not just the substring) to prevent traversal
-        // This allows legitimate filenames like "my..proto" or "file..txt"
-        for (String segment : normalizedPath.split("/")) {
-            if (segment.equals("..")) {
-                throw new SecurityException("Invalid resource path contains directory traversal: " + resourceName);
+        // Security: Block ".." path segments (not just substring) to prevent traversal.
+        // Single-pass scan avoids split() allocation on a hot path.
+        int segmentStart = 0;
+        for (int i = 0; i <= pathLength; i++) {
+            if (i == pathLength || normalizedPath.charAt(i) == '/') {
+                if (i - segmentStart == 2 &&
+                        normalizedPath.charAt(segmentStart) == '.' &&
+                        normalizedPath.charAt(segmentStart + 1) == '.') {
+                    throw new SecurityException("Invalid resource path contains directory traversal: " + resourceName);
+                }
+                segmentStart = i + 1;
             }
         }
         
@@ -2816,6 +2857,16 @@ public class ClassUtilities {
         }
         
         return normalizedPath;
+    }
+
+    private static void verifyClassAndArrayComponent(Class<?> clazz) {
+        Class<?> type = clazz;
+        while (type.isArray()) {
+            type = type.getComponentType();
+        }
+        if (!type.isPrimitive()) {
+            SecurityChecker.verifyClass(type);
+        }
     }
 
     /**

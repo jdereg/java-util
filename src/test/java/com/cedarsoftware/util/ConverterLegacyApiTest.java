@@ -269,11 +269,11 @@ class ConverterLegacyApiTest {
 
     @Test
     void singleArgSupportChecks() {
-        assertTrue(Converter.isSimpleTypeConversionSupported(String.class));
-        assertFalse(Converter.isSimpleTypeConversionSupported(Map.class));
+        assertTrue(Converter.isSimpleTypeConversionSupported(String.class, String.class));
+        assertFalse(Converter.isSimpleTypeConversionSupported(Map.class, Map.class));
 
-        assertTrue(Converter.isConversionSupportedFor(UUID.class));
-        assertFalse(Converter.isConversionSupportedFor(Map.class));
+        assertTrue(Converter.isConversionSupportedFor(UUID.class, UUID.class));
+        assertFalse(Converter.isConversionSupportedFor(Map.class, Map.class));
     }
 
     @Test
@@ -287,4 +287,3 @@ class ConverterLegacyApiTest {
         assertThat(Converter.localDateTimeToMillis(ldt)).isEqualTo(expectedLdtMillis);
     }
 }
-

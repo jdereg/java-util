@@ -212,8 +212,6 @@ public final class Converter {
     private final Map<ConversionPair, Convert<?>> USER_DB = new ConcurrentHashMap<>(16, 0.8f);
     private static final Map<ConversionPair, Convert<?>> FULL_CONVERSION_CACHE = new ConcurrentHashMap<>(1024, 0.75f);
     private static final Map<Class<?>, String> CUSTOM_ARRAY_NAMES = new ClassValueMap<>();
-    private static final ClassValueMap<Boolean> SIMPLE_TYPE_CACHE = new ClassValueMap<>();
-    private static final ClassValueMap<Boolean> SELF_CONVERSION_CACHE = new ClassValueMap<>();
     private static final AtomicLong INSTANCE_ID_GENERATOR = new AtomicLong(1);
     
     // Identity converter for marking non-standard types and handling identity conversions
@@ -2283,73 +2281,34 @@ public final class Converter {
      * @see #isConversionSupportedFor(Class, Class)
      */
     public boolean isSimpleTypeConversionSupported(Class<?> source, Class<?> target) {
-        // If user has registered custom converter overrides for this conversion pair, it's not simple anymore
+        // If user has registered custom converter overrides for this conversion pair,
+        // do not treat it as a simple conversion.
         if (hasConverterOverrideFor(source, target)) {
             return false;
         }
-        
-        // First, try to get the converter from the FULL_CONVERSION_CACHE.
-        Convert<?> cached = getCachedConverter(source, target);
-        if (cached != null) {
-            return cached != UNSUPPORTED;
-        }
 
-        // If either source or target is a collection/array/map type, this method is not applicable.
-        if (source.isArray() || target.isArray() ||
-                Collection.class.isAssignableFrom(source) || Collection.class.isAssignableFrom(target) ||
-                Map.class.isAssignableFrom(source) || Map.class.isAssignableFrom(target)) {
+        // Simple-type checks intentionally exclude container conversions.
+        if (source.isArray() || target.isArray()
+                || Collection.class.isAssignableFrom(source) || Collection.class.isAssignableFrom(target)
+                || Map.class.isAssignableFrom(source) || Map.class.isAssignableFrom(target)) {
             return false;
         }
 
-        // Special case: When a source is Number, delegate using Long.
-        if (source.equals(Number.class)) {
-            Convert<?> method = getConversionFromDBs(Long.class, target);
-            cacheConverter(source, target, method);
-            return isValidConversion(method);
-        }
-
-        // Next, check direct conversion support in the primary databases.
-
-        Convert<?> method = getConversionFromDBs(source, target);
-        if (isValidConversion(method)) {
-            cacheConverter(source, target, method);
-            return true;
-        }
-
-        // Finally, attempt an inheritance-based lookup.
-        // Use this.instanceId (not 0L) so the walk also finds user conversions for parent types
-        // and avoids caching UNSUPPORTED for pairs that convert() handles via inheritance.
-        method = getInheritedConverter(source, target, this.instanceId);
-        if (isValidConversion(method)) {
-            cacheConverter(source, target, method);
-            return true;
-        }
-
-        // Cache the failure result so that subsequent lookups are fast.
-        cacheConverter(source, target, UNSUPPORTED);
-        return false;
+        // Delegate conversion capability to the general conversion support API.
+        return isConversionSupportedFor(source, target);
     }
 
     /**
-     * Overload of {@link #isSimpleTypeConversionSupported(Class, Class)} that checks
-     * if the specified class is considered a simple type.
-     * Results are cached for fast subsequent lookups when no custom overrides exist.
-     *
-     * <p>If custom converter overrides exist for the specified type, this method returns false,
-     * regardless of inheritance-based conversion support. This ensures that user-defined custom
-     * converters take precedence over automatic simple type conversions.</p>
+     * Compatibility overload for legacy callers that ask if a type is "simple".
      *
      * @param type the class to check
-     * @return {@code true} if a simple type conversion exists for the class and no custom overrides are registered
+     * @return {@code true} if simple-type conversion is supported for {@code type -> type}
+     * @deprecated Use {@link #isSimpleTypeConversionSupported(Class, Class)} with
+     * {@code isSimpleTypeConversionSupported(type, type)}.
      */
+    @Deprecated
     public boolean isSimpleTypeConversionSupported(Class<?> type) {
-        // If user has registered custom converter overrides targeting this type, it's not simple anymore
-        if (hasConverterOverrideFor(type)) {
-            return false;
-        }
-        
-        // Use cached result for types without custom overrides
-        return SIMPLE_TYPE_CACHE.computeIfAbsent(type, t -> isSimpleTypeConversionSupported(t, t));
+        return isSimpleTypeConversionSupported(type, type);
     }
 
     /**
@@ -2366,22 +2325,6 @@ public final class Converter {
         // and conversions added dynamically via addConversion().
         Convert<?> converter = USER_DB.get(pair(sourceType, targetType, this.instanceId));
         return converter != null && converter != UNSUPPORTED;
-    }
-
-    /**
-     * Checks if custom converter overrides exist for the specified target type.
-     * Uses the brilliant optimization of checking for identity conversion (T -> T) which is 
-     * automatically added for all non-standard types involved in custom conversions.
-     * This provides O(1) performance instead of O(n) linear search.
-     * 
-     * @param targetType the target type to check for custom overrides
-     * @return {@code true} if custom converter overrides exist for the target type, {@code false} otherwise
-     */
-    private boolean hasConverterOverrideFor(Class<?> targetType) {
-        // Optimization: Just check for identity conversion (T -> T)
-        // Non-standard types involved in custom conversions automatically get identity conversions
-        // This turns an O(n) linear search into an O(1) hash lookup
-        return hasConverterOverrideFor(targetType, targetType);
     }
 
     /**
@@ -2451,23 +2394,6 @@ public final class Converter {
         // addConversion() calls clearCachesForType() to invalidate if a conversion is added later.
         cacheConverter(source, target, UNSUPPORTED);
         return false;
-    }
-
-    /**
-     * Overload of {@link #isConversionSupportedFor(Class, Class)} that checks whether
-     * the specified class can be converted to itself.
-     * The result is cached for fast repeat access.
-     *
-     * @param type the class to query
-     * @return {@code true} if a conversion exists for the class
-     */
-    public boolean isConversionSupportedFor(Class<?> type) {
-        // If this instance has user-added conversions involving this type, return true
-        // without consulting the static cache (which may not reflect instance-specific state).
-        if (hasConverterOverrideFor(type)) {
-            return true;
-        }
-        return SELF_CONVERSION_CACHE.computeIfAbsent(type, t -> isConversionSupportedFor(t, t));
     }
 
     private static boolean isValidConversion(Convert<?> method) {
@@ -2783,10 +2709,6 @@ public final class Converter {
             FULL_CONVERSION_CACHE.remove(key);
         }
 
-        SIMPLE_TYPE_CACHE.remove(source);
-        SIMPLE_TYPE_CACHE.remove(target);
-        SELF_CONVERSION_CACHE.remove(source);
-        SELF_CONVERSION_CACHE.remove(target);
     }
 
     private static boolean isInheritanceRelated(Class<?> keySource, Class<?> keyTarget, Class<?> source, Class<?> target) {

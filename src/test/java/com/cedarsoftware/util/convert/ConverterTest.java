@@ -4340,12 +4340,12 @@ class ConverterTest
     @Test
     void testSingleArgSupport()
     {
-        assert converter.isSimpleTypeConversionSupported(String.class);
-        assert converter.isSimpleTypeConversionSupported(BitSet.class);
-        assert !converter.isSimpleTypeConversionSupported(Map.class);
+        assert converter.isSimpleTypeConversionSupported(String.class, String.class);
+        assert converter.isSimpleTypeConversionSupported(BitSet.class, BitSet.class);
+        assert !converter.isSimpleTypeConversionSupported(Map.class, Map.class);
 
-        assert converter.isConversionSupportedFor(UUID.class);
-        assert !converter.isConversionSupportedFor(Map.class);
+        assert converter.isConversionSupportedFor(UUID.class, UUID.class);
+        assert !converter.isConversionSupportedFor(Map.class, Map.class);
     }
 
     @Test

@@ -31,8 +31,8 @@ public class ConverterSimpleTypeBugTest {
         ConverterOptions options = new ConverterOptions() {};
         Converter converter = new Converter(options);
         
-        assertTrue(converter.isSimpleTypeConversionSupported(Date.class));
-        assertTrue(converter.isSimpleTypeConversionSupported(WeirdDate.class), 
+        assertTrue(converter.isSimpleTypeConversionSupported(Date.class, Date.class));
+        assertTrue(converter.isSimpleTypeConversionSupported(WeirdDate.class, WeirdDate.class), 
                    "WeirdDate extends Date, so should be simple without custom overrides");
     }
 
@@ -57,11 +57,11 @@ public class ConverterSimpleTypeBugTest {
         Converter converter = new Converter(options);
         
         // Date should still be simple (no custom overrides for it)
-        assertTrue(converter.isSimpleTypeConversionSupported(Date.class));
+        assertTrue(converter.isSimpleTypeConversionSupported(Date.class, Date.class));
         
         // WeirdDate should NOT be simple because user registered custom converters
         // This is the key assertion that should pass after the fix
-        assertFalse(converter.isSimpleTypeConversionSupported(WeirdDate.class), 
+        assertFalse(converter.isSimpleTypeConversionSupported(WeirdDate.class, WeirdDate.class), 
                    "WeirdDate should not be considered simple when custom overrides exist");
     }
 
@@ -85,9 +85,9 @@ public class ConverterSimpleTypeBugTest {
         Converter converter2 = new Converter(options2);
         
         // Different instances should have different behavior for the same type
-        assertTrue(converter1.isSimpleTypeConversionSupported(WeirdDate.class), 
+        assertTrue(converter1.isSimpleTypeConversionSupported(WeirdDate.class, WeirdDate.class), 
                   "Converter1 should consider WeirdDate simple (no custom overrides)");
-        assertFalse(converter2.isSimpleTypeConversionSupported(WeirdDate.class), 
+        assertFalse(converter2.isSimpleTypeConversionSupported(WeirdDate.class, WeirdDate.class), 
                    "Converter2 should NOT consider WeirdDate simple (has custom overrides)");
     }
 
@@ -114,7 +114,7 @@ public class ConverterSimpleTypeBugTest {
         Converter converter = new Converter(options);
         
         // WeirdDate should not be simple because it has custom overrides
-        assertFalse(converter.isSimpleTypeConversionSupported(WeirdDate.class), 
+        assertFalse(converter.isSimpleTypeConversionSupported(WeirdDate.class, WeirdDate.class), 
                    "WeirdDate should not be simple when multiple custom overrides exist");
     }
 

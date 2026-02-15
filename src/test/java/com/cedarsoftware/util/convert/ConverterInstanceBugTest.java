@@ -103,23 +103,23 @@ class ConverterInstanceBugTest {
 
         // The single-arg form checks hasConverterOverrideFor(Integer.class)
         // which should detect the identity entry added by addConversion()
-        assertFalse(converter.isSimpleTypeConversionSupported(Integer.class),
+        assertFalse(converter.isSimpleTypeConversionSupported(Integer.class, Integer.class),
                 "Integer should NOT be simple when user has overridden a conversion targeting it");
     }
 
     // =====================================================================
-    // Bug 3: isConversionSupportedFor(Class) static cache + dynamic overrides
+    // Bug 3: same-source/target query static cache + dynamic overrides
     // =====================================================================
 
     @Test
-    void testIsConversionSupportedForSingleArgDetectsDynamicConversion() {
+    void testIsConversionSupportedForSameTypeDetectsDynamicConversion() {
         Converter converter = new Converter(new DefaultConverterOptions());
         converter.addConversion(String.class, Widget.class, (from, conv) -> new Widget((String) from));
 
         // addConversion() adds identity (Widget→Widget) to USER_DB for this instance.
-        // isConversionSupportedFor(Widget.class) should return true.
-        assertTrue(converter.isConversionSupportedFor(Widget.class),
-                "isConversionSupportedFor(Widget.class) should return true when Widget is involved in user conversions");
+        // same-source/target query should return true.
+        assertTrue(converter.isConversionSupportedFor(Widget.class, Widget.class),
+                "isConversionSupportedFor(Widget,Widget) should return true when Widget is involved in user conversions");
     }
 
     // =====================================================================
@@ -160,7 +160,7 @@ class ConverterInstanceBugTest {
     }
 
     @Test
-    void testDifferentInstancesGetCorrectResultsForSingleArgQuery() {
+    void testDifferentInstancesGetCorrectResultsForSameTypeQuery() {
         // Instance A: no user conversions
         Converter converterA = new Converter(new DefaultConverterOptions());
 
@@ -169,11 +169,11 @@ class ConverterInstanceBugTest {
         converterB.addConversion(String.class, Widget.class, (from, conv) -> new Widget((String) from));
 
         // Instance B should say Widget is supported
-        assertTrue(converterB.isConversionSupportedFor(Widget.class),
+        assertTrue(converterB.isConversionSupportedFor(Widget.class, Widget.class),
                 "Instance with Widget conversion should report Widget as supported");
 
         // Instance A should say Widget is NOT supported (it has no conversions for Widget)
-        assertFalse(converterA.isConversionSupportedFor(Widget.class),
+        assertFalse(converterA.isConversionSupportedFor(Widget.class, Widget.class),
                 "Instance without Widget conversion should report Widget as unsupported");
     }
 }

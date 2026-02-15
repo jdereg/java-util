@@ -377,17 +377,6 @@ public final class Converter
     }
 
     /**
-     * Overload of {@link #isConversionSupportedFor(Class, Class)} that checks a single
-     * class for conversion support using cached results.
-     *
-     * @param type the class to query
-     * @return {@code true} if the converter supports this class
-     */
-    public static boolean isConversionSupportedFor(Class<?> type) {
-        return instance.isConversionSupportedFor(type);
-    }
-
-    /**
      * Determines whether a conversion from the specified source type to the target type is supported,
      * excluding any conversions involving arrays or collections.
      *
@@ -427,16 +416,18 @@ public final class Converter
     }
 
     /**
-     * Overload of {@link #isSimpleTypeConversionSupported(Class, Class)} for querying
-     * if a single class is treated as a simple type. Results are cached.
+     * Compatibility overload for legacy callers that ask if a type is "simple".
      *
      * @param type the class to check
-     * @return {@code true} if the class is a simple convertible type
+     * @return {@code true} if simple-type conversion is supported for {@code type -> type}
+     * @deprecated Use {@link #isSimpleTypeConversionSupported(Class, Class)} with
+     * {@code isSimpleTypeConversionSupported(type, type)}.
      */
+    @Deprecated
     public static boolean isSimpleTypeConversionSupported(Class<?> type) {
-        return instance.isSimpleTypeConversionSupported(type);
+        return instance.isSimpleTypeConversionSupported(type, type);
     }
-    
+
     /**
      * Retrieves a map of all supported conversions, categorized by source and target classes.
      * <p>

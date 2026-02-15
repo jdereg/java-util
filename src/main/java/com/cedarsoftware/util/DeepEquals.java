@@ -607,7 +607,7 @@ public class DeepEquals {
             // Handle primitive wrappers, String, Date, Class, UUID, URL, URI, Temporal classes, etc.
             // Both sides must be simple types to use this fast path; when only one side is simple,
             // fall through to the container/class-equality checks for a correct TYPE_MISMATCH report.
-            if (Converter.isSimpleTypeConversionSupported(key1Class) && Converter.isSimpleTypeConversionSupported(key2Class)) {
+            if (Converter.isSimpleTypeConversionSupported(key1Class, key1Class) && Converter.isSimpleTypeConversionSupported(key2Class, key2Class)) {
                 // Special handling for URL: compare by string representation to avoid DNS resolution
                 // Java's URL.equals() performs DNS lookup which causes flaky tests and CI failures
                 if (key1 instanceof URL && key2 instanceof URL) {
@@ -1776,7 +1776,7 @@ public class DeepEquals {
             return hashDouble((Double) element);
         } else if (element instanceof Float) {
             return hashFloat((Float) element);
-        } else if (Converter.isSimpleTypeConversionSupported(element.getClass())) {
+        } else if (Converter.isSimpleTypeConversionSupported(element.getClass(), element.getClass())) {
             return element.hashCode();
         } else {
             return deepHashCode(element, visited);
@@ -2119,7 +2119,7 @@ public class DeepEquals {
         }
 
         // For simple types, show just the value (type is shown in context)
-        if (Converter.isSimpleTypeConversionSupported(value.getClass())) {
+        if (Converter.isSimpleTypeConversionSupported(value.getClass(), value.getClass())) {
             return formatSimpleValue(value);
         }
 
@@ -2170,7 +2170,7 @@ public class DeepEquals {
             }
 
             // Handle simple types
-            if (Converter.isSimpleTypeConversionSupported(value.getClass())) {
+            if (Converter.isSimpleTypeConversionSupported(value.getClass(), value.getClass())) {
                 return formatSimpleValue(value);
             }
 
@@ -2208,7 +2208,7 @@ public class DeepEquals {
                 }
 
                 Class<?> fieldType = field.getType();
-                if (Converter.isSimpleTypeConversionSupported(fieldType)) {
+                if (Converter.isSimpleTypeConversionSupported(fieldType, fieldType)) {
                     // Simple type - show value (already has security filtering)
                     sb.append(formatSimpleValue(fieldValue));
                 }
@@ -2336,7 +2336,7 @@ public class DeepEquals {
                 }
 
                 // If it's a simple type, use toString()
-                if (Converter.isSimpleTypeConversionSupported(value.getClass())) {
+                if (Converter.isSimpleTypeConversionSupported(value.getClass(), value.getClass())) {
                     return String.valueOf(value);
                 }
 
@@ -2676,7 +2676,7 @@ public class DeepEquals {
         }
 
         // For simple types, show type: value
-        if (Converter.isSimpleTypeConversionSupported(obj.getClass())) {
+        if (Converter.isSimpleTypeConversionSupported(obj.getClass(), obj.getClass())) {
             return String.format("%s: %s",
                     getTypeDescription(obj.getClass()),
                     formatSimpleValue(obj));

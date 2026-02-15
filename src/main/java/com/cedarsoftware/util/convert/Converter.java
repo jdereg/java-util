@@ -63,7 +63,6 @@ import java.util.stream.LongStream;
 import com.cedarsoftware.util.ClassUtilities;
 import com.cedarsoftware.util.ClassValueMap;
 import com.cedarsoftware.util.IdentitySet;
-import com.cedarsoftware.util.MultiKeyMap;
 import com.cedarsoftware.util.geom.Color;
 import com.cedarsoftware.util.geom.Dimension;
 import com.cedarsoftware.util.geom.Insets;
@@ -204,10 +203,7 @@ public final class Converter {
     public static final String PRECISION_NANOS = "nanos";
     private static final Map<Class<?>, SortedSet<ClassLevel>> cacheParentTypes = new ClassValueMap<>();
     private static final Map<Class<?>, SortedSet<ClassLevel>> cacheCompleteHierarchy = new ClassValueMap<>();
-    private static final MultiKeyMap<InheritancePair[]> cacheInheritancePairs = MultiKeyMap.<InheritancePair[]>builder()
-            .flattenDimensions(true)
-            .collectionKeyMode(MultiKeyMap.CollectionKeyMode.COLLECTIONS_NOT_EXPANDED)
-            .build();
+    private static final Map<ConversionPair, InheritancePair[]> cacheInheritancePairs = new ConcurrentHashMap<>(256, 0.75f);
     private static final Map<ConversionPair, Convert<?>> CONVERSION_DB = new ConcurrentHashMap<>(4096, 0.8f);
     private final Map<ConversionPair, Convert<?>> USER_DB = new ConcurrentHashMap<>(16, 0.8f);
     private static final Map<ConversionPair, Convert<?>> FULL_CONVERSION_CACHE = new ConcurrentHashMap<>(1024, 0.75f);
@@ -1991,7 +1987,7 @@ public final class Converter {
      * @return Cached, sorted array of InheritancePair objects
      */
     private static InheritancePair[] getSortedInheritancePairs(Class<?> sourceType, Class<?> toType) {
-        Object[] key = {sourceType, toType};
+        ConversionPair key = pair(sourceType, toType, 0L);
         InheritancePair[] cached = cacheInheritancePairs.get(key);
         if (cached != null) {
             return cached;
@@ -2047,8 +2043,8 @@ public final class Converter {
         });
 
         InheritancePair[] pairsArray = pairs.toArray(new InheritancePair[0]);
-        cacheInheritancePairs.putMultiKey(pairsArray, sourceType, toType);
-        return pairsArray;
+        InheritancePair[] existing = cacheInheritancePairs.putIfAbsent(key, pairsArray);
+        return existing != null ? existing : pairsArray;
     }
 
     /**

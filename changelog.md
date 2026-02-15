@@ -24,6 +24,7 @@
 * **API CLEANUP**: Consolidated internal one-arg simple-type call sites to the 2-arg form and removed associated one-arg cache plumbing in `Converter` to reduce API surface and maintenance complexity.
 * **COMPATIBILITY**: Reintroduced one-arg `isSimpleTypeConversionSupported(Class<?>)` as `@Deprecated` compatibility bridges (delegating to `isSimpleTypeConversionSupported(type, type)`) so projects pinned to older `json-io` binaries continue to run during migration.
 * **REFACTOR**: Simplified `isSimpleTypeConversionSupported(source, target)` implementation into a thin semantic gate over `isConversionSupportedFor(source, target)` while preserving custom-override and container exclusion behavior.
+* **PERFORMANCE**: `Converter` inheritance-pair cache now uses `Map<ConversionPair, InheritancePair[]>` keyed directly by `(sourceType, targetType)` instead of `MultiKeyMap`, reducing cache key construction overhead in conversion-support lookups.
 * **MAINTENANCE**: Verified `Converter.isConversionSupportedFor(source, target)` as the compatibility predicate for json-io scalar fast-path converter gating, enabling downstream simplification away from pair-form "simple type" checks while preserving conversion behavior.
 * **MAINTENANCE**: Version bump to 4.94.0, json-io test dependency updated to 4.93.0.
 

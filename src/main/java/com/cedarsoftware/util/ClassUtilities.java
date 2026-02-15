@@ -447,6 +447,7 @@ public class ClassUtilities {
      */
     private static final Map<Class<?>, Optional<Constructor<?>>> SUCCESSFUL_CONSTRUCTOR_CACHE = new ClassValueMap<>();
     private static final Map<Class<?>, Map<ArgumentShapeKey, Optional<ConstructorPlan>>> CONSTRUCTOR_PLAN_CACHE = new ClassValueMap<>();
+    private static final Map<Class<?>, Boolean> NAMED_PARAMETER_MATCHING_VIABLE_CACHE = new ClassValueMap<>();
 
     private static final class NullArgType { }
     private static final Class<?> NULL_ARG_TYPE = NullArgType.class;
@@ -2104,62 +2105,24 @@ public class ClassUtilities {
         Convention.throwIfNull(converter, "Converter cannot be null");
 
         // Normalize arguments to Collection format for existing code
-        Collection<?> normalizedArgs;
+        Collection<?> normalizedArgs = null;
         Map<String, Object> namedParameters = null;
         boolean hasNamedParameters = false;
+        Map<String, Object> mapArguments = null;
 
         if (arguments == null) {
             normalizedArgs = Collections.emptyList();
         } else if (arguments instanceof Collection) {
             normalizedArgs = (Collection<?>) arguments;
         } else if (arguments instanceof Map) {
-            Map<String, Object> map = (Map<String, Object>) arguments;
+            mapArguments = (Map<String, Object>) arguments;
 
             // Check once if we have generated keys
-            boolean generatedKeys = hasGeneratedKeys(map);
+            boolean generatedKeys = hasGeneratedKeys(mapArguments);
 
             if (!generatedKeys) {
                 hasNamedParameters = true;
-                namedParameters = map;
-            }
-
-            // Convert map values to collection for fallback
-            if (generatedKeys) {
-                // Preserve order for generated keys (arg0, arg1, etc.)
-                // Sort entries by the numeric part of the key to handle gaps (e.g., arg0, arg2 without arg1)
-                List<Map.Entry<String, Object>> entries = new ArrayList<>(map.entrySet());
-                entries.sort((e1, e2) -> {
-                    try {
-                        int num1 = Integer.parseInt(e1.getKey().substring(3));
-                        int num2 = Integer.parseInt(e2.getKey().substring(3));
-                        return Integer.compare(num1, num2);
-                    } catch (NumberFormatException | StringIndexOutOfBoundsException e) {
-                        // Fall back to string comparison for malformed keys
-                        return e1.getKey().compareTo(e2.getKey());
-                    }
-                });
-                List<Object> orderedValues = new ArrayList<>(entries.size());
-                for (Map.Entry<String, Object> entry : entries) {
-                    orderedValues.add(entry.getValue());
-                }
-                normalizedArgs = orderedValues;
-            } else {
-                // For non-generated keys, we need deterministic ordering for positional fallback
-                // Sort by key name alphabetically to ensure consistent behavior across JVM runs
-                // This is important when HashMap is used (which has non-deterministic iteration order)
-                if (map instanceof LinkedHashMap || map instanceof SortedMap) {
-                    // Already has deterministic order (insertion order or sorted)
-                    normalizedArgs = map.values();
-                } else {
-                    // Sort keys alphabetically for deterministic order
-                    List<String> sortedKeys = new ArrayList<>(map.keySet());
-                    Collections.sort(sortedKeys);
-                    List<Object> orderedValues = new ArrayList<>(sortedKeys.size());
-                    for (String key : sortedKeys) {
-                        orderedValues.add(map.get(key));
-                    }
-                    normalizedArgs = orderedValues;
-                }
+                namedParameters = mapArguments;
             }
         } else if (arguments.getClass().isArray()) {
             normalizedArgs = converter.convert(arguments, Collection.class);
@@ -2195,6 +2158,11 @@ public class ClassUtilities {
             }
         }
 
+        // Lazy normalization for Map fallback path only.
+        if (normalizedArgs == null && mapArguments != null) {
+            normalizedArgs = normalizeMapValuesForPositionalFallback(mapArguments);
+        }
+
         // Call existing implementation
         if (LOG.isLoggable(Level.FINER)) {
             LOG.log(Level.FINER, "Using positional argument matching for {0}", c.getName());
@@ -2215,6 +2183,81 @@ public class ClassUtilities {
         }
     }
 
+    private static Collection<?> normalizeMapValuesForPositionalFallback(Map<String, Object> map) {
+        boolean generatedKeys = hasGeneratedKeys(map);
+
+        // Convert map values to collection for fallback
+        if (generatedKeys) {
+            // Fast path for dense generated keys: arg0..argN with no gaps.
+            // This avoids allocating/sorting Map.Entry objects.
+            int size = map.size();
+            Object[] indexed = new Object[size];
+            boolean[] seen = new boolean[size];
+            int seenCount = 0;
+
+            for (Map.Entry<String, Object> entry : map.entrySet()) {
+                int index;
+                try {
+                    index = Integer.parseInt(entry.getKey().substring(3));
+                } catch (RuntimeException ignored) {
+                    // Unexpected malformed/overflow key - use deterministic fallback below.
+                    seenCount = -1;
+                    break;
+                }
+
+                if (index < 0 || index >= size || seen[index]) {
+                    // Gap, out-of-range key (for this map size), or duplicate index.
+                    // Use deterministic sort fallback to preserve prior behavior.
+                    seenCount = -1;
+                    break;
+                }
+
+                indexed[index] = entry.getValue();
+                seen[index] = true;
+                seenCount++;
+            }
+
+            if (seenCount == size) {
+                return Arrays.asList(indexed);
+            }
+
+            // Fallback: preserve deterministic ordering with gaps (e.g., arg0,arg2).
+            List<Map.Entry<String, Object>> entries = new ArrayList<>(map.entrySet());
+            entries.sort((e1, e2) -> {
+                try {
+                    int num1 = Integer.parseInt(e1.getKey().substring(3));
+                    int num2 = Integer.parseInt(e2.getKey().substring(3));
+                    return Integer.compare(num1, num2);
+                } catch (NumberFormatException | StringIndexOutOfBoundsException e) {
+                    return e1.getKey().compareTo(e2.getKey());
+                }
+            });
+
+            List<Object> orderedValues = new ArrayList<>(entries.size());
+            for (Map.Entry<String, Object> entry : entries) {
+                orderedValues.add(entry.getValue());
+            }
+            return orderedValues;
+        }
+
+        // For non-generated keys, we need deterministic ordering for positional fallback
+        // Sort by key name alphabetically to ensure consistent behavior across JVM runs
+        // This is important when HashMap is used (which has non-deterministic iteration order)
+        if (map instanceof LinkedHashMap || map instanceof SortedMap) {
+            // Already has deterministic order (insertion order or sorted)
+            return map.values();
+        }
+
+        // Sort keys alphabetically for deterministic order
+        List<String> sortedKeys = new ArrayList<>(map.keySet());
+        Collections.sort(sortedKeys);
+        List<Object> orderedValues = new ArrayList<>(sortedKeys.size());
+        for (String key : sortedKeys) {
+            orderedValues.add(map.get(key));
+        }
+        return orderedValues;
+    }
+
     private static Object newInstanceWithNamedParameters(Converter converter, Class<?> c, Map<String, Object> namedParams) {
         // Get all constructors using ReflectionUtils for caching
         Constructor<?>[] sortedConstructors = ReflectionUtils.getAllConstructors(c);
@@ -2232,47 +2275,18 @@ public class ClassUtilities {
                     new Object[]{sortedConstructors.length, c.getName()});
         }
 
-        // Cache parameters for each constructor to avoid repeated allocations
-        Map<Constructor<?>, Parameter[]> constructorParametersCache = new IdentityHashMap<>();
-        
-        // First check if ANY constructor has ALL real parameter names
-        boolean anyConstructorHasRealNames = false;
-        for (Constructor<?> constructor : sortedConstructors) {
-            Parameter[] parameters = constructor.getParameters();
-            constructorParametersCache.put(constructor, parameters);  // Cache for later use
-            
-            if (parameters.length > 0) {
-                // Check that ALL parameters have real names (not just the first)
-                boolean allParamsHaveRealNames = true;
-                for (Parameter param : parameters) {
-                    if (isSyntheticArgName(param.getName())) {
-                        allParamsHaveRealNames = false;
-                        break;
-                    }
-                }
-                if (allParamsHaveRealNames) {
-                    anyConstructorHasRealNames = true;
-                    break;
-                }
-            }
+        Boolean namedMatchingViable = NAMED_PARAMETER_MATCHING_VIABLE_CACHE.get(c);
+        if (namedMatchingViable == null) {
+            namedMatchingViable = isNamedParameterMatchingViable(sortedConstructors);
+            NAMED_PARAMETER_MATCHING_VIABLE_CACHE.put(c, namedMatchingViable);
         }
 
-        // If no constructors have real parameter names, bail out early
-        if (!anyConstructorHasRealNames) {
-            boolean hasParameterizedConstructor = false;
-            for (Constructor<?> cons : sortedConstructors) {
-                if (cons.getParameterCount() > 0) {
-                    hasParameterizedConstructor = true;
-                    break;
-                }
+        // If no constructors have real parameter names (and class has parameterized ctors), bail out early.
+        if (!namedMatchingViable) {
+            if (LOG.isLoggable(Level.FINE)) {
+                LOG.log(Level.FINE, "No constructors for {0} have real parameter names - cannot use parameter matching", c.getName());
             }
-
-            if (hasParameterizedConstructor) {
-                if (LOG.isLoggable(Level.FINE)) {
-                    LOG.log(Level.FINE, "No constructors for {0} have real parameter names - cannot use parameter matching", c.getName());
-                }
-                return null; // This will trigger fallback to positional matching
-            }
+            return null; // This will trigger fallback to positional matching
         }
 
         for (Constructor<?> constructor : sortedConstructors) {
@@ -2290,26 +2304,19 @@ public class ClassUtilities {
                 LOG.log(Level.FINER, "Trying constructor: {0}", constructor);
             }
 
-            // Get cached parameters (avoid repeated allocation)
-            Parameter[] parameters = constructorParametersCache.get(constructor);
-            if (parameters == null) {
-                // Not in cache (e.g., if we broke early from first loop)
-                parameters = constructor.getParameters();
-                constructorParametersCache.put(constructor, parameters);
-            }
-            String[] paramNames = new String[parameters.length];
+            Parameter[] parameters = constructor.getParameters();
             boolean hasRealNames = true;
 
             for (int i = 0; i < parameters.length; i++) {
-                paramNames[i] = parameters[i].getName();
+                String paramName = parameters[i].getName();
 
                 if (LOG.isLoggable(Level.FINEST)) {
                     LOG.log(Level.FINEST, "  Parameter {0}: name=''{1}'', type={2}",
-                            new Object[]{i, paramNames[i], parameters[i].getType().getSimpleName()});
+                            new Object[]{i, paramName, parameters[i].getType().getSimpleName()});
                 }
 
                 // Check if we have real parameter names or just arg0, arg1, etc.
-                if (isSyntheticArgName(paramNames[i])) {
+                if (isSyntheticArgName(paramName)) {
                     hasRealNames = false;
                 }
             }
@@ -2330,7 +2337,8 @@ public class ClassUtilities {
                     // Handle varargs parameter specially
                     Class<?> arrayType = parameters[i].getType();
                     Class<?> componentType = arrayType.getComponentType();
-                    Object v = namedParams.get(paramNames[i]);
+                    String paramName = parameters[i].getName();
+                    Object v = namedParams.get(paramName);
                     Object array;
                     
                     if (v != null && arrayType.isInstance(v)) {
@@ -2354,13 +2362,14 @@ public class ClassUtilities {
                     
                     if (LOG.isLoggable(Level.FINEST)) {
                         LOG.log(Level.FINEST, "  Matched varargs parameter ''{0}'' with array of length: {1}",
-                                new Object[]{paramNames[i], ArrayUtilities.getLength(array)});
+                                new Object[]{paramName, ArrayUtilities.getLength(array)});
                     }
                     continue;
                 }
                 
-                if (namedParams.containsKey(paramNames[i])) {
-                    Object value = namedParams.get(paramNames[i]);
+                String paramName = parameters[i].getName();
+                if (namedParams.containsKey(paramName)) {
+                    Object value = namedParams.get(paramName);
 
                     try {
                         // Handle null values - don't convert null for non-primitive types
@@ -2383,7 +2392,7 @@ public class ClassUtilities {
 
                         if (LOG.isLoggable(Level.FINEST)) {
                             LOG.log(Level.FINEST, "  Matched parameter ''{0}'' with value: {1}",
-                                    new Object[]{paramNames[i], value});
+                                    new Object[]{paramName, value});
                         }
                     } catch (Exception conversionException) {
                         allMatched = false;
@@ -2391,7 +2400,7 @@ public class ClassUtilities {
                     }
                 } else {
                     if (LOG.isLoggable(Level.FINER)) {
-                        LOG.log(Level.FINER, "  Missing parameter: {0}", paramNames[i]);
+                        LOG.log(Level.FINER, "  Missing parameter: {0}", paramName);
                     }
                     allMatched = false;
                     break;
@@ -2414,6 +2423,34 @@ public class ClassUtilities {
         }
 
         return null; // Indicate failure to create with named parameters
+    }
+
+    /**
+     * Named parameter matching is viable when either:
+     * 1) There are no parameterized constructors, or
+     * 2) At least one parameterized constructor exposes real (non-synthetic) parameter names.
+     */
+    private static boolean isNamedParameterMatchingViable(Constructor<?>[] constructors) {
+        boolean hasParameterizedConstructor = false;
+        for (Constructor<?> constructor : constructors) {
+            Parameter[] parameters = constructor.getParameters();
+            if (parameters.length == 0) {
+                continue;
+            }
+
+            hasParameterizedConstructor = true;
+            boolean allRealNames = true;
+            for (Parameter param : parameters) {
+                if (isSyntheticArgName(param.getName())) {
+                    allRealNames = false;
+                    break;
+                }
+            }
+            if (allRealNames) {
+                return true;
+            }
+        }
+        return !hasParameterizedConstructor;
     }
     
     /**
@@ -3260,6 +3297,7 @@ public class ClassUtilities {
         GLOBAL_ALIASES.putAll(USER_ALIASES);
         SUCCESSFUL_CONSTRUCTOR_CACHE.clear();
         CONSTRUCTOR_PLAN_CACHE.clear();
+        NAMED_PARAMETER_MATCHING_VIABLE_CACHE.clear();
         CLASS_HIERARCHY_CACHE.clear();
         accessibilityCache.clear();
         osgiClassLoaders.clear();

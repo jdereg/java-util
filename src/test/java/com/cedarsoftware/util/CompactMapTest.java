@@ -2925,7 +2925,7 @@ public class CompactMapTest
         CompactMap<String, String> m= new CompactMap()
         {
             protected String getSingleValueKey() { return "a"; }
-            protected Map<String, String> getNewMap() { return new HashMap<>(); }
+            protected Map<String, String> getNewMap() { return new CaseInsensitiveMap<>(java.util.Collections.emptyMap(), new HashMap<>(compactSize() + 1)); }
             protected boolean isCaseInsensitive() { return true; }
             protected int compactSize() { return 4; }
         };
@@ -2962,7 +2962,7 @@ public class CompactMapTest
         CompactMap<String, String> m= new CompactMap()
         {
             protected String getSingleValueKey() { return "a"; }
-            protected Map<String, String> getNewMap() { return new HashMap<>(); }
+            protected Map<String, String> getNewMap() { return new CaseInsensitiveMap<>(java.util.Collections.emptyMap(), new HashMap<>(compactSize() + 1)); }
             protected boolean isCaseInsensitive() { return true; }
             protected int compactSize() { return 4; }
         };
@@ -2999,7 +2999,7 @@ public class CompactMapTest
         CompactMap<String, String> m= new CompactMap()
         {
             protected String getSingleValueKey() { return "a"; }
-            protected Map<String, String> getNewMap() { return new HashMap<>(); }
+            protected Map<String, String> getNewMap() { return new CaseInsensitiveMap<>(java.util.Collections.emptyMap(), new HashMap<>(compactSize() + 1)); }
             protected boolean isCaseInsensitive() { return true; }
             protected int compactSize() { return 4; }
         };

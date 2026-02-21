@@ -317,6 +317,12 @@ public class CompactMap<K, V> implements Map<K, V> {
         // Only check direct subclasses, not our generated classes
         if (getClass() != CompactMap.class && getCachedLegacyConstructed()) {
             Map<K,V> map = getNewMap();
+            if (map instanceof CompactMap) {
+                throw new IllegalStateException(
+                        "Recursive configuration: getNewMap() must not return a CompactMap (got " +
+                                map.getClass().getName() + "). Use a standard Map such as HashMap, " +
+                                "LinkedHashMap, TreeMap, or CaseInsensitiveMap as the backing map.");
+            }
             if (map instanceof SortedMap) {
                 SortedMap<?,?> sortedMap = (SortedMap<?,?>)map;
                 Comparator<?> comparator = sortedMap.comparator();
@@ -326,10 +332,17 @@ public class CompactMap<K, V> implements Map<K, V> {
                     throw new IllegalStateException(
                             "Inconsistent configuration: Map uses case-insensitive comparison but isCaseInsensitive() returns false");
                 }
+            } else if (isCaseInsensitive() && !(map instanceof CaseInsensitiveMap)) {
+                // Non-sorted backing map must be CaseInsensitiveMap when isCaseInsensitive() is true,
+                // otherwise case-insensitive lookups silently stop working in MAP state.
+                throw new IllegalStateException(
+                        "Inconsistent configuration: isCaseInsensitive() returns true but getNewMap() returns " +
+                                map.getClass().getName() + " which does not support case-insensitive lookups. " +
+                                "Override getNewMap() to return a CaseInsensitiveMap, or use the builder pattern.");
             }
         }
     }
-    
+
     /**
      * Constructs a CompactMap initialized with the entries from the provided map.
      * <p>
@@ -1417,13 +1430,11 @@ public class CompactMap<K, V> implements Map<K, V> {
 
             @Override
             public boolean remove(Object o) {
-                if (!(o instanceof Entry)) {
-                    return false;
+                if (contains(o)) {
+                    CompactMap.this.remove(((Entry<K, V>) o).getKey());
+                    return true;
                 }
-                final int size = size();
-                Entry<K, V> that = (Entry<K, V>) o;
-                CompactMap.this.remove(that.getKey());
-                return size() != size;
+                return false;
             }
 
             /**
@@ -3187,9 +3198,14 @@ public class CompactMap<K, V> implements Map<K, V> {
             else if (key1Class == key2Class && key1 instanceof Comparable) {
                 result = ((Comparable<Object>) key1).compareTo(key2);
             }
-            // 4. Fallback to class name comparison
+            // 4. Fallback to class name comparison, with identity tiebreaker for same-class keys
             else {
                 result = key1Class.getName().compareTo(key2Class.getName());
+                if (result == 0) {
+                    // Same class but not Comparable — use identity hash as tiebreaker
+                    // to prevent distinct keys from being treated as equal in sorted maps
+                    result = Integer.compare(System.identityHashCode(key1), System.identityHashCode(key2));
+                }
             }
 
             // Apply reverse at the end, after all other comparisons

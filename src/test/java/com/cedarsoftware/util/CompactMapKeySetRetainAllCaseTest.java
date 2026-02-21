@@ -1,6 +1,7 @@
 package com.cedarsoftware.util;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -28,14 +29,16 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class CompactMapKeySetRetainAllCaseTest {
 
     /**
-     * Legacy-style subclass: case-insensitive but getNewMap() returns HashMap.
+     * Legacy-style subclass: case-insensitive with proper CaseInsensitiveMap backing.
      */
     private static class CaseInsensitiveLegacyMap<K, V> extends CompactMap<K, V> {
         @Override
         protected boolean isCaseInsensitive() { return true; }
 
         @Override
-        protected Map<K, V> getNewMap() { return new HashMap<>(); }
+        protected Map<K, V> getNewMap() {
+            return new CaseInsensitiveMap<>(Collections.emptyMap(), new HashMap<>(compactSize() + 1));
+        }
 
         @Override
         protected int compactSize() { return 4; }

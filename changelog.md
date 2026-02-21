@@ -1,6 +1,9 @@
 ### Revision History
 
 #### 4.95.0 (Unreleased)
+* **BUG FIX**: `UniqueIdGenerator` now detects long-range exhaustion and throws `IllegalStateException` instead of overflowing into negative IDs, preserving monotonic ordering guarantees.
+* **BUG FIX**: `UniqueIdGenerator.getServerIdFromVarName()` now correctly normalizes `Integer.MIN_VALUE` inputs (absolute-value modulo 100).
+* **PERFORMANCE**: `UniqueIdGenerator.waitForNextMillis()` now batches spin checks and reduces `currentTimeMillis()` polling frequency in the busy-wait phase.
 * **BUG FIX**: `CaseInsensitiveMap` with `MultiKeyMap` backing now normalizes keys consistently for `ConcurrentMap` APIs (`compute*`, `merge`, `putIfAbsent`, `remove(k,v)`, `replace*`) and when copying from source maps into a `MultiKeyMap` destination.
 * **BUG FIX**: `CaseInsensitiveMap.CaseInsensitiveEntry.setValue()` now updates both the backing map and the entry view value so `entry.getValue()` reflects the new value immediately.
 * **PERFORMANCE**: `CaseInsensitiveMap` caches `MultiKeyMap.flattenDimensions` at construction time to avoid repeated backing-map casts/lookups in hot multi-key normalization paths.
@@ -13,6 +16,10 @@
 * **PERFORMANCE**: `MultiKeyMap` — replaced `ReentrantLock` stripe locking with `synchronized` monitors. Uncontended `synchronized` costs ~5-7ns (JDK 18+ thin locks) vs ~15-20ns for `ReentrantLock` AQS machinery, yielding measurable PUT throughput gains. Lock-free reads, compound operation atomicity, and all `ConcurrentMap` contracts are preserved. Added pre-computed `resizeThreshold` to eliminate per-PUT multiplication.
 * **PERFORMANCE**: `MultiKeyMap` — zero-allocation GET path and single-allocation PUT path for `Object[]` keys in `simpleKeysMode`. GET operations now compute hash inline over the array without creating a `MultiKey` wrapper. PUT operations use a precomputed `MultiKey` constructor that skips reflection (`isArray()`, `getComponentType()`, `ArrayUtilities.getLength()`).
 * **CLEANUP**: `MultiKeyMap` — removed 6 hand-unrolled `flattenObjectArray1/2/3` and `flattenCollection1/2/3` methods (−162 lines). Benchmarking with `simpleKeysMode=false` confirmed the JIT-compiled `flattenObjectArrayN`/`flattenCollectionN` loops match hand-unrolled performance for 1-3 element keys. All sizes now route through the parameterized N path.
+* **BUG FIX**: `CompactMap.entrySet().remove()` and `removeAll()` — removed entries by key only, ignoring the entry's value. Per the `Set.remove()` contract, `entrySet().remove(entry)` must only remove when both key and value match. Now delegates to `contains(entry)` before removing.
+* **BUG FIX**: `CompactMap.CompactMapComparator.compare()` — returned 0 for distinct non-`Comparable` keys of the same class, causing sorted/reverse `CompactMap` instances to overwrite entries. Added `System.identityHashCode()` tiebreaker so distinct same-class objects are never treated as equal.
+* **BUG FIX**: `CompactMap` constructor — legacy subclasses that override `isCaseInsensitive()` to return `true` without returning a `CaseInsensitiveMap` from `getNewMap()` now throw `IllegalStateException` at construction time. Previously, case-insensitive lookups silently stopped working after the map transitioned from compact array state to MAP state.
+* **BUG FIX**: `CompactMap` constructor — `getNewMap()` returning a `CompactMap` (or subclass like `CompactCIHashMap`) is now rejected with `IllegalStateException`. Using a `CompactMap` as a backing map creates recursive nested state machines and is never correct — use `HashMap`, `LinkedHashMap`, `TreeMap`, or `CaseInsensitiveMap` instead.
 * **DEPENDENCY**: Updated Jackson test dependencies from 2.20.1 to 2.21.0 (`jackson-databind`, `jackson-dataformat-xml`).
 
 #### 4.94.0 - 2026-02-14

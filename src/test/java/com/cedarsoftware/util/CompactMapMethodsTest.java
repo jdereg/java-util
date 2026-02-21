@@ -97,6 +97,10 @@ public class CompactMapMethodsTest {
         CompactMap<String, String> caseIns = new CompactMap<String, String>() {
             @Override
             protected boolean isCaseInsensitive() { return true; }
+            @Override
+            protected Map<String, String> getNewMap() {
+                return new CaseInsensitiveMap<>(java.util.Collections.emptyMap(), new HashMap<>(compactSize() + 1));
+            }
         };
         assertFalse(caseIns.isDefaultCompactMap());
 

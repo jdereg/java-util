@@ -6998,7 +6998,8 @@ public static void setTypeResolveCache(Map<Map.Entry<Type, Type>, Type> cache);
 #### **Type Extraction and Resolution**
 ```java
 // Extract raw class from a parameterized type
-Type listType = new TypeHolder<List<String>>(){}.getType();
+// (obtain a parameterized Type via reflection or json-io's TypeHolder)
+Type listType = MyClass.class.getDeclaredField("stringList").getGenericType();
 Class<?> raw = TypeUtilities.getRawClass(listType);
 // Expected: java.util.List
 
@@ -7015,8 +7016,9 @@ Type component = TypeUtilities.extractArrayComponentType(String[].class);
 // Expected: java.lang.String
 
 // Check if a type contains unresolved type variables
-boolean hasUnresolved = TypeUtilities.hasUnresolvedType(new TypeHolder<List<T>>(){}.getType());
-// Returns true if T is unresolved
+Type genericFieldType = GenericClass.class.getDeclaredField("items").getGenericType();
+boolean hasUnresolved = TypeUtilities.hasUnresolvedType(genericFieldType);
+// Returns true if the type contains unresolved type variables like T
 ```
 
 #### **Recursive Resolution Using Parent Type**

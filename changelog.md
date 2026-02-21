@@ -1,6 +1,11 @@
 ### Revision History
 
 #### 4.95.0 (Unreleased)
+* **BUG FIX**: `MultiKeyMap.remove(key, value)` — returned `true` for an absent key when `value == null`. The method now verifies key existence before comparing values, per the `Map.remove(Object, Object)` contract.
+* **BUG FIX**: `MultiKeyMap.replace(key, oldValue, newValue)` — incorrectly inserted a new entry when the key was absent and `oldValue == null`. The method now verifies key existence before comparing values, per the `Map.replace(K, V, V)` contract.
+* **BUG FIX**: `MultiKeyMap.compareNumericValues()` — `BigDecimal`/`BigInteger` comparison against `Double.POSITIVE_INFINITY`, `NEGATIVE_INFINITY`, or `NaN` threw `NumberFormatException` via `new BigDecimal("Infinity")`. Non-finite float/double values are now guarded before the BigDecimal conversion path.
+* **PERFORMANCE**: `MultiKeyMap` — deferred `cachedHashCode` invalidation in 8 conditional mutators (`putIfAbsent`, `computeIfAbsent`, `computeIfPresent`, `compute`, `merge`, `remove(k,v)`, `replace(k,v)`, `replace(k,old,new)`). Cache is now only invalidated inside the lock when mutation actually occurs, avoiding unnecessary invalidation on no-op calls.
+* **PERFORMANCE**: `MultiKeyMap` copy constructor — now pre-sizes the internal table from the source's current table size (`buckets.length()`) instead of its initial capacity, avoiding unnecessary resizes when copying a map that has grown beyond its initial capacity.
 * **CLEANUP**: Removed `TypeHolder` class — the super-type-token pattern exists solely for serialization APIs and had zero internal consumers in java-util. The canonical `TypeHolder` lives in json-io where it is part of the public API.
 * **DEPENDENCY**: Updated Jackson test dependencies from 2.20.1 to 2.21.0 (`jackson-databind`, `jackson-dataformat-xml`).
 

@@ -475,6 +475,15 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             }
         }
 
+        // Fast constructor when caller already knows size and kind (avoids reflection)
+        MultiKey(Object normalizedKeys, int hash, V value, int size, byte kind) {
+            this.keys = normalizedKeys;
+            this.hash = hash;
+            this.value = value;
+            this.size = size;
+            this.kind = kind;
+        }
+
         @Override
         public String toString() {
             return dumpExpandedKeyStatic(keys, true, null);  // Use emoji rendering
@@ -537,7 +546,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
 
     // Copy constructor
     public MultiKeyMap(MultiKeyMap<? extends V> source) {
-        this(MultiKeyMap.<V>builder().from(source));
+        this(MultiKeyMap.<V>builder().from(source).capacity(source.buckets.length()));
         
         source.withAllStripeLocks(() -> {  // Lock for consistent snapshot
             final AtomicReferenceArray<? extends MultiKey<? extends V>[]> sourceTable = source.buckets;  // Pin source table reference
@@ -1231,9 +1240,19 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                 }
                 return null;
             }
+            // Fast path: Object[] in simpleKeysMode — compute hash inline, zero allocation
+            if (simpleKeysMode && keyClass == Object[].class) {
+                Object[] array = (Object[]) key;
+                int len = array.length;
+                int h = len == 0 ? 0 : 1;
+                for (int i = 0; i < len; i++) {
+                    h = h * 31 + computeElementHash(array[i], caseSensitive);
+                }
+                return findEntryWithPrecomputedHash(array, h);
+            }
             // It's an array (including rare atomic arrays) - fall through to complex path
         }
-        
+
         // Complex keys: Use zero-allocation lookup with simple new Norm()
         Norm n = normalizeForLookup(key);
         return findEntryWithPrecomputedHash(n.key, n.hash);
@@ -1321,7 +1340,18 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
 
             if (!isKeyArray) {
                 // === FAST PATH: Simple objects (not arrays or collections) ===
-                return new MultiKey<>(key, computeElementHash(key, caseSensitive), value);
+                return new MultiKey<>(key, computeElementHash(key, caseSensitive), value, 1, MultiKey.KIND_SINGLE);
+            }
+
+            // Fast path: Object[] in simpleKeysMode — single allocation (no temp MultiKey)
+            if (simpleKeysMode && keyClass == Object[].class) {
+                Object[] array = (Object[]) key;
+                int len = array.length;
+                int h = len == 0 ? 0 : 1;
+                for (int i = 0; i < len; i++) {
+                    h = h * 31 + computeElementHash(array[i], caseSensitive);
+                }
+                return new MultiKey<>(array, h, value, len, MultiKey.KIND_OBJECT_ARRAY);
             }
             // It's an array (including rare atomic arrays) - fall through to flattenKey
         }
@@ -1393,7 +1423,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         Class<?> keyClass = key.getClass();
         if (keyClass == String.class || keyClass == Integer.class ||
             keyClass == Long.class || keyClass == Double.class) {
-            return new MultiKey<>(key, computeElementHash(key, caseSensitive), null);
+            return new MultiKey<>(key, computeElementHash(key, caseSensitive), null, 1, MultiKey.KIND_SINGLE);
         }
 
         // === ATOMIC ARRAY CONVERSION ===
@@ -1437,7 +1467,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             // It's a Collection - handle based on mode
             if (collectionKeyMode == CollectionKeyMode.COLLECTIONS_NOT_EXPANDED) {
                 // Treat Collection as single key - fast return
-                return new MultiKey<>(key, computeElementHash(key, caseSensitive), null);
+                return new MultiKey<>(key, computeElementHash(key, caseSensitive), null, 1, MultiKey.KIND_SINGLE);
             }
             // Collection needs expansion - set array flags for later processing
             isKeyArray = false;  // Collections are not arrays
@@ -1448,7 +1478,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             if (!isKeyArray) {
                 // Simple objects (not arrays or collections) - return immediately
                 // This handles types not covered by the fast path above (Float, Short, etc.)
-                return new MultiKey<>(key, computeElementHash(key, caseSensitive), null);
+                return new MultiKey<>(key, computeElementHash(key, caseSensitive), null, 1, MultiKey.KIND_SINGLE);
             }
             // Continue with array processing below
         }
@@ -1465,11 +1495,11 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             if (simpleKeysMode) {
                 switch (array.length) {
                     case 0:
-                        return new MultiKey<>(array, 0, null);
+                        return new MultiKey<>(array, 0, null, 0, MultiKey.KIND_OBJECT_ARRAY);
                     case 1:
                         return flattenObjectArray1(array);  // Unrolled for maximum speed
                     case 2:
-                        return flattenObjectArray2(array);  // Unrolled for performance  
+                        return flattenObjectArray2(array);  // Unrolled for performance
                     case 3:
                         return flattenObjectArray3(array);  // Unrolled for performance
                     default:
@@ -1480,7 +1510,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                 // Normal mode: use size-based routing
                 switch (array.length) {
                     case 0:
-                        return new MultiKey<>(array, 0, null);
+                        return new MultiKey<>(array, 0, null, 0, MultiKey.KIND_OBJECT_ARRAY);
                     case 1:
                         return flattenObjectArray1(array);  // Unrolled for maximum speed
                     case 2:
@@ -1662,11 +1692,11 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     
     private <T> MultiKey<T> flattenObjectArray1(Object[] array) {
         Object elem = array[0];
-        
+
         // Simple element - fast path
         if (!isArrayOrCollection(elem)) {
             int hash = 31 + computeElementHash(elem, caseSensitive);
-            return new MultiKey<>(array, hash, null);
+            return new MultiKey<>(array, hash, null, 1, MultiKey.KIND_OBJECT_ARRAY);
         }
         
         // Complex element - check flattenDimensions
@@ -1690,9 +1720,9 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         
         int h = 31 + computeElementHash(elem0, caseSensitive);
         h = h * 31 + computeElementHash(elem1, caseSensitive);
-        return new MultiKey<>(array, h, null);
+        return new MultiKey<>(array, h, null, 2, MultiKey.KIND_OBJECT_ARRAY);
     }
-    
+
     private <T> MultiKey<T> flattenObjectArray3(Object[] array) {
         // Optimized unrolled version for size 3
         Object elem0 = array[0];
@@ -1707,7 +1737,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         int h = 31 + computeElementHash(elem0, caseSensitive);
         h = h * 31 + computeElementHash(elem1, caseSensitive);
         h = h * 31 + computeElementHash(elem2, caseSensitive);
-        return new MultiKey<>(array, h, null);
+        return new MultiKey<>(array, h, null, 3, MultiKey.KIND_OBJECT_ARRAY);
     }
 
     /**
@@ -1744,7 +1774,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         }
 
         // All simple - return with computed hash
-        return new MultiKey<>(array, h, null);
+        return new MultiKey<>(array, h, null, size, MultiKey.KIND_OBJECT_ARRAY);
     }
 
     private <T> MultiKey<T> flattenCollection1(Collection<?> coll) {
@@ -3111,8 +3141,11 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             return d == (double) li;
         }
 
-        // 4) BigInteger/BigDecimal involvement → compare via BigDecimal (no exceptions)
+        // 4) BigInteger/BigDecimal involvement → compare via BigDecimal
+        //    Guard: non-finite float/double (Infinity, NaN) can never equal BigDecimal/BigInteger
         if (isBig(ca) || isBig(cb)) {
+            if (aFp && !Double.isFinite(((Number) a).doubleValue())) return false;
+            if (bFp && !Double.isFinite(((Number) b).doubleValue())) return false;
             return toBigDecimal((Number) a).compareTo(toBigDecimal((Number) b)) == 0;
         }
 
@@ -3767,9 +3800,6 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      *         if there was no mapping for the key
      */
     public V putIfAbsent(Object key, V value) {
-        // Invalidate hashCode cache on potential mutation
-        cachedHashCode = null;
-
         V existing = get(key);
         if (existing != null) return existing;
 
@@ -3789,6 +3819,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                 // Use putNoLock directly to avoid double locking
                 MultiKey<V> newKey = new MultiKey<>(normalizedKey, hash, value);
                 putNoLock(newKey);
+                cachedHashCode = null;
                 resize = atomicSize.get() > buckets.length() * loadFactor;
             }
         } finally {
@@ -3813,9 +3844,6 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      */
     public V computeIfAbsent(Object key, Function<? super Object, ? extends V> mappingFunction) {
         Objects.requireNonNull(mappingFunction);
-
-        // Invalidate hashCode cache on potential mutation
-        cachedHashCode = null;
 
         // Normalize key once upfront - avoid double normalization that get() + flattenKey() would cause
         MultiKey<V> norm = flattenKey(key);
@@ -3844,6 +3872,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                     // Create new key with value and use putNoLock
                     MultiKey<V> newKey = new MultiKey<>(normalizedKey, hash, v);
                     putNoLock(newKey);
+                    cachedHashCode = null;
                     resize = atomicSize.get() > buckets.length() * loadFactor;
                 }
             }
@@ -3868,9 +3897,6 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      */
     public V computeIfPresent(Object key, BiFunction<? super Object, ? super V, ? extends V> remappingFunction) {
         Objects.requireNonNull(remappingFunction);
-
-        // Invalidate hashCode cache on potential mutation
-        cachedHashCode = null;
 
         // Normalize key once upfront - avoid double normalization that get() + flattenKey() would cause
         MultiKey<V> norm = flattenKey(key);
@@ -3897,12 +3923,14 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                     // Replace with new value using putNoLock
                     MultiKey<V> newKey = new MultiKey<>(normalizedKey, hash, newV);
                     putNoLock(newKey);
+                    cachedHashCode = null;
                     resize = atomicSize.get() > buckets.length() * loadFactor;
                     result = newV;
                 } else {
                     // Remove using removeNoLock
                     MultiKey<V> removeKey = new MultiKey<>(normalizedKey, hash, old);
                     removeNoLock(removeKey);
+                    cachedHashCode = null;
                 }
             }
         } finally {
@@ -3927,9 +3955,6 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     public V compute(Object key, BiFunction<? super Object, ? super V, ? extends V> remappingFunction) {
         Objects.requireNonNull(remappingFunction);
 
-        // Invalidate hashCode cache on potential mutation
-        cachedHashCode = null;
-
         MultiKey<V> norm = flattenKey(key);
         Object normalizedKey = norm.keys;
         int hash = norm.hash;
@@ -3948,12 +3973,14 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                 if (old != null || findEntryWithPrecomputedHash(normalizedKey, hash) != null) {
                     MultiKey<V> removeKey = new MultiKey<>(normalizedKey, hash, old);
                     removeNoLock(removeKey);
+                    cachedHashCode = null;
                 }
                 result = null;
             } else {
                 // Put new value using putNoLock
                 MultiKey<V> newKey = new MultiKey<>(normalizedKey, hash, newV);
                 putNoLock(newKey);
+                cachedHashCode = null;
                 resize = atomicSize.get() > buckets.length() * loadFactor;
                 result = newV;
             }
@@ -3982,9 +4009,6 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         Objects.requireNonNull(value);
         Objects.requireNonNull(remappingFunction);
 
-        // Invalidate hashCode cache on potential mutation
-        cachedHashCode = null;
-
         MultiKey<V> norm = flattenKey(key);
         Object normalizedKey = norm.keys;
         int hash = norm.hash;
@@ -3997,7 +4021,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             MultiKey<V> lookupKey = new MultiKey<>(normalizedKey, hash, null);
             V old = getNoLock(lookupKey);
             V newV = old == null ? value : remappingFunction.apply(old, value);
-            
+
             if (newV == null) {
                 // Remove using removeNoLock
                 MultiKey<V> removeKey = new MultiKey<>(normalizedKey, hash, old);
@@ -4008,6 +4032,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                 putNoLock(newKey);
                 resize = atomicSize.get() > buckets.length() * loadFactor;
             }
+            cachedHashCode = null;
             result = newV;
         } finally {
             lock.unlock();
@@ -4034,9 +4059,6 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      * @return {@code true} if the value was removed
      */
     public boolean remove(Object key, Object value) {
-        // Invalidate hashCode cache on potential mutation
-        cachedHashCode = null;
-
         MultiKey<V> norm = flattenKey(key);
         Object normalizedKey = norm.keys;
         int hash = norm.hash;
@@ -4046,11 +4068,16 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         try {
             MultiKey<V> lookupKey = new MultiKey<>(normalizedKey, hash, null);
             V current = getNoLock(lookupKey);
+            // If current is null, verify the key actually exists before comparing
+            if (current == null && findEntryWithPrecomputedHash(normalizedKey, hash) == null) {
+                return false;
+            }
             if (!Objects.equals(current, value)) return false;
-            
+
             // Remove using removeNoLock
             MultiKey<V> removeKey = new MultiKey<>(normalizedKey, hash, current);
             removeNoLock(removeKey);
+            cachedHashCode = null;
             return true;
         } finally {
             lock.unlock();
@@ -4074,9 +4101,6 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      *         if there was no mapping for the key
      */
     public V replace(Object key, V value) {
-        // Invalidate hashCode cache on potential mutation
-        cachedHashCode = null;
-
         MultiKey<V> norm = flattenKey(key);
         Object normalizedKey = norm.keys;
         int hash = norm.hash;
@@ -4094,6 +4118,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                 // Replace with new value using putNoLock
                 MultiKey<V> newKey = new MultiKey<>(normalizedKey, hash, value);
                 result = putNoLock(newKey);
+                cachedHashCode = null;
                 resize = atomicSize.get() > buckets.length() * loadFactor;
             }
         } finally {
@@ -4122,9 +4147,6 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      * @return {@code true} if the value was replaced
      */
     public boolean replace(Object key, V oldValue, V newValue) {
-        // Invalidate hashCode cache on potential mutation
-        cachedHashCode = null;
-
         MultiKey<V> norm = flattenKey(key);
         Object normalizedKey = norm.keys;
         int hash = norm.hash;
@@ -4136,10 +4158,14 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         try {
             MultiKey<V> lookupKey = new MultiKey<>(normalizedKey, hash, null);
             V current = getNoLock(lookupKey);
-            if (Objects.equals(current, oldValue)) {
+            // If current is null, verify the key actually exists before comparing
+            if (current == null && findEntryWithPrecomputedHash(normalizedKey, hash) == null) {
+                result = false;
+            } else if (Objects.equals(current, oldValue)) {
                 // Replace with new value using putNoLock
                 MultiKey<V> newKey = new MultiKey<>(normalizedKey, hash, newValue);
                 putNoLock(newKey);
+                cachedHashCode = null;
                 resize = atomicSize.get() > buckets.length() * loadFactor;
                 result = true;
             }

@@ -1,5 +1,9 @@
 ### Revision History
 
+#### 4.95.0 (Unreleased)
+* **CLEANUP**: Removed `TypeHolder` class — the super-type-token pattern exists solely for serialization APIs and had zero internal consumers in java-util. The canonical `TypeHolder` lives in json-io where it is part of the public API.
+* **DEPENDENCY**: Updated Jackson test dependencies from 2.20.1 to 2.21.0 (`jackson-databind`, `jackson-dataformat-xml`).
+
 #### 4.94.0 - 2026-02-14
 * **PERFORMANCE**: `MathUtilities.parseToMinimalNumericType()` numeric analysis was refactored to a single-pass scan with no intermediate `StringBuilder`/substring reconstruction on the hot path.
 * **PERFORMANCE**: Added `MathUtilities.parseToMinimalNumericType(CharSequence)` overload so callers with buffered number text can avoid extra conversion work before numeric type selection.

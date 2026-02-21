@@ -1474,25 +1474,17 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         // === FAST PATH: Object[] arrays with length-based optimization ===
         if (keyClass == Object[].class) {
             Object[] array = (Object[]) key;
-            
-            // In simpleKeysMode, route ALL sizes through N path
-            if (simpleKeysMode) {
-                if (array.length == 0) {
-                    return new MultiKey<>(array, 0, null, 0, MultiKey.KIND_OBJECT_ARRAY);
-                }
-                return flattenObjectArrayN(array, array.length);
-            } else {
-                // Normal mode: route ALL sizes through N path
-                switch (array.length) {
-                    case 0:
-                        return new MultiKey<>(array, 0, null, 0, MultiKey.KIND_OBJECT_ARRAY);
-                    default:
-                        if (array.length <= 10) {
-                            return flattenObjectArrayN(array, array.length);
-                        }
-                        return process1DObjectArray(array);
-                }
+            if (array.length == 0) {
+                return new MultiKey<>(array, 0, null, 0, MultiKey.KIND_OBJECT_ARRAY);
             }
+            // simpleKeysMode: all elements are guaranteed simple — use optimistic single-pass
+            // Normal mode, small arrays (<=10): optimistic single-pass with bail-to-expand
+            // Normal mode, large arrays (>10): go directly to process1DObjectArray to avoid
+            //   wasted work if a complex element appears late in the array
+            if (simpleKeysMode || array.length <= 10) {
+                return flattenObjectArrayN(array, array.length);
+            }
+            return process1DObjectArray(array);
         }
         
         // === FAST PATH: Primitive arrays - handle each type separately to keep them unboxed ===
@@ -1609,24 +1601,15 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             return expandWithHash(coll);
         }
         
-        // Size-based optimization for collections
+        // Size-based optimization for collections (same logic as Object[] above)
         int size = coll.size();
-        
-        // Route ALL sizes through N path
-        if (simpleKeysMode) {
-            if (size == 0) {
-                return new MultiKey<>(ArrayUtilities.EMPTY_OBJECT_ARRAY, 0, null);
-            }
-            return flattenCollectionN(coll, size);
-        } else {
-            if (size == 0) {
-                return new MultiKey<>(ArrayUtilities.EMPTY_OBJECT_ARRAY, 0, null);
-            }
-            if (size <= 10) {
-                return flattenCollectionN(coll, size);
-            }
-            return process1DCollection(coll);
+        if (size == 0) {
+            return new MultiKey<>(ArrayUtilities.EMPTY_OBJECT_ARRAY, 0, null);
         }
+        if (simpleKeysMode || size <= 10) {
+            return flattenCollectionN(coll, size);
+        }
+        return process1DCollection(coll);
     }
     
     // === Fast path helper methods for flattenKey() ===

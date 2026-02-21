@@ -41,10 +41,10 @@ class MultiKeyMapLockStripingTest {
     private MultiKeyMap<String> map;
     private static final int NUM_THREADS = 16;
     private static final int OPERATIONS_PER_THREAD = 1000;
-    
+
     @BeforeEach
     void setUp() {
-        map = new MultiKeyMap<>(64); // Start with reasonable capacity
+        map = MultiKeyMap.<String>builder().capacity(64).trackContentionMetrics(true).build();
     }
     
     @Test
@@ -224,7 +224,7 @@ class MultiKeyMapLockStripingTest {
         LOG.info("=== Starting Concurrent Resize Operations Test ===");
         
         // Start with small capacity to force resizes
-        map = new MultiKeyMap<>(8);
+        map = MultiKeyMap.<String>builder().capacity(8).trackContentionMetrics(true).build();
         
         ExecutorService executor = Executors.newFixedThreadPool(NUM_THREADS);
         CountDownLatch latch = new CountDownLatch(NUM_THREADS);
@@ -473,7 +473,7 @@ class MultiKeyMapLockStripingTest {
     @Test
     void testPerformanceWithStriping() {
         // Compare performance characteristics with and without contention
-        map = new MultiKeyMap<>(1024); // Large enough to avoid resizes
+        map = MultiKeyMap.<String>builder().capacity(1024).trackContentionMetrics(true).build();
 
         // Warmup phase - let JIT compile hot paths
         for (int warmup = 0; warmup < 3; warmup++) {

@@ -76,7 +76,6 @@ public class MultiKeyMapOptimizationTest {
         }
         long endTime = System.nanoTime();
 
-        System.out.println(endTime - startTime);
         // Should complete reasonably fast (this is more of a functionality test)
         assertTrue(endTime - startTime < 1_000_000_000, "Operations took too long: " + (endTime - startTime) + "ns");
     }

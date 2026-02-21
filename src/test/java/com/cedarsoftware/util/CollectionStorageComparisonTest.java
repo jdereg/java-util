@@ -10,6 +10,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.logging.Logger;
 
 import org.junit.jupiter.api.Test;
 
@@ -20,18 +21,20 @@ import org.junit.jupiter.api.Test;
  * 3. Apache Commons approach (using standard HashMap with List keys)
  */
 public class CollectionStorageComparisonTest {
-    
+
+    private static final Logger LOG = Logger.getLogger(CollectionStorageComparisonTest.class.getName());
+
     private static final int ITERATIONS = 1_000_000;
     private static final int KEY_SIZE = 5;
     private static final int WARMUP = 10_000;
     
     @Test
     void compareStorageStrategies() {
-        System.out.println("\n=== Collection Storage Strategy Comparison ===\n");
-        System.out.println("Test parameters:");
-        System.out.println("  Iterations: " + ITERATIONS);
-        System.out.println("  Key size: " + KEY_SIZE + " elements");
-        System.out.println("  Collection type: LinkedList (non-RandomAccess)\n");
+        LOG.info("=== Collection Storage Strategy Comparison ===");
+        LOG.info("Test parameters:");
+        LOG.info("  Iterations: " + ITERATIONS);
+        LOG.info("  Key size: " + KEY_SIZE + " elements");
+        LOG.info("  Collection type: LinkedList (non-RandomAccess)");
         
         // Create test data
         List<LinkedList<Integer>> linkedListKeys = createLinkedListKeys();
@@ -76,7 +79,7 @@ public class CollectionStorageComparisonTest {
     }
     
     private void testMultiKeyMapCurrent(List<LinkedList<Integer>> keys) {
-        System.out.println("1. Current MultiKeyMap (converts LinkedList to Object[]):");
+        LOG.info("1. Current MultiKeyMap (converts LinkedList to Object[]):");
         
         MultiKeyMap<String> map = new MultiKeyMap<>();
         
@@ -104,7 +107,7 @@ public class CollectionStorageComparisonTest {
     }
     
     private void testAsIsStorageWithIterators(List<LinkedList<Integer>> keys) {
-        System.out.println("2. Simulated as-is storage (using iterators for comparison):");
+        LOG.info("2. Simulated as-is storage (using iterators for comparison):");
         
         // Simulate storing Collections as-is and comparing with iterators
         Map<CollectionWrapper, String> map = new HashMap<>();
@@ -133,7 +136,7 @@ public class CollectionStorageComparisonTest {
     }
     
     private void testDirectArrayComparison(List<Object[]> arrays) {
-        System.out.println("3. Direct Object[] comparison (post-conversion):");
+        LOG.info("3. Direct Object[] comparison (post-conversion):");
         
         Map<ArrayWrapper, String> map = new HashMap<>();
         
@@ -161,7 +164,7 @@ public class CollectionStorageComparisonTest {
     }
     
     private void testStandardHashMap(List<LinkedList<Integer>> keys) {
-        System.out.println("4. Standard HashMap with List keys (Apache-style):");
+        LOG.info("4. Standard HashMap with List keys (Apache-style):");
         
         Map<List<Integer>, String> map = new HashMap<>();
         
@@ -189,7 +192,7 @@ public class CollectionStorageComparisonTest {
     }
     
     private void testConcurrentHashMap(List<LinkedList<Integer>> keys) {
-        System.out.println("5. ConcurrentHashMap with List keys:");
+        LOG.info("5. ConcurrentHashMap with List keys:");
         
         Map<List<Integer>, String> map = new ConcurrentHashMap<>();
         
@@ -217,11 +220,11 @@ public class CollectionStorageComparisonTest {
     }
     
     private void printResults(long populateNanos, long lookupNanos, int hits) {
-        System.out.printf("  Populate: %,d ms%n", populateNanos / 1_000_000);
-        System.out.printf("  Lookup: %,d hits in %,d ms (%.1f ns/lookup)%n",
-            hits, lookupNanos / 1_000_000, (double) lookupNanos / ITERATIONS);
-        System.out.printf("  Throughput: %,.0f lookups/second%n%n",
-            ITERATIONS * 1_000_000_000.0 / lookupNanos);
+        LOG.info(String.format("  Populate: %,d ms", populateNanos / 1_000_000));
+        LOG.info(String.format("  Lookup: %,d hits in %,d ms (%.1f ns/lookup)",
+            hits, lookupNanos / 1_000_000, (double) lookupNanos / ITERATIONS));
+        LOG.info(String.format("  Throughput: %,.0f lookups/second",
+            ITERATIONS * 1_000_000_000.0 / lookupNanos));
     }
     
     // Wrapper that uses iterators for equality (simulates Collection stored as-is)

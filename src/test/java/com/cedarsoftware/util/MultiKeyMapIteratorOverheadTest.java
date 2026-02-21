@@ -6,6 +6,7 @@ import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
+import java.util.logging.Logger;
 
 import org.junit.jupiter.api.Test;
 
@@ -14,20 +15,22 @@ import org.junit.jupiter.api.Test;
  * This will help determine if the RandomAccess optimization in keysMatchCrossType is worth the code complexity.
  */
 public class MultiKeyMapIteratorOverheadTest {
-    
+
+    private static final Logger LOG = Logger.getLogger(MultiKeyMapIteratorOverheadTest.class.getName());
+
     private static final int WARMUP_ITERATIONS = 10000;
     private static final int TEST_ITERATIONS = 1000000;
     private static final int[] SIZES = {2, 3, 5, 10, 20, 50};
     
     @Test
     void measureIteratorOverhead() {
-        System.out.println("\n=== Iterator Creation Overhead Test ===\n");
-        System.out.println("Comparing RandomAccess direct access vs Iterator access");
-        System.out.println("Test iterations: " + String.format("%,d", TEST_ITERATIONS));
+        LOG.info("=== Iterator Creation Overhead Test ===");
+        LOG.info("Comparing RandomAccess direct access vs Iterator access");
+        LOG.info("Test iterations: " + String.format("%,d", TEST_ITERATIONS));
         
         for (int size : SIZES) {
-            System.out.println("\n--- Array size: " + size + " ---");
-            
+            LOG.info("--- Array size: " + size + " ---");
+
             // Create test data
             Object[] array = new Object[size];
             List<Object> arrayList = new ArrayList<>(size);
@@ -65,21 +68,21 @@ public class MultiKeyMapIteratorOverheadTest {
             double overhead = iteratorNsPerOp - directNsPerOp;
             double overheadPercent = (overhead / directNsPerOp) * 100;
             
-            System.out.printf("  Direct access:    %,8.2f ns/op\n", directNsPerOp);
-            System.out.printf("  Iterator access:  %,8.2f ns/op\n", iteratorNsPerOp);
-            System.out.printf("  Iterator overhead: %,7.2f ns/op (%.1f%% slower)\n", overhead, overheadPercent);
+            LOG.info(String.format("  Direct access:    %,8.2f ns/op", directNsPerOp));
+            LOG.info(String.format("  Iterator access:  %,8.2f ns/op", iteratorNsPerOp));
+            LOG.info(String.format("  Iterator overhead: %,7.2f ns/op (%.1f%% slower)", overhead, overheadPercent));
             
             // Verify both methods return same result
             assert resultDirect == resultIterator : "Methods returned different results!";
         }
         
-        System.out.println("\n=== Cross-Container Comparison Test ===\n");
-        System.out.println("Testing the actual MultiKeyMap scenario: Object[] vs ArrayList");
+        LOG.info("=== Cross-Container Comparison Test ===");
+        LOG.info("Testing the actual MultiKeyMap scenario: Object[] vs ArrayList");
         
         // Test the actual use case - cross container comparison
         for (int size : SIZES) {
-            System.out.println("\n--- Array size: " + size + " ---");
-            
+            LOG.info("--- Array size: " + size + " ---");
+
             // Test with matching values (worst case - must compare all elements)
             Object[] array1 = new Object[size];
             Object[] array2 = new Object[size];
@@ -119,12 +122,12 @@ public class MultiKeyMapIteratorOverheadTest {
             double savings = unoptNsPerOp - optNsPerOp;
             double savingsPercent = (savings / unoptNsPerOp) * 100;
             
-            System.out.printf("  Optimized (direct):   %,8.2f ns/op\n", optNsPerOp);
-            System.out.printf("  Unoptimized (iter):   %,8.2f ns/op\n", unoptNsPerOp);
-            System.out.printf("  Optimization savings: %,7.2f ns/op (%.1f%% faster)\n", savings, savingsPercent);
+            LOG.info(String.format("  Optimized (direct):   %,8.2f ns/op", optNsPerOp));
+            LOG.info(String.format("  Unoptimized (iter):   %,8.2f ns/op", unoptNsPerOp));
+            LOG.info(String.format("  Optimization savings: %,7.2f ns/op (%.1f%% faster)", savings, savingsPercent));
         }
         
-        System.out.println("\n=== Memory Allocation Test ===\n");
+        LOG.info("=== Memory Allocation Test ===");
         
         // Measure actual heap allocation
         List<Object> testList = Arrays.asList("a", "b", "c", "d", "e");
@@ -146,11 +149,11 @@ public class MultiKeyMapIteratorOverheadTest {
         long memUsed = memAfter - memBefore;
         double bytesPerIterator = (double) memUsed / 10000;
         
-        System.out.printf("Memory per iterator: ~%.1f bytes\n", bytesPerIterator);
-        System.out.println("(Note: This includes ArrayList growth and other overhead)");
-        
+        LOG.info(String.format("Memory per iterator: ~%.1f bytes", bytesPerIterator));
+        LOG.info("(Note: This includes ArrayList growth and other overhead)");
+
         // Keep reference to prevent GC
-        System.out.println("Created " + iterators.size() + " iterators");
+        LOG.info("Created " + iterators.size() + " iterators");
     }
     
     // Direct indexed access (current optimization)

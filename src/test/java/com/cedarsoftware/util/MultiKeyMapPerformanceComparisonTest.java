@@ -76,7 +76,7 @@ public class MultiKeyMapPerformanceComparisonTest {
         }
     }
 
-    @EnabledIfSystemProperty(named = "performRelease", matches = "true")
+//    @EnabledIfSystemProperty(named = "performRelease", matches = "true")
     @Test
     void comparePerformance() {
         LOG.info("=== Cedar vs Apache MultiKeyMap Performance Comparison ===");
@@ -191,9 +191,10 @@ public class MultiKeyMapPerformanceComparisonTest {
         
         for (int iter = 0; iter < TEST_ITERATIONS; iter++) {
             // MultiKeyMap doesn't do defensive copying for maximum performance
+            // Pre-size accounting for load factor (0.75 default) to avoid resize during test
             com.cedarsoftware.util.MultiKeyMap<String> map = com.cedarsoftware.util.MultiKeyMap.<String>builder()
                 .simpleKeysMode(true)
-                .capacity(config.dataSize)
+                .capacity((int) (config.dataSize / 0.75) + 1)
                 .build();
             
             // Test PUT operations

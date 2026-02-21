@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
+import java.util.logging.Logger;
 
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
@@ -37,6 +38,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  *         limitations under the License.
  */
 class MultiKeyMapSetPerformanceTest {
+
+    private static final Logger LOG = Logger.getLogger(MultiKeyMapSetPerformanceTest.class.getName());
 
     @Test
     @org.junit.jupiter.api.condition.EnabledIfSystemProperty(named = "performRelease", matches = "true")
@@ -74,9 +77,9 @@ class MultiKeyMapSetPerformanceTest {
         double listTimeMs = listTime / 1_000_000.0;
         double ratio = (double) setTime / listTime;
 
-        System.out.println("Set insertion time: " + setTimeMs + " ms");
-        System.out.println("List insertion time: " + listTimeMs + " ms");
-        System.out.println("Set/List ratio: " + ratio);
+        LOG.info("Set insertion time: " + setTimeMs + " ms");
+        LOG.info("List insertion time: " + listTimeMs + " ms");
+        LOG.info("Set/List ratio: " + ratio);
 
         // Sets should be within some multiple of List performance due to order-agnostic processing
         assertTrue(setTime < listTime * 10,
@@ -134,9 +137,9 @@ class MultiKeyMapSetPerformanceTest {
         double listTimeMs = listTime / 1_000_000.0;
         double ratio = (double) setTime / listTime;
 
-        System.out.println("Set lookup time: " + setTimeMs + " ms");
-        System.out.println("List lookup time: " + listTimeMs + " ms");
-        System.out.println("Set/List ratio: " + ratio);
+        LOG.info("Set lookup time: " + setTimeMs + " ms");
+        LOG.info("List lookup time: " + listTimeMs + " ms");
+        LOG.info("Set/List ratio: " + ratio);
 
         // Sets should be within 10x of List performance (lenient threshold for benchmark variability)
         // Typical ratio is ~3x, but can vary due to JVM warmup, GC, etc.
@@ -185,7 +188,7 @@ class MultiKeyMapSetPerformanceTest {
         // Get chain depth statistics via toString() or reflection if available
         // For now, just verify all insertions succeeded
         assertEquals(iterations, map.size());
-        System.out.println("Successfully stored " + iterations + " Sets in map with initial capacity 16");
+        LOG.info("Successfully stored " + iterations + " Sets in map with initial capacity 16");
     }
 
     @Test
@@ -231,9 +234,9 @@ class MultiKeyMapSetPerformanceTest {
         long largeEnd = System.nanoTime();
         long largeTime = largeEnd - largeStart;
 
-        System.out.println("Small Sets (3 elements): " + smallTime / 1_000_000.0 + " ms");
-        System.out.println("Medium Sets (10 elements): " + mediumTime / 1_000_000.0 + " ms");
-        System.out.println("Large Sets (50 elements): " + largeTime / 1_000_000.0 + " ms");
+        LOG.info("Small Sets (3 elements): " + smallTime / 1_000_000.0 + " ms");
+        LOG.info("Medium Sets (10 elements): " + mediumTime / 1_000_000.0 + " ms");
+        LOG.info("Large Sets (50 elements): " + largeTime / 1_000_000.0 + " ms");
 
         // Performance should scale reasonably with Set size
         // Note: With optimizations (nested loop for ≤3 elements, HashSet for >3 elements),
@@ -258,7 +261,7 @@ class MultiKeyMapSetPerformanceTest {
         long end = System.nanoTime();
         long time = end - start;
 
-        System.out.println("Nested Sets insertion time: " + time / 1_000_000.0 + " ms");
+        LOG.info("Nested Sets insertion time: " + time / 1_000_000.0 + " ms");
         assertEquals(iterations, map.size(), "All nested Sets should be stored");
 
         // Verify lookups work
@@ -291,9 +294,9 @@ class MultiKeyMapSetPerformanceTest {
         assertEquals(iterations, setMap.size());
         assertEquals(iterations, listMap.size());
 
-        System.out.println("Set map size: " + setMap.size());
-        System.out.println("List map size: " + listMap.size());
-        System.out.println("Both maps successfully stored " + iterations + " entries");
+        LOG.info("Set map size: " + setMap.size());
+        LOG.info("List map size: " + listMap.size());
+        LOG.info("Both maps successfully stored " + iterations + " entries");
     }
 
     @Test
@@ -319,9 +322,9 @@ class MultiKeyMapSetPerformanceTest {
             }
         }
 
-        System.out.println("Unique hash codes: " + hashCounts.size());
-        System.out.println("Hash collisions detected: " + collisions.size());
-        System.out.println("Map size: " + map.size());
+        LOG.info("Unique hash codes: " + hashCounts.size());
+        LOG.info("Hash collisions detected: " + collisions.size());
+        LOG.info("Map size: " + map.size());
 
         assertEquals(1000, map.size(), "All Sets should be stored despite hash collisions");
     }

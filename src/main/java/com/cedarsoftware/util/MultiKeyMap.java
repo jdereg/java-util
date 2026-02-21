@@ -22,7 +22,7 @@ import java.util.concurrent.atomic.AtomicIntegerArray;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicLongArray;
 import java.util.concurrent.atomic.AtomicReferenceArray;
-import java.util.concurrent.locks.ReentrantLock;
+// ReentrantLock replaced with synchronized monitors for lower uncontended latency
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.logging.Level;
@@ -429,9 +429,15 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     // Volatile ensures visibility when mutations set to null; no lock needed since computation is idempotent
     private transient volatile Integer cachedHashCode;
 
+    // Pre-computed resize threshold to avoid per-put multiplication
+    private volatile long resizeThreshold;
+
+    // Contention detection threshold for timing-based metrics (1 microsecond)
+    private static final long CONTENTION_THRESHOLD_NS = 1000;
+
     private static final int STRIPE_COUNT = calculateOptimalStripeCount();
     private static final int STRIPE_MASK = STRIPE_COUNT - 1;
-    private final ReentrantLock[] stripeLocks = new ReentrantLock[STRIPE_COUNT];
+    private final Object[] stripeMonitors = new Object[STRIPE_COUNT];
 
     private static final class MultiKey<V> {
         // Kind constants for fast type-based switching
@@ -533,13 +539,15 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         this.trackContentionMetrics = builder.trackContentionMetrics;
 
         for (int i = 0; i < STRIPE_COUNT; i++) {
-            stripeLocks[i] = new ReentrantLock();
+            stripeMonitors[i] = new Object();
             stripeLockContention[i] = new AtomicInteger(0);
             stripeLockAcquisitions[i] = new AtomicInteger(0);
         }
 
+        resizeThreshold = (long)(actualCapacity * loadFactor);
+
         if (STRIPE_CONFIG_LOGGED.compareAndSet(false, true) && LOG.isLoggable(Level.INFO)) {
-            LOG.info(String.format("MultiKeyMap stripe configuration: %d locks for %d cores",
+            LOG.info(String.format("MultiKeyMap stripe configuration: %d monitors for %d cores",
                     STRIPE_COUNT, Runtime.getRuntime().availableProcessors()));
         }
     }
@@ -1020,32 +1028,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         return spread(hash) & STRIPE_MASK;
     }
 
-    private ReentrantLock getStripeLock(int hash) {
-        return stripeLocks[getStripeIndex(hash)];
-    }
-
-    private void lockAllStripes() {
-        if (trackContentionMetrics) {
-            int contended = 0;
-            for (ReentrantLock lock : stripeLocks) {
-                if (!lock.tryLock()) {
-                    contended++;
-                    lock.lock();
-                }
-            }
-            globalLockAcquisitions.incrementAndGet();
-            if (contended > 0) globalLockContentions.incrementAndGet();
-        } else {
-            for (ReentrantLock lock : stripeLocks) {
-                lock.lock();
-            }
-        }
-    }
-
-    private void unlockAllStripes() {
-        for (int i = stripeLocks.length - 1; i >= 0; i--) {
-            stripeLocks[i].unlock();
-        }
+    private Object getStripeMonitor(int hash) {
+        return stripeMonitors[getStripeIndex(hash)];
     }
 
     /**
@@ -3185,32 +3169,27 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
 
         int hash = newKey.hash;
         int stripe = getStripeIndex(hash);
-        ReentrantLock lock = stripeLocks[stripe];
+        Object monitor = stripeMonitors[stripe];
         V old;
         boolean resize;
 
         if (trackContentionMetrics) {
-            boolean contended = !lock.tryLock();
-            if (contended) {
-                lock.lock();
-                contentionCount.incrementAndGet();
-                stripeLockContention[stripe].incrementAndGet();
-            }
-            try {
+            long start = System.nanoTime();
+            synchronized (monitor) {
+                long waitNs = System.nanoTime() - start;
+                if (waitNs > CONTENTION_THRESHOLD_NS) {
+                    contentionCount.incrementAndGet();
+                    stripeLockContention[stripe].incrementAndGet();
+                }
                 totalLockAcquisitions.incrementAndGet();
                 stripeLockAcquisitions[stripe].incrementAndGet();
                 old = putNoLock(newKey);
-                resize = atomicSize.get() > buckets.length() * loadFactor;
-            } finally {
-                lock.unlock();
+                resize = atomicSize.get() > resizeThreshold;
             }
         } else {
-            lock.lock();
-            try {
+            synchronized (monitor) {
                 old = putNoLock(newKey);
-                resize = atomicSize.get() > buckets.length() * loadFactor;
-            } finally {
-                lock.unlock();
+                resize = atomicSize.get() > resizeThreshold;
             }
         }
 
@@ -3445,29 +3424,24 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
 
         int hash = removeKey.hash;
         int stripe = getStripeIndex(hash);
-        ReentrantLock lock = stripeLocks[stripe];
+        Object monitor = stripeMonitors[stripe];
         V old;
 
         if (trackContentionMetrics) {
-            boolean contended = !lock.tryLock();
-            if (contended) {
-                lock.lock();
-                contentionCount.incrementAndGet();
-                stripeLockContention[stripe].incrementAndGet();
-            }
-            try {
+            long start = System.nanoTime();
+            synchronized (monitor) {
+                long waitNs = System.nanoTime() - start;
+                if (waitNs > CONTENTION_THRESHOLD_NS) {
+                    contentionCount.incrementAndGet();
+                    stripeLockContention[stripe].incrementAndGet();
+                }
                 totalLockAcquisitions.incrementAndGet();
                 stripeLockAcquisitions[stripe].incrementAndGet();
                 old = removeNoLock(removeKey);
-            } finally {
-                lock.unlock();
             }
         } else {
-            lock.lock();
-            try {
+            synchronized (monitor) {
                 old = removeNoLock(removeKey);
-            } finally {
-                lock.unlock();
             }
         }
 
@@ -3529,6 +3503,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             maxChainLength.set(newMax);
             // Replace buckets atomically after all entries are rehashed
             buckets = newBuckets;
+            resizeThreshold = (long)(newBuckets.length() * loadFactor);
         });
     }
 
@@ -3561,7 +3536,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         }
 
         // Double-check load factor before expensive CAS - another thread may have resized
-        if (atomicSize.get() <= buckets.length() * loadFactor) {
+        if (atomicSize.get() <= resizeThreshold) {
             return;
         }
 
@@ -3807,11 +3782,9 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         MultiKey<V> norm = flattenKey(key);
         Object normalizedKey = norm.keys;
         int hash = norm.hash;
-        ReentrantLock lock = getStripeLock(hash);
         boolean resize = false;
 
-        lock.lock();
-        try {
+        synchronized (getStripeMonitor(hash)) {
             // Check again inside the lock
             MultiKey<V> lookupKey = new MultiKey<>(normalizedKey, hash, null);
             existing = getNoLock(lookupKey);
@@ -3820,10 +3793,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                 MultiKey<V> newKey = new MultiKey<>(normalizedKey, hash, value);
                 putNoLock(newKey);
                 cachedHashCode = null;
-                resize = atomicSize.get() > buckets.length() * loadFactor;
+                resize = atomicSize.get() > resizeThreshold;
             }
-        } finally {
-            lock.unlock();
         }
         // Handle resize outside the lock
         resizeRequest(resize);
@@ -3857,12 +3828,10 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             return existing.value;
         }
 
-        ReentrantLock lock = getStripeLock(hash);
         boolean resize = false;
         V v;
 
-        lock.lock();
-        try {
+        synchronized (getStripeMonitor(hash)) {
             // Double-check under lock
             MultiKey<V> lookupKey = new MultiKey<>(normalizedKey, hash, null);
             v = getNoLock(lookupKey);
@@ -3873,11 +3842,9 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                     MultiKey<V> newKey = new MultiKey<>(normalizedKey, hash, v);
                     putNoLock(newKey);
                     cachedHashCode = null;
-                    resize = atomicSize.get() > buckets.length() * loadFactor;
+                    resize = atomicSize.get() > resizeThreshold;
                 }
             }
-        } finally {
-            lock.unlock();
         }
         // Handle resize outside the lock
         resizeRequest(resize);
@@ -3909,12 +3876,10 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             return null;
         }
 
-        ReentrantLock lock = getStripeLock(hash);
         boolean resize = false;
         V result = null;
 
-        lock.lock();
-        try {
+        synchronized (getStripeMonitor(hash)) {
             MultiKey<V> lookupKey = new MultiKey<>(normalizedKey, hash, null);
             V old = getNoLock(lookupKey);
             if (old != null) {
@@ -3924,7 +3889,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                     MultiKey<V> newKey = new MultiKey<>(normalizedKey, hash, newV);
                     putNoLock(newKey);
                     cachedHashCode = null;
-                    resize = atomicSize.get() > buckets.length() * loadFactor;
+                    resize = atomicSize.get() > resizeThreshold;
                     result = newV;
                 } else {
                     // Remove using removeNoLock
@@ -3933,8 +3898,6 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                     cachedHashCode = null;
                 }
             }
-        } finally {
-            lock.unlock();
         }
         // Handle resize outside the lock
         resizeRequest(resize);
@@ -3958,12 +3921,10 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         MultiKey<V> norm = flattenKey(key);
         Object normalizedKey = norm.keys;
         int hash = norm.hash;
-        ReentrantLock lock = getStripeLock(hash);
         boolean resize = false;
 
         V result;
-        lock.lock();
-        try {
+        synchronized (getStripeMonitor(hash)) {
             MultiKey<V> lookupKey = new MultiKey<>(normalizedKey, hash, null);
             V old = getNoLock(lookupKey);
             V newV = remappingFunction.apply(key, old);
@@ -3981,11 +3942,9 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                 MultiKey<V> newKey = new MultiKey<>(normalizedKey, hash, newV);
                 putNoLock(newKey);
                 cachedHashCode = null;
-                resize = atomicSize.get() > buckets.length() * loadFactor;
+                resize = atomicSize.get() > resizeThreshold;
                 result = newV;
             }
-        } finally {
-            lock.unlock();
         }
         // Handle resize outside the lock
         resizeRequest(resize);
@@ -4012,12 +3971,10 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         MultiKey<V> norm = flattenKey(key);
         Object normalizedKey = norm.keys;
         int hash = norm.hash;
-        ReentrantLock lock = getStripeLock(hash);
         boolean resize = false;
 
         V result;
-        lock.lock();
-        try {
+        synchronized (getStripeMonitor(hash)) {
             MultiKey<V> lookupKey = new MultiKey<>(normalizedKey, hash, null);
             V old = getNoLock(lookupKey);
             V newV = old == null ? value : remappingFunction.apply(old, value);
@@ -4030,12 +3987,10 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                 // Put new value using putNoLock
                 MultiKey<V> newKey = new MultiKey<>(normalizedKey, hash, newV);
                 putNoLock(newKey);
-                resize = atomicSize.get() > buckets.length() * loadFactor;
+                resize = atomicSize.get() > resizeThreshold;
             }
             cachedHashCode = null;
             result = newV;
-        } finally {
-            lock.unlock();
         }
         // Handle resize outside the lock
         resizeRequest(resize);
@@ -4062,10 +4017,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         MultiKey<V> norm = flattenKey(key);
         Object normalizedKey = norm.keys;
         int hash = norm.hash;
-        ReentrantLock lock = getStripeLock(hash);
 
-        lock.lock();
-        try {
+        synchronized (getStripeMonitor(hash)) {
             MultiKey<V> lookupKey = new MultiKey<>(normalizedKey, hash, null);
             V current = getNoLock(lookupKey);
             // If current is null, verify the key actually exists before comparing
@@ -4079,8 +4032,6 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             removeNoLock(removeKey);
             cachedHashCode = null;
             return true;
-        } finally {
-            lock.unlock();
         }
     }
 
@@ -4104,12 +4055,10 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         MultiKey<V> norm = flattenKey(key);
         Object normalizedKey = norm.keys;
         int hash = norm.hash;
-        ReentrantLock lock = getStripeLock(hash);
         boolean resize = false;
 
         V result;
-        lock.lock();
-        try {
+        synchronized (getStripeMonitor(hash)) {
             MultiKey<V> lookupKey = new MultiKey<>(normalizedKey, hash, null);
             V old = getNoLock(lookupKey);
             if (old == null && findEntryWithPrecomputedHash(normalizedKey, hash) == null) {
@@ -4119,10 +4068,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                 MultiKey<V> newKey = new MultiKey<>(normalizedKey, hash, value);
                 result = putNoLock(newKey);
                 cachedHashCode = null;
-                resize = atomicSize.get() > buckets.length() * loadFactor;
+                resize = atomicSize.get() > resizeThreshold;
             }
-        } finally {
-            lock.unlock();
         }
         // Handle resize outside the lock
         resizeRequest(resize);
@@ -4150,12 +4097,10 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         MultiKey<V> norm = flattenKey(key);
         Object normalizedKey = norm.keys;
         int hash = norm.hash;
-        ReentrantLock lock = getStripeLock(hash);
         boolean resize = false;
 
         boolean result = false;
-        lock.lock();
-        try {
+        synchronized (getStripeMonitor(hash)) {
             MultiKey<V> lookupKey = new MultiKey<>(normalizedKey, hash, null);
             V current = getNoLock(lookupKey);
             // If current is null, verify the key actually exists before comparing
@@ -4166,11 +4111,9 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                 MultiKey<V> newKey = new MultiKey<>(normalizedKey, hash, newValue);
                 putNoLock(newKey);
                 cachedHashCode = null;
-                resize = atomicSize.get() > buckets.length() * loadFactor;
+                resize = atomicSize.get() > resizeThreshold;
                 result = true;
             }
-        } finally {
-            lock.unlock();
         }
         // Handle resize outside the lock
         resizeRequest(resize);
@@ -4549,11 +4492,19 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     }
 
     private void withAllStripeLocks(Runnable action) {
-        lockAllStripes();
-        try {
+        if (trackContentionMetrics) {
+            globalLockAcquisitions.incrementAndGet();
+        }
+        lockStripeRecursive(0, action);
+    }
+
+    private void lockStripeRecursive(int index, Runnable action) {
+        if (index >= STRIPE_COUNT) {
             action.run();
-        } finally {
-            unlockAllStripes();
+            return;
+        }
+        synchronized (stripeMonitors[index]) {
+            lockStripeRecursive(index + 1, action);
         }
     }
     

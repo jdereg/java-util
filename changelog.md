@@ -1,12 +1,17 @@
 ### Revision History
 
 #### 4.95.0 (Unreleased)
+* **BUG FIX**: `CaseInsensitiveMap` with `MultiKeyMap` backing now normalizes keys consistently for `ConcurrentMap` APIs (`compute*`, `merge`, `putIfAbsent`, `remove(k,v)`, `replace*`) and when copying from source maps into a `MultiKeyMap` destination.
+* **BUG FIX**: `CaseInsensitiveMap.CaseInsensitiveEntry.setValue()` now updates both the backing map and the entry view value so `entry.getValue()` reflects the new value immediately.
+* **PERFORMANCE**: `CaseInsensitiveMap` caches `MultiKeyMap.flattenDimensions` at construction time to avoid repeated backing-map casts/lookups in hot multi-key normalization paths.
 * **BUG FIX**: `MultiKeyMap.remove(key, value)` — returned `true` for an absent key when `value == null`. The method now verifies key existence before comparing values, per the `Map.remove(Object, Object)` contract.
 * **BUG FIX**: `MultiKeyMap.replace(key, oldValue, newValue)` — incorrectly inserted a new entry when the key was absent and `oldValue == null`. The method now verifies key existence before comparing values, per the `Map.replace(K, V, V)` contract.
 * **BUG FIX**: `MultiKeyMap.compareNumericValues()` — `BigDecimal`/`BigInteger` comparison against `Double.POSITIVE_INFINITY`, `NEGATIVE_INFINITY`, or `NaN` threw `NumberFormatException` via `new BigDecimal("Infinity")`. Non-finite float/double values are now guarded before the BigDecimal conversion path.
 * **PERFORMANCE**: `MultiKeyMap` — deferred `cachedHashCode` invalidation in 8 conditional mutators (`putIfAbsent`, `computeIfAbsent`, `computeIfPresent`, `compute`, `merge`, `remove(k,v)`, `replace(k,v)`, `replace(k,old,new)`). Cache is now only invalidated inside the lock when mutation actually occurs, avoiding unnecessary invalidation on no-op calls.
 * **PERFORMANCE**: `MultiKeyMap` copy constructor — now pre-sizes the internal table from the source's current table size (`buckets.length()`) instead of its initial capacity, avoiding unnecessary resizes when copying a map that has grown beyond its initial capacity.
 * **CLEANUP**: Removed `TypeHolder` class — the super-type-token pattern exists solely for serialization APIs and had zero internal consumers in java-util. The canonical `TypeHolder` lives in json-io where it is part of the public API.
+* **PERFORMANCE**: `MultiKeyMap` — replaced `ReentrantLock` stripe locking with `synchronized` monitors. Uncontended `synchronized` costs ~5-7ns (JDK 18+ thin locks) vs ~15-20ns for `ReentrantLock` AQS machinery, yielding measurable PUT throughput gains. Lock-free reads, compound operation atomicity, and all `ConcurrentMap` contracts are preserved. Added pre-computed `resizeThreshold` to eliminate per-PUT multiplication.
+* **PERFORMANCE**: `MultiKeyMap` — zero-allocation GET path and single-allocation PUT path for `Object[]` keys in `simpleKeysMode`. GET operations now compute hash inline over the array without creating a `MultiKey` wrapper. PUT operations use a precomputed `MultiKey` constructor that skips reflection (`isArray()`, `getComponentType()`, `ArrayUtilities.getLength()`).
 * **DEPENDENCY**: Updated Jackson test dependencies from 2.20.1 to 2.21.0 (`jackson-databind`, `jackson-dataformat-xml`).
 
 #### 4.94.0 - 2026-02-14

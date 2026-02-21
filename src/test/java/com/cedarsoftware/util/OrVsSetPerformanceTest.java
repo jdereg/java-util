@@ -6,6 +6,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.logging.Logger;
 
 import org.junit.jupiter.api.Test;
 
@@ -14,6 +15,8 @@ import org.junit.jupiter.api.Test;
  * for checking 10 specific array classes.
  */
 public class OrVsSetPerformanceTest {
+
+    private static final Logger LOG = Logger.getLogger(OrVsSetPerformanceTest.class.getName());
     
     // The 10 classes from the code
     private static final Set<Class<?>> WRAPPER_ARRAY_CLASSES;
@@ -75,28 +78,28 @@ public class OrVsSetPerformanceTest {
         long endSet = System.nanoTime();
         long setTime = endSet - startSet;
         
-        System.out.println("=== OR Chain vs Set.contains() Performance Comparison ===");
-        System.out.printf("OR chain time:    %,d ns (%.2f ms)%n", orTime, orTime / 1_000_000.0);
-        System.out.printf("Set contains time: %,d ns (%.2f ms)%n", setTime, setTime / 1_000_000.0);
-        System.out.printf("OR chain per operation: %.2f ns%n", orTime / 9_000_000.0);
-        System.out.printf("Set contains per operation: %.2f ns%n", setTime / 9_000_000.0);
+        LOG.info("=== OR Chain vs Set.contains() Performance Comparison ===");
+        LOG.info(String.format("OR chain time:    %,d ns (%.2f ms)", orTime, orTime / 1_000_000.0));
+        LOG.info(String.format("Set contains time: %,d ns (%.2f ms)", setTime, setTime / 1_000_000.0));
+        LOG.info(String.format("OR chain per operation: %.2f ns", orTime / 9_000_000.0));
+        LOG.info(String.format("Set contains per operation: %.2f ns", setTime / 9_000_000.0));
         
         if (orTime < setTime) {
             double speedup = (double) setTime / orTime;
-            System.out.printf("OR chain is %.2fx faster%n", speedup);
+            LOG.info(String.format("OR chain is %.2fx faster", speedup));
         } else {
             double speedup = (double) orTime / setTime;
-            System.out.printf("Set contains is %.2fx faster%n", speedup);
+            LOG.info(String.format("Set contains is %.2fx faster", speedup));
         }
         
         // Verify both methods produce same results
-        System.out.println("\n=== Correctness Verification ===");
+        LOG.info("=== Correctness Verification ===");
         for (Class<?> clazz : TEST_CLASSES) {
             boolean orResult = orChainMethod(clazz);
             boolean setResult = setContainsMethod(clazz);
-            System.out.printf("%-20s: OR=%5s, Set=%5s %s%n", 
-                clazz.getSimpleName(), orResult, setResult, 
-                orResult == setResult ? "✓" : "✗");
+            LOG.info(String.format("%-20s: OR=%5s, Set=%5s %s",
+                clazz.getSimpleName(), orResult, setResult,
+                orResult == setResult ? "PASS" : "FAIL"));
         }
     }
     
@@ -114,7 +117,7 @@ public class OrVsSetPerformanceTest {
     @Test
     void analyzeDistribution() {
         // Test with different hit patterns to see if position matters
-        System.out.println("=== Position Impact Analysis ===");
+        LOG.info("=== Position Impact Analysis ===");
         
         Class<?>[] firstHit = {String[].class};        // First in OR chain
         Class<?>[] middleHit = {Date[].class};         // Middle in OR chain
@@ -157,12 +160,12 @@ public class OrVsSetPerformanceTest {
         long orTime = endOr - startOr;
         long setTime = endSet - startSet;
         
-        System.out.printf("%-20s: OR=%6.2f ns, Set=%6.2f ns, OR is %.2fx %s%n", 
-            name, 
+        LOG.info(String.format("%-20s: OR=%6.2f ns, Set=%6.2f ns, OR is %.2fx %s",
+            name,
             orTime / (double)(classes.length * 1_000_000),
             setTime / (double)(classes.length * 1_000_000),
             orTime < setTime ? (double) setTime / orTime : (double) orTime / setTime,
             orTime < setTime ? "faster" : "slower"
-        );
+        ));
     }
 }

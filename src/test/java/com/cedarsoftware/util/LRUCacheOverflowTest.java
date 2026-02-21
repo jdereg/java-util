@@ -1,5 +1,7 @@
 package com.cedarsoftware.util;
 
+import java.util.logging.Logger;
+
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -14,6 +16,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * identical throughput. The elves handle eviction asynchronously in the background.
  */
 class LRUCacheOverflowTest {
+
+    private static final Logger LOG = Logger.getLogger(LRUCacheOverflowTest.class.getName());
 
     @Test
     void testNoPerformanceCliffAtCapacity() {
@@ -61,12 +65,12 @@ class LRUCacheOverflowTest {
 
         // Report (using best times across rounds to filter GC/scheduling outliers)
         double ratio = (double) bestLateNsPerOp / Math.max(1, bestEarlyNsPerOp);
-        System.out.println("LRUCache THREADED Overflow Performance Test (" + rounds + " rounds, best-of)");
-        System.out.println("  Capacity:       " + capacity);
-        System.out.println("  Early overflow: " + bestEarlyNsPerOp + " ns/op (" + overflowPerBatch + " puts)");
-        System.out.println("  Late overflow:  " + bestLateNsPerOp + " ns/op (" + overflowPerBatch + " puts)");
-        System.out.printf("  Ratio (late/early): %.1fx%n", ratio);
-        System.out.println("  Cache size: " + cache.size());
+        LOG.info("LRUCache THREADED Overflow Performance Test (" + rounds + " rounds, best-of)");
+        LOG.info("  Capacity:       " + capacity);
+        LOG.info("  Early overflow: " + bestEarlyNsPerOp + " ns/op (" + overflowPerBatch + " puts)");
+        LOG.info("  Late overflow:  " + bestLateNsPerOp + " ns/op (" + overflowPerBatch + " puts)");
+        LOG.info(String.format("  Ratio (late/early): %.1fx", ratio));
+        LOG.info("  Cache size: " + cache.size());
 
         // Assert: late overflow should not be dramatically slower than early overflow.
         // With pure puts (no inline eviction), expect ~1x (both batches do the same work).
@@ -93,7 +97,7 @@ class LRUCacheOverflowTest {
 
         // Cache should be over capacity right now (puts don't evict)
         int sizeAfterBurst = cache.size();
-        System.out.println("  Size after burst: " + sizeAfterBurst);
+        LOG.info("  Size after burst: " + sizeAfterBurst);
         assertTrue(sizeAfterBurst > capacity,
                 "Expected cache to exceed capacity after burst, but size=" + sizeAfterBurst);
 
@@ -106,7 +110,7 @@ class LRUCacheOverflowTest {
         }
 
         int finalSize = cache.size();
-        System.out.println("  Final size after drain: " + finalSize);
+        LOG.info("  Final size after drain: " + finalSize);
 
         // The elves should have brought it back to capacity (or close to it).
         // Allow a small tolerance for concurrent timing.

@@ -8,6 +8,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Date;
 import java.util.UUID;
+import java.util.logging.Logger;
 
 import org.junit.jupiter.api.Test;
 
@@ -18,6 +19,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  * for the many JDK DTO array types we added.
  */
 public class MultiKeyMapSimpleArrayTypesTest {
+
+    private static final Logger LOG = Logger.getLogger(MultiKeyMapSimpleArrayTypesTest.class.getName());
 
     @Test
     void testExpandedSimpleArrayTypes() throws Exception {
@@ -116,9 +119,9 @@ public class MultiKeyMapSimpleArrayTypesTest {
         long end = System.nanoTime();
         long duration = end - start;
         
-        System.out.printf("Simple array types operations: %,d ns (%.2f ms) for 40,000 operations%n", 
-            duration, duration / 1_000_000.0);
-        System.out.printf("Average per operation: %.2f ns%n", duration / 40_000.0);
+        LOG.info(String.format("Simple array types operations: %,d ns (%.2f ms) for 40,000 operations",
+            duration, duration / 1_000_000.0));
+        LOG.info(String.format("Average per operation: %.2f ns", duration / 40_000.0));
 
         // Verify final state
         assertEquals("strings9999", map.get(strings));

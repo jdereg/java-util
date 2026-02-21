@@ -113,10 +113,6 @@ class DeadCodeAnalysisTest {
         // Can we retrieve with ArrayList?
         String result2 = map.get(arrayList);
         
-        // If both work, both were normalized to Object[]
-        System.out.println("ArrayList->LinkedList lookup: " + result1);
-        System.out.println("LinkedList->ArrayList lookup: " + result2);
-        
         // Both should work because both get normalized to Object[] for cross-compatibility
         assertEquals("arraylist_value", result1);
         assertEquals("linkedlist_value", result2);

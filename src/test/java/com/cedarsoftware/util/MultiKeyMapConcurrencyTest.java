@@ -47,7 +47,7 @@ class MultiKeyMapConcurrencyTest {
         LOG.info("=== Concurrent Reads and Writes Test ===");
         LOG.info("Threads: " + NUM_THREADS + ", Operations per thread: " + OPERATIONS_PER_THREAD);
         
-        MultiKeyMap<String> map = new MultiKeyMap<>(CAPACITY);
+        MultiKeyMap<String> map = MultiKeyMap.<String>builder().capacity(CAPACITY).trackContentionMetrics(true).build();
         CountDownLatch startLatch = new CountDownLatch(1);
         CountDownLatch doneLatch = new CountDownLatch(NUM_THREADS);
         AtomicBoolean testFailed = new AtomicBoolean(false);
@@ -111,7 +111,7 @@ class MultiKeyMapConcurrencyTest {
     void testConcurrentWritesSameKey() throws InterruptedException {
         LOG.info("=== Concurrent Writes Same Key Test ===");
         
-        MultiKeyMap<String> map = new MultiKeyMap<>(CAPACITY);
+        MultiKeyMap<String> map = MultiKeyMap.<String>builder().capacity(CAPACITY).trackContentionMetrics(true).build();
         CountDownLatch startLatch = new CountDownLatch(1);
         CountDownLatch doneLatch = new CountDownLatch(NUM_THREADS);
         
@@ -158,7 +158,7 @@ class MultiKeyMapConcurrencyTest {
         LOG.info("=== High Contention Scenario Test ===");
         LOG.info("This test uses LIMITED KEY SET to force high lock contention");
         
-        MultiKeyMap<String> map = new MultiKeyMap<>(CAPACITY);
+        MultiKeyMap<String> map = MultiKeyMap.<String>builder().capacity(CAPACITY).trackContentionMetrics(true).build();
         ExecutorService executor = Executors.newFixedThreadPool(NUM_THREADS);
         CountDownLatch startLatch = new CountDownLatch(1);
         AtomicInteger completedOps = new AtomicInteger(0);
@@ -231,7 +231,7 @@ class MultiKeyMapConcurrencyTest {
     void testLongRunningStressTest() throws InterruptedException {
         LOG.info("=== Long Running Stress Test ===");
         
-        MultiKeyMap<String> map = new MultiKeyMap<>(CAPACITY);
+        MultiKeyMap<String> map = MultiKeyMap.<String>builder().capacity(CAPACITY).trackContentionMetrics(true).build();
         AtomicBoolean shouldStop = new AtomicBoolean(false);
         AtomicLong totalOperations = new AtomicLong(0);
         AtomicInteger exceptionCount = new AtomicInteger(0);
@@ -299,7 +299,7 @@ class MultiKeyMapConcurrencyTest {
     void testDataIntegrity() throws InterruptedException {
         LOG.info("=== Data Integrity Test ===");
         
-        MultiKeyMap<String> map = new MultiKeyMap<>(CAPACITY);
+        MultiKeyMap<String> map = MultiKeyMap.<String>builder().capacity(CAPACITY).trackContentionMetrics(true).build();
         CountDownLatch startLatch = new CountDownLatch(1);
         CountDownLatch doneLatch = new CountDownLatch(NUM_THREADS);
         

@@ -12,6 +12,7 @@
 * **CLEANUP**: Removed `TypeHolder` class — the super-type-token pattern exists solely for serialization APIs and had zero internal consumers in java-util. The canonical `TypeHolder` lives in json-io where it is part of the public API.
 * **PERFORMANCE**: `MultiKeyMap` — replaced `ReentrantLock` stripe locking with `synchronized` monitors. Uncontended `synchronized` costs ~5-7ns (JDK 18+ thin locks) vs ~15-20ns for `ReentrantLock` AQS machinery, yielding measurable PUT throughput gains. Lock-free reads, compound operation atomicity, and all `ConcurrentMap` contracts are preserved. Added pre-computed `resizeThreshold` to eliminate per-PUT multiplication.
 * **PERFORMANCE**: `MultiKeyMap` — zero-allocation GET path and single-allocation PUT path for `Object[]` keys in `simpleKeysMode`. GET operations now compute hash inline over the array without creating a `MultiKey` wrapper. PUT operations use a precomputed `MultiKey` constructor that skips reflection (`isArray()`, `getComponentType()`, `ArrayUtilities.getLength()`).
+* **CLEANUP**: `MultiKeyMap` — removed 6 hand-unrolled `flattenObjectArray1/2/3` and `flattenCollection1/2/3` methods (−162 lines). Benchmarking with `simpleKeysMode=false` confirmed the JIT-compiled `flattenObjectArrayN`/`flattenCollectionN` loops match hand-unrolled performance for 1-3 element keys. All sizes now route through the parameterized N path.
 * **DEPENDENCY**: Updated Jackson test dependencies from 2.20.1 to 2.21.0 (`jackson-databind`, `jackson-dataformat-xml`).
 
 #### 4.94.0 - 2026-02-14

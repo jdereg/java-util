@@ -1475,41 +1475,21 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         if (keyClass == Object[].class) {
             Object[] array = (Object[]) key;
             
-            // In simpleKeysMode, route ALL sizes through optimized methods
+            // In simpleKeysMode, route ALL sizes through N path
             if (simpleKeysMode) {
-                switch (array.length) {
-                    case 0:
-                        return new MultiKey<>(array, 0, null, 0, MultiKey.KIND_OBJECT_ARRAY);
-                    case 1:
-                        return flattenObjectArray1(array);  // Unrolled for maximum speed
-                    case 2:
-                        return flattenObjectArray2(array);  // Unrolled for performance
-                    case 3:
-                        return flattenObjectArray3(array);  // Unrolled for performance
-                    default:
-                        // For larger arrays in simpleKeysMode, use parameterized version
-                        return flattenObjectArrayN(array, array.length);
+                if (array.length == 0) {
+                    return new MultiKey<>(array, 0, null, 0, MultiKey.KIND_OBJECT_ARRAY);
                 }
+                return flattenObjectArrayN(array, array.length);
             } else {
-                // Normal mode: use size-based routing
+                // Normal mode: route ALL sizes through N path
                 switch (array.length) {
                     case 0:
                         return new MultiKey<>(array, 0, null, 0, MultiKey.KIND_OBJECT_ARRAY);
-                    case 1:
-                        return flattenObjectArray1(array);  // Unrolled for maximum speed
-                    case 2:
-                        return flattenObjectArray2(array);  // Unrolled for performance  
-                    case 3:
-                        return flattenObjectArray3(array);  // Unrolled for performance
-                    case 4:
-                    case 5:
-                    case 6:
-                    case 7:
-                    case 8:
-                    case 9:
-                    case 10:
-                        return flattenObjectArrayN(array, array.length);  // Use parameterized version
                     default:
+                        if (array.length <= 10) {
+                            return flattenObjectArrayN(array, array.length);
+                        }
                         return process1DObjectArray(array);
                 }
             }
@@ -1632,101 +1612,29 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         // Size-based optimization for collections
         int size = coll.size();
         
-        // In simpleKeysMode, route ALL sizes through optimized methods
+        // Route ALL sizes through N path
         if (simpleKeysMode) {
-            switch (size) {
-                case 0:
-                    return new MultiKey<>(ArrayUtilities.EMPTY_OBJECT_ARRAY, 0, null);
-                case 1:
-                    return flattenCollection1(coll);  // Unrolled for maximum speed
-                case 2:
-                    return flattenCollection2(coll);  // Unrolled for performance
-                case 3:
-                    return flattenCollection3(coll);  // Unrolled for performance
-                default:
-                    // For larger collections in simpleKeysMode, use parameterized version
-                    return flattenCollectionN(coll, size);
+            if (size == 0) {
+                return new MultiKey<>(ArrayUtilities.EMPTY_OBJECT_ARRAY, 0, null);
             }
+            return flattenCollectionN(coll, size);
         } else {
-            // Normal mode: use size-based routing
-            switch (size) {
-                case 0:
-                    return new MultiKey<>(ArrayUtilities.EMPTY_OBJECT_ARRAY, 0, null);
-                case 1:
-                    return flattenCollection1(coll);  // Unrolled for maximum speed
-                case 2:
-                    return flattenCollection2(coll);  // Unrolled for performance
-                case 3:
-                    return flattenCollection3(coll);  // Unrolled for performance
-                case 4:
-                case 5:
-                case 6:
-                case 7:
-                case 8:
-                case 9:
-                case 10:
-                    return flattenCollectionN(coll, size);  // Use parameterized version
-                default:
-                    return process1DCollection(coll);
+            if (size == 0) {
+                return new MultiKey<>(ArrayUtilities.EMPTY_OBJECT_ARRAY, 0, null);
             }
+            if (size <= 10) {
+                return flattenCollectionN(coll, size);
+            }
+            return process1DCollection(coll);
         }
     }
     
     // === Fast path helper methods for flattenKey() ===
     
-    private <T> MultiKey<T> flattenObjectArray1(Object[] array) {
-        Object elem = array[0];
-
-        // Simple element - fast path
-        if (!isArrayOrCollection(elem)) {
-            int hash = 31 + computeElementHash(elem, caseSensitive);
-            return new MultiKey<>(array, hash, null, 1, MultiKey.KIND_OBJECT_ARRAY);
-        }
-        
-        // Complex element - check flattenDimensions
-        if (flattenDimensions) {
-            return expandWithHash(array);
-        }
-        
-        // Not flattening - delegate to process1DObjectArray
-        return process1DObjectArray(array);
-    }
-    
-    private <T> MultiKey<T> flattenObjectArray2(Object[] array) {
-        // Optimized unrolled version for size 2
-        Object elem0 = array[0];
-        Object elem1 = array[1];
-        
-        if (isArrayOrCollection(elem0) || isArrayOrCollection(elem1)) {
-            if (flattenDimensions) return expandWithHash(array);
-            return process1DObjectArray(array);
-        }
-        
-        int h = 31 + computeElementHash(elem0, caseSensitive);
-        h = h * 31 + computeElementHash(elem1, caseSensitive);
-        return new MultiKey<>(array, h, null, 2, MultiKey.KIND_OBJECT_ARRAY);
-    }
-
-    private <T> MultiKey<T> flattenObjectArray3(Object[] array) {
-        // Optimized unrolled version for size 3
-        Object elem0 = array[0];
-        Object elem1 = array[1];
-        Object elem2 = array[2];
-        
-        if (isArrayOrCollection(elem0) || isArrayOrCollection(elem1) || isArrayOrCollection(elem2)) {
-            if (flattenDimensions) return expandWithHash(array);
-            return process1DObjectArray(array);
-        }
-        
-        int h = 31 + computeElementHash(elem0, caseSensitive);
-        h = h * 31 + computeElementHash(elem1, caseSensitive);
-        h = h * 31 + computeElementHash(elem2, caseSensitive);
-        return new MultiKey<>(array, h, null, 3, MultiKey.KIND_OBJECT_ARRAY);
-    }
-
     /**
-     * Parameterized version of Object[] flattening for sizes 4-10.
-     * Uses loops instead of unrolling to handle any size efficiently.
+     * Parameterized Object[] flattening for all sizes 1+.
+     * JIT unrolls small iterations (1-3) automatically; hand-unrolled variants
+     * were benchmarked and showed no measurable benefit over this loop.
      */
     private <T> MultiKey<T> flattenObjectArrayN(Object[] array, int size) {
         // Single pass: check complexity AND compute hash
@@ -1761,80 +1669,10 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         return new MultiKey<>(array, h, null, size, MultiKey.KIND_OBJECT_ARRAY);
     }
 
-    private <T> MultiKey<T> flattenCollection1(Collection<?> coll) {
-        // Sets always need expansion to get SET_OPEN/SET_CLOSE markers and order-agnostic hash
-        if (coll instanceof Set) {
-            return expandWithHash(coll);
-        }
-
-        Iterator<?> iter = coll.iterator();
-        Object elem = iter.next();
-        
-        // Simple element - fast path
-        if (!isArrayOrCollection(elem)) {
-            int hash = 31 + computeElementHash(elem, caseSensitive);
-            // Always store Collection as-is
-            return new MultiKey<>(coll, hash, null);
-        }
-        
-        // Complex element - check flattenDimensions
-        if (flattenDimensions) {
-            return expandWithHash(coll);
-        }
-        
-        // Not flattening - delegate to process1DCollection
-        return process1DCollection(coll);
-    }
-    
-    private <T> MultiKey<T> flattenCollection2(Collection<?> coll) {
-        // Sets always need expansion to get SET_OPEN/SET_CLOSE markers and order-agnostic hash
-        if (coll instanceof Set) {
-            return expandWithHash(coll);
-        }
-
-        // Simplified: always store Collections as-is
-        Iterator<?> iter = coll.iterator();
-        Object elem0 = iter.next();
-        Object elem1 = iter.next();
-        
-        if (isArrayOrCollection(elem0) || isArrayOrCollection(elem1)) {
-            if (flattenDimensions) return expandWithHash(coll);
-            return process1DCollection(coll);
-        }
-        
-        int h = 31 + computeElementHash(elem0, caseSensitive);
-        h = h * 31 + computeElementHash(elem1, caseSensitive);
-        // Always store Collection as-is
-        return new MultiKey<>(coll, h, null);
-    }
-    
-    private <T> MultiKey<T> flattenCollection3(Collection<?> coll) {
-        // Sets always need expansion to get SET_OPEN/SET_CLOSE markers and order-agnostic hash
-        if (coll instanceof Set) {
-            return expandWithHash(coll);
-        }
-
-        // Simplified: always store Collections as-is
-        Iterator<?> iter = coll.iterator();
-        Object elem0 = iter.next();
-        Object elem1 = iter.next();
-        Object elem2 = iter.next();
-        
-        if (isArrayOrCollection(elem0) || isArrayOrCollection(elem1) || isArrayOrCollection(elem2)) {
-            if (flattenDimensions) return expandWithHash(coll);
-            return process1DCollection(coll);
-        }
-        
-        int h = 31 + computeElementHash(elem0, caseSensitive);
-        h = h * 31 + computeElementHash(elem1, caseSensitive);
-        h = h * 31 + computeElementHash(elem2, caseSensitive);
-        // Always store Collection as-is
-        return new MultiKey<>(coll, h, null);
-    }
-
     /**
-     * Parameterized version of collection flattening for sizes 6-10.
-     * Simplified to always store Collections as-is.
+     * Parameterized Collection flattening for all sizes 1+.
+     * JIT unrolls small iterations (1-3) automatically; hand-unrolled variants
+     * were benchmarked and showed no measurable benefit over this loop.
      */
     private <T> MultiKey<T> flattenCollectionN(Collection<?> coll, int size) {
         // Sets always need expansion to get SET_OPEN/SET_CLOSE markers and order-agnostic hash

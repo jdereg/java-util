@@ -92,6 +92,7 @@ public class TrackingMap<K, V> implements Map<K, V> {
      * {@link ClassCastException} if callers supply a key of a different type.
      */
     private final Set<Object> readKeys;
+    private final Set<Object> unmodifiableReadKeys;
 
     // Cached interface references to avoid repeated instanceof checks and casts
     private final ConcurrentMap<K, V> asConcurrent;
@@ -104,7 +105,6 @@ public class TrackingMap<K, V> implements Map<K, V> {
      * @param map the {@code Map} to be wrapped and tracked
      * @throws IllegalArgumentException if the provided {@code map} is {@code null}
      */
-    @SuppressWarnings("unchecked")
     public TrackingMap(Map<K, V> map) {
         if (map == null) {
             throw new IllegalArgumentException("Cannot construct a TrackingMap() with null");
@@ -121,15 +121,16 @@ public class TrackingMap<K, V> implements Map<K, V> {
         readKeys = (asConcurrent != null)
             ? ConcurrentHashMap.newKeySet()
             : new HashSet<>(Math.max(16, map.size()));
+        unmodifiableReadKeys = Collections.unmodifiableSet(readKeys);
     }
 
     /**
      * Private constructor for creating sub-maps that share the parent's readKeys.
      */
-    @SuppressWarnings("unchecked")
     private TrackingMap(Map<K, V> map, Set<Object> sharedReadKeys) {
         internalMap = map;
         readKeys = sharedReadKeys;
+        unmodifiableReadKeys = Collections.unmodifiableSet(readKeys);
         asConcurrent = (map instanceof ConcurrentMap) ? (ConcurrentMap<K, V>) map : null;
         asNavigable = (map instanceof NavigableMap) ? (NavigableMap<K, V>) map : null;
         asSorted = (map instanceof SortedMap) ? (SortedMap<K, V>) map : null;
@@ -276,10 +277,16 @@ public class TrackingMap<K, V> implements Map<K, V> {
      * Remove the entries from the Map that have not been accessed by .get() or .containsKey().
      */
     public void expungeUnused() {
-        internalMap.keySet().retainAll(readKeys);
-        // remove tracked keys that no longer exist in the map to avoid
-        // unbounded growth when many misses occur
-        readKeys.retainAll(internalMap.keySet());
+        Set<K> keys = internalMap.keySet();
+        keys.retainAll(readKeys);
+
+        // Use the smaller collection as the cleanup source.
+        if (readKeys.size() > keys.size()) {
+            readKeys.clear();
+            readKeys.addAll(keys);
+        } else {
+            readKeys.retainAll(keys);
+        }
     }
 
     /**
@@ -310,7 +317,7 @@ public class TrackingMap<K, V> implements Map<K, V> {
      *
      * @return unmodifiable set of accessed keys
      */
-    public Set<Object> keysUsed() { return Collections.unmodifiableSet(readKeys); }
+    public Set<Object> keysUsed() { return unmodifiableReadKeys; }
 
     /**
      * Returns the underlying {@link Map} that this {@code TrackingMap} wraps.
@@ -362,11 +369,11 @@ public class TrackingMap<K, V> implements Map<K, V> {
         }
         // Fallback for non-concurrent maps with synchronization
         synchronized (this) {
-            if (!internalMap.containsKey(key)) {
+            V existing = internalMap.get(key);
+            if (existing == null) {
                 internalMap.put(key, value);
-                return null;
             }
-            return internalMap.get(key);
+            return existing;
         }
     }
 
@@ -479,9 +486,12 @@ public class TrackingMap<K, V> implements Map<K, V> {
      * @return the new value associated with the specified key, or null if none
      */
     public V computeIfPresent(K key, BiFunction<? super K, ? super V, ? extends V> remappingFunction) {
-        boolean wasPresent = internalMap.containsKey(key);
-        V result = internalMap.computeIfPresent(key, remappingFunction);
-        if (wasPresent) {
+        final boolean[] remapped = {false};
+        V result = internalMap.computeIfPresent(key, (k, v) -> {
+            remapped[0] = true;
+            return remappingFunction.apply(k, v);
+        });
+        if (remapped[0] || internalMap.containsKey(key)) {
             readKeys.add(key);
         }
         return result;

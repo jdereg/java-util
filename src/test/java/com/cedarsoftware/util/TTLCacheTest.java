@@ -21,6 +21,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class TTLCacheTest {
@@ -180,6 +181,46 @@ public class TTLCacheTest {
         ttlCache.put(2, "B");
 
         assertEquals(2, ttlCache.entrySet().size());
+    }
+
+    @Test
+    void testPutIfAbsentTreatsNullValueAsAbsent() {
+        ttlCache = new TTLCache<>(10000, -1);
+        ttlCache.put(1, null);
+
+        assertNull(ttlCache.putIfAbsent(1, "A"));
+        assertEquals("A", ttlCache.get(1));
+    }
+
+    @Test
+    void testComputeIfAbsentTreatsNullValueAsAbsent() {
+        ttlCache = new TTLCache<>(10000, -1);
+        ttlCache.put(1, null);
+
+        assertEquals("A", ttlCache.computeIfAbsent(1, k -> "A"));
+        assertEquals("A", ttlCache.get(1));
+    }
+
+    @Test
+    void testEntrySetSizeIsBestEffortForExpiredEntries() throws InterruptedException {
+        ttlCache = new TTLCache<>(30, -1, 60_000);
+        ttlCache.put(1, "A");
+
+        Thread.sleep(60);
+
+        assertEquals(0, ttlCache.entrySet().stream().count());
+        int approximateSize = ttlCache.entrySet().size();
+        assertTrue(approximateSize >= 0 && approximateSize <= 1);
+    }
+
+    @Test
+    void testSnapshotViewsAreUnmodifiable() {
+        ttlCache = new TTLCache<>(10000, -1);
+        ttlCache.put(1, "A");
+        ttlCache.put(2, "B");
+
+        assertThrows(UnsupportedOperationException.class, () -> ttlCache.keySet().remove(1));
+        assertThrows(UnsupportedOperationException.class, () -> ttlCache.values().remove("A"));
     }
 
     @Test

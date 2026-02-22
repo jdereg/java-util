@@ -3,8 +3,7 @@ package com.cedarsoftware.util;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
+import com.cedarsoftware.util.ClassValueMap;
 
 import static com.cedarsoftware.util.ClassUtilities.trySetAccessible;
 
@@ -29,7 +28,7 @@ final class Unsafe {
     private final Constructor<?> objectConstructor;
     private final Object sunUnsafe;
     private final Method unsafeAllocateInstance;
-    private final ConcurrentMap<Class<?>, Constructor<?>> serializationConstructorCache = new ConcurrentHashMap<>();
+    private final ClassValueMap<Constructor<?>> serializationConstructorCache = new ClassValueMap<>();
 
     /**
      * Constructs the wrapper, reflectively loading ReflectionFactory and sun.misc.Unsafe.

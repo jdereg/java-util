@@ -1,6 +1,7 @@
 package com.cedarsoftware.util.cache;
 
 import java.util.Collection;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -251,14 +252,29 @@ public class LockingLRUCacheStrategy<K, V> implements Map<K, V> {
         try {
             Node<K, V> node = cache.get(key);
             if (node != null) {
+                if (node.value != null) {
+                    moveToHead(node);
+                    return node.value;
+                }
+                V computed = mappingFunction.apply(key);
+                if (computed != null) {
+                    node.value = computed;
+                }
                 moveToHead(node);
-                return node.value;
+                return computed;
             }
-            V value = mappingFunction.apply(key);
-            if (value != null) {
-                put(key, value);
+            V computed = mappingFunction.apply(key);
+            if (computed != null) {
+                Node<K, V> newNode = new Node<>(key, computed);
+                cache.put(key, newNode);
+                addToHead(newNode);
+                if (cache.size() > capacity) {
+                    Node<K, V> tailToRemove = removeTail();
+                    cache.remove(tailToRemove.key);
+                    tailToRemove.value = null;
+                }
             }
-            return value;
+            return computed;
         } finally {
             lock.unlock();
         }
@@ -270,10 +286,23 @@ public class LockingLRUCacheStrategy<K, V> implements Map<K, V> {
         try {
             Node<K, V> node = cache.get(key);
             if (node != null) {
+                if (node.value == null) {
+                    node.value = value;
+                    moveToHead(node);
+                    return null;
+                }
                 moveToHead(node);
                 return node.value;
             }
-            put(key, value);
+
+            Node<K, V> newNode = new Node<>(key, value);
+            cache.put(key, newNode);
+            addToHead(newNode);
+            if (cache.size() > capacity) {
+                Node<K, V> tailToRemove = removeTail();
+                cache.remove(tailToRemove.key);
+                tailToRemove.value = null;
+            }
             return null;
         } finally {
             lock.unlock();
@@ -362,10 +391,9 @@ public class LockingLRUCacheStrategy<K, V> implements Map<K, V> {
     /**
      * Returns a Set view of the mappings contained in this cache.
      * <p>
-     * The returned set is a <em>snapshot</em> of the cache contents at the time
-     * of the call.  Modifying the set or its iterator does not affect the
-     * underlying cache.  Iterator removal operates only on the snapshot.
-     * The snapshot preserves LRU ordering via a temporary {@link LinkedHashMap}.
+     * The returned set is an <em>unmodifiable snapshot</em> of the cache contents
+     * at the time of the call. The snapshot preserves LRU ordering via a temporary
+     * {@link LinkedHashMap}.
      * This operation requires a full traversal under a lock.
      *
      * @return a snapshot set of the mappings contained in this cache
@@ -378,7 +406,7 @@ public class LockingLRUCacheStrategy<K, V> implements Map<K, V> {
             for (Node<K, V> node = head.next; node != tail; node = node.next) {
                 map.put(node.key, node.value);
             }
-            return map.entrySet();
+            return Collections.unmodifiableSet(map.entrySet());
         } finally {
             lock.unlock();
         }
@@ -387,9 +415,8 @@ public class LockingLRUCacheStrategy<K, V> implements Map<K, V> {
     /**
      * Returns a Set view of the keys contained in this cache.
      * <p>
-     * Like {@link #entrySet()}, this method returns a snapshot.  The set is
-     * independent of the cache and retains the current LRU ordering.  Removing
-     * elements from the returned set does not remove them from the cache.
+     * Like {@link #entrySet()}, this method returns an unmodifiable snapshot.
+     * The set is independent of the cache and retains the current LRU ordering.
      * This operation requires a full traversal under a lock.
      *
      * @return a snapshot set of the keys contained in this cache
@@ -402,7 +429,7 @@ public class LockingLRUCacheStrategy<K, V> implements Map<K, V> {
             for (Node<K, V> node = head.next; node != tail; node = node.next) {
                 map.put(node.key, node.value);
             }
-            return map.keySet();
+            return Collections.unmodifiableSet(map.keySet());
         } finally {
             lock.unlock();
         }
@@ -411,9 +438,8 @@ public class LockingLRUCacheStrategy<K, V> implements Map<K, V> {
     /**
      * Returns a Collection view of the values contained in this cache.
      * <p>
-     * The collection is a snapshot with values ordered from most to least
-     * recently used.  Changes to the returned collection or its iterator do not
-     * affect the cache.  Iterator removal only updates the snapshot.
+     * The collection is an unmodifiable snapshot with values ordered from most
+     * to least recently used.
      * This operation requires a full traversal under a lock.
      *
      * @return a snapshot collection of the values contained in this cache
@@ -426,7 +452,7 @@ public class LockingLRUCacheStrategy<K, V> implements Map<K, V> {
             for (Node<K, V> node = head.next; node != tail; node = node.next) {
                 map.put(node.key, node.value);
             }
-            return map.values();
+            return Collections.unmodifiableCollection(map.values());
         } finally {
             lock.unlock();
         }
@@ -503,12 +529,9 @@ public class LockingLRUCacheStrategy<K, V> implements Map<K, V> {
     public int hashCode() {
         lock.lock();
         try {
-            int hashCode = 1;
+            int hashCode = 0;
             for (Node<K, V> node = head.next; node != tail; node = node.next) {
-                Object key = node.key;
-                Object value = node.value;
-                hashCode = 31 * hashCode + (key == null ? 0 : key.hashCode());
-                hashCode = 31 * hashCode + (value == null ? 0 : value.hashCode());
+                hashCode += Objects.hashCode(node.key) ^ Objects.hashCode(node.value);
             }
             return hashCode;
         } finally {

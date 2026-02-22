@@ -393,6 +393,33 @@ public class TrackingMapTest
     }
 
     @Test
+    public void testKeysUsedViewIsCached()
+    {
+        TrackingMap<String, String> trackMap = new TrackingMap<>(new HashMap<>());
+        assertSame(trackMap.keysUsed(), trackMap.keysUsed());
+    }
+
+    @Test
+    public void testExpungeUnusedPrunesMissesAndKeepsUsedEntries()
+    {
+        TrackingMap<String, String> trackMap = new TrackingMap<>(new HashMap<>());
+        trackMap.put("a", "alpha");
+        trackMap.put("b", "bravo");
+        trackMap.put("c", "charlie");
+
+        trackMap.containsKey("missing-1");
+        trackMap.containsKey("missing-2");
+        trackMap.get("b");
+        trackMap.expungeUnused();
+
+        assertEquals(1, trackMap.size());
+        assertEquals("bravo", trackMap.getWrappedMap().get("b"));
+        assertFalse(trackMap.keysUsed().contains("missing-1"));
+        assertFalse(trackMap.keysUsed().contains("missing-2"));
+        assertTrue(trackMap.keysUsed().contains("b"));
+    }
+
+    @Test
     public void testReplaceContentsMaintainsInstanceAndResetsState()
     {
         CaseInsensitiveMap<String, String> original = new CaseInsensitiveMap<>();

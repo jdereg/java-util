@@ -371,6 +371,19 @@ class CaseInsensitiveMapTest
     }
 
     @Test
+    void testEqualsRejectsDuplicateCaseEquivalentKeysInComparedMap() {
+        CaseInsensitiveMap<String, Integer> map = new CaseInsensitiveMap<>();
+        map.put("id", 1);
+        map.put("name", 2);
+
+        Map<String, Integer> other = new LinkedHashMap<>();
+        other.put("ID", 1);
+        other.put("id", 1);
+
+        assertFalse(map.equals(other));
+    }
+
+    @Test
     void testEqualsShortCircuits() {
         CaseInsensitiveMap<String, String> map = new CaseInsensitiveMap<>();
         map.put("One", "1");
@@ -2809,7 +2822,8 @@ void testComputeIfAbsent() {
         // Test with different collection type
         Set<Object> keys2 = new LinkedHashSet<>(Arrays.asList("dept", "Marketing"));
         assertNull(map.put(keys2, "Value2"));
-        assertEquals("Value2", map.get(Arrays.asList("DEPT", "marketing")));
+        assertEquals("Value2", map.get(new LinkedHashSet<>(Arrays.asList("DEPT", "marketing"))));
+        assertNull(map.get(Arrays.asList("DEPT", "marketing")));
         
         // Test removal with collection
         assertEquals("Value1", map.remove(Arrays.asList("dept", "Engineering")));

@@ -458,22 +458,28 @@ public class ThreadedLRUCacheStrategy<K, V> implements Map<K, V>, Closeable {
      */
     @Override
     public V computeIfAbsent(K key, java.util.function.Function<? super K, ? extends V> mappingFunction) {
-        boolean[] inserted = {false};
-        Node<K, V> node = cache.computeIfAbsent(key, k -> {
-            V value = mappingFunction.apply(key);
-            if (value != null) {
-                inserted[0] = true;
-                return new Node<>(key, value);
+        final Object[] result = new Object[1];
+        cache.compute(key, (k, existing) -> {
+            if (existing != null && existing.value != null) {
+                existing.updateTimestamp();
+                result[0] = existing.value;
+                return existing;
             }
-            return null;
+
+            V computed = mappingFunction.apply(k);
+            result[0] = computed;
+            if (computed == null) {
+                if (existing != null) {
+                    existing.updateTimestamp();
+                    return existing;
+                }
+                return null;
+            }
+            return new Node<>(k, computed);
         });
-        if (node != null) {
-            if (!inserted[0]) {
-                node.updateTimestamp();
-            }
-            return node.value;
-        }
-        return null;
+        @SuppressWarnings("unchecked")
+        V value = (V) result[0];
+        return value;
     }
 
     /**
@@ -482,13 +488,32 @@ public class ThreadedLRUCacheStrategy<K, V> implements Map<K, V>, Closeable {
      */
     @Override
     public V putIfAbsent(K key, V value) {
-        Node<K, V> newNode = new Node<>(key, value);
-        Node<K, V> oldNode = cache.putIfAbsent(key, newNode);
-        if (oldNode != null) {
-            oldNode.updateTimestamp();
-            return oldNode.value;
+        while (true) {
+            Node<K, V> existing = cache.get(key);
+            if (existing == null) {
+                Node<K, V> newNode = new Node<>(key, value);
+                Node<K, V> raced = cache.putIfAbsent(key, newNode);
+                if (raced == null) {
+                    return null;
+                }
+                existing = raced;
+            }
+
+            if (existing.value == null) {
+                if (value == null) {
+                    existing.updateTimestamp();
+                    return null;
+                }
+                Node<K, V> replacement = new Node<>(key, value);
+                if (cache.replace(key, existing, replacement)) {
+                    return null;
+                }
+                continue;
+            }
+
+            existing.updateTimestamp();
+            return existing.value;
         }
-        return null;
     }
 
     @Override
@@ -553,12 +578,9 @@ public class ThreadedLRUCacheStrategy<K, V> implements Map<K, V>, Closeable {
 
     @Override
     public int hashCode() {
-        int hashCode = 1;
+        int hashCode = 0;
         for (Node<K, V> node : cache.values()) {
-            Object key = node.key;
-            Object value = node.value;
-            hashCode = 31 * hashCode + (key == null ? 0 : key.hashCode());
-            hashCode = 31 * hashCode + (value == null ? 0 : value.hashCode());
+            hashCode += Objects.hashCode(node.key) ^ Objects.hashCode(node.value);
         }
         return hashCode;
     }

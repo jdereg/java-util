@@ -75,6 +75,13 @@ public class TrackingMapConcurrentTest {
     }
 
     @Test
+    public void testPutIfAbsentRegularTreatsNullMappedValueAsAbsent() {
+        regularTrackingMap.put("key1", null);
+        assertNull(regularTrackingMap.putIfAbsent("key1", 100));
+        assertEquals(Integer.valueOf(100), regularTrackingMap.get("key1"));
+    }
+
+    @Test
     public void testRemoveByKeyValueConcurrent() {
         concurrentTrackingMap.put("key1", 100);
         concurrentTrackingMap.get("key1"); // Mark as accessed
@@ -130,6 +137,15 @@ public class TrackingMapConcurrentTest {
         Integer result4 = concurrentTrackingMap.compute("key2", (k, v) -> v == null ? 100 : v + 1);
         assertEquals(Integer.valueOf(100), result4);
         assertTrue(concurrentTrackingMap.keysUsed().contains("key2"));
+    }
+
+    @Test
+    public void testComputeIfPresentTracksKeyWhenRemappingRemovesEntry() {
+        concurrentTrackingMap.put("key1", 100);
+
+        assertNull(concurrentTrackingMap.computeIfPresent("key1", (k, v) -> null));
+        assertTrue(concurrentTrackingMap.keysUsed().contains("key1"));
+        assertFalse(concurrentTrackingMap.getWrappedMap().containsKey("key1"));
     }
 
     @Test

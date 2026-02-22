@@ -6,6 +6,7 @@ import java.lang.reflect.Array;
 import java.util.AbstractMap;
 import java.util.AbstractSet;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -14,6 +15,7 @@ import java.util.Hashtable;
 import java.util.IdentityHashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.NavigableMap;
@@ -168,6 +170,7 @@ import java.util.function.Function;
 public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V> {
     private final Map<K, V> map;
     private final boolean isMultiKeyMapBacking;
+    private final boolean isConcurrentBackingMap;
     private final boolean multiKeyMapFlattenDimensions;
     private transient Set<K> cachedKeySet;
     private transient Set<Entry<K, V>> cachedEntrySet;
@@ -371,6 +374,7 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
     public CaseInsensitiveMap() {
         map = new LinkedHashMap<>();
         isMultiKeyMapBacking = false;
+        isConcurrentBackingMap = false;
         multiKeyMapFlattenDimensions = false;
     }
 
@@ -384,6 +388,7 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
     public CaseInsensitiveMap(int initialCapacity) {
         map = new LinkedHashMap<>(initialCapacity);
         isMultiKeyMapBacking = false;
+        isConcurrentBackingMap = false;
         multiKeyMapFlattenDimensions = false;
     }
 
@@ -398,6 +403,7 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
     public CaseInsensitiveMap(int initialCapacity, float loadFactor) {
         map = new LinkedHashMap<>(initialCapacity, loadFactor);
         isMultiKeyMapBacking = false;
+        isConcurrentBackingMap = false;
         multiKeyMapFlattenDimensions = false;
     }
 
@@ -419,6 +425,7 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
         boolean multiKeyMapBacking = mapInstance instanceof MultiKeyMap;
         map = copy(source, mapInstance);
         isMultiKeyMapBacking = multiKeyMapBacking;
+        isConcurrentBackingMap = mapInstance instanceof ConcurrentMap;
         multiKeyMapFlattenDimensions = multiKeyMapBacking && ((MultiKeyMap<Object>) mapInstance).getFlattenDimensions();
     }
 
@@ -436,6 +443,7 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
         Objects.requireNonNull(source, "Source map cannot be null");
         map = determineBackingMap(source);
         isMultiKeyMapBacking = map instanceof MultiKeyMap;
+        isConcurrentBackingMap = map instanceof ConcurrentMap;
         multiKeyMapFlattenDimensions = isMultiKeyMapBacking && ((MultiKeyMap<Object>) map).getFlattenDimensions();
     }
 
@@ -572,13 +580,21 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
         Map<?, ?> that = (Map<?, ?>) other;
         if (that.size() != size()) { return false; }
 
+        Map<Object, Object> normalizedEntries = new HashMap<>(that.size());
         for (Entry<?, ?> entry : that.entrySet()) {
-            Object thatKey = entry.getKey();
-            Object thisValue = get(thatKey);
-            if (thisValue == null && !containsKey(thatKey)) {
+            Object normalizedKey = normalizeKeyForEquality(entry.getKey());
+            if (normalizedEntries.containsKey(normalizedKey)) {
                 return false;
             }
-            if (!Objects.equals(thisValue, entry.getValue())) {
+            normalizedEntries.put(normalizedKey, entry.getValue());
+        }
+
+        for (Entry<K, V> entry : entrySet()) {
+            Object normalizedKey = normalizeKeyForEquality(entry.getKey());
+            if (!normalizedEntries.containsKey(normalizedKey)) {
+                return false;
+            }
+            if (!Objects.equals(normalizedEntries.get(normalizedKey), entry.getValue())) {
                 return false;
             }
         }
@@ -617,7 +633,37 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
              */
             @Override
             public Iterator<K> iterator() {
-                return new ConcurrentAwareKeyIterator<>(map.keySet().iterator());
+                if (isMultiKeyMapBacking) {
+                    return new Iterator<K>() {
+                        private final Iterator<K> backingIterator = map.keySet().iterator();
+                        private K current;
+                        private boolean canRemove;
+
+                        @Override
+                        public boolean hasNext() {
+                            return backingIterator.hasNext();
+                        }
+
+                        @Override
+                        @SuppressWarnings("unchecked")
+                        public K next() {
+                            K next = backingIterator.next();
+                            current = (K) (next instanceof CaseInsensitiveString ? next.toString() : next);
+                            canRemove = true;
+                            return current;
+                        }
+
+                        @Override
+                        public void remove() {
+                            if (!canRemove) {
+                                throw new IllegalStateException();
+                            }
+                            CaseInsensitiveMap.this.remove(current);
+                            canRemove = false;
+                        }
+                    };
+                }
+                return new ConcurrentAwareKeyIterator<>(map.keySet().iterator(), isConcurrentBackingMap);
             }
 
             /**
@@ -743,19 +789,19 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
                 // Normalize collection keys for case-insensitive comparison
                 Set<Object> normalizedRetainSet = new HashSet<>();
                 for (Object o : c) {
-                    normalizedRetainSet.add(convertKey(o));
+                    normalizedRetainSet.add(normalizeKeyForEquality(o));
                 }
 
-                // Use state variable to track changes instead of computing size() twice
-                final boolean[] changed = {false};
-                map.keySet().removeIf(key -> {
-                    boolean shouldRemove = !normalizedRetainSet.contains(key);
-                    if (shouldRemove) {
-                        changed[0] = true;
+                boolean changed = false;
+                Iterator<K> iterator = iterator();
+                while (iterator.hasNext()) {
+                    K key = iterator.next();
+                    if (!normalizedRetainSet.contains(normalizeKeyForEquality(key))) {
+                        iterator.remove();
+                        changed = true;
                     }
-                    return shouldRemove;
-                });
-                return changed[0];
+                }
+                return changed;
             }
         };
         cachedKeySet = ks;
@@ -890,20 +936,29 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
                     return oldSize > 0;
                 }
 
-                Map<K, V> other = new CaseInsensitiveMap<>();
+                Map<Object, Set<Object>> retainedValuesByKey = new HashMap<>();
                 for (Object o : c) {
                     if (o instanceof Entry) {
-                        Entry<K, V> entry = (Entry<K, V>) o;
-                        other.put(entry.getKey(), entry.getValue());
+                        Entry<?, ?> entry = (Entry<?, ?>) o;
+                        Object normalizedKey = normalizeKeyForEquality(entry.getKey());
+                        retainedValuesByKey
+                                .computeIfAbsent(normalizedKey, ignored -> new HashSet<>())
+                                .add(entry.getValue());
                     }
                 }
 
-                int originalSize = size();
-                map.entrySet().removeIf(entry ->
-                        !other.containsKey(entry.getKey()) ||
-                                !Objects.equals(other.get(entry.getKey()), entry.getValue())
-                );
-                return size() != originalSize;
+                boolean changed = false;
+                Iterator<Entry<K, V>> iterator = iterator();
+                while (iterator.hasNext()) {
+                    Entry<K, V> entry = iterator.next();
+                    Object normalizedKey = normalizeKeyForEquality(entry.getKey());
+                    Set<Object> retainedValues = retainedValuesByKey.get(normalizedKey);
+                    if (retainedValues == null || !retainedValues.contains(entry.getValue())) {
+                        iterator.remove();
+                        changed = true;
+                    }
+                }
+                return changed;
             }
 
             /**
@@ -913,7 +968,35 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
              */
             @Override
             public Iterator<Entry<K, V>> iterator() {
-                return new ConcurrentAwareEntryIterator(map.entrySet().iterator());
+                if (isMultiKeyMapBacking) {
+                    return new Iterator<Entry<K, V>>() {
+                        private final Iterator<Entry<K, V>> backingIterator = map.entrySet().iterator();
+                        private Entry<K, V> current;
+                        private boolean canRemove;
+
+                        @Override
+                        public boolean hasNext() {
+                            return backingIterator.hasNext();
+                        }
+
+                        @Override
+                        public Entry<K, V> next() {
+                            current = new CaseInsensitiveEntry(backingIterator.next());
+                            canRemove = true;
+                            return current;
+                        }
+
+                        @Override
+                        public void remove() {
+                            if (!canRemove) {
+                                throw new IllegalStateException();
+                            }
+                            CaseInsensitiveMap.this.remove(current.getKey());
+                            canRemove = false;
+                        }
+                    };
+                }
+                return new ConcurrentAwareEntryIterator(map.entrySet().iterator(), isConcurrentBackingMap);
             }
         };
         cachedEntrySet = es;
@@ -1613,6 +1696,14 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
         return convertKey(key);
     }
 
+    private Object normalizeKeyForEquality(Object key) {
+        Object normalizedKey = convertConcurrentKey(key);
+        if (isMultiKeyMapBacking && normalizedKey instanceof Object[]) {
+            return new EqualityArrayKey((Object[]) normalizedKey);
+        }
+        return normalizedKey;
+    }
+
     /**
      * Converts an array of keys by applying case-insensitive handling to String keys.
      *
@@ -1699,7 +1790,12 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
             Object[] result = new Object[length];
             for (int i = 0; i < length; i++) {
                 Object element = ArrayUtilities.getElement(obj, i);
-                result[i] = convertElementsRecursively(element);
+                if (element instanceof String || element instanceof Collection ||
+                    (element != null && element.getClass().isArray())) {
+                    result[i] = convertElementsRecursively(element);
+                } else {
+                    result[i] = element;
+                }
             }
             return result;
         }
@@ -1707,15 +1803,49 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
         // Handle collections by creating a new collection with converted elements
         if (obj instanceof Collection) {
             Collection<?> collection = (Collection<?>) obj;
-            Collection<Object> result = new ArrayList<>(collection.size());
+            Collection<Object> result = createConvertedCollection(collection);
             for (Object element : collection) {
-                result.add(convertElementsRecursively(element));
+                if (element instanceof String || element instanceof Collection ||
+                    (element != null && element.getClass().isArray())) {
+                    result.add(convertElementsRecursively(element));
+                } else {
+                    result.add(element);
+                }
             }
             return result;
         }
         
         // For non-arrays/collections, use standard conversion
         return convertKey(obj);
+    }
+
+    private Collection<Object> createConvertedCollection(Collection<?> collection) {
+        if (collection instanceof Set) {
+            int capacity = Math.max((int) (collection.size() / 0.75f) + 1, 16);
+            return new LinkedHashSet<>(capacity);
+        }
+        return new ArrayList<>(collection.size());
+    }
+
+    private static final class EqualityArrayKey {
+        private final Object[] values;
+        private final int hashCode;
+
+        private EqualityArrayKey(Object[] values) {
+            this.values = values;
+            this.hashCode = Arrays.deepHashCode(values);
+        }
+
+        @Override
+        public boolean equals(Object other) {
+            return other instanceof EqualityArrayKey &&
+                   Arrays.deepEquals(values, ((EqualityArrayKey) other).values);
+        }
+
+        @Override
+        public int hashCode() {
+            return hashCode;
+        }
     }
 
 
@@ -1729,12 +1859,9 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
         private final Iterator<K> backingIterator;
         private final boolean isConcurrentBacking;
 
-        ConcurrentAwareKeyIterator(Iterator<K> backingIterator) {
+        ConcurrentAwareKeyIterator(Iterator<K> backingIterator, boolean isConcurrentBacking) {
             this.backingIterator = backingIterator;
-            // Check if this is a ConcurrentHashMap iterator by examining the class name
-            // ConcurrentHashMap iterators implement specific concurrent behavior
-            String iteratorClassName = backingIterator.getClass().getName();
-            this.isConcurrentBacking = iteratorClassName.contains("ConcurrentHashMap");
+            this.isConcurrentBacking = isConcurrentBacking;
         }
 
         @Override
@@ -1796,11 +1923,9 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
         private final Iterator<Entry<K, V>> backingIterator;
         private final boolean isConcurrentBacking;
 
-        ConcurrentAwareEntryIterator(Iterator<Entry<K, V>> backingIterator) {
+        ConcurrentAwareEntryIterator(Iterator<Entry<K, V>> backingIterator, boolean isConcurrentBacking) {
             this.backingIterator = backingIterator;
-            // Check if this is a ConcurrentHashMap iterator by examining the class name
-            String iteratorClassName = backingIterator.getClass().getName();
-            this.isConcurrentBacking = iteratorClassName.contains("ConcurrentHashMap");
+            this.isConcurrentBacking = isConcurrentBacking;
         }
 
         @Override

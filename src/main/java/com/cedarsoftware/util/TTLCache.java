@@ -48,6 +48,7 @@ public class TTLCache<K, V> implements Map<K, V>, AutoCloseable {
 
     private final long ttlMillis;
     private final int maxSize;
+    private final boolean lruEnabled;
     private final ConcurrentMap<K, CacheEntry<K, V>> cacheMap;
     private final ReentrantLock lock = new ReentrantLock();
     private final Node<K, V> head;
@@ -55,6 +56,9 @@ public class TTLCache<K, V> implements Map<K, V>, AutoCloseable {
 
     // Task responsible for purging expired entries
     private PurgeTask purgeTask;
+
+    // Best-effort size cleanup budget: bounded expiry checks to avoid O(n) size calls.
+    private static final int SIZE_CLEANUP_SAMPLES = 4;
 
     // Static ScheduledExecutorService with a single thread
     private static volatile ScheduledExecutorService scheduler = createScheduler();
@@ -111,6 +115,7 @@ public class TTLCache<K, V> implements Map<K, V>, AutoCloseable {
         }
         this.ttlMillis = ttlMillis;
         this.maxSize = maxSize;
+        this.lruEnabled = maxSize > -1;
         this.cacheMap = new ConcurrentHashMapNullSafe<>();
 
         // Initialize the doubly-linked list for LRU tracking
@@ -206,17 +211,58 @@ public class TTLCache<K, V> implements Map<K, V>, AutoCloseable {
      */
     private void purgeExpiredEntries() {
         long currentTime = System.currentTimeMillis();
+        List<Node<K, V>> expiredNodes = lruEnabled ? new ArrayList<>() : null;
         for (Iterator<Map.Entry<K, CacheEntry<K, V>>> it = cacheMap.entrySet().iterator(); it.hasNext(); ) {
             Map.Entry<K, CacheEntry<K, V>> entry = it.next();
             CacheEntry<K, V> cacheEntry = entry.getValue();
             if (cacheEntry.expiryTime < currentTime) {
                 it.remove();
-                lock.lock();
-                try {
-                    unlink(cacheEntry.node);
-                } finally {
-                    lock.unlock();
+                if (lruEnabled) {
+                    expiredNodes.add(cacheEntry.node);
                 }
+            }
+        }
+
+        if (lruEnabled && !expiredNodes.isEmpty()) {
+            lock.lock();
+            try {
+                for (Node<K, V> node : expiredNodes) {
+                    unlink(node);
+                }
+            } finally {
+                lock.unlock();
+            }
+        }
+    }
+
+    /**
+     * Performs a small bounded expiry cleanup pass used by size-related queries.
+     * This keeps size estimates closer to live entries without turning size() into O(n).
+     */
+    private void bestEffortSizeCleanup() {
+        long currentTime = System.currentTimeMillis();
+        List<Node<K, V>> expiredNodes = lruEnabled ? new ArrayList<>(2) : null;
+        int checked = 0;
+        for (Iterator<Map.Entry<K, CacheEntry<K, V>>> it = cacheMap.entrySet().iterator();
+             it.hasNext() && checked < SIZE_CLEANUP_SAMPLES; checked++) {
+            Map.Entry<K, CacheEntry<K, V>> entry = it.next();
+            CacheEntry<K, V> cacheEntry = entry.getValue();
+            if (cacheEntry.expiryTime < currentTime) {
+                it.remove();
+                if (lruEnabled) {
+                    expiredNodes.add(cacheEntry.node);
+                }
+            }
+        }
+
+        if (lruEnabled && !expiredNodes.isEmpty()) {
+            lock.lock();
+            try {
+                for (Node<K, V> node : expiredNodes) {
+                    unlink(node);
+                }
+            } finally {
+                lock.unlock();
             }
         }
     }
@@ -228,7 +274,7 @@ public class TTLCache<K, V> implements Map<K, V>, AutoCloseable {
      */
     private void removeEntry(K cacheKey) {
         CacheEntry<K, V> entry = cacheMap.remove(cacheKey);
-        if (entry != null) {
+        if (entry != null && lruEnabled) {
             Node<K, V> node = entry.node;
             lock.lock();
             try {
@@ -245,6 +291,9 @@ public class TTLCache<K, V> implements Map<K, V>, AutoCloseable {
      * @param node the node to unlink
      */
     private void unlink(Node<K, V> node) {
+        if (node.prev == null || node.next == null) {
+            return;
+        }
         node.prev.next = node.next;
         node.next.prev = node.prev;
         node.prev = null;
@@ -299,6 +348,11 @@ public class TTLCache<K, V> implements Map<K, V>, AutoCloseable {
         Node<K, V> node = new Node<>(key, value);
         CacheEntry<K, V> newEntry = new CacheEntry<>(node, expiryTime);
 
+        if (!lruEnabled) {
+            CacheEntry<K, V> oldEntry = cacheMap.put(key, newEntry);
+            return oldEntry == null ? null : oldEntry.node.value;
+        }
+
         lock.lock();
         try {
             CacheEntry<K, V> oldEntry = cacheMap.put(key, newEntry);
@@ -349,15 +403,17 @@ public class TTLCache<K, V> implements Map<K, V>, AutoCloseable {
             return null;
         }
 
-        boolean acquired = lock.tryLock();
-        try {
-            if (acquired) {
-                moveToTail(entry.node);
-            }
-            // If lock not acquired, skip LRU update for performance
-        } finally {
-            if (acquired) {
-                lock.unlock();
+        if (lruEnabled) {
+            boolean acquired = lock.tryLock();
+            try {
+                if (acquired) {
+                    moveToTail(entry.node);
+                }
+                // If lock not acquired, skip LRU update for performance
+            } finally {
+                if (acquired) {
+                    lock.unlock();
+                }
             }
         }
 
@@ -380,28 +436,35 @@ public class TTLCache<K, V> implements Map<K, V>, AutoCloseable {
         try {
             CacheEntry<K, V> entry = cacheMap.get(key);
             long currentTime = System.currentTimeMillis();
+            boolean liveEntry = entry != null && entry.expiryTime >= currentTime;
 
-            // Check if entry exists and is not expired
-            if (entry != null && entry.expiryTime >= currentTime) {
-                moveToTail(entry.node);
+            // Check if entry exists and is not expired with a non-null value
+            if (liveEntry && entry.node.value != null) {
+                if (lruEnabled) {
+                    moveToTail(entry.node);
+                }
                 return entry.node.value;
             }
 
-            // Entry doesn't exist or is expired - compute new value
+            // Entry is absent, expired, or null-valued - compute new value
             V value = mappingFunction.apply(key);
             if (value != null) {
-                // Remove expired entry if present
+                // Remove existing entry if present (expired or null-valued)
                 if (entry != null) {
-                    unlink(entry.node);
+                    if (lruEnabled) {
+                        unlink(entry.node);
+                    }
                 }
                 // Use internal put logic
-                long expiryTime = currentTime + ttlMillis;
+                long expiryTime = System.currentTimeMillis() + ttlMillis;
                 Node<K, V> node = new Node<>(key, value);
                 CacheEntry<K, V> newEntry = new CacheEntry<>(node, expiryTime);
                 cacheMap.put(key, newEntry);
-                insertAtTail(node);
+                if (lruEnabled) {
+                    insertAtTail(node);
+                }
 
-                if (maxSize > -1 && cacheMap.size() > maxSize) {
+                if (lruEnabled && cacheMap.size() > maxSize) {
                     Node<K, V> lruNode = head.next;
                     if (lruNode != tail) {
                         removeEntry(lruNode.key);
@@ -429,26 +492,32 @@ public class TTLCache<K, V> implements Map<K, V>, AutoCloseable {
         try {
             CacheEntry<K, V> entry = cacheMap.get(key);
             long currentTime = System.currentTimeMillis();
+            boolean liveEntry = entry != null && entry.expiryTime >= currentTime;
 
-            // Check if entry exists and is not expired
-            if (entry != null && entry.expiryTime >= currentTime) {
-                moveToTail(entry.node);
+            // Only non-expired, non-null values block putIfAbsent
+            if (liveEntry && entry.node.value != null) {
+                if (lruEnabled) {
+                    moveToTail(entry.node);
+                }
                 return entry.node.value;
             }
 
-            // Entry doesn't exist or is expired - put new value
-            // Remove expired entry if present
+            // Entry is absent, expired, or null-valued - put new value
             if (entry != null) {
-                unlink(entry.node);
+                if (lruEnabled) {
+                    unlink(entry.node);
+                }
             }
 
-            long expiryTime = currentTime + ttlMillis;
+            long expiryTime = System.currentTimeMillis() + ttlMillis;
             Node<K, V> node = new Node<>(key, value);
             CacheEntry<K, V> newEntry = new CacheEntry<>(node, expiryTime);
             cacheMap.put(key, newEntry);
-            insertAtTail(node);
+            if (lruEnabled) {
+                insertAtTail(node);
+            }
 
-            if (maxSize > -1 && cacheMap.size() > maxSize) {
+            if (lruEnabled && cacheMap.size() > maxSize) {
                 Node<K, V> lruNode = head.next;
                 if (lruNode != tail) {
                     removeEntry(lruNode.key);
@@ -468,11 +537,13 @@ public class TTLCache<K, V> implements Map<K, V>, AutoCloseable {
         CacheEntry<K, V> entry = cacheMap.remove(key);
         if (entry != null) {
             V value = entry.node.value;
-            lock.lock();
-            try {
-                unlink(entry.node);
-            } finally {
-                lock.unlock();
+            if (lruEnabled) {
+                lock.lock();
+                try {
+                    unlink(entry.node);
+                } finally {
+                    lock.unlock();
+                }
             }
             return value;
         }
@@ -485,31 +556,43 @@ public class TTLCache<K, V> implements Map<K, V>, AutoCloseable {
     @Override
     public void clear() {
         cacheMap.clear();
-        lock.lock();
-        try {
-            // Reset the linked list
-            head.next = tail;
-            tail.prev = head;
-        } finally {
-            lock.unlock();
+        if (lruEnabled) {
+            lock.lock();
+            try {
+                // Reset the linked list
+                head.next = tail;
+                tail.prev = head;
+            } finally {
+                lock.unlock();
+            }
         }
     }
 
     /**
-     * @return the number of entries currently stored (may include expired entries
-     *         not yet purged by the background thread)
+     * Returns a best-effort count of entries currently stored.
+     * <p>
+     * This method is intentionally not exact and avoids O(n) scans. It performs a
+     * small bounded cleanup pass and then returns the backing map size, so expired
+     * entries may still be included until touched or purged asynchronously.
+     *
+     * @return an approximate current entry count
      */
     @Override
     public int size() {
+        if (!cacheMap.isEmpty()) {
+            bestEffortSizeCleanup();
+        }
         return cacheMap.size();
     }
 
     /**
-     * @return {@code true} if this cache contains no key-value mappings
+     * Returns {@code true} if this cache appears empty based on {@link #size()}.
+     * This is a best-effort check and may transiently report non-empty when only
+     * expired entries remain pending asynchronous cleanup.
      */
     @Override
     public boolean isEmpty() {
-        return cacheMap.isEmpty();
+        return size() == 0;
     }
 
     /**
@@ -575,7 +658,7 @@ public class TTLCache<K, V> implements Map<K, V>, AutoCloseable {
                 keys.add(key);
             }
         }
-        return keys;
+        return java.util.Collections.unmodifiableSet(keys);
     }
 
     /**
@@ -596,10 +679,16 @@ public class TTLCache<K, V> implements Map<K, V>, AutoCloseable {
                 values.add(value);
             }
         }
-        return values;
+        return java.util.Collections.unmodifiableCollection(values);
     }
 
     /**
+     * Returns a view of cache entries that iterates over non-expired mappings.
+     * <p>
+     * Iterator traversal skips expired entries. Size-related methods on this view
+     * delegate to {@link #size()} and therefore follow the same best-effort,
+     * non-O(n) semantics.
+     *
      * @return a {@link Set} view of the mappings contained in this cache
      */
     @Override
@@ -608,7 +697,8 @@ public class TTLCache<K, V> implements Map<K, V>, AutoCloseable {
     }
 
     /**
-     * Custom EntrySet implementation that allows iterator removal.
+     * Custom EntrySet implementation that allows iterator removal and uses
+     * best-effort size semantics.
      */
     private class EntrySet extends AbstractSet<Entry<K, V>> {
         @Override
@@ -618,6 +708,7 @@ public class TTLCache<K, V> implements Map<K, V>, AutoCloseable {
 
         @Override
         public int size() {
+            // Delegate to best-effort cache size to avoid O(n) scans.
             return TTLCache.this.size();
         }
 

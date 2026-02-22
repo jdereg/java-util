@@ -24,7 +24,10 @@ import java.util.concurrent.atomic.AtomicLongArray;
 import java.util.concurrent.atomic.AtomicReferenceArray;
 // ReentrantLock replaced with synchronized monitors for lower uncontended latency
 import java.util.function.BiFunction;
+import java.util.function.BiPredicate;
 import java.util.function.Function;
+import java.util.function.ToIntFunction;
+import java.util.function.ToLongFunction;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -371,6 +374,79 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         SIMPLE_ARRAY_TYPES.add(java.time.Month[].class);
         SIMPLE_ARRAY_TYPES.add(java.nio.file.StandardOpenOption[].class);
         SIMPLE_ARRAY_TYPES.add(java.nio.file.LinkOption[].class);
+    }
+
+    // ClassValueMap/ClassValueSet for O(1) type-based dispatch (replacing class == chains)
+    private static final ClassValueSet LEAF_TYPES = new ClassValueSet();
+    private static final ClassValueSet INTEGRAL_TYPES = new ClassValueSet();
+    private static final ClassValueMap<ToIntFunction<Object>> HASH_FUNCTIONS = new ClassValueMap<>();
+    private static final ClassValueMap<BiPredicate<Object, Object>> SAME_TYPE_COMPARATORS = new ClassValueMap<>();
+    private static final ClassValueMap<ToLongFunction<Object>> LONG_EXTRACTORS = new ClassValueMap<>();
+    static {
+        // Leaf types: final classes that are never arrays or collections (used in normalizeKey, flattenKey, isCollection)
+        LEAF_TYPES.add(String.class);
+        LEAF_TYPES.add(Integer.class);
+        LEAF_TYPES.add(Long.class);
+        LEAF_TYPES.add(Double.class);
+        LEAF_TYPES.add(Boolean.class);
+        LEAF_TYPES.add(Short.class);
+        LEAF_TYPES.add(Byte.class);
+        LEAF_TYPES.add(Character.class);
+        LEAF_TYPES.add(Float.class);
+
+        // Integral-like types for numeric comparison fast-paths
+        INTEGRAL_TYPES.add(Integer.class);
+        INTEGRAL_TYPES.add(Long.class);
+        INTEGRAL_TYPES.add(Short.class);
+        INTEGRAL_TYPES.add(Byte.class);
+        INTEGRAL_TYPES.add(AtomicInteger.class);
+        INTEGRAL_TYPES.add(AtomicLong.class);
+
+        // Hash functions: type-specific hash computation for valueHashCode() fast-path
+        HASH_FUNCTIONS.put(Integer.class, o -> hashLong(((Integer) o).longValue()));
+        HASH_FUNCTIONS.put(Long.class, o -> hashLong((Long) o));
+        HASH_FUNCTIONS.put(Double.class, o -> {
+            double d = (Double) o;
+            if (d == 0.0d) d = 0.0d; // Canonicalize -0.0 to +0.0
+            if (Double.isFinite(d) && d == Math.rint(d) && d >= Long.MIN_VALUE && d <= Long.MAX_VALUE) {
+                return hashLong((long) d);
+            }
+            return hashDouble(d);
+        });
+        HASH_FUNCTIONS.put(Float.class, o -> {
+            double d = ((Float) o).doubleValue();
+            if (d == 0.0d) d = 0.0d; // Canonicalize -0.0 to +0.0
+            if (Double.isFinite(d) && d == Math.rint(d) && d >= Long.MIN_VALUE && d <= Long.MAX_VALUE) {
+                return hashLong((long) d);
+            }
+            return hashDouble(d);
+        });
+        HASH_FUNCTIONS.put(Short.class, o -> hashLong(((Short) o).longValue()));
+        HASH_FUNCTIONS.put(Byte.class, o -> hashLong(((Byte) o).longValue()));
+        HASH_FUNCTIONS.put(Boolean.class, o -> Boolean.hashCode((Boolean) o));
+        HASH_FUNCTIONS.put(AtomicBoolean.class, o -> Boolean.hashCode(((AtomicBoolean) o).get()));
+        HASH_FUNCTIONS.put(AtomicInteger.class, o -> hashLong(((AtomicInteger) o).get()));
+        HASH_FUNCTIONS.put(AtomicLong.class, o -> hashLong(((AtomicLong) o).get()));
+
+        // Same-type comparators for compareNumericValues() same-class fast-path
+        SAME_TYPE_COMPARATORS.put(Integer.class, (a, b) -> ((Integer) a).intValue() == ((Integer) b).intValue());
+        SAME_TYPE_COMPARATORS.put(Long.class, (a, b) -> ((Long) a).longValue() == ((Long) b).longValue());
+        SAME_TYPE_COMPARATORS.put(Short.class, (a, b) -> ((Short) a).shortValue() == ((Short) b).shortValue());
+        SAME_TYPE_COMPARATORS.put(Byte.class, (a, b) -> ((Byte) a).byteValue() == ((Byte) b).byteValue());
+        SAME_TYPE_COMPARATORS.put(Double.class, (a, b) -> { double x = (Double) a, y = (Double) b; return (x == y) || (Double.isNaN(x) && Double.isNaN(y)); });
+        SAME_TYPE_COMPARATORS.put(Float.class, (a, b) -> { float x = (Float) a, y = (Float) b; return (x == y) || (Float.isNaN(x) && Float.isNaN(y)); });
+        SAME_TYPE_COMPARATORS.put(BigInteger.class, (a, b) -> ((BigInteger) a).compareTo((BigInteger) b) == 0);
+        SAME_TYPE_COMPARATORS.put(BigDecimal.class, (a, b) -> ((BigDecimal) a).compareTo((BigDecimal) b) == 0);
+        SAME_TYPE_COMPARATORS.put(AtomicInteger.class, (a, b) -> ((AtomicInteger) a).get() == ((AtomicInteger) b).get());
+        SAME_TYPE_COMPARATORS.put(AtomicLong.class, (a, b) -> ((AtomicLong) a).get() == ((AtomicLong) b).get());
+
+        // Long extractors for extractLongFast()
+        LONG_EXTRACTORS.put(Long.class, o -> (Long) o);
+        LONG_EXTRACTORS.put(Integer.class, o -> (long) (Integer) o);
+        LONG_EXTRACTORS.put(Short.class, o -> (long) (Short) o);
+        LONG_EXTRACTORS.put(Byte.class, o -> (long) (Byte) o);
+        LONG_EXTRACTORS.put(AtomicInteger.class, o -> (long) ((AtomicInteger) o).get());
+        LONG_EXTRACTORS.put(AtomicLong.class, o -> ((AtomicLong) o).get());
     }
 
     // Static flag to log stripe configuration only once per JVM
@@ -911,42 +987,10 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     private static int valueHashCode(Object o) {
         if (o == null) return 0;
 
-        // Fast path: Check most common types first using Class identity (faster than instanceof)
-        // Integer, Long, Double are by far the most common numeric types in practice
+        // Fast path: O(1) ClassValueMap lookup for common types (replaces 12 sequential class == checks)
         Class<?> clazz = o.getClass();
-
-        if (clazz == Integer.class) return hashLong(((Integer) o).longValue());
-        if (clazz == Long.class) return hashLong((Long) o);
-        if (clazz == Double.class) {
-            double d = (Double) o;
-            if (d == 0.0d) d = 0.0d; // Canonicalize -0.0 to +0.0
-            if (Double.isFinite(d) && d == Math.rint(d) &&
-                    d >= Long.MIN_VALUE && d <= Long.MAX_VALUE) {
-                return hashLong((long) d);
-            }
-            return hashDouble(d);
-        }
-
-        // Less common primitive wrappers
-        if (clazz == Float.class) {
-            double d = ((Float) o).doubleValue();
-            if (d == 0.0d) d = 0.0d; // Canonicalize -0.0 to +0.0
-            if (Double.isFinite(d) && d == Math.rint(d) &&
-                    d >= Long.MIN_VALUE && d <= Long.MAX_VALUE) {
-                return hashLong((long) d);
-            }
-            return hashDouble(d);
-        }
-        if (clazz == Short.class) return hashLong(((Short) o).longValue());
-        if (clazz == Byte.class) return hashLong(((Byte) o).longValue());
-
-        // Boolean types
-        if (clazz == Boolean.class) return Boolean.hashCode((Boolean) o);
-        if (clazz == AtomicBoolean.class) return Boolean.hashCode(((AtomicBoolean) o).get());
-
-        // Atomic numeric types
-        if (clazz == AtomicInteger.class) return hashLong(((AtomicInteger) o).get());
-        if (clazz == AtomicLong.class) return hashLong(((AtomicLong) o).get());
+        ToIntFunction<Object> hashFn = HASH_FUNCTIONS.get(clazz);
+        if (hashFn != null) return hashFn.applyAsInt(o);
 
         // BigInteger/BigDecimal: convert to primitive type for consistent hashing
         if (o instanceof BigDecimal) {
@@ -1370,7 +1414,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         }
         // Fast path: known simple types are never arrays or collections
         Class<?> c = o.getClass();
-        if (c == String.class || c == Integer.class || c == Long.class || c == Double.class) {
+        if (LEAF_TYPES.contains(c)) {
             return false;
         }
         // Check for Collection or array
@@ -1402,11 +1446,9 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         }
 
         // === FAST PATH: Known common simple types ===
-        // Class identity check (==) is much faster than instanceof hierarchy traversal.
-        // These are the most common key types in practice - handle them first.
+        // O(1) ClassValueSet lookup (replaces 4 sequential class == checks)
         Class<?> keyClass = key.getClass();
-        if (keyClass == String.class || keyClass == Integer.class ||
-            keyClass == Long.class || keyClass == Double.class) {
+        if (LEAF_TYPES.contains(keyClass)) {
             return new MultiKey<>(key, computeElementHash(key, caseSensitive), null, 1, MultiKey.KIND_SINGLE);
         }
 
@@ -1870,12 +1912,9 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             return runningHash * 31 + NULL_SENTINEL.hashCode();
         }
 
-        // Fast path: Common leaf types (final classes - safe to use == for class comparison)
-        // These are the most frequent key types, so check them first to skip the instanceof chain
+        // Fast path: O(1) ClassValueSet lookup for common leaf types (replaces 9 sequential class == checks)
         Class<?> clazz = current.getClass();
-        if (clazz == String.class || clazz == Integer.class || clazz == Long.class ||
-            clazz == Double.class || clazz == Boolean.class || clazz == Short.class ||
-            clazz == Byte.class || clazz == Character.class || clazz == Float.class) {
+        if (LEAF_TYPES.contains(clazz)) {
             result.add(current);
             return runningHash * 31 + computeElementHash(current, caseSensitive);
         }
@@ -2908,18 +2947,10 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         final Class<?> ca = a.getClass();
         final Class<?> cb = b.getClass();
 
-        // 0) Same-class fast path (monomorphic & cheapest)
+        // 0) Same-class fast path: O(1) ClassValueMap lookup (replaces 10 sequential class == checks)
         if (ca == cb) {
-            if (ca == Integer.class) return ((Integer) a).intValue()  == ((Integer) b).intValue();
-            if (ca == Long.class)    return ((Long) a).longValue()     == ((Long) b).longValue();
-            if (ca == Short.class)   return ((Short) a).shortValue()   == ((Short) b).shortValue();
-            if (ca == Byte.class)    return ((Byte) a).byteValue()     == ((Byte) b).byteValue();
-            if (ca == Double.class)  { double x = (Double) a, y = (Double) b; return (x == y) || (Double.isNaN(x) && Double.isNaN(y)); }
-            if (ca == Float.class)   { float  x = (Float)  a, y = (Float)  b; return (x == y) || (Float.isNaN(x)  && Float.isNaN(y)); }
-            if (ca == BigInteger.class) return ((BigInteger) a).compareTo((BigInteger) b) == 0;
-            if (ca == BigDecimal.class) return ((BigDecimal) a).compareTo((BigDecimal) b) == 0;
-            if (ca == AtomicInteger.class) return ((AtomicInteger) a).get() == ((AtomicInteger) b).get();
-            if (ca == AtomicLong.class)    return ((AtomicLong) a).get()    == ((AtomicLong) b).get();
+            BiPredicate<Object, Object> cmp = SAME_TYPE_COMPARATORS.get(ca);
+            if (cmp != null) return cmp.test(a, b);
         }
 
         // 1) Integral-like ↔ integral-like (byte/short/int/long/atomics) as longs
@@ -2959,8 +2990,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     }
     
     private static boolean isIntegralLike(Class<?> c) {
-        return c == Integer.class || c == Long.class || c == Short.class || c == Byte.class
-            || c == AtomicInteger.class || c == AtomicLong.class;
+        return INTEGRAL_TYPES.contains(c);
     }
     
     private static boolean isBig(Class<?> c) {
@@ -2968,12 +2998,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     }
 
     private static long extractLongFast(Object o) {
-        if (o instanceof Long) return (Long)o;
-        if (o instanceof Integer) return (Integer)o;
-        if (o instanceof Short) return (Short)o;
-        if (o instanceof Byte) return (Byte)o;
-        if (o instanceof AtomicInteger) return ((AtomicInteger)o).get();
-        if (o instanceof AtomicLong) return ((AtomicLong)o).get();
+        ToLongFunction<Object> extractor = LONG_EXTRACTORS.get(o.getClass());
+        if (extractor != null) return extractor.applyAsLong(o);
         return ((Number) o).longValue();
     }
     

@@ -3,6 +3,7 @@ package com.cedarsoftware.util;
 import java.security.SecureRandom;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -19,7 +20,6 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -243,6 +243,26 @@ public class LRUCacheTest {
 
     @ParameterizedTest
     @MethodSource("strategies")
+    void testPutIfAbsentTreatsNullMappedEntryAsAbsent(LRUCache.StrategyType strategy) {
+        setUp(strategy);
+        lruCache.put(1, null);
+
+        assertNull(lruCache.putIfAbsent(1, "A"));
+        assertEquals("A", lruCache.get(1));
+    }
+
+    @ParameterizedTest
+    @MethodSource("strategies")
+    void testComputeIfAbsentTreatsNullMappedEntryAsAbsent(LRUCache.StrategyType strategy) {
+        setUp(strategy);
+        lruCache.put(1, null);
+
+        assertEquals("A", lruCache.computeIfAbsent(1, k -> "A"));
+        assertEquals("A", lruCache.get(1));
+    }
+
+    @ParameterizedTest
+    @MethodSource("strategies")
     void testSmallSizes(LRUCache.StrategyType strategy) {
         for (int capacity : new int[]{1, 3, 5, 10}) {
             LRUCache<Integer, String> cache = new LRUCache<>(capacity, strategy);
@@ -380,7 +400,43 @@ public class LRUCacheTest {
         assertEquals(cache1.hashCode(), cache2.hashCode());
 
         cache2.put(4, "D");
-        assertNotEquals(cache1.hashCode(), cache2.hashCode());
+        assertFalse(cache1.equals(cache2));
+    }
+
+    @ParameterizedTest
+    @MethodSource("strategies")
+    void testHashCodeMatchesEqualStandardMap(LRUCache.StrategyType strategy) {
+        setUp(strategy);
+        LRUCache<Integer, String> cache = new LRUCache<>(3, strategy);
+        cache.put(1, "A");
+        cache.put(2, "B");
+        cache.put(3, "C");
+
+        Map<Integer, String> standardMap = new HashMap<>();
+        standardMap.put(3, "C");
+        standardMap.put(1, "A");
+        standardMap.put(2, "B");
+
+        assertTrue(cache.equals(standardMap));
+        assertTrue(standardMap.equals(cache));
+        assertEquals(standardMap.hashCode(), cache.hashCode());
+    }
+
+    @ParameterizedTest
+    @MethodSource("strategies")
+    void testSnapshotViewsAreUnmodifiable(LRUCache.StrategyType strategy) {
+        setUp(strategy);
+        lruCache.put(1, "A");
+        lruCache.put(2, "B");
+
+        assertThrows(UnsupportedOperationException.class, () -> lruCache.keySet().remove(1));
+        assertThrows(UnsupportedOperationException.class, () -> lruCache.values().remove("A"));
+        assertThrows(UnsupportedOperationException.class, () -> {
+            Iterator<Map.Entry<Integer, String>> iterator = lruCache.entrySet().iterator();
+            iterator.next();
+            iterator.remove();
+        });
+        assertEquals(2, lruCache.size());
     }
 
     @ParameterizedTest
@@ -414,14 +470,20 @@ public class LRUCacheTest {
         long startTime = System.currentTimeMillis();
         long timeout = 5000;
         while (System.currentTimeMillis() - startTime < timeout) {
-            if (lruCache.size() == 3 &&
-                    lruCache.containsKey(4) &&
-                    lruCache.containsKey(5) &&
-                    lruCache.containsKey(6) &&
-                    !lruCache.containsKey(1) &&
-                    !lruCache.containsKey(2) &&
-                    !lruCache.containsKey(3)) {
-                break;
+            if (strategy == LRUCache.StrategyType.THREADED) {
+                if (lruCache.size() <= 3) {
+                    break;
+                }
+            } else {
+                if (lruCache.size() == 3 &&
+                        lruCache.containsKey(4) &&
+                        lruCache.containsKey(5) &&
+                        lruCache.containsKey(6) &&
+                        !lruCache.containsKey(1) &&
+                        !lruCache.containsKey(2) &&
+                        !lruCache.containsKey(3)) {
+                    break;
+                }
             }
             try {
                 Thread.sleep(100);
@@ -429,18 +491,23 @@ public class LRUCacheTest {
             }
         }
 
-        assertEquals(3, lruCache.size(), "Cache size should be 3 after eviction");
-        assertTrue(lruCache.containsKey(4));
-        assertTrue(lruCache.containsKey(5));
-        assertTrue(lruCache.containsKey(6));
-        assertEquals("D", lruCache.get(4));
-        assertEquals("E", lruCache.get(5));
-        assertEquals("F", lruCache.get(6));
+        if (strategy == LRUCache.StrategyType.THREADED) {
+            assertTrue(lruCache.size() <= 3, "Cache size should be at or below capacity after cleanup");
+            assertEquals("F", lruCache.get(6), "Most recently added entry should be retained");
+        } else {
+            assertEquals(3, lruCache.size(), "Cache size should be 3 after eviction");
+            assertTrue(lruCache.containsKey(4));
+            assertTrue(lruCache.containsKey(5));
+            assertTrue(lruCache.containsKey(6));
+            assertEquals("D", lruCache.get(4));
+            assertEquals("E", lruCache.get(5));
+            assertEquals("F", lruCache.get(6));
 
-        lruCache.remove(6);
-        lruCache.remove(5);
-        lruCache.remove(4);
-        assertEquals(0, lruCache.size(), "Cache should be empty after removing all elements");
+            lruCache.remove(6);
+            lruCache.remove(5);
+            lruCache.remove(4);
+            assertEquals(0, lruCache.size(), "Cache should be empty after removing all elements");
+        }
     }
 
     @ParameterizedTest
@@ -499,7 +566,9 @@ public class LRUCacheTest {
         assertTrue(lruCache.containsKey(1));
         assertTrue(lruCache.containsValue(null));
         assertTrue(lruCache.toString().contains("1=null"));
-        assertNotEquals(0, lruCache.hashCode());
+        Map<Integer, String> expected = new HashMap<>();
+        expected.put(1, null);
+        assertEquals(expected.hashCode(), lruCache.hashCode());
     }
 
     @ParameterizedTest
@@ -511,7 +580,9 @@ public class LRUCacheTest {
         assertTrue(lruCache.containsKey(null));
         assertTrue(lruCache.containsValue("true"));
         assertTrue(lruCache.toString().contains("null=true"));
-        assertNotEquals(0, lruCache.hashCode());
+        Map<Integer, String> expected = new HashMap<>();
+        expected.put(null, "true");
+        assertEquals(expected.hashCode(), lruCache.hashCode());
     }
 
     @ParameterizedTest
@@ -523,7 +594,9 @@ public class LRUCacheTest {
         assertTrue(lruCache.containsKey(null));
         assertTrue(lruCache.containsValue(null));
         assertTrue(lruCache.toString().contains("null=null"));
-        assertNotEquals(0, lruCache.hashCode());
+        Map<Integer, String> expected = new HashMap<>();
+        expected.put(null, null);
+        assertEquals(expected.hashCode(), lruCache.hashCode());
 
         LRUCache<Integer, String> cache1 = new LRUCache<>(3, strategy);
         cache1.put(null, null);

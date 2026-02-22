@@ -22,7 +22,7 @@ import java.util.Vector;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingDeque;
 import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.ConcurrentHashMap;
+import com.cedarsoftware.util.ClassValueMap;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ConcurrentSkipListSet;
@@ -74,7 +74,7 @@ final class CollectionHandling {
     // Base collection type mappings (most specific to most general)
     private static final Map<Class<?>, Function<Integer, Collection<?>>> BASE_FACTORIES = new LinkedHashMap<>();
 
-    private static final Map<Class<?>, Function<Integer, Collection<?>>> FACTORY_CACHE = new ConcurrentHashMap<>();
+    private static final Map<Class<?>, Function<Integer, Collection<?>>> FACTORY_CACHE = new ClassValueMap<>();
 
     static {
         // Initialize special collection handlers (most specific to most general)

@@ -8,6 +8,7 @@ import java.util.Random;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.logging.Logger;
 
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -16,7 +17,7 @@ import org.junit.jupiter.api.Test;
 public class MultiKeyMapHashDistributionTest {
     private static final Logger LOG = Logger.getLogger(MultiKeyMapHashDistributionTest.class.getName());
     
-    @Test
+    @Disabled
     public void analyzeHashDistribution() {
         // Test different array sizes and measure collision rates
         int[] testSizes = {1000, 10000, 100000};

@@ -238,7 +238,14 @@ public class CaseInsensitiveSet<E> extends AbstractSet<E> implements Set<E>, Ser
             return false;
         }
         Set<?> that = (Set<?>) other;
-        return that.size() == size() && containsAll(that);
+        if (that.size() != size()) {
+            return false;
+        }
+        try {
+            return containsAll(that) && that.containsAll(this);
+        } catch (ClassCastException | NullPointerException e) {
+            return false;
+        }
     }
 
     /**

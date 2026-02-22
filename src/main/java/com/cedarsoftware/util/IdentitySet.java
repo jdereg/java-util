@@ -55,15 +55,17 @@ import java.util.NoSuchElementException;
 public class IdentitySet<T> extends AbstractSet<T> {
     private static final int DEFAULT_CAPACITY = 16;
     private static final int MAX_CAPACITY = 1 << 30;  // Largest power-of-2 for int
-    private static final float LOAD_FACTOR = 0.5f;  // Keep load low for fast probing
+    private static final float DEFAULT_LOAD_FACTOR = 0.75f;  // Keep load low for fast probing
 
     // Sentinel for deleted slots to maintain probe chains
     private static final Object DELETED = new Object();
 
     private Object[] elements;
     private int size;
+    private int deletedCount;
     private int threshold;
     private int mask;
+    private final float loadFactor;
 
     /**
      * Creates a new IdentitySet with default initial capacity (16).
@@ -78,6 +80,20 @@ public class IdentitySet<T> extends AbstractSet<T> {
      * @param initialCapacity the initial capacity (will be rounded up to power of 2)
      */
     public IdentitySet(int initialCapacity) {
+        this(initialCapacity, DEFAULT_LOAD_FACTOR);
+    }
+
+    /**
+     * Creates a new IdentitySet with the specified initial capacity and load factor.
+     *
+     * @param initialCapacity the initial capacity (will be rounded up to power of 2)
+     * @param loadFactor      the load factor threshold that triggers resize ({@code must be > 0 and < 1})
+     */
+    public IdentitySet(int initialCapacity, float loadFactor) {
+        if (loadFactor <= 0.0f || loadFactor >= 1.0f || Float.isNaN(loadFactor)) {
+            throw new IllegalArgumentException("loadFactor must be > 0 and < 1");
+        }
+        this.loadFactor = loadFactor;
         // Round up to power of 2, capping at MAX_CAPACITY to prevent int overflow
         int capacity = 1;
         int target = Math.min(Math.max(initialCapacity, 1), MAX_CAPACITY);
@@ -86,7 +102,7 @@ public class IdentitySet<T> extends AbstractSet<T> {
         }
         elements = new Object[capacity];
         mask = capacity - 1;
-        threshold = (int) (capacity * LOAD_FACTOR);
+        threshold = (int) (capacity * this.loadFactor);
     }
 
     /**
@@ -96,7 +112,7 @@ public class IdentitySet<T> extends AbstractSet<T> {
      * @throws NullPointerException if the specified collection is null or contains null elements
      */
     public IdentitySet(Collection<? extends T> c) {
-        this(Math.max((int) (c.size() / LOAD_FACTOR) + 1, DEFAULT_CAPACITY));
+        this(Math.max((int) (c.size() / DEFAULT_LOAD_FACTOR) + 1, DEFAULT_CAPACITY), DEFAULT_LOAD_FACTOR);
         addAll(c);
     }
 
@@ -114,6 +130,8 @@ public class IdentitySet<T> extends AbstractSet<T> {
         }
         if (size >= threshold) {
             resize();
+        } else if (deletedCount > 0 && (size + deletedCount) >= threshold) {
+            rehash(elements.length);
         }
         return addInternal(element);
     }
@@ -125,12 +143,15 @@ public class IdentitySet<T> extends AbstractSet<T> {
         int firstDeleted = -1;
 
         // Linear probe — must scan past DELETED slots to check for existing duplicates
-        while (true) {
+        for (int probes = 0; probes < e.length; probes++) {
             Object existing = e[index];
             if (existing == null) {
                 // Element not in set — insert at first DELETED slot if one was seen, else here
                 int insertIndex = firstDeleted >= 0 ? firstDeleted : index;
                 e[insertIndex] = element;
+                if (firstDeleted >= 0) {
+                    deletedCount--;
+                }
                 size++;
                 return true;
             }
@@ -143,6 +164,13 @@ public class IdentitySet<T> extends AbstractSet<T> {
             }
             index = (index + 1) & mask;
         }
+        if (firstDeleted >= 0) {
+            e[firstDeleted] = element;
+            deletedCount--;
+            size++;
+            return true;
+        }
+        throw new IllegalStateException("IdentitySet is full and cannot accept additional elements");
     }
 
     /**
@@ -160,7 +188,7 @@ public class IdentitySet<T> extends AbstractSet<T> {
         int index = hash & mask;
         final Object[] e = elements;
 
-        while (true) {
+        for (int probes = 0; probes < e.length; probes++) {
             Object existing = e[index];
             if (existing == null) {
                 return false;
@@ -171,6 +199,7 @@ public class IdentitySet<T> extends AbstractSet<T> {
             // Continue probing (DELETED slots don't stop the search)
             index = (index + 1) & mask;
         }
+        return false;
     }
 
     /**
@@ -188,7 +217,7 @@ public class IdentitySet<T> extends AbstractSet<T> {
         int index = hash & mask;
         final Object[] e = elements;
 
-        while (true) {
+        for (int probes = 0; probes < e.length; probes++) {
             Object existing = e[index];
             if (existing == null) {
                 return false;
@@ -196,29 +225,38 @@ public class IdentitySet<T> extends AbstractSet<T> {
             if (existing == element) {  // Identity comparison - found it
                 e[index] = DELETED;
                 size--;
+                if (size == 0) {
+                    clear();
+                } else {
+                    deletedCount++;
+                }
                 return true;
             }
             index = (index + 1) & mask;
         }
+        return false;
     }
 
     private void resize() {
-        final Object[] oldElements = elements;
-        final int oldCapacity = oldElements.length;
+        final int oldCapacity = elements.length;
 
         if (oldCapacity >= MAX_CAPACITY) {
             // Already at maximum capacity — raise the threshold to prevent further resize attempts
             threshold = Integer.MAX_VALUE;
             return;
         }
+        rehash(oldCapacity << 1);
+    }
 
-        final int newCapacity = oldCapacity << 1;
+    private void rehash(int newCapacity) {
+        final Object[] oldElements = elements;
         elements = new Object[newCapacity];
         mask = newCapacity - 1;
-        threshold = (int) (newCapacity * LOAD_FACTOR);
+        threshold = (int) (newCapacity * loadFactor);
         size = 0;
+        deletedCount = 0;
 
-        for (int i = 0; i < oldCapacity; i++) {
+        for (int i = 0; i < oldElements.length; i++) {
             Object element = oldElements[i];
             if (element != null && element != DELETED) {
                 addInternal(element);
@@ -236,6 +274,7 @@ public class IdentitySet<T> extends AbstractSet<T> {
             e[i] = null;
         }
         size = 0;
+        deletedCount = 0;
     }
 
     /**
@@ -309,6 +348,11 @@ public class IdentitySet<T> extends AbstractSet<T> {
             }
             elements[lastReturnedIndex] = DELETED;
             size--;
+            if (size == 0) {
+                clear();
+            } else {
+                deletedCount++;
+            }
             lastReturnedIndex = -1;
         }
     }

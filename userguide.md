@@ -439,6 +439,7 @@ A high-performance `Set` implementation that uses object identity (`==`) instead
 - **Identity comparison**: Uses `==` instead of `equals()` for element comparison
 - **High performance**: Open addressing with linear probing for excellent cache locality
 - **Minimal memory**: Single `Object[]` array, no Entry objects or Boolean values
+- **Configurable load factor**: Optional constructor supports custom load factors (`IdentitySet(int initialCapacity, float loadFactor)`)
 - **Simple API**: `add()`, `contains()`, `remove()`, `clear()`, `size()`, `isEmpty()`
 
 ### Why Use IdentitySet?
@@ -505,7 +506,7 @@ set.contains(new String("hello"));  // false - different object
 ### Performance Characteristics
 - All operations: O(1) average case
 - Space complexity: O(n)
-- Load factor: 0.5 for fast probing
+- Default load factor: 0.5 for fast probing (customizable with the two-arg constructor)
 - Auto-resizes when threshold exceeded
 
 ### Use Cases
@@ -8425,4 +8426,3 @@ mathutilities.max.array.size=100000
 # Exception: Executor (disabled by default for security)
 executor.enabled=false
 ```
-

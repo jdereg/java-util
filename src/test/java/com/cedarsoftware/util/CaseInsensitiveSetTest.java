@@ -305,7 +305,7 @@ public class CaseInsensitiveSetTest
 
         assertEquals(set1, set2);
         assertNotEquals(set1, set3);
-        assertEquals(set3, set1);
+        assertNotEquals(set3, set1);
         assertEquals(set2, set3);
     }
 

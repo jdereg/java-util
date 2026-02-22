@@ -235,6 +235,14 @@ public class ConcurrentSet<T> implements Set<T>, Serializable {
     @SuppressWarnings("unchecked")
     @Override
     public <T1> T1[] toArray(T1[] a) {
+        if (!set.contains(NullSentinel.NULL_ITEM)) {
+            try {
+                return set.toArray(a);
+            } catch (ArrayStoreException ignored) {
+                // A concurrent null add can race with the sentinel check; fall through safely.
+            }
+        }
+
         Object[] internalArray = set.toArray();
         int size = internalArray.length;
         if (a.length < size) {
@@ -288,6 +296,15 @@ public class ConcurrentSet<T> implements Set<T>, Serializable {
 
     @Override
     public boolean removeAll(Collection<?> col) {
+        if (col == this) {
+            boolean modified = !isEmpty();
+            clear();
+            return modified;
+        }
+        if (col instanceof ConcurrentSet) {
+            return set.removeAll(((ConcurrentSet<?>) col).set);
+        }
+
         boolean modified = false;
         for (Object o : col) {
             if (this.remove(o)) { // Reuse remove() which handles wrapping
@@ -299,7 +316,20 @@ public class ConcurrentSet<T> implements Set<T>, Serializable {
 
     @Override
     public boolean retainAll(Collection<?> col) {
-        Set<Object> wrappedCol = new HashSet<>();
+        if (col == this) {
+            return false;
+        }
+        if (col instanceof ConcurrentSet) {
+            return set.retainAll(((ConcurrentSet<?>) col).set);
+        }
+        if (col.isEmpty()) {
+            boolean modified = !isEmpty();
+            clear();
+            return modified;
+        }
+
+        int capacity = Math.max((int) (col.size() / 0.75f) + 1, 16);
+        Set<Object> wrappedCol = new HashSet<>(capacity);
         for (Object o : col) {
             wrappedCol.add(wrap(o));
         }

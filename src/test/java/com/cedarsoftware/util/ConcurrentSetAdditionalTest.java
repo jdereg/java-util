@@ -55,4 +55,25 @@ class ConcurrentSetAdditionalTest {
         Set<String> tokens = new HashSet<>(Arrays.asList(parts));
         assertEquals(new HashSet<>(Arrays.asList("a", "b", "null")), tokens);
     }
+
+    @Test
+    void testRemoveAllSelfClearsSet() {
+        ConcurrentSet<String> set = new ConcurrentSet<>();
+        set.addAll(Arrays.asList("a", null, "b"));
+
+        assertTrue(set.removeAll(set));
+        assertTrue(set.isEmpty());
+    }
+
+    @Test
+    void testRetainAllSelfIsNoOp() {
+        ConcurrentSet<String> set = new ConcurrentSet<>();
+        set.addAll(Arrays.asList("a", null, "b"));
+
+        assertFalse(set.retainAll(set));
+        assertEquals(3, set.size());
+        assertTrue(set.contains("a"));
+        assertTrue(set.contains("b"));
+        assertTrue(set.contains(null));
+    }
 }

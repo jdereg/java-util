@@ -1,11 +1,17 @@
 package com.cedarsoftware.util;
 
+import java.time.Duration;
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.Random;
 import java.util.Set;
+import java.util.function.Predicate;
+import java.util.logging.Logger;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
@@ -15,6 +21,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -25,6 +32,14 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  *         Licensed under the Apache License, Version 2.0
  */
 class IdentitySetTest {
+    private static final Logger LOG = Logger.getLogger(IdentitySetTest.class.getName());
+    private static final Predicate<Field> INCLUDE_ALL_FIELDS = field -> true;
+    private static final Map<String, Field> IDENTITY_SET_FIELDS =
+            ReflectionUtils.getAllDeclaredFieldsMap(IdentitySet.class, INCLUDE_ALL_FIELDS);
+    private static final Field ELEMENTS_FIELD = requireField("elements");
+    private static final Field MASK_FIELD = requireField("mask");
+    private static final Field DELETED_FIELD = requireField("DELETED");
+
 
     @Test
     void testBasicAddAndContains() {
@@ -588,6 +603,239 @@ class IdentitySetTest {
             assertTrue(set.isEmpty());
         } catch (OutOfMemoryError e) {
             // Expected on most JVMs — proving the loop terminates is what matters
+        }
+    }
+
+    @Test
+    @Timeout(5)
+    void testAllTombstonesMissOperationsDoNotLoop() {
+        IdentitySet<Object> set = new IdentitySet<>(2);
+        saturateTwoSlotTableWithTombstones(set);
+
+        assertTimeoutPreemptively(Duration.ofSeconds(1), () -> assertFalse(set.contains(new Object())));
+        assertTimeoutPreemptively(Duration.ofSeconds(1), () -> assertFalse(set.remove(new Object())));
+    }
+
+    @Test
+    @Timeout(5)
+    void testAllTombstonesAddDoesNotLoop() {
+        IdentitySet<Object> set = new IdentitySet<>(2);
+        saturateTwoSlotTableWithTombstones(set);
+
+        Object added = new Object();
+        assertTimeoutPreemptively(Duration.ofSeconds(1), () -> assertTrue(set.add(added)));
+        assertTrue(set.contains(added));
+    }
+
+    @Test
+    void testConstructorWithCustomLoadFactor() {
+        IdentitySet<Object> set = new IdentitySet<>(16, 0.75f);
+        Object value = new Object();
+        assertTrue(set.add(value));
+        assertTrue(set.contains(value));
+    }
+
+    @Test
+    void testConstructorWithInvalidLoadFactor() {
+        assertThrows(IllegalArgumentException.class, () -> new IdentitySet<>(16, 0.0f));
+        assertThrows(IllegalArgumentException.class, () -> new IdentitySet<>(16, -0.1f));
+        assertThrows(IllegalArgumentException.class, () -> new IdentitySet<>(16, 1.0f));
+        assertThrows(IllegalArgumentException.class, () -> new IdentitySet<>(16, Float.NaN));
+    }
+
+    @Test
+    @Timeout(120)
+    void testProbeStudyBoundaryMatrixAcrossLoadFactors() {
+        final int[] boundaries = {1_024, 16_384, 65_536, 131_072}; // max at 128K
+        final int[] sizes = buildBoundarySizes(boundaries, 1);
+        final float[] loadFactors = {0.5f, 2.0f / 3.0f, 0.75f};
+        final StringBuilder report = new StringBuilder("IdentitySet boundary probe study\n");
+        report.append("| size | loadFactor | tableSize | occupancy | successAvg | successMax | missAvg | missMax |\n");
+        report.append("|---:|---:|---:|---:|---:|---:|---:|---:|\n");
+
+        for (int size : sizes) {
+            List<Object> sample = buildMixedRandomSample(size, 919_101L + size);
+            for (float loadFactor : loadFactors) {
+                IdentitySet<Object> set = new IdentitySet<>(16, loadFactor);
+                for (Object value : sample) {
+                    assertTrue(set.add(value));
+                }
+                assertEquals(size, set.size());
+
+                ProbeStats success = measureSuccessfulProbeStats(set);
+                ProbeStats miss = measureMissProbeStats(set, 2_000, new Random(771_001L + size));
+                int tableSize = getElementsArray(set).length;
+                double occupancy = ((double) set.size()) / tableSize;
+
+                report.append(String.format(
+                        "| %d | %.4f | %d | %.4f | %.3f | %d | %.3f | %d |%n",
+                        size, loadFactor, tableSize, occupancy, success.averageProbes, success.maxProbes,
+                        miss.averageProbes, miss.maxProbes));
+            }
+        }
+
+        logReport(report.toString());
+    }
+
+    private static void saturateTwoSlotTableWithTombstones(IdentitySet<Object> set) {
+        Object bucket0 = findObjectForBucketLowBit(0);
+        Object bucket1 = findObjectForBucketLowBit(1);
+
+        assertTrue(set.add(bucket0));
+        assertTrue(set.remove(bucket0));
+        assertTrue(set.add(bucket1));
+        assertTrue(set.remove(bucket1));
+    }
+
+    private static Object findObjectForBucketLowBit(int bucket) {
+        for (int i = 0; i < 100_000; i++) {
+            Object candidate = new Object();
+            if ((System.identityHashCode(candidate) & 1) == bucket) {
+                return candidate;
+            }
+        }
+        throw new AssertionError("Unable to find candidate for bucket " + bucket);
+    }
+
+    public static String getRandomString(Random random, int minLen, int maxLen) {
+        int length = minLen + random.nextInt(maxLen - minLen + 1);
+        StringBuilder sb = new StringBuilder(length);
+        for (int i = 0; i < length; i++) {
+            int selector = random.nextInt(62);
+            if (selector < 10) {
+                sb.append((char) ('0' + selector));
+            } else if (selector < 36) {
+                sb.append((char) ('A' + selector - 10));
+            } else {
+                sb.append((char) ('a' + selector - 36));
+            }
+        }
+        return sb.toString();
+    }
+
+    private static List<Object> buildMixedRandomSample(int size, long seed) {
+        Random random = new Random(seed);
+        List<Object> sample = new ArrayList<>(size);
+        for (int i = 0; i < size; i++) {
+            if ((i & 1) == 0) {
+                sample.add(random.nextInt());
+            } else {
+                sample.add(getRandomString(random, 8, 24));
+            }
+        }
+        return sample;
+    }
+
+    private static int[] buildBoundarySizes(int[] boundaries, int delta) {
+        List<Integer> sizes = new ArrayList<>();
+        for (int boundary : boundaries) {
+            for (int i = -delta; i <= delta; i++) {
+                int size = boundary + i;
+                if (size > 0) {
+                    sizes.add(size);
+                }
+            }
+        }
+        int[] matrix = new int[sizes.size()];
+        for (int i = 0; i < sizes.size(); i++) {
+            matrix[i] = sizes.get(i);
+        }
+        return matrix;
+    }
+
+    private static void logReport(String report) {
+        String[] lines = report.split("\\R");
+        for (String line : lines) {
+            if (!line.isEmpty()) {
+                LOG.info(line);
+            }
+        }
+    }
+
+    private static ProbeStats measureSuccessfulProbeStats(IdentitySet<Object> set) {
+        Object[] elements = getElementsArray(set);
+        int mask = getMask(set);
+        Object deleted = getDeletedSentinel();
+        long total = 0L;
+        int max = 0;
+        int samples = 0;
+        for (Object element : elements) {
+            if (element == null || element == deleted) {
+                continue;
+            }
+            int probes = countLookupProbes(elements, mask, element);
+            total += probes;
+            max = Math.max(max, probes);
+            samples++;
+        }
+        return new ProbeStats(samples == 0 ? 0.0 : (double) total / samples, max);
+    }
+
+    private static ProbeStats measureMissProbeStats(IdentitySet<Object> set, int sampleCount, Random random) {
+        Object[] elements = getElementsArray(set);
+        int mask = getMask(set);
+        long total = 0L;
+        int max = 0;
+        for (int i = 0; i < sampleCount; i++) {
+            Object probe = (i & 1) == 0 ? random.nextLong() : getRandomString(random, 10, 30);
+            int probes = countLookupProbes(elements, mask, probe);
+            total += probes;
+            max = Math.max(max, probes);
+        }
+        return new ProbeStats((double) total / sampleCount, max);
+    }
+
+    private static int countLookupProbes(Object[] elements, int mask, Object key) {
+        int index = System.identityHashCode(key) & mask;
+        for (int probes = 1; probes <= elements.length; probes++) {
+            Object existing = elements[index];
+            if (existing == null || existing == key) {
+                return probes;
+            }
+            index = (index + 1) & mask;
+        }
+        return elements.length;
+    }
+
+    private static Field requireField(String name) {
+        Field field = IDENTITY_SET_FIELDS.get(name);
+        if (field == null) {
+            throw new AssertionError("Expected field not found: " + name);
+        }
+        return field;
+    }
+
+    private static Object[] getElementsArray(IdentitySet<Object> set) {
+        try {
+            return (Object[]) ELEMENTS_FIELD.get(set);
+        } catch (IllegalAccessException e) {
+            throw new AssertionError(e);
+        }
+    }
+
+    private static int getMask(IdentitySet<Object> set) {
+        try {
+            return MASK_FIELD.getInt(set);
+        } catch (IllegalAccessException e) {
+            throw new AssertionError(e);
+        }
+    }
+
+    private static Object getDeletedSentinel() {
+        try {
+            return DELETED_FIELD.get(null);
+        } catch (IllegalAccessException e) {
+            throw new AssertionError(e);
+        }
+    }
+
+    private static final class ProbeStats {
+        private final double averageProbes;
+        private final int maxProbes;
+
+        private ProbeStats(double averageProbes, int maxProbes) {
+            this.averageProbes = averageProbes;
+            this.maxProbes = maxProbes;
         }
     }
 }

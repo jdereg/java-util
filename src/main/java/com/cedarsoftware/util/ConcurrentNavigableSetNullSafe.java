@@ -34,6 +34,8 @@ public class ConcurrentNavigableSetNullSafe<E> extends AbstractSet<E> implements
 
     private final NavigableSet<Object> internalSet;
     private final Comparator<? super E> originalComparator;
+    private final Comparator<? super E> viewComparator;
+    private volatile boolean comparatorRejectsNulls;
     // Use a unique Object instance as sentinel - cannot collide with user data
     // and identity comparison (==) is used for detection
     private static final Object NULL_ELEMENT_SENTINEL = new Object();
@@ -45,6 +47,7 @@ public class ConcurrentNavigableSetNullSafe<E> extends AbstractSet<E> implements
     public ConcurrentNavigableSetNullSafe() {
         // Use natural ordering
         this.originalComparator = null;
+        this.viewComparator = null;
         Comparator<Object> comp = wrapComparator(null);
         this.internalSet = new ConcurrentSkipListSet<>(comp);
     }
@@ -57,6 +60,7 @@ public class ConcurrentNavigableSetNullSafe<E> extends AbstractSet<E> implements
      */
     public ConcurrentNavigableSetNullSafe(Comparator<? super E> comparator) {
         this.originalComparator = comparator;
+        this.viewComparator = comparator;
         Comparator<Object> comp = wrapComparator(comparator);
         this.internalSet = new ConcurrentSkipListSet<>(comp);
     }
@@ -70,6 +74,7 @@ public class ConcurrentNavigableSetNullSafe<E> extends AbstractSet<E> implements
     public ConcurrentNavigableSetNullSafe(Collection<? extends E> c) {
         // Use natural ordering
         this.originalComparator = null;
+        this.viewComparator = null;
         Comparator<Object> comp = wrapComparator(null);
         this.internalSet = new ConcurrentSkipListSet<>(comp);
         this.addAll(c); // Ensure masking of null elements
@@ -86,14 +91,16 @@ public class ConcurrentNavigableSetNullSafe<E> extends AbstractSet<E> implements
      */
     public ConcurrentNavigableSetNullSafe(Collection<? extends E> c, Comparator<? super E> comparator) {
         this.originalComparator = comparator;
+        this.viewComparator = comparator;
         Comparator<Object> comp = wrapComparator(comparator);
         this.internalSet = new ConcurrentSkipListSet<>(comp);
         this.addAll(c); // Ensure masking of null elements
     }
 
-    private ConcurrentNavigableSetNullSafe(NavigableSet<Object> internalSet, Comparator<? super E> comparator) {
+    private ConcurrentNavigableSetNullSafe(NavigableSet<Object> internalSet, Comparator<? super E> comparator, Comparator<? super E> viewComparator) {
         this.internalSet = internalSet;
         this.originalComparator = comparator;
+        this.viewComparator = viewComparator;
     }
     
     /**
@@ -145,11 +152,13 @@ public class ConcurrentNavigableSetNullSafe<E> extends AbstractSet<E> implements
                     // Both non-null - safe to use comparator directly
                     return comparator.compare(e1, e2);
                 }
-                // At least one null - try comparator, but catch NPE for comparators that don't handle nulls
-                try {
-                    return comparator.compare(e1, e2);
-                } catch (NullPointerException npe) {
-                    // User comparator doesn't handle nulls - fall through to default null handling
+                // At least one null - try comparator once unless known to reject nulls.
+                if (!comparatorRejectsNulls) {
+                    try {
+                        return comparator.compare(e1, e2);
+                    } catch (NullPointerException npe) {
+                        comparatorRejectsNulls = true;
+                    }
                 }
             }
 
@@ -171,7 +180,7 @@ public class ConcurrentNavigableSetNullSafe<E> extends AbstractSet<E> implements
 
     @Override
     public Comparator<? super E> comparator() {
-        return originalComparator;
+        return viewComparator;
     }
 
     // Implement NavigableSet methods
@@ -236,7 +245,7 @@ public class ConcurrentNavigableSetNullSafe<E> extends AbstractSet<E> implements
     @Override
     public NavigableSet<E> descendingSet() {
         NavigableSet<Object> descendingInternalSet = internalSet.descendingSet();
-        return new ConcurrentNavigableSetNullSafe<>(descendingInternalSet, originalComparator);
+        return new ConcurrentNavigableSetNullSafe<>(descendingInternalSet, originalComparator, createViewComparator(descendingInternalSet));
     }
 
     @Override
@@ -266,20 +275,20 @@ public class ConcurrentNavigableSetNullSafe<E> extends AbstractSet<E> implements
         Object maskedTo = maskNull(toElement);
 
         NavigableSet<Object> subInternal = internalSet.subSet(maskedFrom, fromInclusive, maskedTo, toInclusive);
-        return new ConcurrentNavigableSetNullSafe<>(subInternal, originalComparator);
+        return new ConcurrentNavigableSetNullSafe<>(subInternal, originalComparator, viewComparator);
     }
 
 
     @Override
     public NavigableSet<E> headSet(E toElement, boolean inclusive) {
         NavigableSet<Object> headInternal = internalSet.headSet(maskNull(toElement), inclusive);
-        return new ConcurrentNavigableSetNullSafe<>(headInternal, originalComparator);
+        return new ConcurrentNavigableSetNullSafe<>(headInternal, originalComparator, viewComparator);
     }
 
     @Override
     public NavigableSet<E> tailSet(E fromElement, boolean inclusive) {
         NavigableSet<Object> tailInternal = internalSet.tailSet(maskNull(fromElement), inclusive);
-        return new ConcurrentNavigableSetNullSafe<>(tailInternal, originalComparator);
+        return new ConcurrentNavigableSetNullSafe<>(tailInternal, originalComparator, viewComparator);
     }
 
     @Override
@@ -341,5 +350,14 @@ public class ConcurrentNavigableSetNullSafe<E> extends AbstractSet<E> implements
     @Override
     public void clear() {
         internalSet.clear();
+    }
+
+    @SuppressWarnings("unchecked")
+    private Comparator<? super E> createViewComparator(NavigableSet<Object> viewSet) {
+        Comparator<Object> comparator = (Comparator<Object>) viewSet.comparator();
+        if (comparator == null) {
+            return null;
+        }
+        return (a, b) -> comparator.compare(maskNull(a), maskNull(b));
     }
 }

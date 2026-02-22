@@ -438,6 +438,37 @@ class ConcurrentNavigableSetNullSafeTest {
     }
 
     @Test
+    void testDescendingSetComparatorNaturalOrdering() {
+        NavigableSet<String> set = new ConcurrentNavigableSetNullSafe<>();
+        set.add("apple");
+        set.add("banana");
+        set.add(null);
+
+        NavigableSet<String> descending = set.descendingSet();
+        Comparator<? super String> comparator = descending.comparator();
+
+        assertNotNull(comparator);
+        assertTrue(comparator.compare("apple", "banana") > 0, "Descending comparator should reverse natural order");
+        assertTrue(comparator.compare(null, "apple") < 0, "Descending comparator should sort null before non-null");
+    }
+
+    @Test
+    void testDescendingSetComparatorCustomOrdering() {
+        Comparator<String> lengthComparator = Comparator.comparingInt(s -> s == null ? 0 : s.length());
+        NavigableSet<String> set = new ConcurrentNavigableSetNullSafe<>(lengthComparator);
+        set.add("a");
+        set.add("bb");
+        set.add(null);
+
+        NavigableSet<String> descending = set.descendingSet();
+        Comparator<? super String> comparator = descending.comparator();
+
+        assertNotNull(comparator);
+        assertTrue(comparator.compare("a", "bb") > 0, "Descending comparator should reverse custom comparator order");
+        assertTrue(comparator.compare(null, "a") > 0, "Descending comparator should reverse custom null ordering");
+    }
+
+    @Test
     void testCustomComparatorWithNulls() {
         // Comparator that treats null as less than any other element
         Comparator<String> nullFirstComparator = (s1, s2) -> {

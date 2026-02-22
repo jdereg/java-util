@@ -407,7 +407,7 @@ public class CompactMap<K, V> implements Map<K, V> {
      * @return {@code true} if this map contains no key-value mappings; {@code false} otherwise
      */
     public boolean isEmpty() {
-        return val == EMPTY_MAP;
+        return size() == 0;
     }
 
     /**
@@ -811,6 +811,17 @@ public class CompactMap<K, V> implements Map<K, V> {
     }
 
     /**
+     * Returns {@code true} when iterator construction should normalize compact array ordering.
+     * Non-legacy CompactMap implementations maintain compact-array ordering during mutations.
+     */
+    private boolean shouldSortArrayForIteration() {
+        if (!getCachedLegacyConstructed()) {
+            return false;
+        }
+        return getNewMap() instanceof SortedMap;
+    }
+
+    /**
      * Checks if the compact array is already sorted according to the comparator.
      * This is an O(n) check that can avoid an unnecessary O(n log n) sort.
      *
@@ -1102,6 +1113,11 @@ public class CompactMap<K, V> implements Map<K, V> {
             return null;
         }
 
+        if (map.isEmpty()) {
+            val = EMPTY_MAP;
+            return save;
+        }
+
         if (map.size() == compactSize()) {   // Transition back to Object[]
             Object[] entries = new Object[compactSize() * 2];
             int idx = 0;
@@ -1132,9 +1148,30 @@ public class CompactMap<K, V> implements Map<K, V> {
             return;
         }
 
-        int targetSize = size() + map.size();
+        int currentSize = size();
+        int compactThreshold = compactSize();
+        int maxTargetSize = currentSize + map.size();
 
-        if (targetSize > compactSize()) {
+        // Avoid forcing MAP state when incoming entries mostly overwrite existing keys.
+        if (maxTargetSize > compactThreshold && !(val instanceof Map)) {
+            int newKeyCount = 0;
+            for (Entry<? extends K, ? extends V> entry : map.entrySet()) {
+                if (!containsKey(entry.getKey())) {
+                    newKeyCount++;
+                    if (currentSize + newKeyCount > compactThreshold) {
+                        break;
+                    }
+                }
+            }
+            if (currentSize + newKeyCount <= compactThreshold) {
+                for (Entry<? extends K, ? extends V> entry : map.entrySet()) {
+                    put(entry.getKey(), entry.getValue());
+                }
+                return;
+            }
+        }
+
+        if (maxTargetSize > compactThreshold) {
             Map<K, V> backingMap;
             if (val instanceof Map) {
                 backingMap = (Map<K, V>) val;
@@ -1234,31 +1271,7 @@ public class CompactMap<K, V> implements Map<K, V> {
 
         if (val instanceof Object[]) {   // 2 to compactSize
             Object[] entries = (Object[]) val;
-            int len = entries.length;
-            for (Entry<?, ?> entry : other.entrySet()) {
-                final Object thatKey = entry.getKey();
-                // Single scan: find key and retrieve value in one pass
-                boolean found = false;
-                for (int i = 0; i < len; i += 2) {
-                    if (areKeysEqual(thatKey, entries[i])) {
-                        Object thisValue = entries[i + 1];
-                        Object thatValue = entry.getValue();
-                        if (thatValue == null || thisValue == null) {
-                            if (thatValue != thisValue) {
-                                return false;
-                            }
-                        } else if (!thisValue.equals(thatValue)) {
-                            return false;
-                        }
-                        found = true;
-                        break;
-                    }
-                }
-                if (!found) {
-                    return false;
-                }
-            }
-            return true;
+            return equalsArrayState(other, entries);
         } else if (val instanceof Map) {   // > compactSize
             Map<K, V> map = (Map<K, V>) val;
             return map.equals(other);
@@ -1268,6 +1281,40 @@ public class CompactMap<K, V> implements Map<K, V> {
 
         // size == 1
         return entrySet().equals(other.entrySet());
+    }
+
+    private boolean equalsArrayState(Map<?, ?> other, Object[] entries) {
+        if (isCaseInsensitive()) {
+            CaseInsensitiveMap<Object, Object> normalized = new CaseInsensitiveMap<>();
+            for (Entry<?, ?> entry : other.entrySet()) {
+                Object key = entry.getKey();
+                if (normalized.containsKey(key)) {
+                    return false;
+                }
+                normalized.put(key, entry.getValue());
+            }
+            if (normalized.size() != (entries.length >> 1)) {
+                return false;
+            }
+            return entriesEqual(normalized, entries);
+        }
+        return entriesEqual(other, entries);
+    }
+
+    private boolean entriesEqual(Map<?, ?> other, Object[] entries) {
+        for (int i = 0; i < entries.length; i += 2) {
+            Object thisKey = entries[i];
+            Object thisValue = entries[i + 1];
+            Object thatValue = other.get(thisKey);
+            if (thisValue == null) {
+                if (thatValue != null || !other.containsKey(thisKey)) {
+                    return false;
+                }
+            } else if (!thisValue.equals(thatValue)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /**
@@ -1876,7 +1923,9 @@ public class CompactMap<K, V> implements Map<K, V> {
             index = -1;
 
             if (val instanceof Object[]) {   // State 3: 2 to compactSize
-                sortCompactArray((Object[]) val);
+                if (shouldSortArrayForIteration()) {
+                    sortCompactArray((Object[]) val);
+                }
             } else if (val instanceof Map) {   // State 4: > compactSize
                 mapIterator = ((Map<K, V>) val).entrySet().iterator();
             } else if (val == EMPTY_MAP) {   // State 1: empty
@@ -1928,7 +1977,10 @@ public class CompactMap<K, V> implements Map<K, V> {
                 mapIterator.remove();
                 modCount++;
                 int newSize = expectedSize - 1;
-                if (newSize <= compactSize()) {
+                if (newSize == 0) {
+                    mapIterator = null;
+                    val = EMPTY_MAP;
+                } else if (newSize <= compactSize()) {
                     // Transition from Map to compact array.
                     // The mapIterator.remove() already removed the entry from the map properly.
                     // Now build the array from the remaining map entries.

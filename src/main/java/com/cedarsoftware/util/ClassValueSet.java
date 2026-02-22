@@ -115,6 +115,8 @@ public class ClassValueSet extends AbstractSet<Class<?>> {
     // ClassValue for fast contains checks
     // Volatile reference allows clear() to atomically replace the entire cache instance.
     private volatile ClassValue<Boolean> membershipCache = createMembershipCache();
+    // Cached unmodifiable view to avoid repeated wrapper allocations.
+    private volatile Set<Class<?>> unmodifiableView;
 
     private ClassValue<Boolean> createMembershipCache() {
         return new ClassValue<Boolean>() {
@@ -263,6 +265,17 @@ public class ClassValueSet extends AbstractSet<Class<?>> {
     public boolean retainAll(Collection<?> c) {
         Objects.requireNonNull(c, "Collection cannot be null");
 
+        if (c == this) {
+            return false;
+        }
+        if (c.isEmpty()) {
+            if (isEmpty()) {
+                return false;
+            }
+            clear();
+            return true;
+        }
+
         boolean modified = false;
 
         // Handle null element specially
@@ -276,6 +289,72 @@ public class ClassValueSet extends AbstractSet<Class<?>> {
         while (iterator.hasNext()) {
             Class<?> cls = iterator.next();
             if (!c.contains(cls)) {
+                iterator.remove();
+                membershipCache.remove(cls);
+                modified = true;
+            }
+        }
+
+        return modified;
+    }
+
+    @Override
+    public boolean removeAll(Collection<?> c) {
+        Objects.requireNonNull(c, "Collection cannot be null");
+
+        if (c.isEmpty()) {
+            return false;
+        }
+        if (c == this) {
+            if (isEmpty()) {
+                return false;
+            }
+            clear();
+            return true;
+        }
+
+        boolean modified = false;
+
+        if (containsNull.get() && c.contains(null)) {
+            containsNull.set(false);
+            modified = true;
+        }
+
+        if (backingSet.isEmpty()) {
+            return modified;
+        }
+
+        if (c instanceof ClassValueSet) {
+            ClassValueSet other = (ClassValueSet) c;
+            Iterator<Class<?>> iterator = backingSet.iterator();
+            while (iterator.hasNext()) {
+                Class<?> cls = iterator.next();
+                if (other.contains(cls)) {
+                    iterator.remove();
+                    membershipCache.remove(cls);
+                    modified = true;
+                }
+            }
+            return modified;
+        }
+
+        if (c.size() < backingSet.size()) {
+            for (Object o : c) {
+                if (o != null && o.getClass() == Class.class) {
+                    Class<?> cls = (Class<?>) o;
+                    if (backingSet.remove(cls)) {
+                        membershipCache.remove(cls);
+                        modified = true;
+                    }
+                }
+            }
+            return modified;
+        }
+
+        Iterator<Class<?>> iterator = backingSet.iterator();
+        while (iterator.hasNext()) {
+            Class<?> cls = iterator.next();
+            if (c.contains(cls)) {
                 iterator.remove();
                 membershipCache.remove(cls);
                 modified = true;
@@ -382,9 +461,13 @@ public class ClassValueSet extends AbstractSet<Class<?>> {
      * @return an unmodifiable view of this set with preserved performance characteristics
      */
     public Set<Class<?>> unmodifiableView() {
-        final ClassValueSet thisSet = this;
+        Set<Class<?>> cached = unmodifiableView;
+        if (cached != null) {
+            return cached;
+        }
 
-        return new AbstractSet<Class<?>>() {
+        final ClassValueSet thisSet = this;
+        Set<Class<?>> view = new AbstractSet<Class<?>>() {
             @Override
             public Iterator<Class<?>> iterator() {
                 final Iterator<Class<?>> originalIterator = thisSet.iterator();
@@ -483,5 +566,8 @@ public class ClassValueSet extends AbstractSet<Class<?>> {
                 return this == obj || thisSet.equals(obj);
             }
         };
+
+        unmodifiableView = view;
+        return view;
     }
 }

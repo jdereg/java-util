@@ -25,6 +25,35 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class CompactMapEqualsRedundantEntrySetTest {
 
+    private static class EntrySetCountingMap<K, V> extends HashMap<K, V> {
+        private int entrySetCalls;
+
+        @Override
+        public Set<Map.Entry<K, V>> entrySet() {
+            entrySetCalls++;
+            return super.entrySet();
+        }
+
+        int getEntrySetCalls() {
+            return entrySetCalls;
+        }
+    }
+
+    private static final class CountingComparable implements Comparable<CountingComparable> {
+        private static final AtomicInteger COMPARE_COUNT = new AtomicInteger();
+        private final int value;
+
+        private CountingComparable(int value) {
+            this.value = value;
+        }
+
+        @Override
+        public int compareTo(CountingComparable other) {
+            COMPARE_COUNT.incrementAndGet();
+            return Integer.compare(this.value, other.value);
+        }
+    }
+
     /**
      * Tracks how many times entrySet() is called during equals().
      * For the compact array path, entrySet() should NOT be called at all
@@ -120,6 +149,44 @@ class CompactMapEqualsRedundantEntrySetTest {
         other.put("b", "2");
 
         assertTrue(map.equals(other), "Maps with null values should be equal");
+    }
+
+    @Test
+    void testEqualsOnCompactArrayDoesNotIterateOtherEntrySet_caseSensitive() {
+        CompactMap<String, String> map = CompactMap.<String, String>builder()
+                .caseSensitive(true)
+                .compactSize(10)
+                .build();
+        map.put("a", "1");
+        map.put("b", "2");
+        map.put("c", "3");
+
+        EntrySetCountingMap<String, String> other = new EntrySetCountingMap<>();
+        other.put("a", "1");
+        other.put("b", "2");
+        other.put("c", "3");
+
+        assertTrue(map.equals(other));
+        assertEquals(0, other.getEntrySetCalls(),
+                "Case-sensitive compact-array equals() should use direct keyed lookups, not entrySet iteration.");
+    }
+
+    @Test
+    void testSortedCompactArrayIteratorDoesNotResortForTemplateMaps() {
+        CompactMap<CountingComparable, String> map = CompactMap.<CountingComparable, String>builder()
+                .sortedOrder()
+                .compactSize(10)
+                .build();
+        map.put(new CountingComparable(1), "a");
+        map.put(new CountingComparable(2), "b");
+        map.put(new CountingComparable(3), "c");
+        map.put(new CountingComparable(4), "d");
+        assertEquals(CompactMap.LogicalValueType.ARRAY, map.getLogicalValueType());
+
+        CountingComparable.COMPARE_COUNT.set(0);
+        map.entrySet().iterator();
+        assertEquals(0, CountingComparable.COMPARE_COUNT.get(),
+                "Iterator creation should not re-run sortedness comparisons for non-legacy compact arrays.");
     }
 
     /**

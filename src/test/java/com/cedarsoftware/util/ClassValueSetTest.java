@@ -211,6 +211,51 @@ class ClassValueSetTest {
         assertEquals(1, resultArray.length);
         assertNull(resultArray[0]);
     }
+
+    @Test
+    void testRetainAllFastPaths() {
+        ClassValueSet set = new ClassValueSet();
+        set.add(String.class);
+        set.add(Integer.class);
+        set.add(null);
+
+        assertFalse(set.retainAll(set));
+        assertEquals(3, set.size());
+        assertTrue(set.contains(String.class));
+        assertTrue(set.contains(Integer.class));
+        assertTrue(set.contains(null));
+
+        assertTrue(set.retainAll(Collections.emptySet()));
+        assertTrue(set.isEmpty());
+        assertFalse(set.contains(String.class));
+        assertFalse(set.contains(Integer.class));
+        assertFalse(set.contains(null));
+
+        assertFalse(set.retainAll(Collections.emptySet()));
+    }
+
+    @Test
+    void testRemoveAllFastPaths() {
+        ClassValueSet set = new ClassValueSet();
+        set.add(String.class);
+        set.add(Integer.class);
+        set.add(null);
+
+        ClassValueSet toRemove = new ClassValueSet();
+        toRemove.add(Integer.class);
+        toRemove.add(null);
+        toRemove.add(Double.class);
+
+        assertTrue(set.removeAll(toRemove));
+        assertEquals(1, set.size());
+        assertTrue(set.contains(String.class));
+        assertFalse(set.contains(Integer.class));
+        assertFalse(set.contains(null));
+
+        assertTrue(set.removeAll(set));
+        assertTrue(set.isEmpty());
+        assertFalse(set.removeAll(set));
+    }
     
     @Test
     void testWithNonClassElements() {
@@ -698,6 +743,15 @@ class ClassValueSetTest {
         // For comparison, standard unmodifiable view
         Set<Class<?>> standardUnmodifiable = Collections.unmodifiableSet(performanceTest);
         assertTrue(standardUnmodifiable.contains(String.class));
+    }
+
+    @Test
+    void testUnmodifiableViewIsCached() {
+        ClassValueSet set = new ClassValueSet();
+        Set<Class<?>> view1 = set.unmodifiableView();
+        Set<Class<?>> view2 = set.unmodifiableView();
+
+        assertSame(view1, view2);
     }
 
     @Test

@@ -489,7 +489,7 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
      *
      * @param start inclusive start of the range to remove
      * @param end   exclusive end of the range to remove
-     * @throws IllegalArgumentException if {@code end <= start}
+     * If {@code end <= start}, this method performs no operation.
      */
     public void removeRange(T start, T end) {
         Objects.requireNonNull(start, "start");
@@ -794,8 +794,12 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
         lock.lock();
         try {
             NavigableMap<T, T> subMap = intervals.subMap(fromKey, true, toKey, true);
-            int count = subMap.size();
-            subMap.clear();
+            int count = 0;
+            for (Iterator<Map.Entry<T, T>> it = subMap.entrySet().iterator(); it.hasNext(); ) {
+                it.next();
+                it.remove();
+                count++;
+            }
             return count;
         } finally {
             lock.unlock();
@@ -905,7 +909,7 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
      * @return the sum of all interval durations
      * @throws UnsupportedOperationException if no default mapping for type T
      * @throws DateTimeException             if Temporal type does not support Duration.between
-     * @throws ArithmeticException           if numeric computation overflows long
+     * @throws ArithmeticException           if numeric/date-time subtraction overflows long
      */
     public Duration totalDuration() {
         return totalDuration(this::defaultToDuration);
@@ -915,12 +919,12 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
         if (start instanceof Temporal && end instanceof Temporal) {
             return Duration.between((Temporal) start, (Temporal) end);
         } else if (start instanceof Number && end instanceof Number) {
-            long diff = ((Number) end).longValue() - ((Number) start).longValue();
+            long diff = Math.subtractExact(((Number) end).longValue(), ((Number) start).longValue());
             return Duration.ofNanos(diff);
         } else if (start instanceof Date && end instanceof Date) {
             long startMillis = ((Date) start).getTime();
             long endMillis = ((Date) end).getTime();
-            return Duration.ofMillis(endMillis - startMillis);
+            return Duration.ofMillis(Math.subtractExact(endMillis, startMillis));
         } else if (start instanceof Character && end instanceof Character) {
             int diff = ((Character) end) - ((Character) start);
             return Duration.ofNanos(diff); // Arbitrary unit for character ranges
@@ -1014,27 +1018,33 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
      * @return a new IntervalSet containing intersecting intervals
      */
     public IntervalSet<T> intersection(IntervalSet<T> other) {
+        Objects.requireNonNull(other, "other");
         IntervalSet<T> result = new IntervalSet<>();
-        Iterator<Interval<T>> it1 = iterator();
-        Iterator<Interval<T>> it2 = other.iterator();
-        Interval<T> a = it1.hasNext() ? it1.next() : null;
-        Interval<T> b = it2.hasNext() ? it2.next() : null;
+        Iterator<Map.Entry<T, T>> it1 = intervals.entrySet().iterator();
+        Iterator<Map.Entry<T, T>> it2 = other.intervals.entrySet().iterator();
+        Map.Entry<T, T> a = it1.hasNext() ? it1.next() : null;
+        Map.Entry<T, T> b = it2.hasNext() ? it2.next() : null;
 
         while (a != null && b != null) {
-            if (a.getEnd().compareTo(b.getStart()) <= 0) {
+            T aStart = a.getKey();
+            T aEnd = a.getValue();
+            T bStart = b.getKey();
+            T bEnd = b.getValue();
+
+            if (aEnd.compareTo(bStart) <= 0) {
                 a = it1.hasNext() ? it1.next() : null;
                 continue;
             }
-            if (b.getEnd().compareTo(a.getStart()) <= 0) {
+            if (bEnd.compareTo(aStart) <= 0) {
                 b = it2.hasNext() ? it2.next() : null;
                 continue;
             }
-            T maxStart = greaterOf(a.getStart(), b.getStart());
-            T minEnd = a.getEnd().compareTo(b.getEnd()) <= 0 ? a.getEnd() : b.getEnd();
+            T maxStart = greaterOf(aStart, bStart);
+            T minEnd = aEnd.compareTo(bEnd) <= 0 ? aEnd : bEnd;
             if (maxStart.compareTo(minEnd) < 0) {
                 result.add(maxStart, minEnd);
             }
-            if (a.getEnd().compareTo(b.getEnd()) <= 0) {
+            if (aEnd.compareTo(bEnd) <= 0) {
                 a = it1.hasNext() ? it1.next() : null;
             } else {
                 b = it2.hasNext() ? it2.next() : null;
@@ -1085,17 +1095,23 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
      * @throws NullPointerException if other is null
      */
     public boolean intersects(IntervalSet<T> other) {
-        Iterator<Interval<T>> it1 = iterator();
-        Iterator<Interval<T>> it2 = other.iterator();
-        Interval<T> a = it1.hasNext() ? it1.next() : null;
-        Interval<T> b = it2.hasNext() ? it2.next() : null;
+        Objects.requireNonNull(other, "other");
+        Iterator<Map.Entry<T, T>> it1 = intervals.entrySet().iterator();
+        Iterator<Map.Entry<T, T>> it2 = other.intervals.entrySet().iterator();
+        Map.Entry<T, T> a = it1.hasNext() ? it1.next() : null;
+        Map.Entry<T, T> b = it2.hasNext() ? it2.next() : null;
 
         while (a != null && b != null) {
-            if (a.getEnd().compareTo(b.getStart()) <= 0) {
+            T aStart = a.getKey();
+            T aEnd = a.getValue();
+            T bStart = b.getKey();
+            T bEnd = b.getValue();
+
+            if (aEnd.compareTo(bStart) <= 0) {
                 a = it1.hasNext() ? it1.next() : null;
                 continue;
             }
-            if (b.getEnd().compareTo(a.getStart()) <= 0) {
+            if (bEnd.compareTo(aStart) <= 0) {
                 b = it2.hasNext() ? it2.next() : null;
                 continue;
             }

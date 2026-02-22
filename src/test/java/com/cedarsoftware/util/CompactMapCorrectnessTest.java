@@ -193,4 +193,61 @@ class CompactMapCorrectnessTest {
             };
         });
     }
+
+    @Test
+    void testMapBackedRemovalsToZeroRestoreEmptyState() {
+        CompactMap<String, Integer> map = CompactMap.<String, Integer>builder()
+                .compactSize(2)
+                .build();
+
+        map.put("a", 1);
+        map.put("b", 2);
+        map.put("c", 3); // MAP state
+        assertEquals(CompactMap.LogicalValueType.MAP, map.getLogicalValueType());
+
+        map.remove("a");
+        map.remove("b");
+        map.remove("c");
+
+        assertEquals(0, map.size());
+        assertTrue(map.isEmpty());
+        assertEquals(CompactMap.LogicalValueType.EMPTY, map.getLogicalValueType());
+    }
+
+    @Test
+    void testIteratorRemoveToZeroRestoresEmptyState() {
+        CompactMap<String, Integer> map = CompactMap.<String, Integer>builder()
+                .compactSize(2)
+                .build();
+
+        map.put("a", 1);
+        map.put("b", 2);
+        map.put("c", 3); // MAP state
+        assertEquals(CompactMap.LogicalValueType.MAP, map.getLogicalValueType());
+
+        java.util.Iterator<Map.Entry<String, Integer>> it = map.entrySet().iterator();
+        while (it.hasNext()) {
+            it.next();
+            it.remove();
+        }
+
+        assertEquals(0, map.size());
+        assertTrue(map.isEmpty());
+        assertEquals(CompactMap.LogicalValueType.EMPTY, map.getLogicalValueType());
+    }
+
+    @Test
+    void testCaseInsensitiveEqualsRejectsDuplicateEquivalentKeys() {
+        CompactMap<String, Integer> map = CompactMap.<String, Integer>builder()
+                .caseSensitive(false)
+                .build();
+        map.put("id", 1);
+        map.put("name", 2);
+
+        Map<String, Integer> other = new HashMap<>();
+        other.put("ID", 1);
+        other.put("id", 1);
+
+        assertFalse(map.equals(other));
+    }
 }

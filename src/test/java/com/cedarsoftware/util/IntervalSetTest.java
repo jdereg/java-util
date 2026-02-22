@@ -1557,6 +1557,20 @@ class IntervalSetTest {
     }
 
     @Test
+    void testDefaultTotalDurationNumericOverflowThrows() {
+        IntervalSet<Long> set = new IntervalSet<>();
+        set.add(Long.MIN_VALUE, Long.MAX_VALUE);
+        assertThrows(ArithmeticException.class, set::totalDuration);
+    }
+
+    @Test
+    void testDefaultTotalDurationDateOverflowThrows() {
+        IntervalSet<Date> set = new IntervalSet<>();
+        set.add(new Date(Long.MIN_VALUE), new Date(Long.MAX_VALUE));
+        assertThrows(ArithmeticException.class, set::totalDuration);
+    }
+
+    @Test
     void testDefaultTotalDurationUnsupportedType() {
         IntervalSet<String> set = new IntervalSet<>();
         set.add("a", "z");
@@ -1610,6 +1624,12 @@ class IntervalSetTest {
     }
 
     @Test
+    void testIntersectionNullThrows() {
+        IntervalSet<Integer> set = new IntervalSet<>();
+        assertThrows(NullPointerException.class, () -> set.intersection(null));
+    }
+
+    @Test
     void testDifference() {
         IntervalSet<Integer> set1 = new IntervalSet<>();
         set1.add(1, 10);
@@ -1641,6 +1661,12 @@ class IntervalSetTest {
         IntervalSet<Integer> set3 = new IntervalSet<>();
         set3.add(20, 25);
         assertFalse(set1.intersects(set3)); // no overlap
+    }
+
+    @Test
+    void testIntersectsNullThrows() {
+        IntervalSet<Integer> set = new IntervalSet<>();
+        assertThrows(NullPointerException.class, () -> set.intersects(null));
     }
 
     @Test

@@ -14,7 +14,7 @@ import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 /**
  * Performance comparison between Cedar's MultiKeyMap and Apache Commons Collections' MultiKeyMap.
  * Tests various key counts (1-8) and data sizes (100-250,000).
- * 
+ * <p>
  * This test ensures fair comparison by:
  * 1. Warming up the JIT compiler
  * 2. Running tests in randomized order
@@ -22,7 +22,7 @@ import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
  * 4. Measuring both put and get operations
  * 5. Running multiple iterations and averaging results
  */
-public class MultiKeyMapPerformanceComparisonTest {
+class MultiKeyMapPerformanceComparisonTest {
     
     private static final Logger LOG = Logger.getLogger(MultiKeyMapPerformanceComparisonTest.class.getName());
     
@@ -76,7 +76,7 @@ public class MultiKeyMapPerformanceComparisonTest {
         }
     }
 
-//    @EnabledIfSystemProperty(named = "performRelease", matches = "true")
+    @EnabledIfSystemProperty(named = "performRelease", matches = "true")
     @Test
     void comparePerformance() {
         LOG.info("=== Cedar vs Apache MultiKeyMap Performance Comparison ===");
@@ -136,11 +136,11 @@ public class MultiKeyMapPerformanceComparisonTest {
                 for (Object[] key : keys) {
                     if (keyCount == 1) {
                         // For single key, create a MultiKey with one element array
-                        apacheMap.put(new MultiKey<Object>(new Object[]{key[0]}), "value");
-                        apacheMap.get(new MultiKey<Object>(new Object[]{key[0]}));
+                        apacheMap.put(new MultiKey<>(new Object[]{key[0]}), "value");
+                        apacheMap.get(new MultiKey<>(new Object[]{key[0]}));
                     } else {
-                        apacheMap.put(new MultiKey<Object>(key), "value");
-                        apacheMap.get(new MultiKey<Object>(key));
+                        apacheMap.put(new MultiKey<>(key), "value");
+                        apacheMap.get(new MultiKey<>(key));
                     }
                 }
             }
@@ -240,12 +240,12 @@ public class MultiKeyMapPerformanceComparisonTest {
             if (config.keyCount == 1) {
                 // Apache MultiKeyMap with single key
                 for (int i = 0; i < keys.length; i++) {
-                    map.put(new MultiKey<Object>(new Object[]{keys[i][0]}), values[i]);
+                    map.put(new MultiKey<>(new Object[]{keys[i][0]}), values[i]);
                 }
             } else {
                 // Apache MultiKeyMap with multiple keys
                 for (int i = 0; i < keys.length; i++) {
-                    map.put(new MultiKey<Object>(keys[i]), values[i]);
+                    map.put(new MultiKey<>(keys[i]), values[i]);
                 }
             }
             long putEnd = System.nanoTime();
@@ -255,11 +255,11 @@ public class MultiKeyMapPerformanceComparisonTest {
             long getStart = System.nanoTime();
             if (config.keyCount == 1) {
                 for (Object[] key : keys) {
-                    map.get(new MultiKey<Object>(new Object[]{key[0]}));
+                    map.get(new MultiKey<>(new Object[]{key[0]}));
                 }
             } else {
                 for (Object[] key : keys) {
-                    map.get(new MultiKey<Object>(key));
+                    map.get(new MultiKey<>(key));
                 }
             }
             long getEnd = System.nanoTime();
@@ -282,13 +282,13 @@ public class MultiKeyMapPerformanceComparisonTest {
                         keys[i][j] = "key" + i + "_" + j;
                         break;
                     case 1:
-                        keys[i][j] = Integer.valueOf(i * 1000 + j);
+                        keys[i][j] = i * 1000 + j;
                         break;
                     case 2:
-                        keys[i][j] = Long.valueOf(i * 1000000L + j);
+                        keys[i][j] = i * 1000000L + j;
                         break;
                     case 3:
-                        keys[i][j] = Double.valueOf(i + j / 10.0);
+                        keys[i][j] = i + j / 10.0;
                         break;
                 }
             }

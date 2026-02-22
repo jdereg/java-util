@@ -211,13 +211,45 @@ public class CompactSet<E> implements Set<E> {
 
     @Override
     public boolean equals(Object o) {
-        if (o == this) { return true; }
+        if (o == this) {
+            return true;
+        }
+        if (!(o instanceof Set)) {
+            return false;
+        }
+        Set<?> other = (Set<?>) o;
+        if (other.size() != size()) {
+            return false;
+        }
+
+        // Case-insensitive sets need mutual containment to keep equality symmetric
+        // against standard case-sensitive Set implementations.
+        if (!isCaseSensitiveConfigured()) {
+            try {
+                return containsAll(other) && other.containsAll(this);
+            } catch (ClassCastException | NullPointerException e) {
+                return false;
+            }
+        }
+
         return map.keySet().equals(o);
     }
 
     @Override
     public int hashCode() {
-        return map.keySet().hashCode();
+        if (isCaseSensitiveConfigured()) {
+            return map.keySet().hashCode();
+        }
+
+        int h = 0;
+        for (E element : this) {
+            if (element instanceof String) {
+                h += StringUtilities.hashCodeIgnoreCase((String) element);
+            } else if (element != null) {
+                h += element.hashCode();
+            }
+        }
+        return h;
     }
 
     @Override
@@ -400,6 +432,16 @@ public class CompactSet<E> implements Set<E> {
         // Apply the determined ordering
         applyOrdering(builder, orderingToUse);
 
+        // Preserve backing map type unless ordering explicitly changed.
+        // Changing ordering should allow builder defaults for that ordering.
+        boolean orderingChanged = configOrdering != null && !configOrdering.equals(currentOrdering);
+        if (!orderingChanged) {
+            Class<? extends Map> currentMapType = (Class<? extends Map>) currentConfig.get(CompactMap.MAP_TYPE);
+            if (currentMapType != null) {
+                builder.mapType(currentMapType);
+            }
+        }
+
         // Build and populate the new set
         CompactSet<E> newSet = builder.build();
         newSet.addAll(this);
@@ -425,5 +467,9 @@ public class CompactSet<E> implements Set<E> {
             default:
                 builder.noOrder();
         }
+    }
+
+    private boolean isCaseSensitiveConfigured() {
+        return Boolean.TRUE.equals(map.getConfig().get(CompactMap.CASE_SENSITIVE));
     }
 }

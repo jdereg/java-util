@@ -1,5 +1,6 @@
 package com.cedarsoftware.util;
 
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -9,6 +10,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Logger;
 
 import com.cedarsoftware.io.JsonIo;
@@ -664,6 +666,41 @@ class CompactSetTest
     }
 
     @Test
+    void testWithConfigPreservesBackingMapType() throws Exception {
+        CompactSet<String> originalSet = CompactSet.<String>builder()
+                .mapType(ConcurrentHashMap.class)
+                .build();
+        originalSet.add("apple");
+
+        CompactSet<String> newSet = originalSet.withConfig(new HashMap<>());
+
+        assertEquals(ConcurrentHashMap.class, getBackingMapType(originalSet));
+        assertEquals(ConcurrentHashMap.class, getBackingMapType(newSet));
+    }
+
+    @Test
+    void testCaseInsensitiveEqualsAndHashCodeContract() {
+        CompactSet<String> ciSet1 = CompactSet.<String>builder()
+                .caseSensitive(false)
+                .build();
+        ciSet1.add("Foo");
+
+        CompactSet<String> ciSet2 = CompactSet.<String>builder()
+                .caseSensitive(false)
+                .build();
+        ciSet2.add("foo");
+
+        assertEquals(ciSet1, ciSet2);
+        assertEquals(ciSet1.hashCode(), ciSet2.hashCode());
+
+        Set<String> regularSet = new HashSet<>();
+        regularSet.add("foo");
+
+        assertFalse(ciSet1.equals(regularSet));
+        assertFalse(regularSet.equals(ciSet1));
+    }
+
+    @Test
     void testWithConfigPartial() {
         // Create a CompactSet with specific configuration
         CompactSet<String> originalSet = CompactSet.<String>builder()
@@ -957,5 +994,12 @@ class CompactSetTest
             i.remove();
         }
         assert set.isEmpty();
+    }
+
+    private Class<?> getBackingMapType(CompactSet<?> set) throws Exception {
+        Field mapField = CompactSet.class.getDeclaredField("map");
+        mapField.setAccessible(true);
+        CompactMap<?, ?> compactMap = (CompactMap<?, ?>) mapField.get(set);
+        return (Class<?>) compactMap.getConfig().get(CompactMap.MAP_TYPE);
     }
 }

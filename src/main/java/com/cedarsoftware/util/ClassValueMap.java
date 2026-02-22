@@ -364,6 +364,9 @@ public class ClassValueMap<V> extends AbstractMap<Class<?>, V> implements Concur
 
                 return new Iterator<Entry<Class<?>, V>>() {
                     private boolean nullEntryReturned = !hasNullEntry;
+                    private boolean removeAllowed;
+                    private boolean lastReturnedNullEntry;
+                    private Class<?> lastReturnedClassKey;
 
                     @Override
                     public boolean hasNext() {
@@ -374,15 +377,30 @@ public class ClassValueMap<V> extends AbstractMap<Class<?>, V> implements Concur
                     public Entry<Class<?>, V> next() {
                         if (!nullEntryReturned) {
                             nullEntryReturned = true;
+                            removeAllowed = true;
+                            lastReturnedNullEntry = true;
+                            lastReturnedClassKey = null;
                             return new SimpleImmutableEntry<>(null, nullValue);
                         }
                         Entry<Class<?>, Object> entry = backingIterator.next();
+                        removeAllowed = true;
+                        lastReturnedNullEntry = false;
+                        lastReturnedClassKey = entry.getKey();
                         return new SimpleImmutableEntry<>(entry.getKey(), unmaskNull(entry.getValue()));
                     }
 
                     @Override
                     public void remove() {
-                        throw new UnsupportedOperationException("Removal not supported via iterator.");
+                        if (!removeAllowed) {
+                            throw new IllegalStateException("next() must be called before remove()");
+                        }
+                        removeAllowed = false;
+                        if (lastReturnedNullEntry) {
+                            nullKeyStore.set(NO_NULL_KEY_MAPPING);
+                        } else {
+                            backingIterator.remove();
+                            cache.remove(lastReturnedClassKey);
+                        }
                     }
                 };
             }
@@ -402,27 +420,34 @@ public class ClassValueMap<V> extends AbstractMap<Class<?>, V> implements Concur
     @Override
     public V putIfAbsent(Class<?> key, V value) {
         if (key == null) {
-            // Atomic putIfAbsent using single CAS - no race conditions
             Object masked = maskNullKeyValue(value);
             while (true) {
                 Object current = nullKeyStore.get();
-                if (current != NO_NULL_KEY_MAPPING) {
-                    // Mapping exists, return current value
+                // Per Map spec, null-mapped key should be treated as absent.
+                if (current != NO_NULL_KEY_MAPPING && current != NULL_FOR_NULL_KEY) {
                     return unmaskNullKeyValue(current);
                 }
-                // No mapping, try to add
-                if (nullKeyStore.compareAndSet(NO_NULL_KEY_MAPPING, masked)) {
-                    return null;  // Successfully added
+                if (nullKeyStore.compareAndSet(current, masked)) {
+                    return null;
                 }
-                // CAS failed, retry (another thread added a mapping)
             }
         }
-        Object prev = backingMap.putIfAbsent(key, maskNull(value));
-        if (prev == null) {
-            // Only invalidate cache if insertion actually occurred
-            cache.remove(key);
+        // Per Map spec, null-mapped key should be treated as absent.
+        final Object masked = maskNull(value);
+        while (true) {
+            Object current = backingMap.putIfAbsent(key, masked);
+            if (current == null) {
+                cache.remove(key);
+                return null;
+            }
+            if (current != NULL_VALUE) {
+                return unmaskNull(current);
+            }
+            if (backingMap.replace(key, NULL_VALUE, masked)) {
+                cache.remove(key);
+                return null;
+            }
         }
-        return unmaskNull(prev);
     }
 
     /**
@@ -616,13 +641,16 @@ public class ClassValueMap<V> extends AbstractMap<Class<?>, V> implements Concur
         vs = new AbstractCollection<V>() {
             @Override
             public Iterator<V> iterator() {
-                final Iterator<Object> backingIterator = backingMap.values().iterator();
+                final Iterator<Entry<Class<?>, Object>> backingIterator = backingMap.entrySet().iterator();
                 final Object nullKeyStored = nullKeyStore.get();
                 final boolean hasNullEntry = nullKeyStored != NO_NULL_KEY_MAPPING;
                 final V nullValue = hasNullEntry ? unmaskNullKeyValue(nullKeyStored) : null;
 
                 return new Iterator<V>() {
                     private boolean nullReturned = !hasNullEntry;
+                    private boolean removeAllowed;
+                    private boolean lastReturnedNullEntry;
+                    private Class<?> lastReturnedClassKey;
 
                     @Override
                     public boolean hasNext() {
@@ -633,9 +661,30 @@ public class ClassValueMap<V> extends AbstractMap<Class<?>, V> implements Concur
                     public V next() {
                         if (!nullReturned) {
                             nullReturned = true;
+                            removeAllowed = true;
+                            lastReturnedNullEntry = true;
+                            lastReturnedClassKey = null;
                             return nullValue;
                         }
-                        return unmaskNull(backingIterator.next());
+                        Entry<Class<?>, Object> entry = backingIterator.next();
+                        removeAllowed = true;
+                        lastReturnedNullEntry = false;
+                        lastReturnedClassKey = entry.getKey();
+                        return unmaskNull(entry.getValue());
+                    }
+
+                    @Override
+                    public void remove() {
+                        if (!removeAllowed) {
+                            throw new IllegalStateException("next() must be called before remove()");
+                        }
+                        removeAllowed = false;
+                        if (lastReturnedNullEntry) {
+                            nullKeyStore.set(NO_NULL_KEY_MAPPING);
+                        } else {
+                            backingIterator.remove();
+                            cache.remove(lastReturnedClassKey);
+                        }
                     }
                 };
             }

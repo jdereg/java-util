@@ -254,6 +254,42 @@ class ClassValueSetTest {
     }
 
     @Test
+    void testClearDoesNotLeaveStaleContainsCacheUnderConcurrency() throws InterruptedException {
+        final ClassValueSet set = new ClassValueSet();
+        final Class<?> key = String.class;
+        final AtomicBoolean running = new AtomicBoolean(true);
+        final AtomicBoolean staleDetected = new AtomicBoolean(false);
+
+        Thread mutator = new Thread(() -> {
+            while (running.get()) {
+                set.add(key);
+                set.contains(key);   // Populate positive cache entry.
+                set.remove(key);
+            }
+        });
+        mutator.setDaemon(true);
+        mutator.start();
+
+        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+        try {
+            while (System.nanoTime() < deadline && !staleDetected.get()) {
+                set.clear();
+                if (set.isEmpty() && set.contains(key)) {
+                    // Stop mutator before final verification to eliminate concurrent false positives.
+                    running.set(false);
+                    mutator.join(2000);
+                    staleDetected.set(set.isEmpty() && set.contains(key) && !set.remove(key) && set.contains(key));
+                }
+            }
+        } finally {
+            running.set(false);
+            mutator.join(2000);
+        }
+
+        assertFalse(staleDetected.get(), "clear() must not leave stale positive membership cache entries");
+    }
+
+    @Test
     void testEqualsAndHashCode() {
         ClassValueSet set1 = new ClassValueSet();
         set1.add(String.class);

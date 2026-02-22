@@ -296,20 +296,19 @@ class ClassValueMapTest {
     }
     
     @Test
-    void testConcurrentModificationExceptionInEntrySet() {
+    void testEntrySetIteratorRemoveSupported() {
         ClassValueMap<String> map = new ClassValueMap<>();
         map.put(String.class, "StringValue");
         map.put(Integer.class, "IntegerValue");
 
         Iterator<Map.Entry<Class<?>, String>> iterator = map.entrySet().iterator();
 
-        // This should throw ConcurrentModificationException
-        assertThrows(UnsupportedOperationException.class, () -> {
-            if (iterator.hasNext()) {
-                iterator.next();
-                iterator.remove();
-            }
-        });
+        assertTrue(iterator.hasNext());
+        Map.Entry<Class<?>, String> entry = iterator.next();
+        iterator.remove();
+
+        assertFalse(map.containsKey(entry.getKey()));
+        assertEquals(1, map.size());
     }
 
     // Helper method to get a Class object for an index

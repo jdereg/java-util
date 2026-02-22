@@ -269,4 +269,81 @@ class ClassValueMapBugFixTest {
         assertEquals("new", result);
         assertEquals("new", map.get(String.class));
     }
+
+    @Test
+    void testPutIfAbsentTreatsNullMappingAsAbsentForClassKey() {
+        ClassValueMap<String> map = new ClassValueMap<>();
+        map.put(String.class, null);
+
+        String previous = map.putIfAbsent(String.class, "new-value");
+
+        assertNull(previous, "putIfAbsent should return null when previous value is null");
+        assertEquals("new-value", map.get(String.class), "putIfAbsent should replace null-mapped value");
+    }
+
+    @Test
+    void testPutIfAbsentTreatsNullMappingAsAbsentForNullKey() {
+        ClassValueMap<String> map = new ClassValueMap<>();
+        map.put(null, null);
+
+        String previous = map.putIfAbsent(null, "new-value");
+
+        assertNull(previous, "putIfAbsent should return null when previous value is null");
+        assertEquals("new-value", map.get(null), "putIfAbsent should replace null-mapped null-key value");
+    }
+
+    @Test
+    void testMergeTreatsNullMappingAsAbsentForClassKey() {
+        ClassValueMap<String> map = new ClassValueMap<>();
+        map.put(String.class, null);
+
+        String merged = map.merge(String.class, "merged", (a, b) -> a + b);
+
+        assertEquals("merged", merged, "merge should return merged value");
+        assertEquals("merged", map.get(String.class), "merge should install merged value");
+    }
+
+    @Test
+    void testMergeTreatsNullMappingAsAbsentForNullKey() {
+        ClassValueMap<String> map = new ClassValueMap<>();
+        map.put(null, null);
+
+        String merged = map.merge(null, "merged", (a, b) -> a + b);
+
+        assertEquals("merged", merged, "merge should return merged value for null key");
+        assertEquals("merged", map.get(null), "merge should install merged value for null key");
+    }
+
+    @Test
+    void testEntrySetRemoveSupported() {
+        ClassValueMap<String> map = new ClassValueMap<>();
+        map.put(String.class, "value");
+
+        boolean removed = map.entrySet().remove(new java.util.AbstractMap.SimpleEntry<>(String.class, "value"));
+
+        assertTrue(removed, "entrySet.remove should remove matching entry");
+        assertFalse(map.containsKey(String.class), "entry should be removed from map");
+    }
+
+    @Test
+    void testKeySetRemoveSupported() {
+        ClassValueMap<String> map = new ClassValueMap<>();
+        map.put(String.class, "value");
+
+        boolean removed = map.keySet().remove(String.class);
+
+        assertTrue(removed, "keySet.remove should remove matching key");
+        assertFalse(map.containsKey(String.class), "key should be removed from map");
+    }
+
+    @Test
+    void testValuesRemoveSupported() {
+        ClassValueMap<String> map = new ClassValueMap<>();
+        map.put(String.class, "value");
+
+        boolean removed = map.values().remove("value");
+
+        assertTrue(removed, "values.remove should remove matching value");
+        assertFalse(map.containsKey(String.class), "entry should be removed from map");
+    }
 }

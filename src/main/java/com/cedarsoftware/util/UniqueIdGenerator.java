@@ -107,6 +107,8 @@ public final class UniqueIdGenerator {
 
     // ---- Server ID (00–99) ----
     private static final int serverId;
+    private static final long MAX_MILLIS_16;
+    private static final long MAX_MILLIS_19;
 
     private UniqueIdGenerator() { }
 
@@ -187,6 +189,8 @@ public final class UniqueIdGenerator {
         }
 
         serverId = id;
+        MAX_MILLIS_16 = computeMaxMillis(FACTOR_16, SEQ_LIMIT_16, serverId);
+        MAX_MILLIS_19 = computeMaxMillis(FACTOR_19, SEQ_LIMIT_19, serverId);
         LOG.info("java-util using node id=" + id + " (last two digits of UniqueId). Set via " + setVia);
     }
 
@@ -201,7 +205,7 @@ public final class UniqueIdGenerator {
      * @return unique time-based ID as a {@code long}
      */
     public static long getUniqueId() {
-        return nextId(LAST_ID_16, FACTOR_16, SEQ_LIMIT_16);
+        return nextId(LAST_ID_16, FACTOR_16, SEQ_LIMIT_16, MAX_MILLIS_16);
     }
 
     /**
@@ -215,7 +219,7 @@ public final class UniqueIdGenerator {
      * @return unique time-based ID as a {@code long}
      */
     public static long getUniqueId19() {
-        return nextId(LAST_ID_19, FACTOR_19, SEQ_LIMIT_19);
+        return nextId(LAST_ID_19, FACTOR_19, SEQ_LIMIT_19, MAX_MILLIS_19);
     }
 
     /**
@@ -275,7 +279,7 @@ public final class UniqueIdGenerator {
      * Lock-free generator that preserves the decimal structure and the serverId suffix.
      * It also never advances the timestamp into the future: if a millisecond's sequence is exhausted, we wait.
      */
-    private static long nextId(AtomicLong lastId, long factor, int perMsLimit) {
+    private static long nextId(AtomicLong lastId, long factor, int perMsLimit, long maxMillis) {
         long now = currentTimeMillis();
         for (;;) {
             final long prev = lastId.get();
@@ -283,6 +287,9 @@ public final class UniqueIdGenerator {
             // Compute the millisecond to use: never go backwards relative to last issued ID
             final long prevMs = prev / factor;
             final long baseMs = Math.max(now, prevMs);
+            if (baseMs > maxMillis) {
+                throw new IllegalStateException("UniqueId range exhausted for factor=" + factor + " on this JVM");
+            }
 
             final long base = baseMs * factor + serverId;
 
@@ -294,6 +301,9 @@ public final class UniqueIdGenerator {
 
                 // Sequence capacity exhausted for this millisecond? Wait for next ms and retry.
                 if (seqIndex >= perMsLimit) {
+                    if (baseMs >= maxMillis) {
+                        throw new IllegalStateException("UniqueId range exhausted for factor=" + factor + " on this JVM");
+                    }
                     // Block outside of any locks; we will recalc after the clock ticks.
                     final long nextMs = waitForNextMillis(baseMs);
                     now = nextMs; // update now and loop
@@ -331,18 +341,21 @@ public final class UniqueIdGenerator {
                 onSpinWait();
                 onSpinWait();
                 onSpinWait();
-                ts = currentTimeMillis();
-                if (ts > lastMs) {
-                    return ts;
+                if ((i & 7) == 7) {
+                    ts = currentTimeMillis();
+                    if (ts > lastMs) {
+                        return ts;
+                    }
                 }
             }
             // ~100 microseconds backoff after spin phase
             LockSupport.parkNanos(100_000L);
             ts = currentTimeMillis();
             parkCount++;
-            if (parkCount > 64) {
+            if (parkCount > 64 && ts <= lastMs) {
                 // Safety valve: if the clock appears stuck (virtualized env), back off more
                 LockSupport.parkNanos(1_000_000L);
+                ts = currentTimeMillis();
             }
         }
         return ts;
@@ -382,12 +395,17 @@ public final class UniqueIdGenerator {
                 return -1;
             }
             int parsedId = parseInt(id.trim());
-            // Safe abs for Integer.MIN_VALUE
-            int normalized = (int) Math.abs((long) parsedId);
-            return Math.floorMod(normalized, 100);
+            long normalized = Math.abs((long) parsedId);
+            return (int) (normalized % 100L);
         } catch (NumberFormatException | SecurityException e) {
             LOG.fine("Unable to retrieve server id from " + externalVarName + ": " + e.getMessage());
             return -1;
         }
+    }
+
+    private static long computeMaxMillis(long factor, int perMsLimit, int sid) {
+        long maxSequenceOffset = ((long) perMsLimit - 1L) * SEQUENCE_STEP;
+        long maxBase = Long.MAX_VALUE - sid - maxSequenceOffset;
+        return maxBase / factor;
     }
 }

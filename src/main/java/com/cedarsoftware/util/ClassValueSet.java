@@ -113,12 +113,17 @@ public class ClassValueSet extends AbstractSet<Class<?>> {
     private final AtomicBoolean containsNull = new AtomicBoolean(false);
 
     // ClassValue for fast contains checks
-    private final ClassValue<Boolean> membershipCache = new ClassValue<Boolean>() {
-        @Override
-        protected Boolean computeValue(Class<?> type) {
-            return backingSet.contains(type);
-        }
-    };
+    // Volatile reference allows clear() to atomically replace the entire cache instance.
+    private volatile ClassValue<Boolean> membershipCache = createMembershipCache();
+
+    private ClassValue<Boolean> createMembershipCache() {
+        return new ClassValue<Boolean>() {
+            @Override
+            protected Boolean computeValue(Class<?> type) {
+                return backingSet.contains(type);
+            }
+        };
+    }
 
     /**
      * Creates an empty ClassValueSet.
@@ -185,16 +190,10 @@ public class ClassValueSet extends AbstractSet<Class<?>> {
      */
     @Override
     public void clear() {
-        // Snapshot keys before clearing (needed for cache invalidation).
-        // We must clear backingSet BEFORE invalidating cache to prevent a race:
-        // If we invalidate first, a concurrent contains() could repopulate the cache
-        // from the still-populated backingSet, leaving permanently stale entries.
-        Set<Class<?>> keys = new HashSet<>(backingSet);
         backingSet.clear();
         containsNull.set(false);
-        for (Class<?> cls : keys) {
-            membershipCache.remove(cls);
-        }
+        // Replace entire cache so all per-class cached membership values are invalidated atomically.
+        membershipCache = createMembershipCache();
     }
 
     @Override
@@ -272,19 +271,15 @@ public class ClassValueSet extends AbstractSet<Class<?>> {
             modified = true;
         }
 
-        // Create a set of classes to remove - use IdentitySet for Class objects
-        Set<Class<?>> toRemove = new IdentitySet<>();
-        for (Class<?> cls : backingSet) {
+        // Single pass over backing set to avoid extra allocations.
+        Iterator<Class<?>> iterator = backingSet.iterator();
+        while (iterator.hasNext()) {
+            Class<?> cls = iterator.next();
             if (!c.contains(cls)) {
-                toRemove.add(cls);
+                iterator.remove();
+                membershipCache.remove(cls);
+                modified = true;
             }
-        }
-
-        // Remove elements and invalidate cache
-        for (Class<?> cls : toRemove) {
-            backingSet.remove(cls);
-            membershipCache.remove(cls);
-            modified = true;
         }
 
         return modified;
@@ -333,8 +328,9 @@ public class ClassValueSet extends AbstractSet<Class<?>> {
                     // Removing the null element
                     containsNull.set(false);
                 } else {
-                    // Removing a class element
-                    ClassValueSet.this.remove(lastReturned);
+                    // Remove directly through iterator and invalidate cache entry.
+                    backingIterator.remove();
+                    membershipCache.remove(lastReturned);
                 }
             }
         };

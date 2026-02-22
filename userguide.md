@@ -2090,8 +2090,6 @@ This implementation provides efficient and thread-safe operations for byte array
 
 A comprehensive utility class for Java class operations, providing methods for class manipulation, inheritance analysis, instantiation, and resource loading.
 
-See [Redirecting java.util.logging](#redirecting-javautillogging) if you use a different logging framework.
-
 ### Key Features
 - Inheritance distance calculation with primitive widening support (JLS 5.1.2)
 - Primitive type handling and conversions
@@ -4566,8 +4564,6 @@ A comprehensive utility class for I/O operations, providing robust stream handli
 All methods that perform I/O now throw {@link java.io.IOException} unchecked via
 `ExceptionUtilities.uncheckedThrow`, simplifying caller code.
 
-See [Redirecting java.util.logging](#redirecting-javautillogging) if you use a different logging framework.
-
 ### Key Features
 - Stream transfer operations
 - Resource management (close/flush)
@@ -5240,8 +5236,6 @@ Utility helpers for dealing with {@link Throwable} instances.
 [Source](/src/main/java/com/cedarsoftware/util/Executor.java)
 
 A utility class for executing system commands and capturing their output. Provides a convenient wrapper around Java's Runtime.exec() with automatic stream handling and output capture.
-
-See [Redirecting java.util.logging](#redirecting-javautillogging) if you use a different logging framework.
 
 ### Key Features
 - Command execution with various parameter options
@@ -6624,8 +6618,6 @@ This implementation provides robust string manipulation capabilities with emphas
 
 A comprehensive utility class providing system-level operations and information gathering capabilities with a focus on platform independence.
 
-See [Redirecting java.util.logging](#redirecting-javautillogging) if you use a different logging framework.
-
 ### Key Features
 - Environment and property access
 - Memory monitoring
@@ -6804,8 +6796,6 @@ This implementation provides robust system utilities with emphasis on platform i
 [Source](/src/main/java/com/cedarsoftware/util/Traverser.java)
 
 A utility class for traversing object graphs in Java, with cycle detection and rich node visitation information.
-
-See [Redirecting java.util.logging](#redirecting-javautillogging) if you use a different logging framework.
 
 ### Key Features
 - Complete object graph traversal
@@ -7105,8 +7095,6 @@ Type suggested = TypeUtilities.inferElementType(suggestedType, fieldType);
 ---
 ## UniqueIdGenerator
 UniqueIdGenerator is a utility class that generates guaranteed unique, time-based, monotonically increasing 64-bit IDs suitable for distributed environments. It provides two ID generation methods with different characteristics and throughput capabilities.
-
-See [Redirecting java.util.logging](#redirecting-javautillogging) if you use a different logging framework.
 
 ### Features
 - Distributed-safe unique IDs
@@ -8437,5 +8425,4 @@ mathutilities.max.array.size=100000
 # Exception: Executor (disabled by default for security)
 executor.enabled=false
 ```
-
 

@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -69,5 +70,21 @@ class AbstractConcurrentNullSafeMapEntrySetTest {
             assertEquals(expected, entry.toString());
             assertFalse(entry.toString().contains("@"));
         }
+    }
+
+    @Test
+    void testEntrySetSetValueUpdatesEntryViewImmediately() {
+        ConcurrentHashMapNullSafe<String, String> map = new ConcurrentHashMapNullSafe<>();
+        map.put("a", "alpha");
+
+        Map.Entry<String, String> target = map.entrySet().stream()
+                .filter(e -> "a".equals(e.getKey()))
+                .findFirst()
+                .orElse(null);
+        assertNotNull(target);
+
+        assertEquals("alpha", target.setValue("ALPHA"));
+        assertEquals("ALPHA", target.getValue());
+        assertEquals("ALPHA", map.get("a"));
     }
 }

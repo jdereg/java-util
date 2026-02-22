@@ -1,11 +1,14 @@
 package com.cedarsoftware.util;
 
 import java.util.Map;
+import java.util.Comparator;
 
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Tests for the wrapEntry() snapshot bug in ConcurrentNavigableMapNullSafe.
@@ -18,6 +21,20 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
  * ceilingEntry/higherEntry return snapshot entries.
  */
 class ConcurrentNavigableMapNullSafeBugFixTest {
+
+    @Test
+    void testDistinctNonComparableSameClassKeysDoNotCollide() {
+        ConcurrentNavigableMapNullSafe<Object, String> map = new ConcurrentNavigableMapNullSafe<>();
+        Object key1 = new Object();
+        Object key2 = new Object();
+
+        map.put(key1, "one");
+        map.put(key2, "two");
+
+        assertEquals(2, map.size());
+        assertEquals("one", map.get(key1));
+        assertEquals("two", map.get(key2));
+    }
 
     // --- Bug: wrapEntry getValue() should return snapshot, not live value ---
 
@@ -152,5 +169,26 @@ class ConcurrentNavigableMapNullSafeBugFixTest {
         map.put(null, "modified");
         assertEquals("original", entry.getValue(),
                 "Null-key entry snapshot should retain original value");
+    }
+
+    @Test
+    void testDescendingMapComparatorNaturalOrdering() {
+        ConcurrentNavigableMapNullSafe<String, Integer> map = new ConcurrentNavigableMapNullSafe<>();
+        Comparator<? super String> descendingComparator = map.descendingMap().comparator();
+
+        assertNotNull(descendingComparator);
+        assertTrue(descendingComparator.compare("a", "b") > 0);
+        assertNull(map.descendingMap().descendingMap().comparator());
+    }
+
+    @Test
+    void testDescendingMapComparatorCustomOrdering() {
+        Comparator<String> ci = String.CASE_INSENSITIVE_ORDER;
+        ConcurrentNavigableMapNullSafe<String, Integer> map = new ConcurrentNavigableMapNullSafe<>(ci);
+
+        Comparator<? super String> descendingComparator = map.descendingMap().comparator();
+        assertNotNull(descendingComparator);
+        assertTrue(descendingComparator.compare("a", "b") > 0);
+        assertEquals(ci, map.descendingMap().descendingMap().comparator());
     }
 }

@@ -2605,7 +2605,7 @@ void testComputeIfAbsent() {
         Random random = new Random(42); // Fixed seed for reproducible results
         
         // Test 1: CaseInsensitiveMap backed by HashMap
-        LOG.info("\nTest 1: CaseInsensitiveMap(HashMap) vs TreeMap(String.CASE_INSENSITIVE_ORDER)");
+        LOG.info("Test 1: CaseInsensitiveMap(HashMap) vs TreeMap(String.CASE_INSENSITIVE_ORDER)");
         testMapPerformance(new CaseInsensitiveMap<>(new HashMap<>()), 
                           new TreeMap<>(String.CASE_INSENSITIVE_ORDER), 
                           "CaseInsensitiveMap(HashMap)", 
@@ -2613,7 +2613,7 @@ void testComputeIfAbsent() {
                           random);
         
         // Test 2: CaseInsensitiveMap backed by LinkedHashMap  
-        LOG.info("\nTest 2: CaseInsensitiveMap(LinkedHashMap) vs TreeMap(String.CASE_INSENSITIVE_ORDER)");
+        LOG.info("Test 2: CaseInsensitiveMap(LinkedHashMap) vs TreeMap(String.CASE_INSENSITIVE_ORDER)");
         testMapPerformance(new CaseInsensitiveMap<>(new LinkedHashMap<>()), 
                           new TreeMap<>(String.CASE_INSENSITIVE_ORDER), 
                           "CaseInsensitiveMap(LinkedHashMap)", 
@@ -2621,14 +2621,14 @@ void testComputeIfAbsent() {
                           random);
         
         // Test 3: CaseInsensitiveMap backed by TreeMap() vs TreeMap(String.CASE_INSENSITIVE_ORDER)
-        LOG.info("\nTest 3: CaseInsensitiveMap(TreeMap) vs TreeMap(String.CASE_INSENSITIVE_ORDER)");
+        LOG.info("Test 3: CaseInsensitiveMap(TreeMap) vs TreeMap(String.CASE_INSENSITIVE_ORDER)");
         testMapPerformance(new CaseInsensitiveMap<>(new TreeMap<>()), 
                           new TreeMap<>(String.CASE_INSENSITIVE_ORDER), 
                           "CaseInsensitiveMap(TreeMap)", 
                           "TreeMap(CASE_INSENSITIVE_ORDER)",
                           random);
         
-        LOG.info("\n================================================================");
+        LOG.info("================================================================");
         LOG.info("Performance test completed");
     }
     

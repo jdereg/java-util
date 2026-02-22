@@ -30,11 +30,11 @@ public class MultiKeyMapCollisionAnalysisTest {
         testPerformanceAndCollisions(numElements, 4);
         
         // Now let's simulate what would happen with MAX_HASH_ELEMENTS = 5
-        LOG.info("\nSimulating with MAX_HASH_ELEMENTS = 5:");
+        LOG.info("Simulating with MAX_HASH_ELEMENTS = 5:");
         testPerformanceAndCollisions(numElements, 5);
         
         // And with 3 for comparison
-        LOG.info("\nSimulating with MAX_HASH_ELEMENTS = 3:");
+        LOG.info("Simulating with MAX_HASH_ELEMENTS = 3:");
         testPerformanceAndCollisions(numElements, 3);
     }
     
@@ -76,14 +76,14 @@ public class MultiKeyMapCollisionAnalysisTest {
         int totalCollisions = numElements - uniqueHashes;
         double collisionRate = (double) totalCollisions / numElements * 100;
         
-        LOG.info("\nCollision Statistics:");
+        LOG.info("Collision Statistics:");
         LOG.info(String.format("Total entries: %,d", numElements));
         LOG.info(String.format("Unique hashes: %,d", uniqueHashes));
         LOG.info(String.format("Total collisions: %,d (%.3f%%)", totalCollisions, collisionRate));
         LOG.info(String.format("Max collisions at single hash: %d", maxCollisions));
         
         // Show collision distribution
-        LOG.info("\nCollision Distribution (showing entries with collisions):");
+        LOG.info("Collision Distribution (showing entries with collisions):");
         LOG.info("Collisions | Count");
         LOG.info("-----------|-------");
         for (Map.Entry<Integer, Integer> entry : collisionDistribution.entrySet()) {
@@ -91,7 +91,7 @@ public class MultiKeyMapCollisionAnalysisTest {
         }
         
         // Test actual MultiKeyMap performance
-        LOG.info("\nTesting actual MultiKeyMap performance:");
+        LOG.info("Testing actual MultiKeyMap performance:");
         MultiKeyMap<String> map = new MultiKeyMap<>();
         
         startTime = System.currentTimeMillis();

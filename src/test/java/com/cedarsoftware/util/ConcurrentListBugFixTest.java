@@ -1,6 +1,7 @@
 package com.cedarsoftware.util;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -10,6 +11,9 @@ import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -190,5 +194,42 @@ class ConcurrentListBugFixTest {
             assertTrue(batchContiguous,
                     "addAll batch should be contiguous (not interleaved). List: " + list);
         }
+    }
+
+    @Test
+    void testAddAllAtIndexValidatesBoundsForEmptyInput() {
+        ConcurrentList<String> list = new ConcurrentList<>();
+
+        assertThrows(IndexOutOfBoundsException.class,
+                () -> list.addAll(1, Collections.<String>emptyList()));
+        assertFalse(list.addAll(0, Collections.<String>emptyList()));
+        assertEquals(0, list.size());
+    }
+
+    @Test
+    void testForEachAllowsCallbackMutationWithoutDeadlock() throws Exception {
+        ConcurrentList<Integer> list = new ConcurrentList<>();
+        list.addAll(Arrays.asList(1, 2, 3));
+
+        AtomicReference<Throwable> failure = new AtomicReference<>();
+        Thread worker = new Thread(() -> {
+            try {
+                list.forEach(value -> list.addLast(value + 10));
+            } catch (Throwable e) {
+                failure.set(e);
+            }
+        });
+
+        worker.start();
+        worker.join(2000);
+        if (worker.isAlive()) {
+            worker.interrupt();
+            worker.join(1000);
+        }
+
+        assertFalse(worker.isAlive(), "forEach callback should not deadlock when mutating the list");
+        assertNull(failure.get(), "forEach callback should complete without throwing");
+        assertEquals(6, list.size());
+        assertTrue(list.containsAll(Arrays.asList(1, 2, 3, 11, 12, 13)));
     }
 }

@@ -1,6 +1,8 @@
 package com.cedarsoftware.util;
 
-import java.util.Objects;
+import java.lang.reflect.Field;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.junit.jupiter.api.Test;
 
@@ -345,5 +347,63 @@ class ClassValueMapBugFixTest {
 
         assertTrue(removed, "values.remove should remove matching value");
         assertFalse(map.containsKey(String.class), "entry should be removed from map");
+    }
+
+    @Test
+    void testClearDoesNotLeaveQuiescentStaleClassCacheEntries() throws Exception {
+        boolean staleObserved = false;
+
+        for (int attempt = 0; attempt < 6 && !staleObserved; attempt++) {
+            ClassValueMap<Integer> map = new ClassValueMap<>();
+            ConcurrentHashMap<Class<?>, Object> backingMap = getBackingMap(map);
+            AtomicBoolean running = new AtomicBoolean(true);
+            AtomicBoolean staleCandidate = new AtomicBoolean(false);
+
+            Thread writer = new Thread(() -> {
+                while (running.get()) {
+                    map.put(String.class, 1);
+                    map.get(String.class);
+                }
+            });
+            Thread clearer = new Thread(() -> {
+                while (running.get()) {
+                    map.clear();
+                }
+            });
+            Thread checker = new Thread(() -> {
+                while (running.get()) {
+                    if (map.get(String.class) != null && !backingMap.containsKey(String.class)) {
+                        staleCandidate.set(true);
+                        running.set(false);
+                        break;
+                    }
+                }
+            });
+
+            writer.start();
+            clearer.start();
+            checker.start();
+            Thread.sleep(1200);
+            running.set(false);
+            writer.join(2000);
+            clearer.join(2000);
+            checker.join(2000);
+
+            if (staleCandidate.get() && !backingMap.containsKey(String.class)) {
+                Integer v1 = map.get(String.class);
+                Integer v2 = map.get(String.class);
+                staleObserved = v1 != null && v2 != null;
+            }
+        }
+
+        assertFalse(staleObserved,
+                "clear() must not leave stale ClassValue entries after concurrent clear/put activity");
+    }
+
+    @SuppressWarnings("unchecked")
+    private static ConcurrentHashMap<Class<?>, Object> getBackingMap(ClassValueMap<?> map) throws Exception {
+        Field field = ClassValueMap.class.getDeclaredField("backingMap");
+        field.setAccessible(true);
+        return (ConcurrentHashMap<Class<?>, Object>) field.get(map);
     }
 }

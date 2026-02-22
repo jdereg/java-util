@@ -2,6 +2,9 @@ package com.cedarsoftware.util;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.junit.jupiter.api.Test;
 
@@ -20,6 +23,44 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * mutate the map, hashCode() returns a stale cached value.
  */
 class MultiKeyMapCachedHashCodeAndPutIfAbsentTest {
+
+    private static final class CoordinatedHashKey {
+        private final AtomicBoolean block = new AtomicBoolean(false);
+        private final CountDownLatch entered = new CountDownLatch(1);
+        private final CountDownLatch release = new CountDownLatch(1);
+
+        void enableBlocking() {
+            block.set(true);
+        }
+
+        void awaitHashEntry() {
+            try {
+                assertTrue(entered.await(2, TimeUnit.SECONDS), "Timed out waiting for hashCode() to start");
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new AssertionError("Interrupted while waiting for hashCode() coordination", e);
+            }
+        }
+
+        void releaseBlocking() {
+            block.set(false);
+            release.countDown();
+        }
+
+        @Override
+        public int hashCode() {
+            if (block.get()) {
+                entered.countDown();
+                try {
+                    release.await(5, TimeUnit.SECONDS);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    throw new RuntimeException("Interrupted while blocking hashCode()", e);
+                }
+            }
+            return 31;
+        }
+    }
 
     /**
      * Build a reference HashMap with the same content and return its hashCode.
@@ -205,5 +246,26 @@ class MultiKeyMapCachedHashCodeAndPutIfAbsentTest {
 
         assertEquals(referenceHashCode(map), map.hashCode(),
                 "hashCode must be correct after a sequence of ConcurrentMap mutations");
+    }
+
+    @Test
+    void testConcurrentHashComputationDoesNotPublishStaleCache() throws Exception {
+        MultiKeyMap<String> map = new MultiKeyMap<>();
+        CoordinatedHashKey blockingKey = new CoordinatedHashKey();
+        map.put(blockingKey, "value");
+        map.put("stable", "entry");
+
+        blockingKey.enableBlocking();
+        Thread hashThread = new Thread(map::hashCode);
+        hashThread.start();
+
+        blockingKey.awaitHashEntry();
+        map.put("mutated", "entry");
+        blockingKey.releaseBlocking();
+        hashThread.join(2000);
+
+        int expected = referenceHashCode(map);
+        int actual = map.hashCode();
+        assertEquals(expected, actual, "hashCode cache must not retain pre-mutation value after concurrent hashing");
     }
 }

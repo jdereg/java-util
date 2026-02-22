@@ -29,20 +29,20 @@ public class MultiKeyMapFlattenDebugTest {
         }
         
         // Test various lookups
-        LOG.info("\n=== Lookup tests ===");
+        LOG.info("=== Lookup tests ===");
         LOG.info("Lookup with int[][]{{42}}: " + map.get(new int[][]{{42}}));
         LOG.info("Lookup with int[]{42}: " + map.get(new int[]{42}));
         LOG.info("Lookup with 42: " + map.get(42));
         
         // Test containsKey
-        LOG.info("\n=== ContainsKey tests ===");
+        LOG.info("=== ContainsKey tests ===");
         LOG.info("Contains int[][]{{42}}: " + map.containsKey(new int[][]{{42}}));
         LOG.info("Contains int[]{42}: " + map.containsKey(new int[]{42}));
         LOG.info("Contains 42: " + map.containsKey(42));
         
         // Clear and test String arrays for comparison
         map.clear();
-        LOG.info("\n=== String array comparison ===");
+        LOG.info("=== String array comparison ===");
         
         String[][] string2D = {{"hello"}};
         map.put(string2D, "string_2d_value");
@@ -60,7 +60,7 @@ public class MultiKeyMapFlattenDebugTest {
         
         // Clear and test Object arrays (like in existing tests)
         map.clear();
-        LOG.info("\n=== Object array comparison (like existing tests) ===");
+        LOG.info("=== Object array comparison (like existing tests) ===");
         
         map.put("a", "alpha");
         map.put(new String[]{"a"}, "[alpha]");

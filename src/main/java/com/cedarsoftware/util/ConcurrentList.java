@@ -4,12 +4,14 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Deque;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.RandomAccess;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicLong;
@@ -348,14 +350,14 @@ public final class ConcurrentList<E> implements List<E>, Deque<E>, RandomAccess,
 
     @Override
     public boolean addAll(Collection<? extends E> c) {
+        Objects.requireNonNull(c, "collection cannot be null");
         lock.writeLock().lock();
         try {
-            boolean modified = false;
-            for (E e : c) {
-                addLast(e);
-                modified = true;
+            if (c.isEmpty()) {
+                return false;
             }
-            return modified;
+            appendAllNoLock(c);
+            return true;
         } finally {
             lock.writeLock().unlock();
         }
@@ -363,13 +365,27 @@ public final class ConcurrentList<E> implements List<E>, Deque<E>, RandomAccess,
 
     @Override
     public boolean addAll(int index, Collection<? extends E> c) {
+        Objects.requireNonNull(c, "collection cannot be null");
         lock.writeLock().lock();
         try {
-            int i = index;
-            for (E e : c) {
-                add(i++, e);
+            int currentSize = size();
+            if (index < 0 || index > currentSize) {
+                throw new IndexOutOfBoundsException("Index: " + index + ", Size: " + currentSize);
             }
-            return !c.isEmpty();
+            if (c.isEmpty()) {
+                return false;
+            }
+
+            List<E> additions = new ArrayList<>(c);
+            if (index == currentSize) {
+                appendAllNoLock(additions);
+                return true;
+            }
+
+            List<E> elements = snapshotToListNoLock(currentSize);
+            elements.addAll(index, additions);
+            rebuild(elements);
+            return true;
         } finally {
             lock.writeLock().unlock();
         }
@@ -377,13 +393,31 @@ public final class ConcurrentList<E> implements List<E>, Deque<E>, RandomAccess,
 
     @Override
     public boolean removeAll(Collection<?> c) {
+        Objects.requireNonNull(c, "collection cannot be null");
         lock.writeLock().lock();
         try {
+            int sz = size();
+            if (sz == 0 || c.isEmpty()) {
+                return false;
+            }
+
+            Set<?> removeSet = c instanceof Set ? (Set<?>) c : new HashSet<>(c);
+            List<E> retained = new ArrayList<>(sz);
+            long h = head.get();
             boolean modified = false;
-            for (Object o : c) {
-                while (remove(o)) {
+            for (int i = 0; i < sz; i++) {
+                long pos = h + i;
+                @SuppressWarnings("unchecked")
+                E element = (E) getBucket(bucketIndex(pos)).get(bucketOffset(pos));
+                if (removeSet.contains(element)) {
                     modified = true;
+                } else {
+                    retained.add(element);
                 }
+            }
+
+            if (modified) {
+                rebuild(retained);
             }
             return modified;
         } finally {
@@ -393,16 +427,35 @@ public final class ConcurrentList<E> implements List<E>, Deque<E>, RandomAccess,
 
     @Override
     public boolean retainAll(Collection<?> c) {
+        Objects.requireNonNull(c, "collection cannot be null");
         lock.writeLock().lock();
         try {
-            boolean modified = false;
             int sz = size();
-            for (int i = sz - 1; i >= 0; i--) {
-                E element = get(i);
-                if (!c.contains(element)) {
-                    remove(i);
+            if (sz == 0) {
+                return false;
+            }
+            if (c.isEmpty()) {
+                clear();
+                return true;
+            }
+
+            Set<?> retainedSet = c instanceof Set ? (Set<?>) c : new HashSet<>(c);
+            List<E> retained = new ArrayList<>(sz);
+            long h = head.get();
+            boolean modified = false;
+            for (int i = 0; i < sz; i++) {
+                long pos = h + i;
+                @SuppressWarnings("unchecked")
+                E element = (E) getBucket(bucketIndex(pos)).get(bucketOffset(pos));
+                if (retainedSet.contains(element)) {
+                    retained.add(element);
+                } else {
                     modified = true;
                 }
+            }
+
+            if (modified) {
+                rebuild(retained);
             }
             return modified;
         } finally {
@@ -932,18 +985,9 @@ public final class ConcurrentList<E> implements List<E>, Deque<E>, RandomAccess,
     @SuppressWarnings("unchecked")
     public void forEach(Consumer<? super E> action) {
         Objects.requireNonNull(action);
-        // Iterate directly under read lock to avoid O(n) snapshot allocation.
-        lock.readLock().lock();
-        try {
-            int sz = size();
-            long h = head.get();
-            for (int i = 0; i < sz; i++) {
-                long pos = h + i;
-                E e = (E) getBucket(bucketIndex(pos)).get(bucketOffset(pos));
-                action.accept(e);
-            }
-        } finally {
-            lock.readLock().unlock();
+        Object[] snapshot = toArray();
+        for (Object item : snapshot) {
+            action.accept((E) item);
         }
     }
 
@@ -1038,5 +1082,24 @@ public final class ConcurrentList<E> implements List<E>, Deque<E>, RandomAccess,
             sizeCounter.incrementAndGet();
         }
     }
-}
 
+    private void appendAllNoLock(Collection<? extends E> elements) {
+        for (E element : elements) {
+            long pos = tail.getAndIncrement();
+            AtomicReferenceArray<Object> bucket = ensureBucket(bucketIndex(pos));
+            bucket.set(bucketOffset(pos), element);
+            sizeCounter.incrementAndGet();
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<E> snapshotToListNoLock(int size) {
+        List<E> elements = new ArrayList<>(size);
+        long h = head.get();
+        for (int i = 0; i < size; i++) {
+            long pos = h + i;
+            elements.add((E) getBucket(bucketIndex(pos)).get(bucketOffset(pos)));
+        }
+        return elements;
+    }
+}

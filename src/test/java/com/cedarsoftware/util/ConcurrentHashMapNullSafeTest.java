@@ -153,13 +153,23 @@ class ConcurrentHashMapNullSafeTest {
         assertEquals(1, map.putIfAbsent("one", 10));
         assertEquals(1, map.get("one"));
 
+        // Existing key mapped to null should be treated as absent
+        map.put("nullMapped", null);
+        assertNull(map.putIfAbsent("nullMapped", 50));
+        assertEquals(50, map.get("nullMapped"));
+
         // Put if absent with null key
         assertNull(map.putIfAbsent(null, 100));
         assertEquals(100, map.get(null));
 
+        // Existing null key mapped to null should be treated as absent
+        map.put(null, null);
+        assertNull(map.putIfAbsent(null, 300));
+        assertEquals(300, map.get(null));
+
         // Attempt to put if absent with existing null key
-        assertEquals(100, map.putIfAbsent(null, 200));
-        assertEquals(100, map.get(null));
+        assertEquals(300, map.putIfAbsent(null, 200));
+        assertEquals(300, map.get(null));
     }
 
     @Test

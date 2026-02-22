@@ -458,7 +458,7 @@ class ClassValueSetTest {
         assertEquals(0, errorCount.get(), "Errors occurred during concurrent access");
 
         // Create a brand new set for verification to avoid state corruption
-        LOG.info("\nVerifying set operations with clean state...");
+        LOG.info("Verifying set operations with clean state...");
         ClassValueSet freshSet = new ClassValueSet();
 
         // Test basic operations with diagnostics

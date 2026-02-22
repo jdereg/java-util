@@ -504,6 +504,9 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     // Cached hashCode for performance (invalidated on mutations)
     // Volatile ensures visibility when mutations set to null; no lock needed since computation is idempotent
     private transient volatile Integer cachedHashCode;
+    // Version-stamps cached hash codes so concurrent hash computations never publish stale values.
+    private final AtomicLong hashStateVersion = new AtomicLong(0);
+    private transient volatile long cachedHashVersion = -1L;
 
     // Pre-computed resize threshold to avoid per-put multiplication
     private volatile long resizeThreshold;
@@ -3011,9 +3014,6 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     }
 
     private V putInternal(MultiKey<V> newKey) {
-        // Invalidate hashCode cache on mutation
-        cachedHashCode = null;
-
         int hash = newKey.hash;
         int stripe = getStripeIndex(hash);
         Object monitor = stripeMonitors[stripe];
@@ -3074,6 +3074,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             table.set(index, new MultiKey[]{newKey});
             atomicSize.incrementAndGet();
             updateMaxChainLength(1);
+            invalidateHashCache();
             return null;
         }
 
@@ -3085,6 +3086,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                 MultiKey<V>[] newChain = chain.clone();
                 newChain[i] = newKey;
                 table.set(index, newChain);
+                invalidateHashCache();
                 return old;
             }
         }
@@ -3094,6 +3096,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         table.set(index, newChain);
         atomicSize.incrementAndGet();
         updateMaxChainLength(newChain.length);
+        invalidateHashCache();
         return null;
     }
 
@@ -3266,9 +3269,6 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     }
 
     private V removeInternal(final MultiKey<V> removeKey) {
-        // Invalidate hashCode cache on mutation
-        cachedHashCode = null;
-
         int hash = removeKey.hash;
         int stripe = getStripeIndex(hash);
         Object monitor = stripeMonitors[stripe];
@@ -3321,6 +3321,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                     table.set(index, newChain);
                 }
                 atomicSize.decrementAndGet();
+                invalidateHashCache();
                 return old;
             }
         }
@@ -3438,9 +3439,6 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      * The map will be empty after this call returns.
      */
     public void clear() {
-        // Invalidate hashCode cache on mutation
-        cachedHashCode = null;
-
         withAllStripeLocks(() -> {
             final AtomicReferenceArray<MultiKey<V>[]> table = buckets;  // Pin table reference
             for (int i = 0; i < table.length(); i++) {
@@ -3448,6 +3446,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             }
             atomicSize.set(0);
             maxChainLength.set(0);
+            invalidateHashCache();
         });
     }
 
@@ -3622,28 +3621,30 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      *         if there was no mapping for the key
      */
     public V putIfAbsent(Object key, V value) {
-        V existing = get(key);
-        if (existing != null) return existing;
-
-        // Normalize the key once, outside the lock
         MultiKey<V> norm = flattenKey(key);
         Object normalizedKey = norm.keys;
         int hash = norm.hash;
+
+        MultiKey<V> existingEntry = findEntryWithPrecomputedHash(normalizedKey, hash);
+        if (existingEntry != null && existingEntry.value != null) {
+            return existingEntry.value;
+        }
+
         boolean resize = false;
+        V existing = null;
 
         synchronized (getStripeMonitor(hash)) {
-            // Check again inside the lock
-            MultiKey<V> lookupKey = new MultiKey<>(normalizedKey, hash, null);
-            existing = getNoLock(lookupKey);
-            if (existing == null) {
-                // Use putNoLock directly to avoid double locking
+            existingEntry = findEntryWithPrecomputedHash(normalizedKey, hash);
+            if (existingEntry == null || existingEntry.value == null) {
                 MultiKey<V> newKey = new MultiKey<>(normalizedKey, hash, value);
                 putNoLock(newKey);
-                cachedHashCode = null;
-                resize = atomicSize.get() > resizeThreshold;
+                if (existingEntry == null) {
+                    resize = atomicSize.get() > resizeThreshold;
+                }
+            } else {
+                existing = existingEntry.value;
             }
         }
-        // Handle resize outside the lock
         resizeRequest(resize);
         return existing;
     }
@@ -3866,18 +3867,16 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         int hash = norm.hash;
 
         synchronized (getStripeMonitor(hash)) {
-            MultiKey<V> lookupKey = new MultiKey<>(normalizedKey, hash, null);
-            V current = getNoLock(lookupKey);
-            // If current is null, verify the key actually exists before comparing
-            if (current == null && findEntryWithPrecomputedHash(normalizedKey, hash) == null) {
+            MultiKey<V> existingEntry = findEntryWithPrecomputedHash(normalizedKey, hash);
+            if (existingEntry == null) {
                 return false;
             }
-            if (!Objects.equals(current, value)) return false;
+            if (!Objects.equals(existingEntry.value, value)) {
+                return false;
+            }
 
-            // Remove using removeNoLock
-            MultiKey<V> removeKey = new MultiKey<>(normalizedKey, hash, current);
+            MultiKey<V> removeKey = new MultiKey<>(normalizedKey, hash, existingEntry.value);
             removeNoLock(removeKey);
-            cachedHashCode = null;
             return true;
         }
     }
@@ -3902,25 +3901,16 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         MultiKey<V> norm = flattenKey(key);
         Object normalizedKey = norm.keys;
         int hash = norm.hash;
-        boolean resize = false;
-
-        V result;
         synchronized (getStripeMonitor(hash)) {
-            MultiKey<V> lookupKey = new MultiKey<>(normalizedKey, hash, null);
-            V old = getNoLock(lookupKey);
-            if (old == null && findEntryWithPrecomputedHash(normalizedKey, hash) == null) {
-                result = null; // Key doesn't exist
-            } else {
-                // Replace with new value using putNoLock
-                MultiKey<V> newKey = new MultiKey<>(normalizedKey, hash, value);
-                result = putNoLock(newKey);
-                cachedHashCode = null;
-                resize = atomicSize.get() > resizeThreshold;
+            MultiKey<V> existingEntry = findEntryWithPrecomputedHash(normalizedKey, hash);
+            if (existingEntry == null) {
+                return null;
             }
+            V oldValue = existingEntry.value;
+            MultiKey<V> newKey = new MultiKey<>(normalizedKey, hash, value);
+            putNoLock(newKey);
+            return oldValue;
         }
-        // Handle resize outside the lock
-        resizeRequest(resize);
-        return result;
     }
 
     /**
@@ -3944,27 +3934,15 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         MultiKey<V> norm = flattenKey(key);
         Object normalizedKey = norm.keys;
         int hash = norm.hash;
-        boolean resize = false;
-
-        boolean result = false;
         synchronized (getStripeMonitor(hash)) {
-            MultiKey<V> lookupKey = new MultiKey<>(normalizedKey, hash, null);
-            V current = getNoLock(lookupKey);
-            // If current is null, verify the key actually exists before comparing
-            if (current == null && findEntryWithPrecomputedHash(normalizedKey, hash) == null) {
-                result = false;
-            } else if (Objects.equals(current, oldValue)) {
-                // Replace with new value using putNoLock
-                MultiKey<V> newKey = new MultiKey<>(normalizedKey, hash, newValue);
-                putNoLock(newKey);
-                cachedHashCode = null;
-                resize = atomicSize.get() > resizeThreshold;
-                result = true;
+            MultiKey<V> existingEntry = findEntryWithPrecomputedHash(normalizedKey, hash);
+            if (existingEntry == null || !Objects.equals(existingEntry.value, oldValue)) {
+                return false;
             }
+            MultiKey<V> newKey = new MultiKey<>(normalizedKey, hash, newValue);
+            putNoLock(newKey);
+            return true;
         }
-        // Handle resize outside the lock
-        resizeRequest(resize);
-        return result;
     }
 
     /**
@@ -3977,9 +3955,10 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      * @return the hash code value for this map
      */
     public int hashCode() {
-        // Fast path: return cached value if available
+        // Fast path: return cached value when it matches the current map version.
+        long startVersion = hashStateVersion.get();
         Integer cached = cachedHashCode;
-        if (cached != null) {
+        if (cached != null && cachedHashVersion == startVersion) {
             return cached;
         }
 
@@ -4006,8 +3985,12 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             }
         }
 
-        // Cache the result (volatile write ensures visibility to all threads)
-        cachedHashCode = h;
+        // Cache only if no mutation occurred during computation.
+        long endVersion = hashStateVersion.get();
+        if (startVersion == endVersion) {
+            cachedHashCode = h;
+            cachedHashVersion = endVersion;
+        }
         return h;
     }
 
@@ -4026,23 +4009,28 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         Map<?, ?> m = (Map<?, ?>) o;
         if (m.size() != size()) return false;
 
-        // OPTIMIZATION: Walk the OTHER map and query THIS map
-        // This leverages get()'s matching logic and avoids reconstructing OUR keys
-        // When other map is also a MultiKeyMap, its entrySet() does the reconstruction
-        // and we just use get() which already handles all the matching semantics
+        // Enforce one-to-one mapping when matching keys under MultiKeyMap equivalence.
+        // Compared maps can contain distinct keys that collapse to the same normalized key
+        // (for example 1 and 1L in value-based mode), which must not be considered equal.
+        IdentitySet<MultiKey<V>> matchedEntries = new IdentitySet<>();
         for (Map.Entry<?, ?> entry : m.entrySet()) {
             Object key = entry.getKey();
             Object theirValue = entry.getValue();
-
-            // Use get() which handles all matching logic (Sets, Lists, etc.)
-            Object myValue = this.get(key);
-
-            // Check if values match, handling null correctly
-            if (!Objects.equals(theirValue, myValue) || (theirValue == null && !this.containsKey(key))) {
+            MultiKey<V> myEntry = findSimpleOrComplexKey(key);
+            if (myEntry == null || !Objects.equals(theirValue, myEntry.value)) {
+                return false;
+            }
+            if (!matchedEntries.add(myEntry)) {
                 return false;
             }
         }
-        return true;
+        return matchedEntries.size() == size();
+    }
+
+    private void invalidateHashCache() {
+        cachedHashCode = null;
+        cachedHashVersion = -1L;
+        hashStateVersion.incrementAndGet();
     }
 
     /**

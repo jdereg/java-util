@@ -87,7 +87,7 @@ class MultiKeyMapNestedStructureTest {
         String crossResultArray = map.get(equivalentArray);
         String crossResultCollection = map.get(equivalentCollection);
         
-        log.info("\nCross-compatibility test:");
+        log.info("Cross-compatibility test:");
         log.info("Equivalent array lookup: " + crossResultArray);
         log.info("Equivalent collection lookup: " + crossResultCollection);
         
@@ -95,7 +95,7 @@ class MultiKeyMapNestedStructureTest {
         assertEquals("found_via_collection_structure", crossResultCollection);
         
         // Test individual element access
-        log.info("\nTesting individual element access:");
+        log.info("Testing individual element access:");
         
         // Should not find with just the inner elements
         assertNull(map.get(berriesList1D));
@@ -107,7 +107,7 @@ class MultiKeyMapNestedStructureTest {
         // Verify map size - should be 1 since the structures are equivalent
         assertEquals(1, map.size());
         
-        log.info("\nFinal map size: " + map.size());
+        log.info("Final map size: " + map.size());
         log.info("Test completed successfully!");
     }
     
@@ -135,7 +135,7 @@ class MultiKeyMapNestedStructureTest {
         map.put(deep3D, "3d_array_value");
         String previousValue = map.put(deepList3D, "3d_list_value");
         
-        log.info("\n=== Deeply Nested Null Handling Test ===");
+        log.info("=== Deeply Nested Null Handling Test ===");
         log.info("Map with deeply nested nulls:");
         log.info(map.toString());
         
@@ -144,7 +144,7 @@ class MultiKeyMapNestedStructureTest {
         assertEquals("3d_list_value", map.get(deepList3D));
         assertEquals("3d_array_value", previousValue);
         
-        log.info("\nDeep 3D array lookup: " + map.get(deep3D));
+        log.info("Deep 3D array lookup: " + map.get(deep3D));
         log.info("Deep 3D list lookup: " + map.get(deepList3D));
     }
     
@@ -172,7 +172,7 @@ class MultiKeyMapNestedStructureTest {
         map.put(mixedArray, "mixed_array_value");
         String previousValue = map.put(mixedList, "mixed_list_value");
         
-        log.info("\n=== Mixed Type Nested Structures Test ===");
+        log.info("=== Mixed Type Nested Structures Test ===");
         log.info("Map with mixed types and nested structures:");
         log.info(map.toString());
         
@@ -181,7 +181,7 @@ class MultiKeyMapNestedStructureTest {
         assertEquals("mixed_list_value", map.get(mixedList));
         assertEquals("mixed_array_value", previousValue);
         
-        log.info("\nMixed array lookup: " + map.get(mixedArray));
+        log.info("Mixed array lookup: " + map.get(mixedArray));
         log.info("Mixed list lookup: " + map.get(mixedList));
         
         assertEquals(1, map.size());

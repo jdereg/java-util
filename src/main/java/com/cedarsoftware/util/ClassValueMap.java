@@ -152,21 +152,26 @@ public class ClassValueMap<V> extends AbstractMap<Class<?>, V> implements Concur
     // Cached view objects (following JDK AbstractMap/HashMap pattern)
     private transient Set<Entry<Class<?>, V>> cachedEntrySet;
     private transient Collection<V> cachedValues;
+    private transient Map<Class<?>, V> cachedUnmodifiableView;
 
     // A ClassValue cache for extremely fast lookups on non-null Class keys.
-    // When a key is missing from backingMap, we return NO_VALUE.
-    private final ClassValue<Object> cache = new ClassValue<Object>() {
-        @Override
-        protected Object computeValue(Class<?> key) {
-            // Single lookup - ConcurrentHashMap.get() returns null only if key is not present
-            Object result = backingMap.get(key);
-            if (result == null) {
-                return NO_VALUE;
+    // Replaced atomically on clear() to invalidate all cached entries at once.
+    private volatile ClassValue<Object> cache = createCache();
+
+    private ClassValue<Object> createCache() {
+        return new ClassValue<Object>() {
+            @Override
+            protected Object computeValue(Class<?> key) {
+                // Single lookup - ConcurrentHashMap.get() returns null only if key is not present
+                Object result = backingMap.get(key);
+                if (result == null) {
+                    return NO_VALUE;
+                }
+                // Unmask null sentinel
+                return result == NULL_VALUE ? null : result;
             }
-            // Unmask null sentinel
-            return result == NULL_VALUE ? null : result;
-        }
-    };
+        };
+    }
 
     // Helper to mask null values for storage in ConcurrentHashMap
     private Object maskNull(V value) {
@@ -297,24 +302,11 @@ public class ClassValueMap<V> extends AbstractMap<Class<?>, V> implements Concur
 
     @Override
     public void clear() {
-        // Snapshot keys as a flat array (avoids HashSet hashing/allocation overhead).
-        // We must clear backingMap BEFORE invalidating cache to prevent a race condition:
-        // If we invalidate cache first, a concurrent get() could repopulate the cache
-        // from the still-populated backingMap, leaving permanently stale entries.
-        Object[] keys = backingMap.keySet().toArray();
-
-        // Clear backing stores first - any concurrent get() will now see empty state
+        // Clear backing stores first.
         backingMap.clear();
         nullKeyStore.set(NO_NULL_KEY_MAPPING);
-
-        // Then invalidate all cached entries. Any get() that runs after backingMap.clear()
-        // but before cache invalidation will either:
-        // - Hit the cache (temporary stale read during clear operation)
-        // - Miss the cache and call computeValue, which sees empty backingMap → returns NO_VALUE
-        // After clear() completes, all subsequent get() calls see correct state.
-        for (Object key : keys) {
-            cache.remove((Class<?>) key);
-        }
+        // Replace cache instance to atomically invalidate all per-class entries.
+        cache = createCache();
     }
 
     @Override
@@ -483,9 +475,9 @@ public class ClassValueMap<V> extends AbstractMap<Class<?>, V> implements Concur
             }
         }
         // Non-null key: fast path via ClassValue cache
-        V existing = get(key);
-        if (existing != null) {
-            return existing;
+        Object existingRaw = backingMap.get(key);
+        if (existingRaw != null && existingRaw != NULL_VALUE) {
+            return unmaskNull(existingRaw);
         }
         // Delegate to backingMap.compute() for atomicity — holds bucket lock while computing.
         // NULL_VALUE in backingMap means "key maps to null"; per Map.computeIfAbsent spec
@@ -712,9 +704,13 @@ public class ClassValueMap<V> extends AbstractMap<Class<?>, V> implements Concur
      * @return an unmodifiable view of this map with preserved performance characteristics
      */
     public Map<Class<?>, V> unmodifiableView() {
+        Map<Class<?>, V> view = cachedUnmodifiableView;
+        if (view != null) {
+            return view;
+        }
         final ClassValueMap<V> thisMap = this;
 
-        return new AbstractMap<Class<?>, V>() {
+        view = new AbstractMap<Class<?>, V>() {
             @Override
             public Set<Entry<Class<?>, V>> entrySet() {
                 return Collections.unmodifiableSet(thisMap.entrySet());
@@ -771,5 +767,7 @@ public class ClassValueMap<V> extends AbstractMap<Class<?>, V> implements Concur
                 throw new UnsupportedOperationException();
             }
         };
+        cachedUnmodifiableView = view;
+        return view;
     }
 }

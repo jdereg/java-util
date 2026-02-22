@@ -191,8 +191,22 @@ public abstract class AbstractConcurrentNullSafeMap<K, V> implements ConcurrentM
 
     @Override
     public V putIfAbsent(K key, V value) {
-        Object prev = internalMap.putIfAbsent(maskNullKey(key), maskNullValue(value));
-        return unmaskNullValue(prev);
+        Object maskedKey = maskNullKey(key);
+        Object maskedValue = maskNullValue(value);
+        Object existing = internalMap.get(maskedKey);
+        if (existing != null && existing != NullSentinel.NULL_VALUE) {
+            return unmaskNullValue(existing);
+        }
+
+        final Object[] previousHolder = new Object[1];
+        internalMap.compute(maskedKey, (k, current) -> {
+            previousHolder[0] = current;
+            if (current == null || current == NullSentinel.NULL_VALUE) {
+                return maskedValue;
+            }
+            return current;
+        });
+        return unmaskNullValue(previousHolder[0]);
     }
 
     @Override
@@ -215,6 +229,12 @@ public abstract class AbstractConcurrentNullSafeMap<K, V> implements ConcurrentM
     public V computeIfAbsent(K key, java.util.function.Function<? super K, ? extends V> mappingFunction) {
         Objects.requireNonNull(mappingFunction);
         Object maskedKey = maskNullKey(key);
+        Object current = internalMap.get(maskedKey);
+
+        // Fast-path for the common hit case where a non-null value is already mapped.
+        if (current != null && current != NullSentinel.NULL_VALUE) {
+            return unmaskNullValue(current);
+        }
 
         // Use compute() so the mapping function is called at most once, even when
         // the key is currently mapped to null (stored as NULL_VALUE internally).
@@ -230,6 +250,29 @@ public abstract class AbstractConcurrentNullSafeMap<K, V> implements ConcurrentM
             // with a value (or is mapped to null), compute..." — so we must call the function.
             V value = mappingFunction.apply(key);
             return value == null ? null : maskNullValue(value);
+        });
+
+        return unmaskNullValue(result);
+    }
+
+    @Override
+    public V computeIfPresent(K key, BiFunction<? super K, ? super V, ? extends V> remappingFunction) {
+        Objects.requireNonNull(remappingFunction);
+        Object maskedKey = maskNullKey(key);
+        Object existing = internalMap.get(maskedKey);
+
+        // If absent or explicitly mapped to null, computeIfPresent should not invoke remapping.
+        if (existing == null || existing == NullSentinel.NULL_VALUE) {
+            return null;
+        }
+
+        Object result = internalMap.compute(maskedKey, (k, current) -> {
+            if (current == null || current == NullSentinel.NULL_VALUE) {
+                return current;
+            }
+            V oldValue = unmaskNullValue(current);
+            V newValue = remappingFunction.apply(unmaskNullKey(k), oldValue);
+            return (newValue == null) ? null : maskNullValue(newValue);
         });
 
         return unmaskNullValue(result);
@@ -394,6 +437,8 @@ public abstract class AbstractConcurrentNullSafeMap<K, V> implements ConcurrentM
                         Entry<Object, Object> internalEntry = it.next();
                         final Object keyObj = internalEntry.getKey();
                         return new Entry<K, V>() {
+                            private Object valueObj = internalEntry.getValue();
+
                             @Override
                             public K getKey() {
                                 return unmaskNullKey(keyObj);
@@ -401,12 +446,14 @@ public abstract class AbstractConcurrentNullSafeMap<K, V> implements ConcurrentM
 
                             @Override
                             public V getValue() {
-                                return unmaskNullValue(internalMap.get(keyObj));
+                                return unmaskNullValue(valueObj);
                             }
 
                             @Override
                             public V setValue(V value) {
-                                Object old = internalMap.put(keyObj, maskNullValue(value));
+                                Object masked = maskNullValue(value);
+                                Object old = internalMap.put(keyObj, masked);
+                                valueObj = masked;
                                 return unmaskNullValue(old);
                             }
 

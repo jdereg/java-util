@@ -283,11 +283,11 @@ class IntervalSetExampleTest {
             "Failed record " + failRecord + " should not be in verified ranges (hole exists)");
         
         // Fix the record
-        LOG.info(String.format("\n🔧 FIXING record %d...", failRecord));
+        LOG.info(String.format("🔧 FIXING record %d...", failRecord));
         targetDatabase.put(second(failRecord), "record_" + failRecord);
         
         // Retry verification - target the entire unverified range to enable merging
-        LOG.info("\n🔄 RETRY verification - targeting the entire unverified gap...");
+        LOG.info("🔄 RETRY verification - targeting the entire unverified gap...");
         // Target the full range to ensure everything gets verified
         ZonedDateTime failedChunkStart = second(0);
         ZonedDateTime failedChunkEnd = second(99); // Full range

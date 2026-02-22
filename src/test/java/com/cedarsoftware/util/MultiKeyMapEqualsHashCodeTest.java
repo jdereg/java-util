@@ -453,6 +453,35 @@ class MultiKeyMapEqualsHashCodeTest {
         assertEquals(mkm.hashCode(), hashMap.hashCode(), "hashCode should match HashMap");
     }
 
+    @Test
+    void testEqualsRejectsDuplicateEquivalentNumericKeysInComparedMap() {
+        MultiKeyMap<String> mkm = new MultiKeyMap<>();
+        mkm.put(1, "value");
+        mkm.put(2, "other");
+
+        Map<Object, String> other = new HashMap<>();
+        other.put(1, "value");
+        other.put(1L, "value");
+
+        assertNotEquals(mkm, other,
+                "Compared map has duplicate keys that collapse under MultiKeyMap equivalence and must not be equal");
+    }
+
+    @Test
+    void testEqualsRejectsDuplicateEquivalentCaseInsensitiveKeysInComparedMap() {
+        MultiKeyMap<String> mkm = MultiKeyMap.<String>builder().caseSensitive(false).build();
+        mkm.put("id", "value");
+        mkm.put("other", "x");
+
+        Map<Object, String> other = new HashMap<>();
+        other.put("id", "value");
+        other.put("ID", "value");
+
+        assertNotEquals(mkm, other,
+                "Compared map has duplicate keys that collapse under case-insensitive equivalence "
+                        + "and must not be equal");
+    }
+
     /**
      * Test hashCode consistency
      * Multiple calls to hashCode() on same object should return same value

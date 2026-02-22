@@ -1,6 +1,7 @@
 package com.cedarsoftware.util;
 
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.logging.Logger;
 
 import org.junit.jupiter.api.Test;
 
@@ -9,14 +10,16 @@ import org.junit.jupiter.api.Test;
  */
 public class LRUCacheMicroBenchmark {
 
+    private static final Logger LOG = Logger.getLogger(LRUCacheMicroBenchmark.class.getName());
+
     private static final int WARMUP = 100_000;
     private static final int ITERATIONS = 1_000_000;
 
     @Test
     public void compareRawOperations() {
-        System.out.println("\n" + repeat("=", 80));
-        System.out.println("Micro-benchmark: ConcurrentHashMap vs LRUCache THREADED");
-        System.out.println(repeat("=", 80));
+        LOG.info(repeat("=", 80));
+        LOG.info("Micro-benchmark: ConcurrentHashMap vs LRUCache THREADED");
+        LOG.info(repeat("=", 80));
 
         int capacity = 10_000;
         String[] keys = new String[capacity];
@@ -25,7 +28,7 @@ public class LRUCacheMicroBenchmark {
         }
 
         // Test 1: ConcurrentHashMap
-        System.out.println("\n--- ConcurrentHashMap ---");
+        LOG.info("--- ConcurrentHashMap ---");
         ConcurrentHashMap<String, String> chm = new ConcurrentHashMap<>(capacity);
 
         // Warmup
@@ -49,11 +52,11 @@ public class LRUCacheMicroBenchmark {
         }
         long chmGetTime = (System.nanoTime() - start) / ITERATIONS;
 
-        System.out.printf("  PUT: %3d ns/op%n", chmPutTime);
-        System.out.printf("  GET: %3d ns/op%n", chmGetTime);
+        LOG.info(String.format("  PUT: %3d ns/op", chmPutTime));
+        LOG.info(String.format("  GET: %3d ns/op", chmGetTime));
 
         // Test 2: LRUCache THREADED
-        System.out.println("\n--- LRUCache THREADED ---");
+        LOG.info("--- LRUCache THREADED ---");
         LRUCache<String, String> lru = new LRUCache<>(capacity, LRUCache.StrategyType.THREADED);
 
         // Warmup
@@ -77,26 +80,26 @@ public class LRUCacheMicroBenchmark {
         }
         long lruGetTime = (System.nanoTime() - start) / ITERATIONS;
 
-        System.out.printf("  PUT: %3d ns/op%n", lruPutTime);
-        System.out.printf("  GET: %3d ns/op%n", lruGetTime);
+        LOG.info(String.format("  PUT: %3d ns/op", lruPutTime));
+        LOG.info(String.format("  GET: %3d ns/op", lruGetTime));
 
         lru.shutdown();
 
         // Summary
-        System.out.println("\n" + repeat("-", 80));
-        System.out.println("COMPARISON");
-        System.out.println(repeat("-", 80));
-        System.out.printf("PUT overhead: LRUCache is %.1fx slower (%d ns vs %d ns)%n",
-                (double) lruPutTime / chmPutTime, lruPutTime, chmPutTime);
-        System.out.printf("GET overhead: LRUCache is %.1fx slower (%d ns vs %d ns)%n",
-                (double) lruGetTime / chmGetTime, lruGetTime, chmGetTime);
+        LOG.info(repeat("-", 80));
+        LOG.info("COMPARISON");
+        LOG.info(repeat("-", 80));
+        LOG.info(String.format("PUT overhead: LRUCache is %.1fx slower (%d ns vs %d ns)",
+                (double) lruPutTime / chmPutTime, lruPutTime, chmPutTime));
+        LOG.info(String.format("GET overhead: LRUCache is %.1fx slower (%d ns vs %d ns)",
+                (double) lruGetTime / chmGetTime, lruGetTime, chmGetTime));
     }
 
     @Test
     public void measureIndividualOverheads() {
-        System.out.println("\n" + repeat("=", 80));
-        System.out.println("Measuring individual overhead sources");
-        System.out.println(repeat("=", 80));
+        LOG.info(repeat("=", 80));
+        LOG.info("Measuring individual overhead sources");
+        LOG.info(repeat("=", 80));
 
         int iterations = 10_000_000;
 
@@ -107,7 +110,7 @@ public class LRUCacheMicroBenchmark {
             dummy += System.nanoTime();
         }
         long nanoTimeCost = (System.nanoTime() - start) / iterations;
-        System.out.printf("%nSystem.nanoTime(): %d ns/op%n", nanoTimeCost);
+        LOG.info(String.format("System.nanoTime(): %d ns/op", nanoTimeCost));
 
         // 2. AtomicLong.incrementAndGet() cost
         java.util.concurrent.atomic.AtomicLong counter = new java.util.concurrent.atomic.AtomicLong(0);
@@ -116,7 +119,7 @@ public class LRUCacheMicroBenchmark {
             counter.incrementAndGet();
         }
         long atomicIncCost = (System.nanoTime() - start) / iterations;
-        System.out.printf("AtomicLong.incrementAndGet(): %d ns/op%n", atomicIncCost);
+        LOG.info(String.format("AtomicLong.incrementAndGet(): %d ns/op", atomicIncCost));
 
         // 3. ThreadLocal.get() cost
         ThreadLocal<Integer> tl = ThreadLocal.withInitial(() -> 0);
@@ -125,7 +128,7 @@ public class LRUCacheMicroBenchmark {
             tl.get();
         }
         long tlGetCost = (System.nanoTime() - start) / iterations;
-        System.out.printf("ThreadLocal.get(): %d ns/op%n", tlGetCost);
+        LOG.info(String.format("ThreadLocal.get(): %d ns/op", tlGetCost));
 
         // 4. ThreadLocal.set() cost
         start = System.nanoTime();
@@ -133,7 +136,7 @@ public class LRUCacheMicroBenchmark {
             tl.set(i);
         }
         long tlSetCost = (System.nanoTime() - start) / iterations;
-        System.out.printf("ThreadLocal.set(): %d ns/op%n", tlSetCost);
+        LOG.info(String.format("ThreadLocal.set(): %d ns/op", tlSetCost));
 
         // 5. Object allocation cost (simple object)
         start = System.nanoTime();
@@ -141,7 +144,7 @@ public class LRUCacheMicroBenchmark {
             Object obj = new Object();
         }
         long allocCost = (System.nanoTime() - start) / iterations;
-        System.out.printf("new Object(): %d ns/op%n", allocCost);
+        LOG.info(String.format("new Object(): %d ns/op", allocCost));
 
         // 6. ConcurrentHashMap.get() cost
         ConcurrentHashMap<String, String> map = new ConcurrentHashMap<>();
@@ -151,7 +154,7 @@ public class LRUCacheMicroBenchmark {
             map.get("key");
         }
         long chmGetCost = (System.nanoTime() - start) / iterations;
-        System.out.printf("ConcurrentHashMap.get(): %d ns/op%n", chmGetCost);
+        LOG.info(String.format("ConcurrentHashMap.get(): %d ns/op", chmGetCost));
 
         // 7. ConcurrentHashMap.put() cost (replacement)
         start = System.nanoTime();
@@ -159,7 +162,7 @@ public class LRUCacheMicroBenchmark {
             map.put("key", "value");
         }
         long chmPutCost = (System.nanoTime() - start) / iterations;
-        System.out.printf("ConcurrentHashMap.put(): %d ns/op%n", chmPutCost);
+        LOG.info(String.format("ConcurrentHashMap.put(): %d ns/op", chmPutCost));
 
         // 8. Volatile write cost
         start = System.nanoTime();
@@ -167,10 +170,10 @@ public class LRUCacheMicroBenchmark {
             counter.set(i);
         }
         long volatileWriteCost = (System.nanoTime() - start) / iterations;
-        System.out.printf("Volatile write (AtomicLong.set()): %d ns/op%n", volatileWriteCost);
+        LOG.info(String.format("Volatile write (AtomicLong.set()): %d ns/op", volatileWriteCost));
 
         // Prevent dead code elimination
-        if (dummy == 0) System.out.println("dummy");
+        if (dummy == 0) LOG.info("dummy");
     }
 
     private static String repeat(String s, int count) {

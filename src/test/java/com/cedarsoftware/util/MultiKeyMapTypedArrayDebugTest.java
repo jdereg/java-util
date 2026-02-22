@@ -30,7 +30,7 @@ public class MultiKeyMapTypedArrayDebugTest {
         map.put(objectArray, "object_array");
         LOG.info("After putting Object[], map size: " + map.size());
         
-        LOG.info("\n=== Lookup results ===");
+        LOG.info("=== Lookup results ===");
         LOG.info("String array lookup: " + map.get(stringArray));
         LOG.info("Object array lookup: " + map.get(objectArray));
         
@@ -41,7 +41,7 @@ public class MultiKeyMapTypedArrayDebugTest {
         LOG.info("New String array lookup: " + map.get(newStringArray));
         LOG.info("New Object array lookup: " + map.get(newObjectArray));
         
-        LOG.info("\n=== Key details ===");
+        LOG.info("=== Key details ===");
         LOG.info("Map size: " + map.size());
         LOG.info("Keys in map:");
         for (Object key : map.keySet()) {
@@ -72,16 +72,16 @@ public class MultiKeyMapTypedArrayDebugTest {
         map.put(singleObject, "single_object");
         LOG.info("After Object[], map size: " + map.size());
         
-        LOG.info("\n=== Direct element lookups ===");
+        LOG.info("=== Direct element lookups ===");
         LOG.info("Lookup 42: " + map.get(42));
         LOG.info("Lookup 'hello': " + map.get("hello"));
         
-        LOG.info("\n=== Array lookups ===");
+        LOG.info("=== Array lookups ===");
         LOG.info("Lookup int[]{42}: " + map.get(new int[]{42}));
         LOG.info("Lookup String[]{'hello'}: " + map.get(new String[]{"hello"}));
         LOG.info("Lookup Object[]{'hello'}: " + map.get(new Object[]{"hello"}));
         
-        LOG.info("\n=== Final map state ===");
+        LOG.info("=== Final map state ===");
         LOG.info("Map size: " + map.size());
         LOG.info("Keys in map:");
         for (Object key : map.keySet()) {

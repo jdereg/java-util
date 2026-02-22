@@ -34,7 +34,7 @@ class MultiKeyMapNullFormattingTest {
         String mapString = map.toString();
         assertTrue(mapString.contains("∅"), "Map toString should contain ∅ symbol for nulls");
         
-        log.info("\nSimple lookups:");
+        log.info("=== Simple lookups ===");
         log.info("Null key lookup: " + map.get(null));
         log.info("Array with null lookup: " + map.get(new Object[]{"key", null, "key2"}));
         log.info("List with null lookup: " + map.get(Arrays.asList("list", null, "item")));

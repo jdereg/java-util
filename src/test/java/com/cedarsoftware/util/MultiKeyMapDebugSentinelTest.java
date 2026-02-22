@@ -69,7 +69,7 @@ class MultiKeyMapDebugSentinelTest {
 
             int resultHash = (int) expandAndHashMethod.invoke(null, arrayWithNull, expanded, visited, runningHash, false, true);
             
-            log.info("\nExpanded list contents:");
+            log.info("Expanded list contents:");
             for (int i = 0; i < expanded.size(); i++) {
                 Object obj = expanded.get(i);
                 log.info("  [" + i + "] " + obj + " (class: " + obj.getClass().getSimpleName() + ")");

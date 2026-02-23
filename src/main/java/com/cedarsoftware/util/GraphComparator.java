@@ -10,9 +10,11 @@ import java.util.Collection;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.TimeZone;
@@ -52,6 +54,7 @@ import static com.cedarsoftware.util.GraphComparator.Delta.Command.SET_REMOVE;
 public class GraphComparator
 {
     public static final String ROOT = "-root-";
+    private static final Object NO_ID = new Object();
 
     /**
      * Callback used to obtain a unique identifier for a given object during
@@ -259,7 +262,7 @@ public class GraphComparator
                     throw new IllegalArgumentException("Name is required for Command.forName()");
                 }
 
-                name = name.toLowerCase();
+                name = name.toLowerCase(Locale.ROOT);
                 for (Command t : Command.values())
                 {
                     if (t.getName().equals(name))
@@ -446,6 +449,8 @@ public class GraphComparator
         Set<Delta> deltas = new LinkedHashSet<>();
         Set<String> visited = new HashSet<>();
         LinkedList<Delta> stack = new LinkedList<>();
+        Map<Object, Object> idCache = new IdentityHashMap<>();
+        Map<Class<?>, Map<Field, String>> fieldNameCache = new HashMap<>();
         stack.push(new Delta(0L, ROOT, ROOT, source, target, null));
 
         while (!stack.isEmpty())
@@ -515,28 +520,28 @@ public class GraphComparator
             // Special handle [] types because they require CopyElement / Resize commands unique to Arrays.
             if (srcValueClass.isArray())
             {
-                compareArrays(delta, deltas, stack, idFetcher);
+                compareArrays(delta, deltas, stack, idFetcher, idCache);
                 continue;
             }
 
             // Special handle Sets because they require Add/Remove commands unique to Sets
             if (srcValue instanceof Set)
             {
-                compareSets(delta, deltas, stack, idFetcher);
+                compareSets(delta, deltas, stack, idFetcher, idCache);
                 continue;
             }
 
             // Special handle Maps because they required Put/Remove commands unique to Maps
             if (srcValue instanceof Map)
             {
-                compareMaps(delta, deltas, stack, idFetcher);
+                compareMaps(delta, deltas, stack, idFetcher, idCache);
                 continue;
             }
 
             // Special handle List because they require CopyElement / Resize commands unique to List
             if (srcValue instanceof List)
             {
-                compareLists(delta, deltas, stack, idFetcher);
+                compareLists(delta, deltas, stack, idFetcher, idCache);
                 continue;
             }
 
@@ -546,11 +551,10 @@ public class GraphComparator
                         srcValue.getClass().getName() + ". GraphUtils.compare() needs to be updated to support it, obj id: " + delta.id + ", field: " + delta.fieldName);
             }
 
-            if (isIdObject(srcValue, idFetcher) && isIdObject(targetValue, idFetcher))
+            final Object srcId = resolveId(srcValue, idFetcher, idCache);
+            final Object targetId = resolveId(targetValue, idFetcher, idCache);
+            if (srcId != NO_ID && targetId != NO_ID)
             {
-                final Object srcId = idFetcher.getId(srcValue);
-                final Object targetId = idFetcher.getId(targetValue);
-
                 if (!srcId.equals(targetId))
                 {   // Field references different object, need to create a command that assigns the new object to the field.
                     // This maintains 'Graph Shape'
@@ -560,14 +564,20 @@ public class GraphComparator
                 }
 
                 final Collection<Field> fields = ReflectionUtils.getAllDeclaredFields(srcValueClass);
+                final Map<Field, String> fieldNames = getFieldDeltaNames(srcValueClass, fieldNameCache);
                 String sysId = "(" + System.identityHashCode(srcValue) + ").";
 
                 for (Field field : fields)
                 {
                     try
                     {
-                        String srcPtr = sysId + field.getName();
-                        stack.push(new Delta(srcId, field.getName(), srcPtr, field.get(srcValue), field.get(targetValue), null));
+                        String fieldName = fieldNames.get(field);
+                        if (fieldName == null)
+                        {
+                            fieldName = field.getName();
+                        }
+                        String srcPtr = sysId + fieldName;
+                        stack.push(new Delta(srcId, fieldName, srcPtr, field.get(srcValue), field.get(targetValue), null));
                     }
                     catch (Exception ignored) { }
                 }
@@ -588,8 +598,9 @@ public class GraphComparator
         final Set<Object> potentialOrphans = new HashSet<>();
         Traverser.traverse(source, visit -> {
             Object node = visit.getNode();
-            if (isIdObject(node, idFetcher)) {
-                potentialOrphans.add(idFetcher.getId(node));
+            Object nodeId = resolveId(node, idFetcher, idCache);
+            if (nodeId != NO_ID) {
+                potentialOrphans.add(nodeId);
             }
         }, null);
 
@@ -597,8 +608,9 @@ public class GraphComparator
         // that are no longer referenced in the potentialOrphans map.
         Traverser.traverse(target, visit -> {
             Object node = visit.getNode();
-            if (isIdObject(node, idFetcher)) {
-                potentialOrphans.remove(idFetcher.getId(node));
+            Object nodeId = resolveId(node, idFetcher, idCache);
+            if (nodeId != NO_ID) {
+                potentialOrphans.remove(nodeId);
             }
         }, null);
 
@@ -632,10 +644,21 @@ public class GraphComparator
 
     private static boolean isIdObject(Object o, ID idFetcher)
     {
-        if (o == null)
+        return resolveId(o, idFetcher, null) != NO_ID;
+    }
+
+    private static Object resolveId(Object o, ID idFetcher, Map<Object, Object> idCache)
+    {
+        if (o == null || idFetcher == null)
         {
-            return false;
+            return NO_ID;
         }
+
+        if (idCache != null && idCache.containsKey(o))
+        {
+            return idCache.get(o);
+        }
+
         Class<?> c = o.getClass();
         if (isLogicalPrimitive(c) ||
                 c.isArray() ||
@@ -643,19 +666,57 @@ public class GraphComparator
                 Map.class.isAssignableFrom(c) ||
                 Object.class == c)
         {
-            return false;
+            if (idCache != null)
+            {
+                idCache.put(o, NO_ID);
+            }
+            return NO_ID;
         }
 
+        Object resolvedId = NO_ID;
         try
         {
-            idFetcher.getId(o);
-            return true;
+            Object id = idFetcher.getId(o);
+            if (id != null)
+            {
+                resolvedId = id;
+            }
         }
         catch (Exception ignored)
         {
-            return false;
+            // Not an ID object
         }
 
+        if (idCache != null)
+        {
+            idCache.put(o, resolvedId);
+        }
+
+        return resolvedId;
+    }
+
+    private static Map<Field, String> getFieldDeltaNames(Class<?> c, Map<Class<?>, Map<Field, String>> fieldNameCache)
+    {
+        Map<Field, String> cached = fieldNameCache.get(c);
+        if (cached != null)
+        {
+            return cached;
+        }
+
+        Map<String, Field> fieldsByName = ReflectionUtils.getAllDeclaredFieldsMap(c);
+        Map<Field, String> fieldNames = new IdentityHashMap<>();
+        for (Map.Entry<String, Field> entry : fieldsByName.entrySet())
+        {
+            String key = entry.getKey();
+            Field field = entry.getValue();
+            String existing = fieldNames.get(field);
+            if (existing == null || key.length() < existing.length())
+            {
+                fieldNames.put(field, key);
+            }
+        }
+        fieldNameCache.put(c, fieldNames);
+        return fieldNames;
     }
 
     /**
@@ -665,7 +726,7 @@ public class GraphComparator
      *
      * Cyclomatic code complexity reduction by: AxataDarji
      */
-    private static void compareArrays(Delta delta, Collection<Delta> deltas, LinkedList<Delta> stack, ID idFetcher) {
+    private static void compareArrays(Delta delta, Collection<Delta> deltas, LinkedList<Delta> stack, ID idFetcher, Map<Object, Object> idCache) {
         int srcLen = ArrayUtilities.getLength(delta.srcValue);
         int targetLen = ArrayUtilities.getLength(delta.targetValue);
 
@@ -679,7 +740,7 @@ public class GraphComparator
         if (isLogicalPrimitive(compType)) {
             processPrimitiveArray(delta, deltas, sysId, srcLen, targetLen);
         } else {
-            processNonPrimitiveArray(delta, deltas, stack, idFetcher, sysId, srcLen, targetLen);
+            processNonPrimitiveArray(delta, deltas, stack, idFetcher, idCache, sysId, srcLen, targetLen);
         }
     }
 
@@ -707,7 +768,7 @@ public class GraphComparator
         }
     }
 
-    private static void processNonPrimitiveArray(Delta delta, Collection<Delta> deltas, LinkedList<Delta> stack, ID idFetcher, String sysId, int srcLen, int targetLen) {
+    private static void processNonPrimitiveArray(Delta delta, Collection<Delta> deltas, LinkedList<Delta> stack, ID idFetcher, Map<Object, Object> idCache, String sysId, int srcLen, int targetLen) {
         for (int i = targetLen - 1; i >= 0; i--) {
             final Object targetValue = ArrayUtilities.getElement(delta.targetValue, i);
             String srcPtr = sysId + '[' + i + ']';
@@ -718,16 +779,18 @@ public class GraphComparator
                     if (srcValue != targetValue) {
                         copyArrayElement(delta, deltas, srcPtr, srcValue, targetValue, i);
                     }
-                } else if (isIdObject(srcValue, idFetcher) && isIdObject(targetValue, idFetcher)) {
-                    Object srcId = idFetcher.getId(srcValue);
-                    Object targetId = idFetcher.getId(targetValue);
-                    if (targetId.equals(srcId)) {
-                        stack.push(new Delta(delta.id, delta.fieldName, srcPtr, srcValue, targetValue, i));
-                    } else {
+                } else {
+                    Object srcId = resolveId(srcValue, idFetcher, idCache);
+                    Object targetId = resolveId(targetValue, idFetcher, idCache);
+                    if (srcId != NO_ID && targetId != NO_ID) {
+                        if (targetId.equals(srcId)) {
+                            stack.push(new Delta(delta.id, delta.fieldName, srcPtr, srcValue, targetValue, i));
+                        } else {
+                            copyArrayElement(delta, deltas, srcPtr, srcValue, targetValue, i);
+                        }
+                    } else if (!DeepEquals.deepEquals(srcValue, targetValue)) {
                         copyArrayElement(delta, deltas, srcPtr, srcValue, targetValue, i);
                     }
-                } else if (!DeepEquals.deepEquals(srcValue, targetValue)) {
-                    copyArrayElement(delta, deltas, srcPtr, srcValue, targetValue, i);
                 }
             } else {
                 copyArrayElement(delta, deltas, srcPtr, null, targetValue, i);
@@ -747,29 +810,30 @@ public class GraphComparator
      * to rectify their differences.  Order of Sets does not matter (two equal Sets do
      * not have to be in the same order).
      */
-    private static void compareSets(Delta delta, Collection<Delta> deltas, LinkedList<Delta> stack, ID idFetcher)
+    private static void compareSets(Delta delta, Collection<Delta> deltas, LinkedList<Delta> stack, ID idFetcher, Map<Object, Object> idCache)
     {
         Set<?> srcSet = (Set<?>) delta.srcValue;
         Set<?> targetSet = (Set<?>) delta.targetValue;
 
         // Create ID to Object map for target Set
-        Map<Object, Object> targetIdToValue = new HashMap<>();
+        Map<Object, Object> targetIdToValue = new HashMap<>(targetSet.size());
         for (Object targetValue : targetSet)
         {
-            if (isIdObject(targetValue, idFetcher))
+            Object targetId = resolveId(targetValue, idFetcher, idCache);
+            if (targetId != NO_ID)
             {   // Only map non-null target array elements
-                targetIdToValue.put(idFetcher.getId(targetValue), targetValue);
+                targetIdToValue.put(targetId, targetValue);
             }
         }
 
-        Map<Object, Object> srcIdToValue = new HashMap<>();
+        Map<Object, Object> srcIdToValue = new HashMap<>(srcSet.size());
         String sysId = "(" + System.identityHashCode(srcSet) + ").remove(";
         for (Object srcValue : srcSet)
         {
             String srcPtr = sysId + System.identityHashCode(srcValue) + ')';
-            if (isIdObject(srcValue, idFetcher))
+            Object srcId = resolveId(srcValue, idFetcher, idCache);
+            if (srcId != NO_ID)
             {   // Only map non-null source array elements
-                Object srcId = idFetcher.getId(srcValue);
                 srcIdToValue.put(srcId, srcValue);
 
                 if (targetIdToValue.containsKey(srcId))
@@ -798,9 +862,9 @@ public class GraphComparator
         for (Object targetValue : targetSet)
         {
             String srcPtr = sysId + System.identityHashCode(targetValue) + ')';
-            if (isIdObject(targetValue, idFetcher))
+            Object targetId = resolveId(targetValue, idFetcher, idCache);
+            if (targetId != NO_ID)
             {
-                Object targetId = idFetcher.getId(targetValue);
                 if (!srcIdToValue.containsKey(targetId))
                 {
                     Delta addDelta = new Delta(delta.id, delta.fieldName, srcPtr, null, targetValue, null);
@@ -826,7 +890,7 @@ public class GraphComparator
      * So for example, a TreeMap and a HashMap are considered equal (no Deltas) if they contain
      * the same entries, regardless of order.
      */
-    private static void compareMaps(Delta delta, Collection<Delta> deltas, LinkedList<Delta> stack, ID idFetcher)
+    private static void compareMaps(Delta delta, Collection<Delta> deltas, LinkedList<Delta> stack, ID idFetcher, Map<Object, Object> idCache)
     {
         Map<Object, Object> srcMap = (Map<Object, Object>) delta.srcValue;
         Map<Object, Object> targetMap = (Map<Object, Object>) delta.targetValue;
@@ -841,9 +905,9 @@ public class GraphComparator
             Object srcValue = entry.getValue();
             String srcPtr = sysId + "['" + System.identityHashCode(srcKey) + "']";
 
-            if (targetMap.containsKey(srcKey))
+            Object targetValue = targetMap.get(srcKey);
+            if (targetValue != null || targetMap.containsKey(srcKey))
             {
-                Object targetValue = targetMap.get(srcKey);
                 if (srcValue == null || targetValue == null)
                 {   // Null value in either source or target
                     if (srcValue != targetValue)
@@ -851,20 +915,25 @@ public class GraphComparator
                         addMapPutDelta(delta, deltas, srcPtr, srcValue, targetValue, srcKey);
                     }
                 }
-                else if (isIdObject(srcValue, idFetcher) && isIdObject(targetValue, idFetcher))
+                else
                 {   // Both source and destination have same object (by id) as the value, add delta to stack (field-by-field check for item).
-                    if (idFetcher.getId(srcValue).equals(idFetcher.getId(targetValue)))
+                    Object srcId = resolveId(srcValue, idFetcher, idCache);
+                    Object targetId = resolveId(targetValue, idFetcher, idCache);
+                    if (srcId != NO_ID && targetId != NO_ID)
                     {
-                        stack.push(new Delta(delta.id, delta.fieldName, srcPtr, srcValue, targetValue, null));
+                        if (srcId.equals(targetId))
+                        {
+                            stack.push(new Delta(delta.id, delta.fieldName, srcPtr, srcValue, targetValue, null));
+                        }
+                        else
+                        {   // Different ID associated to same key, must create PUT command to overwrite source value associated to key
+                            addMapPutDelta(delta, deltas, srcPtr, srcValue, targetValue, srcKey);
+                        }
                     }
-                    else
-                    {   // Different ID associated to same key, must create PUT command to overwrite source value associated to key
+                    else if (!DeepEquals.deepEquals(srcValue, targetValue))
+                    {   // Non-null, non-ID value associated to key, and the two values are not equal.  Create PUT command to overwrite.
                         addMapPutDelta(delta, deltas, srcPtr, srcValue, targetValue, srcKey);
                     }
-                }
-                else if (!DeepEquals.deepEquals(srcValue, targetValue))
-                {   // Non-null, non-ID value associated to key, and the two values are not equal.  Create PUT command to overwrite.
-                    addMapPutDelta(delta, deltas, srcPtr, srcValue, targetValue, srcKey);
                 }
             }
             else
@@ -900,7 +969,7 @@ public class GraphComparator
      * Deeply compare two Lists and generate the appropriate 'resize' or 'set' commands
      * to rectify their differences.
      */
-    private static void compareLists(Delta delta, Collection<Delta> deltas, LinkedList<Delta> stack, ID idFetcher)
+    private static void compareLists(Delta delta, Collection<Delta> deltas, LinkedList<Delta> stack, ID idFetcher, Map<Object, Object> idCache)
     {
         List<Object> srcList = (List<Object>) delta.srcValue;
         List<Object> targetList = (List<Object>) delta.targetValue;
@@ -931,24 +1000,27 @@ public class GraphComparator
                         copyListElement(delta, deltas, srcPtr, srcValue, targetValue, i);
                     }
                 }
-                else if (isIdObject(srcValue, idFetcher) && isIdObject(targetValue, idFetcher))
+                else
                 {
-                    Object srcId = idFetcher.getId(srcValue);
-                    Object targetId = idFetcher.getId(targetValue);
+                    Object srcId = resolveId(srcValue, idFetcher, idCache);
+                    Object targetId = resolveId(targetValue, idFetcher, idCache);
 
-                    if (targetId.equals(srcId))
-                    {   // No need to copy, same object in same List position, but it's fields could have changed, so add the object to
-                        // the stack for further graph delta comparison.
-                        stack.push(new Delta(delta.id, delta.fieldName, srcPtr, srcValue, targetValue, i));
+                    if (srcId != NO_ID && targetId != NO_ID)
+                    {
+                        if (targetId.equals(srcId))
+                        {   // No need to copy, same object in same List position, but it's fields could have changed, so add the object to
+                            // the stack for further graph delta comparison.
+                            stack.push(new Delta(delta.id, delta.fieldName, srcPtr, srcValue, targetValue, i));
+                        }
+                        else
+                        {   // IDs do not match?  issue a set-element-command
+                            copyListElement(delta, deltas, srcPtr, srcValue, targetValue, i);
+                        }
                     }
-                    else
-                    {   // IDs do not match?  issue a set-element-command
+                    else if (!DeepEquals.deepEquals(srcValue, targetValue))
+                    {
                         copyListElement(delta, deltas, srcPtr, srcValue, targetValue, i);
                     }
-                }
-                else if (!DeepEquals.deepEquals(srcValue, targetValue))
-                {
-                    copyListElement(delta, deltas, srcPtr, srcValue, targetValue, i);
                 }
             }
             else
@@ -986,11 +1058,13 @@ public class GraphComparator
     {
         // Index all objects in source graph
         final Map<Object, Object> srcMap = new HashMap<>();
+        final Map<Object, Object> idCache = new IdentityHashMap<>();
         Traverser.traverse(source, visit -> {
             Object o = visit.getNode();
-            if (isIdObject(o, idFetcher))
+            Object id = resolveId(o, idFetcher, idCache);
+            if (id != NO_ID)
             {
-                srcMap.put(idFetcher.getId(o), o);
+                srcMap.put(id, o);
             }
         }, null);
 

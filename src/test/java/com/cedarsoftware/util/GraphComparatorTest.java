@@ -11,6 +11,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.SortedSet;
@@ -1679,6 +1680,21 @@ public class GraphComparatorTest
     }
 
     @Test
+    public void testNullIdIsTreatedAsUnidentifiedObject() throws Exception
+    {
+        NullableId source = new NullableId();
+        source.id = null;
+        source.name = "alpha";
+
+        NullableId target = new NullableId();
+        target.id = null;
+        target.name = "alpha";
+
+        List<GraphComparator.Delta> deltas = GraphComparator.compare(source, target, getIdFetcher());
+        assertTrue(deltas.isEmpty());
+    }
+
+    @Test
     public void testRootArray() throws Exception
     {
         Pet eddie = getPet("Eddie");
@@ -1726,12 +1742,57 @@ public class GraphComparatorTest
     }
 
     @Test
+    public void testCompareApplyHandlesShadowedFields()
+    {
+        ShadowChild source = new ShadowChild();
+        source.id = UniqueIdGenerator.getUniqueId();
+        source.value = 10;
+        ((ShadowParent) source).value = 20;
+
+        ShadowChild target = new ShadowChild();
+        target.id = source.id;
+        target.value = 11;
+        ((ShadowParent) target).value = 21;
+
+        List<GraphComparator.Delta> deltas = GraphComparator.compare(source, target, getIdFetcher());
+        assertEquals(2, deltas.size());
+
+        Set<String> fieldNames = new HashSet<>();
+        for (GraphComparator.Delta delta : deltas)
+        {
+            assertEquals(OBJECT_ASSIGN_FIELD, delta.getCmd());
+            fieldNames.add(delta.getFieldName());
+        }
+        assertTrue(fieldNames.contains("value"));
+        assertTrue(fieldNames.stream().anyMatch(name -> name.endsWith(".value") && !"value".equals(name)));
+
+        List<GraphComparator.DeltaError> errors = GraphComparator.applyDelta(source, deltas, getIdFetcher(), GraphComparator.getJavaDeltaProcessor());
+        assertTrue(errors.isEmpty());
+        assertTrue(DeepEquals.deepEquals(source, target));
+    }
+
+    @Test
     public void testDeltaCommand() throws Exception
     {
         GraphComparator.Delta.Command cmd = MAP_PUT;
         assertEquals(cmd.getName(), "map.put");
         GraphComparator.Delta.Command remove = cmd.fromName("map.remove");
         assertTrue(remove == MAP_REMOVE);
+    }
+
+    @Test
+    public void testDeltaCommandFromNameUsesLocaleRoot()
+    {
+        Locale defaultLocale = Locale.getDefault();
+        Locale.setDefault(new Locale("tr", "TR"));
+        try
+        {
+            assertEquals(LIST_RESIZE, fromName("LIST.RESIZE"));
+        }
+        finally
+        {
+            Locale.setDefault(defaultLocale);
+        }
     }
 
     @Test
@@ -2090,6 +2151,33 @@ public class GraphComparatorTest
         public Object getId()
         {
             return namex;
+        }
+    }
+
+    static class ShadowParent implements HasId
+    {
+        long id;
+        int value;
+
+        public Object getId()
+        {
+            return id;
+        }
+    }
+
+    static class ShadowChild extends ShadowParent
+    {
+        int value;
+    }
+
+    static class NullableId implements HasId
+    {
+        Long id;
+        String name;
+
+        public Object getId()
+        {
+            return id;
         }
     }
 

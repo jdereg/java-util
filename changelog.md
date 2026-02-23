@@ -58,6 +58,14 @@
 * **PERFORMANCE**: `DeepEquals` now reuses probe-time comparison state in unordered collection/map matching and uses iterator-based reverse traversal for non-`RandomAccess` lists, reducing allocation churn and linked-list comparison overhead.
 * **BUG FIX**: `EncryptionUtilities.decrypt()` / `decryptBytes()` now recover legacy AES/CBC payloads when ciphertext bytes collide with the versioned-GCM header marker, preserving backward compatibility for older encrypted values.
 * **PERFORMANCE**: `EncryptionUtilities` GCM decryption now uses offset-based IV and ciphertext handling instead of per-call `Arrays.copyOfRange()` slices, reducing decrypt-path allocation overhead.
+* **BUG FIX**: `Executor` array-command start failures now return `ExecutionResult(-1, "", error)` / `exec(...) == -1`, matching documented start-error behavior instead of propagating unchecked `IOException`.
+* **BUG FIX**: `Executor` now forcibly destroys already-started child processes when command execution is interrupted, preventing runaway background command continuation after `execute(...)` returns failure.
+* **BUG FIX**: `Executor` now updates instance-cached `getOut()` / `getError()` values on execution failures (including interruption) instead of leaving stale output from prior commands.
+* **PERFORMANCE**: `Executor` now caches OS shell selection once and uses a shared timeout deadline for gobbler-thread joins, reducing repeated property/string work and worst-case timeout amplification.
+* **BUG FIX**: `GraphComparator.Delta.Command.fromName()` now normalizes command names with `Locale.ROOT`, avoiding locale-dependent parse failures (for example Turkish-I).
+* **BUG FIX**: `GraphComparator` now emits and applies deltas for shadowed fields (same field name across class hierarchy) using unique field lookup keys, preventing dropped or misapplied updates.
+* **BUG FIX**: `GraphComparator` now treats `ID` callback `null` returns as non-ID objects, preventing `NullPointerException` during object-id comparison.
+* **PERFORMANCE**: `GraphComparator` now caches per-run object-id resolution and avoids redundant map lookups in map comparison paths (`get` + conditional `containsKey` fallback), reducing hot-path overhead.
 * **BUG FIX**: `IdentitySet` probe operations (`add`, `contains`, `remove`) are now bounded by table length, preventing infinite loops when all slots are tombstones (`DELETED`) and no `null` sentinel exists.
 * **PERFORMANCE**: `IdentitySet` now rehashes tombstone-heavy tables before insertion and clears tombstones when the set becomes empty, reducing probe-chain growth in delete-heavy workloads.
 * **IMPROVEMENT**: `IdentitySet` now supports a configurable load factor via `IdentitySet(int initialCapacity, float loadFactor)` while preserving the default `0.5` behavior for existing constructors.

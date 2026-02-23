@@ -2,6 +2,7 @@ package com.cedarsoftware.util;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Locale;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -97,6 +98,8 @@ public class Executor {
     private String _error;
     private String _out;
     private static final long DEFAULT_TIMEOUT_SECONDS = 60L;
+    private static final long TERMINATION_WAIT_SECONDS = 5L;
+    private static final boolean IS_WINDOWS = System.getProperty("os.name").toLowerCase(Locale.ROOT).contains("windows");
     private static final Logger LOG = Logger.getLogger(Executor.class.getName());
     static { LoggingConfig.init(); }
     
@@ -176,14 +179,16 @@ public class Executor {
      */
     public ExecutionResult execute(String command, String[] envp, File dir) {
         validateExecutionEnabled();
-        
+
+        Process proc = null;
         try {
-            Process proc = startProcess(command, envp, dir);
+            proc = startProcess(command, envp, dir);
             return runIt(proc);
+        } catch (IOException e) {
+            return handleExecutionException(command, proc, e);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            LOG.log(Level.SEVERE, "Error occurred executing command: " + command, e);
-            return new ExecutionResult(-1, "", e.getMessage());
+            return handleExecutionException(command, proc, e);
         }
     }
 
@@ -199,41 +204,39 @@ public class Executor {
     public ExecutionResult execute(String[] cmdarray, String[] envp, File dir) {
         validateExecutionEnabled();
 
+        Process proc = null;
+        String commandText = cmdArrayToString(cmdarray);
         try {
-            Process proc = startProcess(cmdarray, envp, dir);
+            proc = startProcess(cmdarray, envp, dir);
             return runIt(proc);
+        } catch (IOException e) {
+            return handleExecutionException(commandText, proc, e);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            LOG.log(Level.SEVERE, "Error occurred executing command: " + cmdArrayToString(cmdarray), e);
-            return new ExecutionResult(-1, "", e.getMessage());
+            return handleExecutionException(commandText, proc, e);
         }
     }
 
-    private Process startProcess(String command, String[] envp, File dir) {
-        boolean windows = System.getProperty("os.name").toLowerCase().contains("windows");
-        String[] shellCmd = windows ? new String[]{"cmd.exe", "/c", command} : new String[]{"sh", "-c", command};
+    private Process startProcess(String command, String[] envp, File dir) throws IOException {
+        String[] shellCmd = IS_WINDOWS ? new String[]{"cmd.exe", "/c", command} : new String[]{"sh", "-c", command};
         return startProcess(shellCmd, envp, dir);
     }
 
-    private Process startProcess(String[] cmdarray, String[] envp, File dir) {
+    private Process startProcess(String[] cmdarray, String[] envp, File dir) throws IOException {
         ProcessBuilder pb = new ProcessBuilder(cmdarray);
         if (envp != null) {
+            java.util.Map<String, String> environment = pb.environment();
             for (String env : envp) {
                 int idx = env.indexOf('=');
                 if (idx > 0) {
-                    pb.environment().put(env.substring(0, idx), env.substring(idx + 1));
+                    environment.put(env.substring(0, idx), env.substring(idx + 1));
                 }
             }
         }
         if (dir != null) {
             pb.directory(dir);
         }
-        try {
-            return pb.start();
-        } catch (IOException e) {
-            ExceptionUtilities.uncheckedThrow(e);
-            return null; // ignored
-        }
+        return pb.start();
     }
 
     /**
@@ -334,16 +337,20 @@ public class Executor {
         Thread errorGobbler = new Thread(errors);
         StreamGobbler out = new StreamGobbler(proc.getInputStream());
         Thread outputGobbler = new Thread(out);
+        errorGobbler.setDaemon(true);
+        outputGobbler.setDaemon(true);
         errorGobbler.start();
         outputGobbler.start();
 
         boolean finished = proc.waitFor(DEFAULT_TIMEOUT_SECONDS, TimeUnit.SECONDS);
         if (!finished) {
             proc.destroyForcibly();
+            proc.waitFor(TERMINATION_WAIT_SECONDS, TimeUnit.SECONDS);
         }
 
-        errorGobbler.join(DEFAULT_TIMEOUT_SECONDS * 1000);
-        outputGobbler.join(DEFAULT_TIMEOUT_SECONDS * 1000);
+        long deadlineNanos = System.nanoTime() + TimeUnit.SECONDS.toNanos(DEFAULT_TIMEOUT_SECONDS);
+        joinUntilDeadline(errorGobbler, deadlineNanos);
+        joinUntilDeadline(outputGobbler, deadlineNanos);
 
         String err = errors.getResult();
         String outStr = out.getResult();
@@ -352,6 +359,32 @@ public class Executor {
         _error = err;
         _out = outStr;
         return new ExecutionResult(exitVal, outStr, err);
+    }
+
+    private static void joinUntilDeadline(Thread thread, long deadlineNanos) throws InterruptedException {
+        long remainingNanos = deadlineNanos - System.nanoTime();
+        if (remainingNanos <= 0L) {
+            return;
+        }
+        long remainingMillis = TimeUnit.NANOSECONDS.toMillis(remainingNanos);
+        if (remainingMillis <= 0L) {
+            remainingMillis = 1L;
+        }
+        thread.join(remainingMillis);
+    }
+
+    private ExecutionResult handleExecutionException(String command, Process proc, Exception e) {
+        if (proc != null && proc.isAlive()) {
+            proc.destroyForcibly();
+        }
+        String message = e.getMessage();
+        if (message == null) {
+            message = e.getClass().getSimpleName();
+        }
+        _out = "";
+        _error = message;
+        LOG.log(Level.SEVERE, "Error occurred executing command: " + command, e);
+        return new ExecutionResult(-1, "", message);
     }
 
     /**

@@ -7,6 +7,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class ExecutorAdditionalTest {
     private String originalExecutorEnabled;
@@ -117,5 +120,64 @@ public class ExecutorAdditionalTest {
         String errCmd = isWindows() ? "echo err 1>&2" : "echo err 1>&2";
         executor.exec(shellArray(errCmd));
         assertEquals("err", executor.getError().trim());
+    }
+
+    @Test
+    public void testExecArrayMissingCommandReturnsMinusOneAndError() {
+        Executor executor = new Executor();
+        int exitCode = executor.exec(new String[]{"definitely_missing_command_12345"});
+        assertEquals(-1, exitCode);
+        assertEquals("", executor.getOut());
+        assertNotNull(executor.getError());
+        assertTrue(executor.getError().contains("Cannot run program"));
+    }
+
+    @Test
+    public void testInterruptedExecutionClearsOutputAndTerminatesProcess() throws Exception {
+        Executor executor = new Executor();
+        executor.execute(shellArray("echo first"));
+        assertEquals("first", executor.getOut().trim());
+
+        File marker = new File(System.getProperty("java.io.tmpdir"),
+                "executor-interrupt-" + UniqueIdGenerator.getUniqueId() + ".txt");
+        if (marker.exists()) {
+            marker.delete();
+        }
+
+        String command;
+        if (isWindows()) {
+            String path = marker.getAbsolutePath().replace("\"", "\\\"");
+            command = "ping -n 4 127.0.0.1 > nul && echo leaked > \"" + path + "\"";
+        } else {
+            String path = marker.getAbsolutePath().replace("'", "'\"'\"'");
+            command = "sleep 2; echo leaked > '" + path + "'";
+        }
+
+        Thread testThread = Thread.currentThread();
+        Thread interrupter = new Thread(() -> {
+            try {
+                Thread.sleep(150);
+            } catch (InterruptedException ignored) {
+                Thread.currentThread().interrupt();
+            }
+            testThread.interrupt();
+        });
+        interrupter.setDaemon(true);
+        interrupter.start();
+
+        try {
+            ExecutionResult result = executor.execute(command);
+            assertEquals(-1, result.getExitCode());
+            assertEquals("", result.getOut());
+            assertNotNull(result.getError());
+            assertEquals("", executor.getOut());
+            assertEquals(result.getError(), executor.getError());
+        } finally {
+            Thread.interrupted(); // clear interrupt status for remaining tests
+        }
+
+        Thread.sleep(2500);
+        assertFalse(marker.exists(), "Interrupted execution should terminate spawned process");
+        marker.delete();
     }
 }

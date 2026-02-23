@@ -5404,6 +5404,11 @@ class ConverterEverythingTest {
                         assertEquals(targetDate, actualDate);
                     }
                     updateStat(pair(sourceClass, targetClass), true);
+                } else if (isFileOrPathConversion(shortNameSource, shortNameTarget) &&
+                        target instanceof Map && actual instanceof Map) {
+                    assertConversionEquals(normalizePathForComparison(target), normalizePathForComparison(actual),
+                            shortNameSource, shortNameTarget, TestMode.BASIC_CONVERSION);
+                    updateStat(pair(sourceClass, targetClass), true);
                 } else {
                     // Use DeepEquals for comprehensive comparison with difference reporting
                     Map<String, Object> options = new HashMap<>();
@@ -5444,6 +5449,48 @@ class ConverterEverythingTest {
         } else {
             return o.toString();
         }
+    }
+    
+    private static boolean isFileOrPathConversion(String shortNameSource, String shortNameTarget) {
+        return "File".equals(shortNameSource) || "Path".equals(shortNameSource) ||
+                "File".equals(shortNameTarget) || "Path".equals(shortNameTarget);
+    }
+    
+    private static String normalizePathSeparators(String value) {
+        return value == null ? null : value.replace('\\', '/');
+    }
+    
+    private static Object normalizePathForComparison(Object value) {
+        if (value == null) {
+            return null;
+        }
+        if (value instanceof String) {
+            return normalizePathSeparators((String) value);
+        }
+        if (value instanceof CharSequence) {
+            return normalizePathSeparators(value.toString());
+        }
+        if (value instanceof File) {
+            return normalizePathSeparators(((File) value).getPath());
+        }
+        if (value instanceof Path) {
+            return normalizePathSeparators(value.toString());
+        }
+        if (value instanceof char[]) {
+            return normalizePathSeparators(new String((char[]) value));
+        }
+        if (value instanceof byte[]) {
+            return normalizePathSeparators(new String((byte[]) value, StandardCharsets.UTF_8));
+        }
+        if (value instanceof Map<?, ?>) {
+            Map<?, ?> sourceMap = (Map<?, ?>) value;
+            Map<Object, Object> normalized = new LinkedHashMap<>(sourceMap.size());
+            for (Map.Entry<?, ?> entry : sourceMap.entrySet()) {
+                normalized.put(entry.getKey(), normalizePathForComparison(entry.getValue()));
+            }
+            return normalized;
+        }
+        return value;
     }
 
     private static Date date(String s) {
@@ -5667,6 +5714,10 @@ class ConverterEverythingTest {
     }
 
     private static void assertConversionEquals(Object expected, Object actual, String shortNameSource, String shortNameTarget, TestMode testMode) {
+        if (isFileOrPathConversion(shortNameSource, shortNameTarget)) {
+            expected = normalizePathForComparison(expected);
+            actual = normalizePathForComparison(actual);
+        }
         if (!Objects.equals(expected, actual)) {
             LOG.severe("");
             LOG.severe("████████████████████████████████████████████████████████████████");
@@ -5690,7 +5741,17 @@ class ConverterEverythingTest {
     private static void assertArrayConversionEquals(Object expected, Object actual, String shortNameSource, String shortNameTarget, TestMode testMode) {
         // Use Arrays.equals for backward compatibility with array type differences
         boolean arraysEqual;
-        if (expected instanceof byte[] && actual instanceof byte[]) {
+        if (isFileOrPathConversion(shortNameSource, shortNameTarget) &&
+                expected instanceof byte[] && actual instanceof byte[]) {
+            String expectedPath = normalizePathSeparators(new String((byte[]) expected, StandardCharsets.UTF_8));
+            String actualPath = normalizePathSeparators(new String((byte[]) actual, StandardCharsets.UTF_8));
+            arraysEqual = Objects.equals(expectedPath, actualPath);
+        } else if (isFileOrPathConversion(shortNameSource, shortNameTarget) &&
+                expected instanceof char[] && actual instanceof char[]) {
+            String expectedPath = normalizePathSeparators(new String((char[]) expected));
+            String actualPath = normalizePathSeparators(new String((char[]) actual));
+            arraysEqual = Objects.equals(expectedPath, actualPath);
+        } else if (expected instanceof byte[] && actual instanceof byte[]) {
             arraysEqual = Arrays.equals((byte[]) expected, (byte[]) actual);
         } else if (expected instanceof char[] && actual instanceof char[]) {
             arraysEqual = Arrays.equals((char[]) expected, (char[]) actual);

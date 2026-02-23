@@ -125,6 +125,58 @@ public final class ArrayUtilities {
     // Default dangerous class patterns (moved to system properties in static initializer)
     private static final String DEFAULT_DANGEROUS_CLASS_PATTERNS = 
         "java.lang.Runtime,java.lang.ProcessBuilder,java.lang.System,java.security.,javax.script.,sun.,com.sun.,java.lang.Class";
+    private static volatile SecurityConfig securityConfigCache;
+
+    private static final class SecurityConfig {
+        private final String securityEnabledSource;
+        private final String componentTypeValidationSource;
+        private final String dangerousClassValidationSource;
+        private final String maxArraySizeSource;
+        private final String dangerousClassPatternsSource;
+        private final boolean securityEnabled;
+        private final boolean componentTypeValidationEnabled;
+        private final boolean dangerousClassValidationEnabled;
+        private final boolean maxArraySizeValid;
+        private final long maxArraySize;
+        private final String[] dangerousClassPatterns;
+
+        private SecurityConfig(String securityEnabledSource, String componentTypeValidationSource,
+                               String dangerousClassValidationSource, String maxArraySizeSource,
+                               String dangerousClassPatternsSource) {
+            this.securityEnabledSource = securityEnabledSource;
+            this.componentTypeValidationSource = componentTypeValidationSource;
+            this.dangerousClassValidationSource = dangerousClassValidationSource;
+            this.maxArraySizeSource = maxArraySizeSource;
+            this.dangerousClassPatternsSource = dangerousClassPatternsSource;
+            securityEnabled = Boolean.parseBoolean(securityEnabledSource);
+            componentTypeValidationEnabled = Boolean.parseBoolean(componentTypeValidationSource);
+            dangerousClassValidationEnabled = Boolean.parseBoolean(dangerousClassValidationSource);
+
+            long parsedSize = 0L;
+            boolean parsedSizeValid = false;
+            if (maxArraySizeSource != null) {
+                try {
+                    parsedSize = Long.parseLong(maxArraySizeSource);
+                    parsedSizeValid = true;
+                } catch (NumberFormatException ignored) {
+                    // Fall back to default behavior
+                }
+            }
+            maxArraySize = parsedSize;
+            maxArraySizeValid = parsedSizeValid;
+            dangerousClassPatterns = parseDangerousClassPatterns(dangerousClassPatternsSource);
+        }
+
+        private boolean matches(String securityEnabledSource, String componentTypeValidationSource,
+                                String dangerousClassValidationSource, String maxArraySizeSource,
+                                String dangerousClassPatternsSource) {
+            return Objects.equals(this.securityEnabledSource, securityEnabledSource) &&
+                    Objects.equals(this.componentTypeValidationSource, componentTypeValidationSource) &&
+                    Objects.equals(this.dangerousClassValidationSource, dangerousClassValidationSource) &&
+                    Objects.equals(this.maxArraySizeSource, maxArraySizeSource) &&
+                    Objects.equals(this.dangerousClassPatternsSource, dangerousClassPatternsSource);
+        }
+    }
     
     static {
         // Initialize system properties with defaults if not already set (backward compatibility)
@@ -146,32 +198,72 @@ public final class ArrayUtilities {
     // Security configuration methods
     
     private static boolean isSecurityEnabled() {
-        return Boolean.parseBoolean(System.getProperty("arrayutilities.security.enabled", "false"));
+        return getSecurityConfig().securityEnabled;
     }
     
     private static boolean isComponentTypeValidationEnabled() {
-        return Boolean.parseBoolean(System.getProperty("arrayutilities.component.type.validation.enabled", "false"));
+        return getSecurityConfig().componentTypeValidationEnabled;
     }
     
     private static boolean isDangerousClassValidationEnabled() {
-        return Boolean.parseBoolean(System.getProperty("arrayutilities.dangerous.classes.validation.enabled", "false"));
+        return getSecurityConfig().dangerousClassValidationEnabled;
     }
     
     private static long getMaxArraySize() {
-        String maxSizeProp = System.getProperty("arrayutilities.max.array.size");
-        if (maxSizeProp != null) {
-            try {
-                return Long.parseLong(maxSizeProp);
-            } catch (NumberFormatException e) {
-                // Fall through to default
-            }
+        SecurityConfig config = getSecurityConfig();
+        if (config.maxArraySizeValid) {
+            return config.maxArraySize;
         }
-        return isSecurityEnabled() ? DEFAULT_MAX_ARRAY_SIZE : Long.MAX_VALUE;
+        return config.securityEnabled ? DEFAULT_MAX_ARRAY_SIZE : Long.MAX_VALUE;
     }
     
     private static String[] getDangerousClassPatterns() {
-        String patterns = System.getProperty("arrayutilities.dangerous.class.patterns", DEFAULT_DANGEROUS_CLASS_PATTERNS);
-        return patterns.split(",");
+        return getSecurityConfig().dangerousClassPatterns;
+    }
+
+    private static SecurityConfig getSecurityConfig() {
+        String securityEnabledSource = System.getProperty("arrayutilities.security.enabled", "false");
+        String componentTypeValidationSource = System.getProperty("arrayutilities.component.type.validation.enabled", "false");
+        String dangerousClassValidationSource = System.getProperty("arrayutilities.dangerous.classes.validation.enabled", "true");
+        String maxArraySizeSource = System.getProperty("arrayutilities.max.array.size");
+        String dangerousClassPatternsSource = System.getProperty("arrayutilities.dangerous.class.patterns",
+                DEFAULT_DANGEROUS_CLASS_PATTERNS);
+
+        SecurityConfig config = securityConfigCache;
+        if (config != null && config.matches(securityEnabledSource, componentTypeValidationSource,
+                dangerousClassValidationSource, maxArraySizeSource, dangerousClassPatternsSource)) {
+            return config;
+        }
+
+        synchronized (ArrayUtilities.class) {
+            securityEnabledSource = System.getProperty("arrayutilities.security.enabled", "false");
+            componentTypeValidationSource = System.getProperty("arrayutilities.component.type.validation.enabled", "false");
+            dangerousClassValidationSource = System.getProperty("arrayutilities.dangerous.classes.validation.enabled", "true");
+            maxArraySizeSource = System.getProperty("arrayutilities.max.array.size");
+            dangerousClassPatternsSource = System.getProperty("arrayutilities.dangerous.class.patterns",
+                    DEFAULT_DANGEROUS_CLASS_PATTERNS);
+
+            config = securityConfigCache;
+            if (config == null || !config.matches(securityEnabledSource, componentTypeValidationSource,
+                    dangerousClassValidationSource, maxArraySizeSource, dangerousClassPatternsSource)) {
+                config = new SecurityConfig(securityEnabledSource, componentTypeValidationSource,
+                        dangerousClassValidationSource, maxArraySizeSource, dangerousClassPatternsSource);
+                securityConfigCache = config;
+            }
+            return config;
+        }
+    }
+
+    private static String[] parseDangerousClassPatterns(String patterns) {
+        String[] rawPatterns = patterns.split(",");
+        int size = 0;
+        for (int i = 0; i < rawPatterns.length; i++) {
+            String pattern = rawPatterns[i].trim();
+            if (!pattern.isEmpty()) {
+                rawPatterns[size++] = pattern;
+            }
+        }
+        return size == rawPatterns.length ? rawPatterns : Arrays.copyOf(rawPatterns, size);
     }
 
     /**
@@ -194,7 +286,7 @@ public final class ArrayUtilities {
         }
         
         // Only validate if security features are enabled
-        if (!isSecurityEnabled() || !isComponentTypeValidationEnabled()) {
+        if (!isSecurityEnabled() || !isComponentTypeValidationEnabled() || !isDangerousClassValidationEnabled()) {
             return;
         }
         
@@ -203,7 +295,6 @@ public final class ArrayUtilities {
         
         // Check if class name matches any dangerous patterns
         for (String pattern : dangerousPatterns) {
-            pattern = pattern.trim();
             if (pattern.endsWith(".")) {
                 // Package prefix pattern (e.g., "java.security.")
                 if (className.startsWith(pattern)) {
@@ -658,10 +749,11 @@ public final class ArrayUtilities {
         // Security: Validate component type before array creation
         validateComponentType(classToCastTo);
         
+        int size = c.size();
         // Security: Validate collection size to prevent memory exhaustion
-        validateArraySize(c.size());
+        validateArraySize(size);
 
-        T[] array = (T[]) Array.newInstance(classToCastTo, c.size());
+        T[] array = (T[]) Array.newInstance(classToCastTo, size);
         return c.toArray(array);
     }
 
@@ -875,8 +967,8 @@ public final class ArrayUtilities {
                 // Convert ArrayStoreException to IllegalArgumentException for consistent error handling
                 String elementType = element == null ? "null" : element.getClass().getName();
                 String arrayType = array.getClass().getComponentType().getName() + "[]";
-                throw new IllegalArgumentException("Cannot set '" + elementType + "' (value: " + element +
-                        ") into '" + arrayType + "' at index " + index);
+                throw new IllegalArgumentException("Cannot set '" + elementType +
+                        "' into '" + arrayType + "' at index " + index);
             }
         } else {
             // Primitive arrays - use optimized setPrimitiveElement()
@@ -964,10 +1056,11 @@ public final class ArrayUtilities {
                     ((char[])array)[index] = '\0';
                 } else if (element instanceof Character) {
                     ((char[])array)[index] = (Character)element;
-                } else if (element instanceof String && ((String)element).length() > 0) {
-                    ((char[])array)[index] = ((String)element).charAt(0);
+                } else if (element instanceof String) {
+                    String stringElement = (String) element;
+                    ((char[])array)[index] = stringElement.isEmpty() ? '\0' : stringElement.charAt(0);
                 } else {
-                    ((char[])array)[index] = '\0';
+                    throw new ClassCastException();
                 }
                 return;
             } else if (componentType == short.class) {
@@ -990,8 +1083,8 @@ public final class ArrayUtilities {
         String elementType = element == null ? "null" : element.getClass().getName();
         String arrayType = array.getClass().getComponentType().getName() + "[]";
 
-        throw new IllegalArgumentException("Cannot set '" + elementType + "' (value: " + element +
-                ") into '" + arrayType + "' at index " + index);
+        throw new IllegalArgumentException("Cannot set '" + elementType +
+                "' into '" + arrayType + "' at index " + index);
     }
 
 }

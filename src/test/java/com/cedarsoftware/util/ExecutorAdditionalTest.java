@@ -43,6 +43,66 @@ public class ExecutorAdditionalTest {
         return new String[]{"sh", "-c", command};
     }
 
+    private static String javaExecutable() {
+        String javaHome = System.getProperty("java.home");
+        File javaBin = new File(javaHome, "bin");
+        File java = new File(javaBin, "java");
+        if (java.isFile()) {
+            return java.getAbsolutePath();
+        }
+        File javaExe = new File(javaBin, "java.exe");
+        if (javaExe.isFile()) {
+            return javaExe.getAbsolutePath();
+        }
+        return "java";
+    }
+
+    private static String[] probeCommand(String... args) {
+        String classPath = System.getProperty("java.class.path");
+        if (classPath == null || classPath.isEmpty()) {
+            throw new IllegalStateException("java.class.path is unavailable");
+        }
+        String[] command = new String[4 + args.length];
+        command[0] = javaExecutable();
+        command[1] = "-cp";
+        command[2] = classPath;
+        command[3] = ExecutorProbe.class.getName();
+        System.arraycopy(args, 0, command, 4, args.length);
+        return command;
+    }
+
+    public static class ExecutorProbe {
+        public static void main(String[] args) throws Exception {
+            if (args.length == 0) {
+                throw new IllegalArgumentException("mode is required");
+            }
+            String mode = args[0];
+            if ("print".equals(mode)) {
+                if (args.length != 2) {
+                    throw new IllegalArgumentException("print mode requires text argument");
+                }
+                System.out.print(args[1]);
+                return;
+            }
+            if ("sleep-write".equals(mode)) {
+                if (args.length != 3) {
+                    throw new IllegalArgumentException("sleep-write mode requires millis and file path");
+                }
+                long millis = Long.parseLong(args[1]);
+                Thread.sleep(millis);
+                File marker = new File(args[2]);
+                java.io.FileWriter writer = new java.io.FileWriter(marker);
+                try {
+                    writer.write("leaked");
+                } finally {
+                    writer.close();
+                }
+                return;
+            }
+            throw new IllegalArgumentException("Unknown mode: " + mode);
+        }
+    }
+
     @Test
     public void testExecuteArray() {
         Executor executor = new Executor();
@@ -135,7 +195,7 @@ public class ExecutorAdditionalTest {
     @Test
     public void testInterruptedExecutionClearsOutputAndTerminatesProcess() throws Exception {
         Executor executor = new Executor();
-        executor.execute(shellArray("echo first"));
+        executor.execute(probeCommand("print", "first"));
         assertEquals("first", executor.getOut().trim());
 
         File marker = new File(System.getProperty("java.io.tmpdir"),
@@ -144,14 +204,7 @@ public class ExecutorAdditionalTest {
             marker.delete();
         }
 
-        String command;
-        if (isWindows()) {
-            String path = marker.getAbsolutePath().replace("\"", "\\\"");
-            command = "ping -n 4 127.0.0.1 > nul && echo leaked > \"" + path + "\"";
-        } else {
-            String path = marker.getAbsolutePath().replace("'", "'\"'\"'");
-            command = "sleep 2; echo leaked > '" + path + "'";
-        }
+        String[] command = probeCommand("sleep-write", "2000", marker.getAbsolutePath());
 
         Thread testThread = Thread.currentThread();
         Thread interrupter = new Thread(() -> {

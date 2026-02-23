@@ -1,5 +1,6 @@
 package com.cedarsoftware.util;
 
+import javax.tools.ToolProvider;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -10,6 +11,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 /**
  * Security tests for ByteUtilities class.
@@ -284,5 +286,18 @@ public class ByteUtilitiesSecurityTest {
             String encoded = ByteUtilities.encode(expectedBytes);
             assertEquals(testHex, encoded);
         }, "Should preserve backward compatibility");
+    }
+
+    @Test
+    void testCompactMapBuilderTemplateDecodeBypassesHexSecurityLimit() {
+        assumeTrue(ToolProvider.getSystemJavaCompiler() != null, "JDK compiler required for CompactMap builder");
+        System.setProperty("byteutilities.security.enabled", "true");
+        System.setProperty("byteutilities.max.hex.string.length", "10");
+
+        assertDoesNotThrow(() -> {
+            CompactMap<String, String> map = CompactMap.<String, String>builder().build();
+            map.put("k", "v");
+            assertEquals("v", map.get("k"));
+        }, "Trusted internal template decode should not be blocked by user hex-length limits");
     }
 }

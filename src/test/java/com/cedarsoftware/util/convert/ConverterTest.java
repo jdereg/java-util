@@ -4592,67 +4592,69 @@ class ConverterTest
     @Test
     void testFileConversions() {
         // Test basic File conversions that are known to work
+        File sampleFile = new File("/tmp/test.txt");
         
         // Test File from String paths
         File f1 = converter.convert("/tmp/test.txt", File.class);
-        assertEquals(new File("/tmp/test.txt"), f1);
+        assertEquals(sampleFile, f1);
         
         // Test File from Map
         File f2 = converter.convert(mapOf("value", "/tmp/test.txt"), File.class);
-        assertEquals(new File("/tmp/test.txt"), f2);
+        assertEquals(sampleFile, f2);
         
         // Test File to String
-        String s1 = converter.convert(new File("/tmp/test.txt"), String.class);
-        assertEquals("/tmp/test.txt", s1);
+        String s1 = converter.convert(sampleFile, String.class);
+        assertEquals(sampleFile.getPath(), s1);
         
         // Test File to Map  
-        Map<?, ?> m1 = converter.convert(new File("/tmp/test.txt"), Map.class);
-        assertEquals(mapOf("file", "/tmp/test.txt"), m1);
+        Map<?, ?> m1 = converter.convert(sampleFile, Map.class);
+        assertEquals(mapOf("file", sampleFile.getPath()), m1);
     }
 
     @Test
     void testPathConversions() {
         // Test basic Path conversions that are known to work
+        Path samplePath = Paths.get("/tmp/test.txt");
         
         // Test Path from String paths
         Path p1 = converter.convert("/tmp/test.txt", Path.class);
-        assertEquals(Paths.get("/tmp/test.txt"), p1);
+        assertEquals(samplePath, p1);
         
         // Test Path from Map
         Path p2 = converter.convert(mapOf("value", "/tmp/test.txt"), Path.class);
-        assertEquals(Paths.get("/tmp/test.txt"), p2);
+        assertEquals(samplePath, p2);
         
         // Test Path to String
-        String s1 = converter.convert(Paths.get("/tmp/test.txt"), String.class);
-        assertEquals("/tmp/test.txt", s1);
+        String s1 = converter.convert(samplePath, String.class);
+        assertEquals(samplePath.toString(), s1);
         
         // Test Path to Map
-        Map<?, ?> m1 = converter.convert(Paths.get("/tmp/test.txt"), Map.class);
-        assertEquals(mapOf("path", "/tmp/test.txt"), m1);
+        Map<?, ?> m1 = converter.convert(samplePath, Map.class);
+        assertEquals(mapOf("path", samplePath.toString()), m1);
     }
 
     @Test
     void testFilePathInterconversions() {
         // Test File ↔ Path conversions
+        File sampleFile = new File("/tmp/test.txt");
+        Path samplePath = Paths.get("/tmp/test.txt");
         
         // Test File → Path
-        File file = new File("/tmp/test.txt");
-        Path pathFromFile = converter.convert(file, Path.class);
-        assertEquals(Paths.get("/tmp/test.txt"), pathFromFile);
+        Path pathFromFile = converter.convert(sampleFile, Path.class);
+        assertEquals(samplePath, pathFromFile);
         
         // Test Path → File  
-        Path path = Paths.get("/tmp/test.txt");
-        File fileFromPath = converter.convert(path, File.class);
-        assertEquals(new File("/tmp/test.txt"), fileFromPath);
+        File fileFromPath = converter.convert(samplePath, File.class);
+        assertEquals(sampleFile, fileFromPath);
         
         // Test round-trip: File → Path → File
-        File originalFile = new File("/tmp/test.txt");
+        File originalFile = sampleFile;
         Path convertedPath = converter.convert(originalFile, Path.class);
         File roundTripFile = converter.convert(convertedPath, File.class);
         assertEquals(originalFile, roundTripFile);
         
         // Test round-trip: Path → File → Path
-        Path originalPath = Paths.get("/tmp/test.txt");
+        Path originalPath = samplePath;
         File convertedFile = converter.convert(originalPath, File.class);
         Path roundTripPath = converter.convert(convertedFile, Path.class);
         assertEquals(originalPath, roundTripPath);

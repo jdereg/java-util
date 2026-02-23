@@ -20,7 +20,7 @@ repository.
 - When a Unique ID is needed, use the UniqueIdGenerator.getUniqueId19() as it will give you a long, up to 10,000 per millisecond, and you can always get the time of when it was created, from it, and it is strictly increasing.
 - IOUtilities has some nice APIs to close streams without extra try/catch blocks, and also has a nice transfer APIs, and transfer APIs that show call back with transfer stats.
 - ClassValueMap and ClassValueSet make using JDK's ClassValue much easier yet retain the benefits of ClassValue in terms of speed.
-- Of course, for CaseInsensitiveMaps, there is no better one that CaseInsensitiveMap.
+- Of course, for case-insensitive Maps, there is no better one than java-util's CaseInsensitiveMap.
 - And if you need to create large amounts of Maps, CompactMap (and its variants) use significantly less space than regular JDK maps.
 
 ## Commit Messages

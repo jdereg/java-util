@@ -1,6 +1,12 @@
 ### Revision History
 
 #### 4.95.0 (Unreleased)
+* **BUG FIX**: `ArrayUtilities.setPrimitiveElement(char[], ...)` now throws `IllegalArgumentException` for incompatible non-char inputs instead of silently coercing values to `'\0'`.
+* **BUG FIX**: `ArrayUtilities` type-mismatch errors from `setElement(...)` / `setPrimitiveElement(...)` now report stable `IllegalArgumentException` messages without invoking arbitrary `element.toString()` during error construction.
+* **BUG FIX**: `ArrayUtilities` dangerous-class validation now honors `arrayutilities.dangerous.classes.validation.enabled` as an independent runtime toggle (default enabled for backward compatibility).
+* **PERFORMANCE**: `ArrayUtilities` now caches parsed security properties (`security`, `component validation`, `dangerous validation`, `max array size`, and dangerous-pattern list) with source-based invalidation; `toArray()` now captures collection size once.
+* **BUG FIX**: `ByteUtilities` now uses a trusted internal hex-decode path for embedded framework constants (for example `CompactMap` template bytecode), so restrictive user hex-length limits no longer break `CompactMap.builder()` initialization.
+* **PERFORMANCE**: `ByteUtilities` security configuration now uses a single snapshot cache with property-source invalidation, and multi-byte `indexOf`/`lastIndexOf` scans now fast-reject on first/last-byte mismatches before inner comparison.
 * **BUG FIX**: `CaseInsensitiveMap.CaseInsensitiveEntry.setValue()` now updates both the backing map and the entry view value so `entry.getValue()` reflects the new value immediately.
 * **BUG FIX**: `CaseInsensitiveMap.equals()` now rejects false-positive equality when compared maps contain duplicate case-equivalent keys (for example, both `"ID"` and `"id"`), preventing collapsed-key matches from being treated as equal.
 * **BUG FIX**: `CaseInsensitiveMap` key normalization for `MultiKeyMap` with `flattenDimensions=false` now preserves `Set` semantics during recursive conversion, so set-based keys remain order-insensitive.
@@ -50,6 +56,7 @@
 * **BUG FIX**: `Converter.convert()` now ignores cached `UNSUPPORTED` sentinel entries, so prior `isConversionSupportedFor()` calls cannot poison later `convert()` calls into returning `null` on unsupported, fallback, or dynamic paths.
 * **BUG FIX**: `Converter.isContainerConversionSupported()` now reports map-to-map conversions as supported, matching `Converter.convert()` runtime behavior for `Map` source to `Map` target conversions.
 * **PERFORMANCE**: `Converter.addConversion()` now invalidates affected conversion cache entries in a single pass across source/target type variations instead of rescanning the full cache once per primitive/wrapper combination.
+* **TESTING**: `Converter` File/Path conversion tests now normalize path separator expectations, and `ConverterEverythingTest` File/Path assertions now perform separator-normalized comparisons for consistent Mac/Linux/Windows execution.
 * **BUG FIX**: `DateUtilities` regex-timeout controls now honor `dateutilities.regex.timeout.enabled` and `dateutilities.regex.timeout.milliseconds` during date parsing.
 * **BUG FIX**: `DateUtilities` strict parsing now rejects malformed bracketed timezone fragments (for example `"[EST"` and `"EST]"`) instead of accepting them as valid zones.
 * **PERFORMANCE**: `DateUtilities` now reduces allocation in malformed-input repetition detection and strict remnant cleanup by using region matching and non-regex marker stripping.
@@ -62,6 +69,7 @@
 * **BUG FIX**: `Executor` now forcibly destroys already-started child processes when command execution is interrupted, preventing runaway background command continuation after `execute(...)` returns failure.
 * **BUG FIX**: `Executor` now updates instance-cached `getOut()` / `getError()` values on execution failures (including interruption) instead of leaving stale output from prior commands.
 * **PERFORMANCE**: `Executor` now caches OS shell selection once and uses a shared timeout deadline for gobbler-thread joins, reducing repeated property/string work and worst-case timeout amplification.
+* **TESTING**: `ExecutorAdditionalTest` interruption regression now uses a portable Java subprocess probe instead of OS-specific shell timing commands, improving cross-platform reliability.
 * **BUG FIX**: `GraphComparator.Delta.Command.fromName()` now normalizes command names with `Locale.ROOT`, avoiding locale-dependent parse failures (for example Turkish-I).
 * **BUG FIX**: `GraphComparator` now emits and applies deltas for shadowed fields (same field name across class hierarchy) using unique field lookup keys, preventing dropped or misapplied updates.
 * **BUG FIX**: `GraphComparator` now treats `ID` callback `null` returns as non-ID objects, preventing `NullPointerException` during object-id comparison.

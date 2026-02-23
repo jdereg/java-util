@@ -95,68 +95,85 @@ public final class ByteUtilities {
     private static final String PROP_MAX_HEX_LENGTH = "byteutilities.max.hex.string.length";
     private static final String PROP_MAX_ARRAY_SIZE = "byteutilities.max.array.size";
 
-    // Cached security settings with property change detection
-    private static volatile String cachedSecurityEnabledProp;
-    private static volatile boolean cachedSecurityEnabled;
-    private static volatile String cachedMaxHexLengthProp;
-    private static volatile int cachedMaxHexLength;
-    private static volatile String cachedMaxArraySizeProp;
-    private static volatile int cachedMaxArraySize;
+    private static volatile SecurityConfig securityConfigCache;
 
     // Maximum array size that can be safely doubled without overflow
     private static final int MAX_SAFE_ARRAY_SIZE = Integer.MAX_VALUE / 2;
 
-    private static boolean isSecurityEnabled() {
-        String currentProp = System.getProperty(PROP_SECURITY_ENABLED, "false");
-        if (!currentProp.equals(cachedSecurityEnabledProp)) {
-            cachedSecurityEnabledProp = currentProp;
-            cachedSecurityEnabled = Boolean.parseBoolean(currentProp);
+    private static final class SecurityConfig {
+        private final String securityEnabledSource;
+        private final String maxHexLengthSource;
+        private final String maxArraySizeSource;
+        private final boolean securityEnabled;
+        private final int maxHexStringLength;
+        private final int maxArraySize;
+
+        private SecurityConfig(String securityEnabledSource, String maxHexLengthSource, String maxArraySizeSource) {
+            this.securityEnabledSource = securityEnabledSource;
+            this.maxHexLengthSource = maxHexLengthSource;
+            this.maxArraySizeSource = maxArraySizeSource;
+            securityEnabled = Boolean.parseBoolean(securityEnabledSource);
+            maxHexStringLength = parseLimit(maxHexLengthSource, DEFAULT_MAX_HEX_STRING_LENGTH);
+            maxArraySize = parseLimit(maxArraySizeSource, DEFAULT_MAX_ARRAY_SIZE);
         }
-        return cachedSecurityEnabled;
+
+        private boolean matches(String securityEnabledSource, String maxHexLengthSource, String maxArraySizeSource) {
+            return equalsNullable(this.securityEnabledSource, securityEnabledSource) &&
+                    equalsNullable(this.maxHexLengthSource, maxHexLengthSource) &&
+                    equalsNullable(this.maxArraySizeSource, maxArraySizeSource);
+        }
+    }
+
+    private static boolean equalsNullable(String a, String b) {
+        return a == null ? b == null : a.equals(b);
+    }
+
+    private static int parseLimit(String source, int defaultLimit) {
+        if (source == null) {
+            return defaultLimit;
+        }
+        try {
+            int limit = Integer.parseInt(source);
+            return limit <= 0 ? 0 : limit;
+        } catch (NumberFormatException ignored) {
+            return defaultLimit;
+        }
+    }
+
+    private static SecurityConfig getSecurityConfig() {
+        String securityEnabledSource = System.getProperty(PROP_SECURITY_ENABLED, "false");
+        String maxHexLengthSource = System.getProperty(PROP_MAX_HEX_LENGTH);
+        String maxArraySizeSource = System.getProperty(PROP_MAX_ARRAY_SIZE);
+        SecurityConfig config = securityConfigCache;
+        if (config != null && config.matches(securityEnabledSource, maxHexLengthSource, maxArraySizeSource)) {
+            return config;
+        }
+
+        synchronized (ByteUtilities.class) {
+            securityEnabledSource = System.getProperty(PROP_SECURITY_ENABLED, "false");
+            maxHexLengthSource = System.getProperty(PROP_MAX_HEX_LENGTH);
+            maxArraySizeSource = System.getProperty(PROP_MAX_ARRAY_SIZE);
+            config = securityConfigCache;
+            if (config == null || !config.matches(securityEnabledSource, maxHexLengthSource, maxArraySizeSource)) {
+                config = new SecurityConfig(securityEnabledSource, maxHexLengthSource, maxArraySizeSource);
+                securityConfigCache = config;
+            }
+            return config;
+        }
+    }
+
+    private static boolean isSecurityEnabled() {
+        return getSecurityConfig().securityEnabled;
     }
 
     private static int getMaxHexStringLength() {
-        if (!isSecurityEnabled()) {
-            return 0; // Disabled
-        }
-        String currentProp = System.getProperty(PROP_MAX_HEX_LENGTH);
-        if (currentProp == null) {
-            cachedMaxHexLengthProp = null;
-            cachedMaxHexLength = DEFAULT_MAX_HEX_STRING_LENGTH;
-            return cachedMaxHexLength;
-        }
-        if (!currentProp.equals(cachedMaxHexLengthProp)) {
-            cachedMaxHexLengthProp = currentProp;
-            try {
-                int limit = Integer.parseInt(currentProp);
-                cachedMaxHexLength = limit <= 0 ? 0 : limit;
-            } catch (NumberFormatException e) {
-                cachedMaxHexLength = DEFAULT_MAX_HEX_STRING_LENGTH;
-            }
-        }
-        return cachedMaxHexLength;
+        SecurityConfig config = getSecurityConfig();
+        return config.securityEnabled ? config.maxHexStringLength : 0;
     }
 
     private static int getMaxArraySize() {
-        if (!isSecurityEnabled()) {
-            return 0; // Disabled
-        }
-        String currentProp = System.getProperty(PROP_MAX_ARRAY_SIZE);
-        if (currentProp == null) {
-            cachedMaxArraySizeProp = null;
-            cachedMaxArraySize = DEFAULT_MAX_ARRAY_SIZE;
-            return cachedMaxArraySize;
-        }
-        if (!currentProp.equals(cachedMaxArraySizeProp)) {
-            cachedMaxArraySizeProp = currentProp;
-            try {
-                int limit = Integer.parseInt(currentProp);
-                cachedMaxArraySize = limit <= 0 ? 0 : limit;
-            } catch (NumberFormatException e) {
-                cachedMaxArraySize = DEFAULT_MAX_ARRAY_SIZE;
-            }
-        }
-        return cachedMaxArraySize;
+        SecurityConfig config = getSecurityConfig();
+        return config.securityEnabled ? config.maxArraySize : 0;
     }
 
     // For encode: Array of hex digits (private - use toHexChar() for public access)
@@ -202,7 +219,7 @@ public final class ByteUtilities {
      * @return the decoded byte array, or null if input is null, has odd length, or contains non-hex characters
      */
     public static byte[] decode(final String s) {
-        return decode((CharSequence) s);
+        return decodeInternal(s, true);
     }
 
     /**
@@ -212,15 +229,25 @@ public final class ByteUtilities {
      * @return the decoded byte array, or null if input is null, has odd length, or contains non-hex characters
      */
     public static byte[] decode(final CharSequence s) {
+        return decodeInternal(s, true);
+    }
+
+    static byte[] decodeTrusted(final String s) {
+        return decodeInternal(s, false);
+    }
+
+    private static byte[] decodeInternal(final CharSequence s, boolean enforceSecurityLimit) {
         if (s == null) {
             return null;
         }
         final int len = s.length();
         
-        // Security check: validate hex string length
-        int maxHexLength = getMaxHexStringLength();
-        if (maxHexLength > 0 && len > maxHexLength) {
-            throw new SecurityException("Hex string length exceeds maximum allowed: " + maxHexLength);
+        if (enforceSecurityLimit) {
+            // Security check: validate hex string length
+            int maxHexLength = getMaxHexStringLength();
+            if (maxHexLength > 0 && len > maxHexLength) {
+                throw new SecurityException("Hex string length exceeds maximum allowed: " + maxHexLength);
+            }
         }
         
         // Must be even length
@@ -341,10 +368,15 @@ public final class ByteUtilities {
             return -1;
         }
 
+        final byte first = pattern[0];
+        final byte last = pattern[patternLen - 1];
         final int limit = dataLen - patternLen;
         outer:
         for (int i = start; i <= limit; i++) {
-            for (int j = 0; j < patternLen; j++) {
+            if (data[i] != first || data[i + patternLen - 1] != last) {
+                continue;
+            }
+            for (int j = 1; j < patternLen - 1; j++) {
                 if (data[i + j] != pattern[j]) {
                     continue outer;
                 }
@@ -402,9 +434,14 @@ public final class ByteUtilities {
             return -1;
         }
 
+        final byte first = pattern[0];
+        final byte last = pattern[patternLen - 1];
         outer:
         for (int i = effectiveStart; i >= 0; i--) {
-            for (int j = 0; j < patternLen; j++) {
+            if (data[i] != first || data[i + patternLen - 1] != last) {
+                continue;
+            }
+            for (int j = 1; j < patternLen - 1; j++) {
                 if (data[i + j] != pattern[j]) {
                     continue outer;
                 }

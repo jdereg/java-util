@@ -552,6 +552,33 @@ public class ArrayUtilitiesTest
     }
 
     @Test
+    void testSetCharArrayRejectsIncompatibleType()
+    {
+        char[] chars = new char[1];
+        IllegalArgumentException e = assertThrows(IllegalArgumentException.class, () ->
+                ArrayUtilities.setPrimitiveElement(chars, 0, Integer.valueOf(65)));
+        assertTrue(e.getMessage().contains("java.lang.Integer"));
+        assertEquals('\0', chars[0]);
+    }
+
+    @Test
+    void testSetElementTypeMismatchDoesNotInvokeToString()
+    {
+        String[] strings = new String[1];
+        Object badValue = new Object() {
+            @Override
+            public String toString() {
+                throw new IllegalStateException("boom");
+            }
+        };
+
+        IllegalArgumentException e = assertThrows(IllegalArgumentException.class, () ->
+                ArrayUtilities.setElement(strings, 0, badValue));
+        assertTrue(e.getMessage().contains("Cannot set"));
+        assertTrue(e.getMessage().contains("java.lang.String[]"));
+    }
+
+    @Test
     void testSetShortArray()
     {
         // Test short[] array

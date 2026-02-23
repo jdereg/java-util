@@ -26,6 +26,7 @@ public class ArrayUtilitiesSecurityTest {
     
     private String originalSecurityEnabled;
     private String originalComponentTypeValidationEnabled;
+    private String originalDangerousClassValidationEnabled;
     private String originalMaxArraySize;
     private String originalDangerousClassPatterns;
     
@@ -34,12 +35,14 @@ public class ArrayUtilitiesSecurityTest {
         // Save original system property values
         originalSecurityEnabled = System.getProperty("arrayutilities.security.enabled");
         originalComponentTypeValidationEnabled = System.getProperty("arrayutilities.component.type.validation.enabled");
+        originalDangerousClassValidationEnabled = System.getProperty("arrayutilities.dangerous.classes.validation.enabled");
         originalMaxArraySize = System.getProperty("arrayutilities.max.array.size");
         originalDangerousClassPatterns = System.getProperty("arrayutilities.dangerous.class.patterns");
         
         // Enable security features for testing
         System.setProperty("arrayutilities.security.enabled", "true");
         System.setProperty("arrayutilities.component.type.validation.enabled", "true");
+        System.setProperty("arrayutilities.dangerous.classes.validation.enabled", "true");
     }
     
     @AfterEach
@@ -47,6 +50,7 @@ public class ArrayUtilitiesSecurityTest {
         // Restore original system property values
         restoreProperty("arrayutilities.security.enabled", originalSecurityEnabled);
         restoreProperty("arrayutilities.component.type.validation.enabled", originalComponentTypeValidationEnabled);
+        restoreProperty("arrayutilities.dangerous.classes.validation.enabled", originalDangerousClassValidationEnabled);
         restoreProperty("arrayutilities.max.array.size", originalMaxArraySize);
         restoreProperty("arrayutilities.dangerous.class.patterns", originalDangerousClassPatterns);
     }
@@ -123,6 +127,12 @@ public class ArrayUtilitiesSecurityTest {
         String[] result = ArrayUtilities.nullToEmpty(String.class, null);
         assertNotNull(result);
         assertEquals(0, result.length);
+    }
+
+    @Test
+    public void testNullToEmpty_dangerousValidationDisabled_allowsDangerousClass() {
+        System.setProperty("arrayutilities.dangerous.classes.validation.enabled", "false");
+        assertDoesNotThrow(() -> ArrayUtilities.nullToEmpty(Runtime.class, null));
     }
     
     // Test integer overflow protection in addAll

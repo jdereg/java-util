@@ -38,6 +38,10 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class FileConversionsTest {
 
     private Converter converter;
+    
+    private static String systemPath(String path) {
+        return new File(path).getPath();
+    }
 
     @BeforeEach
     void setUp() {
@@ -61,25 +65,25 @@ class FileConversionsTest {
     @Test
     void testStringToFile_absolutePath() {
         File result = converter.convert("/path/to/file.txt", File.class);
-        assertThat(result.getPath()).isEqualTo("/path/to/file.txt");
+        assertThat(result.getPath()).isEqualTo(systemPath("/path/to/file.txt"));
     }
 
     @Test
     void testStringToFile_relativePath() {
         File result = converter.convert("relative/path/file.txt", File.class);
-        assertThat(result.getPath()).isEqualTo("relative/path/file.txt");
+        assertThat(result.getPath()).isEqualTo(systemPath("relative/path/file.txt"));
     }
 
     @Test
     void testStringToFile_windowsPath() {
         File result = converter.convert("C:\\Windows\\System32\\file.txt", File.class);
-        assertThat(result.getPath()).isEqualTo("C:\\Windows\\System32\\file.txt");
+        assertThat(result.getPath()).isEqualTo(systemPath("C:\\Windows\\System32\\file.txt"));
     }
 
     @Test
     void testStringToFile_withSpaces() {
         File result = converter.convert("/path with spaces/file name.txt", File.class);
-        assertThat(result.getPath()).isEqualTo("/path with spaces/file name.txt");
+        assertThat(result.getPath()).isEqualTo(systemPath("/path with spaces/file name.txt"));
     }
 
     @Test
@@ -106,7 +110,7 @@ class FileConversionsTest {
         map.put("file", "/usr/local/bin/java");
         
         File result = converter.convert(map, File.class);
-        assertThat(result.getPath()).isEqualTo("/usr/local/bin/java");
+        assertThat(result.getPath()).isEqualTo(systemPath("/usr/local/bin/java"));
     }
 
     @Test
@@ -115,7 +119,7 @@ class FileConversionsTest {
         map.put("value", "/home/user/document.pdf");
         
         File result = converter.convert(map, File.class);
-        assertThat(result.getPath()).isEqualTo("/home/user/document.pdf");
+        assertThat(result.getPath()).isEqualTo(systemPath("/home/user/document.pdf"));
     }
 
     @Test
@@ -124,7 +128,7 @@ class FileConversionsTest {
         map.put("_v", "C:\\Program Files\\app.exe");
         
         File result = converter.convert(map, File.class);
-        assertThat(result.getPath()).isEqualTo("C:\\Program Files\\app.exe");
+        assertThat(result.getPath()).isEqualTo(systemPath("C:\\Program Files\\app.exe"));
     }
 
     // ========================================
@@ -136,7 +140,7 @@ class FileConversionsTest {
         URI uri = new URI("file:///path/to/file.txt");
         
         File result = converter.convert(uri, File.class);
-        assertThat(result.getPath()).isEqualTo("/path/to/file.txt");
+        assertThat(result.getPath()).isEqualTo(new File(uri).getPath());
     }
 
     @Test
@@ -157,7 +161,7 @@ class FileConversionsTest {
         URL url = new URL("file:///tmp/test.txt");
         
         File result = converter.convert(url, File.class);
-        assertThat(result.getPath()).isEqualTo("/tmp/test.txt");
+        assertThat(result.getPath()).isEqualTo(new File(url.toURI()).getPath());
     }
 
     // ========================================
@@ -169,7 +173,7 @@ class FileConversionsTest {
         Path path = Paths.get("/var/log/application.log");
         
         File result = converter.convert(path, File.class);
-        assertThat(result.getPath()).isEqualTo("/var/log/application.log");
+        assertThat(result.getPath()).isEqualTo(path.toFile().getPath());
     }
 
     @Test
@@ -177,7 +181,7 @@ class FileConversionsTest {
         Path path = Paths.get("config/settings.properties");
         
         File result = converter.convert(path, File.class);
-        assertThat(result.getPath()).isEqualTo("config/settings.properties");
+        assertThat(result.getPath()).isEqualTo(path.toFile().getPath());
     }
 
     // ========================================
@@ -189,7 +193,7 @@ class FileConversionsTest {
         char[] array = "/etc/passwd".toCharArray();
         
         File result = converter.convert(array, File.class);
-        assertThat(result.getPath()).isEqualTo("/etc/passwd");
+        assertThat(result.getPath()).isEqualTo(systemPath("/etc/passwd"));
     }
 
     @Test
@@ -210,7 +214,7 @@ class FileConversionsTest {
         byte[] array = "/opt/app/config.xml".getBytes(StandardCharsets.UTF_8);
         
         File result = converter.convert(array, File.class);
-        assertThat(result.getPath()).isEqualTo("/opt/app/config.xml");
+        assertThat(result.getPath()).isEqualTo(systemPath("/opt/app/config.xml"));
     }
 
     @Test
@@ -230,14 +234,14 @@ class FileConversionsTest {
     void testFileToString() {
         File file = new File("/home/user/documents/report.docx");
         String result = converter.convert(file, String.class);
-        assertThat(result).isEqualTo("/home/user/documents/report.docx");
+        assertThat(result).isEqualTo(file.getPath());
     }
 
     @Test
     void testFileToString_windowsPath() {
         File file = new File("C:\\Users\\Administrator\\Desktop\\file.txt");
         String result = converter.convert(file, String.class);
-        assertThat(result).isEqualTo("C:\\Users\\Administrator\\Desktop\\file.txt");
+        assertThat(result).isEqualTo(file.getPath());
     }
 
     // ========================================
@@ -249,7 +253,7 @@ class FileConversionsTest {
         File file = new File("/usr/bin/gcc");
         Map<String, Object> result = converter.convert(file, Map.class);
         
-        assertThat(result).containsEntry("file", "/usr/bin/gcc");
+        assertThat(result).containsEntry("file", file.getPath());
         assertThat(result).hasSize(1);
     }
 
@@ -263,7 +267,7 @@ class FileConversionsTest {
         URI result = converter.convert(file, URI.class);
         
         assertThat(result.getScheme()).isEqualTo("file");
-        assertThat(result.getPath()).isEqualTo("/tmp/data.json");
+        assertThat(result.getPath()).isEqualTo(file.toURI().getPath());
     }
 
     // ========================================
@@ -276,7 +280,7 @@ class FileConversionsTest {
         URL result = converter.convert(file, URL.class);
         
         assertThat(result.getProtocol()).isEqualTo("file");
-        assertThat(result.getPath()).isEqualTo("/var/www/index.html");
+        assertThat(result.getPath()).isEqualTo(file.toURI().getPath());
     }
 
     // ========================================
@@ -288,7 +292,7 @@ class FileConversionsTest {
         File file = new File("/etc/hosts");
         Path result = converter.convert(file, Path.class);
         
-        assertThat(result.toString()).isEqualTo("/etc/hosts");
+        assertThat(result.toString()).isEqualTo(file.toPath().toString());
     }
 
     // ========================================
@@ -300,7 +304,7 @@ class FileConversionsTest {
         File file = new File("/lib64/libc.so.6");
         char[] result = converter.convert(file, char[].class);
         
-        assertThat(new String(result)).isEqualTo("/lib64/libc.so.6");
+        assertThat(new String(result)).isEqualTo(file.getPath());
     }
 
     // ========================================
@@ -313,7 +317,7 @@ class FileConversionsTest {
         byte[] result = converter.convert(file, byte[].class);
         
         String resultString = new String(result, StandardCharsets.UTF_8);
-        assertThat(resultString).isEqualTo("/boot/grub/grub.cfg");
+        assertThat(resultString).isEqualTo(file.getPath());
     }
 
     // ========================================
@@ -406,14 +410,14 @@ class FileConversionsTest {
     void testFileConversion_unixPath() {
         String unixPath = "/home/user/.bashrc";
         File result = converter.convert(unixPath, File.class);
-        assertThat(result.getPath()).isEqualTo(unixPath);
+        assertThat(result.getPath()).isEqualTo(systemPath(unixPath));
     }
 
     @Test
     void testFileConversion_windowsPath() {
         String windowsPath = "C:\\Windows\\System32\\drivers\\etc\\hosts";
         File result = converter.convert(windowsPath, File.class);
-        assertThat(result.getPath()).isEqualTo(windowsPath);
+        assertThat(result.getPath()).isEqualTo(systemPath(windowsPath));
     }
 
     // ========================================
@@ -424,13 +428,13 @@ class FileConversionsTest {
     void testFileConversion_specialCharacters() {
         String pathWithSpecialChars = "/tmp/file-with_special.chars@domain.txt";
         File result = converter.convert(pathWithSpecialChars, File.class);
-        assertThat(result.getPath()).isEqualTo(pathWithSpecialChars);
+        assertThat(result.getPath()).isEqualTo(systemPath(pathWithSpecialChars));
     }
 
     @Test
     void testFileConversion_unicodeCharacters() {
         String pathWithUnicode = "/home/user/文档/测试文件.txt";
         File result = converter.convert(pathWithUnicode, File.class);
-        assertThat(result.getPath()).isEqualTo(pathWithUnicode);
+        assertThat(result.getPath()).isEqualTo(systemPath(pathWithUnicode));
     }
 }

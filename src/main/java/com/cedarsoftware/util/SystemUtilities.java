@@ -14,6 +14,7 @@ import java.util.Enumeration;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.TimeZone;
@@ -132,6 +133,7 @@ public final class SystemUtilities {
     // Default resource limits
     private static final int DEFAULT_MAX_SHUTDOWN_HOOKS = 100;
     private static final int DEFAULT_MAX_TEMP_PREFIX_LENGTH = 100;
+    private static final String INVALID_TEMP_PREFIX_CHARS = "<>:\"|?*";
 
     // Security: Resource limits for system operations
     private static final AtomicInteger SHUTDOWN_HOOK_COUNT = new AtomicInteger(0);
@@ -215,7 +217,7 @@ public final class SystemUtilities {
                     // Pre-process patterns: trim and uppercase for efficient matching
                     Set<String> processedPatterns = new HashSet<>();
                     for (String pattern : patterns.split(",")) {
-                        String trimmed = pattern.trim().toUpperCase();
+                        String trimmed = pattern.trim().toUpperCase(Locale.ROOT);
                         if (!trimmed.isEmpty()) {
                             processedPatterns.add(trimmed);
                         }
@@ -254,11 +256,11 @@ public final class SystemUtilities {
             return null;
         }
 
-        String value = System.getProperty(var);
-        if (StringUtilities.isEmpty(value)) {
-            value = System.getenv(var);
+        String value = System.getenv(var);
+        if (isNullOrEmpty(value)) {
+            value = System.getProperty(var);
         }
-        return StringUtilities.isEmpty(value) ? null : value;
+        return isNullOrEmpty(value) ? null : value;
     }
 
     /**
@@ -277,11 +279,15 @@ public final class SystemUtilities {
             return null;
         }
 
-        String value = System.getProperty(var);
-        if (StringUtilities.isEmpty(value)) {
-            value = System.getenv(var);
+        String value = System.getenv(var);
+        if (isNullOrEmpty(value)) {
+            value = System.getProperty(var);
         }
-        return StringUtilities.isEmpty(value) ? null : value;
+        return isNullOrEmpty(value) ? null : value;
+    }
+
+    private static boolean isNullOrEmpty(String value) {
+        return value == null || value.isEmpty();
     }
 
     /**
@@ -295,7 +301,7 @@ public final class SystemUtilities {
             return false;
         }
 
-        String upperVar = varName.toUpperCase();
+        String upperVar = varName.toUpperCase(Locale.ROOT);
         Set<String> sensitivePatterns = getSensitiveVariablePatterns();
         // Simple loop is more efficient than stream for this use case
         for (String pattern : sensitivePatterns) {
@@ -516,7 +522,7 @@ public final class SystemUtilities {
         }
 
         // Check for other dangerous characters
-        if (prefix.matches(".*[<>:\"|?*].*")) {
+        if (containsAnyCharacter(prefix, INVALID_TEMP_PREFIX_CHARS)) {
             throw new IllegalArgumentException("Temporary directory prefix contains invalid characters: " + prefix);
         }
 
@@ -525,6 +531,19 @@ public final class SystemUtilities {
         if (prefix.length() > maxLength) {
             throw new IllegalArgumentException("Temporary directory prefix too long (max " + maxLength + " characters): " + prefix.length());
         }
+    }
+
+    private static boolean containsAnyCharacter(String value, String chars) {
+        for (int i = 0; i < value.length(); i++) {
+            if (chars.indexOf(value.charAt(i)) >= 0) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static int calculateMapCapacity(int expectedEntries) {
+        return Math.max(16, (int) ((expectedEntries / 0.75f) + 1));
     }
 
     /**
@@ -573,9 +592,10 @@ public final class SystemUtilities {
      */
     public static Map<String, String> getEnvironmentVariables(Predicate<String> filter) {
         boolean securityFiltering = isSecurityEnabled() && isEnvironmentVariableValidationEnabled();
-        Map<String, String> result = new LinkedHashMap<>();
+        Map<String, String> env = System.getenv();
+        Map<String, String> result = new LinkedHashMap<>(calculateMapCapacity(env.size()));
 
-        for (Map.Entry<String, String> entry : System.getenv().entrySet()) {
+        for (Map.Entry<String, String> entry : env.entrySet()) {
             String key = entry.getKey();
             // Security: Filter sensitive variables
             if (securityFiltering && isSensitiveVariable(key)) {
@@ -601,12 +621,13 @@ public final class SystemUtilities {
      * @return map of all environment variables matching the filter
      */
     public static Map<String, String> getEnvironmentVariablesUnsafe(Predicate<String> filter) {
+        Map<String, String> env = System.getenv();
         if (filter == null) {
-            return new LinkedHashMap<>(System.getenv());
+            return new LinkedHashMap<>(env);
         }
 
-        Map<String, String> result = new LinkedHashMap<>();
-        for (Map.Entry<String, String> entry : System.getenv().entrySet()) {
+        Map<String, String> result = new LinkedHashMap<>(calculateMapCapacity(env.size()));
+        for (Map.Entry<String, String> entry : env.entrySet()) {
             if (filter.test(entry.getKey())) {
                 result.put(entry.getKey(), entry.getValue());
             }

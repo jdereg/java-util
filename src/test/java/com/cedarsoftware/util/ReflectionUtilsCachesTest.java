@@ -16,8 +16,10 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class ReflectionUtilsCachesTest {
@@ -43,6 +45,20 @@ public class ReflectionUtilsCachesTest {
 
     static class ChildFields extends ParentFields {
         public String childField;
+    }
+
+    static class MethodHolder {
+        public String methodWithOneArg(int value) {
+            return String.valueOf(value);
+        }
+
+        public String methodWith0Args() {
+            return "zero";
+        }
+
+        public String methodWith0Args(int value) {
+            return String.valueOf(value);
+        }
     }
 
     @Test
@@ -166,7 +182,7 @@ public class ReflectionUtilsCachesTest {
         ReflectionUtils.setClassAnnotationCache(custom);
         try {
             ReflectionUtils.getClassAnnotation(FieldHolder.class, Deprecated.class);
-            assertTrue(custom.isEmpty());
+            assertFalse(custom.isEmpty());
         } finally {
             ReflectionUtils.setClassAnnotationCache(original);
         }
@@ -180,7 +196,7 @@ public class ReflectionUtilsCachesTest {
         try {
             Method m = Object.class.getDeclaredMethod("toString");
             ReflectionUtils.getMethodAnnotation(m, Deprecated.class);
-            assertTrue(custom.isEmpty());
+            assertFalse(custom.isEmpty());
         } finally {
             ReflectionUtils.setMethodAnnotationCache(original);
         }
@@ -209,6 +225,53 @@ public class ReflectionUtilsCachesTest {
             assertFalse(custom.isEmpty());
         } finally {
             ReflectionUtils.setSortedConstructorsCache(original);
+        }
+    }
+
+    @Test
+    void testExactMethodMissIsCached() throws Exception {
+        Map<Object, Method> original = getCache("METHOD_CACHE");
+        Map<Object, Method> custom = new ConcurrentHashMap<>();
+        ReflectionUtils.setMethodCache(custom);
+        try {
+            assertNull(ReflectionUtils.getMethod(MethodHolder.class, "noSuchMethod"));
+            assertFalse(custom.isEmpty());
+        } finally {
+            ReflectionUtils.setMethodCache(original);
+        }
+    }
+
+    @Test
+    void testArgCountLookupDoesNotPoisonExactSignatureLookup() throws Exception {
+        Map<Object, Method> original = getCache("METHOD_CACHE");
+        Map<Object, Method> custom = new ConcurrentHashMap<>();
+        ReflectionUtils.setMethodCache(custom);
+        try {
+            Method byCount = ReflectionUtils.getMethod(new MethodHolder(), "methodWithOneArg", 1);
+            assertNotNull(byCount);
+
+            Method exactMissing = ReflectionUtils.getMethod(MethodHolder.class, "methodWithOneArg", Object.class);
+            assertNull(exactMissing);
+        } finally {
+            ReflectionUtils.setMethodCache(original);
+        }
+    }
+
+    @Test
+    void testNonOverloadedLookupDoesNotPoisonExactNoArgLookup() throws Exception {
+        Map<Object, Method> original = getCache("METHOD_CACHE");
+        Map<Object, Method> custom = new ConcurrentHashMap<>();
+        ReflectionUtils.setMethodCache(custom);
+        try {
+            assertThrows(IllegalArgumentException.class,
+                    () -> ReflectionUtils.getNonOverloadedMethod(MethodHolder.class, "methodWith0Args"));
+
+            Method exact = ReflectionUtils.getMethod(MethodHolder.class, "methodWith0Args");
+            assertNotNull(exact);
+            assertEquals("methodWith0Args", exact.getName());
+            assertEquals(0, exact.getParameterCount());
+        } finally {
+            ReflectionUtils.setMethodCache(original);
         }
     }
 }

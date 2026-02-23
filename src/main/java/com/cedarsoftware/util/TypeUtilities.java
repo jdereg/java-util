@@ -6,7 +6,6 @@ import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.lang.reflect.TypeVariable;
 import java.lang.reflect.WildcardType;
-import java.util.AbstractMap;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Map;
@@ -36,8 +35,10 @@ public class TypeUtilities {
     private static final int DEFAULT_TYPE_CACHE_SIZE = 2000;
 
     // Size configurable via system property: -Dcedarsoftware.util.typeResolveCacheSize=5000
-    private static final Map<Map.Entry<Type, Type>, Type> TYPE_RESOLVE_CACHE =
+    private static final Map<ResolveTypeCacheKey, Type> TYPE_RESOLVE_CACHE =
             new LRUCache<>(Integer.getInteger("cedarsoftware.util.typeResolveCacheSize", DEFAULT_TYPE_CACHE_SIZE));
+    private static final ThreadLocal<ResolveTypeCacheKey> TYPE_RESOLVE_LOOKUP_KEY =
+            ThreadLocal.withInitial(ResolveTypeCacheKey::new);
 
     // Cache for array class lookups to avoid Array.newInstance() allocations
     private static final Map<Class<?>, Class<?>> ARRAY_CLASS_CACHE = new ClassValueMap<>();
@@ -134,11 +135,14 @@ public class TypeUtilities {
             return true;
         }
         if (type instanceof ParameterizedType) {
-            for (Type arg : ((ParameterizedType) type).getActualTypeArguments()) {
+            ParameterizedType parameterizedType = (ParameterizedType) type;
+            for (Type arg : parameterizedType.getActualTypeArguments()) {
                 if (hasUnresolvedType(arg)) {
                     return true;
                 }
             }
+            Type ownerType = parameterizedType.getOwnerType();
+            return ownerType != null && hasUnresolvedType(ownerType);
         }
         if (type instanceof WildcardType) {
             WildcardType wt = (WildcardType) type;
@@ -183,12 +187,14 @@ public class TypeUtilities {
      * which should be the most concrete type (for example, Child.class).
      */
     public static Type resolveType(Type rootContext, Type typeToResolve) {
-        Map.Entry<Type, Type> key = new AbstractMap.SimpleImmutableEntry<>(rootContext, typeToResolve);
-        Type resolved = TYPE_RESOLVE_CACHE.get(key);
+        ResolveTypeCacheKey lookupKey = TYPE_RESOLVE_LOOKUP_KEY.get();
+        lookupKey.set(rootContext, typeToResolve);
+        Type resolved = TYPE_RESOLVE_CACHE.get(lookupKey);
         if (resolved == null) {
             resolved = resolveType(rootContext, rootContext, typeToResolve, new IdentitySet<>());
-            TYPE_RESOLVE_CACHE.put(key, resolved);
+            TYPE_RESOLVE_CACHE.put(new ResolveTypeCacheKey(rootContext, typeToResolve), resolved);
         }
+        lookupKey.clear();
         return resolved;
     }
 
@@ -491,6 +497,55 @@ public class TypeUtilities {
             }
         }
         return fieldGenericType;
+    }
+
+    /**
+     * Key used for type-resolution cache lookups.
+     * <p>
+     * Instances inserted into the cache are immutable; a ThreadLocal instance is reused for cache lookups.
+     * </p>
+     */
+    private static final class ResolveTypeCacheKey {
+        private Type rootContext;
+        private Type typeToResolve;
+        private int hash;
+
+        ResolveTypeCacheKey() {
+        }
+
+        ResolveTypeCacheKey(Type rootContext, Type typeToResolve) {
+            set(rootContext, typeToResolve);
+        }
+
+        void set(Type rootContext, Type typeToResolve) {
+            this.rootContext = rootContext;
+            this.typeToResolve = typeToResolve;
+            this.hash = 31 * Objects.hashCode(rootContext) + Objects.hashCode(typeToResolve);
+        }
+
+        void clear() {
+            this.rootContext = null;
+            this.typeToResolve = null;
+            this.hash = 0;
+        }
+
+        @Override
+        public int hashCode() {
+            return hash;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) {
+                return true;
+            }
+            if (!(o instanceof ResolveTypeCacheKey)) {
+                return false;
+            }
+            ResolveTypeCacheKey that = (ResolveTypeCacheKey) o;
+            return Objects.equals(rootContext, that.rootContext) &&
+                    Objects.equals(typeToResolve, that.typeToResolve);
+        }
     }
 
     // --- Internal implementations of Type interfaces ---

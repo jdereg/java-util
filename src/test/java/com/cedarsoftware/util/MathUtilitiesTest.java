@@ -7,6 +7,7 @@ import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.LinkedList;
 import java.util.List;
 
 import org.junit.jupiter.api.Disabled;
@@ -16,6 +17,7 @@ import static com.cedarsoftware.util.MathUtilities.parseToMinimalNumericType;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.fail;
 
 /**
@@ -47,6 +49,19 @@ class MathUtilitiesTest
         con.setAccessible(true);
 
         assertNotNull(con.newInstance());
+    }
+
+    @Test
+    void testNullVarargsArrays()
+    {
+        assertThrows(IllegalArgumentException.class, () -> MathUtilities.minimum((long[]) null));
+        assertThrows(IllegalArgumentException.class, () -> MathUtilities.maximum((long[]) null));
+        assertThrows(IllegalArgumentException.class, () -> MathUtilities.minimum((double[]) null));
+        assertThrows(IllegalArgumentException.class, () -> MathUtilities.maximum((double[]) null));
+        assertThrows(IllegalArgumentException.class, () -> MathUtilities.minimum((BigInteger[]) null));
+        assertThrows(IllegalArgumentException.class, () -> MathUtilities.maximum((BigInteger[]) null));
+        assertThrows(IllegalArgumentException.class, () -> MathUtilities.minimum((BigDecimal[]) null));
+        assertThrows(IllegalArgumentException.class, () -> MathUtilities.maximum((BigDecimal[]) null));
     }
 
     @Test
@@ -360,6 +375,32 @@ class MathUtilitiesTest
     void testNextPermutationSequence()
     {
         List<Integer> list = new ArrayList<>(Arrays.asList(1, 2, 3));
+        List<List<Integer>> perms = new ArrayList<>();
+
+        do
+        {
+            perms.add(new ArrayList<>(list));
+        }
+        while (MathUtilities.nextPermutation(list));
+
+        List<List<Integer>> expected = Arrays.asList(
+                Arrays.asList(1, 2, 3),
+                Arrays.asList(1, 3, 2),
+                Arrays.asList(2, 1, 3),
+                Arrays.asList(2, 3, 1),
+                Arrays.asList(3, 1, 2),
+                Arrays.asList(3, 2, 1)
+        );
+
+        assertEquals(expected, perms);
+        assertEquals(Arrays.asList(3, 2, 1), list);
+        assertFalse(MathUtilities.nextPermutation(list));
+    }
+
+    @Test
+    void testNextPermutationSequenceLinkedList()
+    {
+        List<Integer> list = new LinkedList<>(Arrays.asList(1, 2, 3));
         List<List<Integer>> perms = new ArrayList<>();
 
         do

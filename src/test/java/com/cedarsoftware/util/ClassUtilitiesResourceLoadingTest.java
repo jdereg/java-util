@@ -29,6 +29,17 @@ class ClassUtilitiesResourceLoadingTest {
         }
     }
 
+    static class NullResourceClassLoader extends ClassLoader {
+        NullResourceClassLoader() {
+            super(null);
+        }
+
+        @Override
+        public InputStream getResourceAsStream(String resName) {
+            return null;
+        }
+    }
+
     @Test
     void shouldLoadResourceFromContextClassLoader() {
         String resName = "context-only.txt";
@@ -75,6 +86,19 @@ class ClassUtilitiesResourceLoadingTest {
             
             byte[] resultWithSlash = ClassUtilities.loadResourceAsBytes(resNameWithSlash);
             assertArrayEquals(expected, resultWithSlash, "Should load resource with leading slash by stripping it");
+        } finally {
+            Thread.currentThread().setContextClassLoader(prev);
+        }
+    }
+
+    @Test
+    void shouldFallbackToClassUtilitiesLoaderWhenContextLoaderMisses() {
+        byte[] expected = ClassUtilities.loadResourceAsBytes("test.txt");
+        ClassLoader prev = Thread.currentThread().getContextClassLoader();
+        try {
+            Thread.currentThread().setContextClassLoader(new NullResourceClassLoader());
+            byte[] result = ClassUtilities.loadResourceAsBytes("test.txt");
+            assertArrayEquals(expected, result);
         } finally {
             Thread.currentThread().setContextClassLoader(prev);
         }

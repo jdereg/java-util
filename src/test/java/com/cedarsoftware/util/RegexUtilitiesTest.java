@@ -1,6 +1,8 @@
 package com.cedarsoftware.util;
 
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Pattern;
 
 import org.junit.jupiter.api.AfterEach;
@@ -106,6 +108,15 @@ class RegexUtilitiesTest {
     void testTimeoutCanBeConfigured() {
         System.setProperty("cedarsoftware.regex.timeout.milliseconds", "10000");
         assertEquals(10000L, RegexUtilities.getRegexTimeoutMilliseconds());
+    }
+
+    @Test
+    void testInvalidTimeoutFallsBackToDefault() {
+        System.setProperty("cedarsoftware.regex.timeout.milliseconds", "-1");
+        assertEquals(5000L, RegexUtilities.getRegexTimeoutMilliseconds());
+
+        System.setProperty("cedarsoftware.regex.timeout.milliseconds", "not-a-number");
+        assertEquals(5000L, RegexUtilities.getRegexTimeoutMilliseconds());
     }
 
     // ========== Pattern Caching Tests ==========
@@ -440,5 +451,79 @@ class RegexUtilitiesTest {
         assertTrue(RegexUtilities.safeMatches(pattern, "12345"));
         assertTrue(RegexUtilities.safeFind(pattern, "abc123").matched());
         assertEquals("abcX", RegexUtilities.safeReplaceFirst(pattern, "abc123", "X"));
+    }
+
+    @Test
+    void testSafeMatchesPreservesInterruptStatus() throws InterruptedException {
+        System.setProperty("cedarsoftware.security.enabled", "true");
+        System.setProperty("cedarsoftware.regex.timeout.enabled", "true");
+        System.setProperty("cedarsoftware.regex.timeout.milliseconds", "10000");
+
+        Pattern pattern = RegexUtilities.getCachedPattern("(a+)+$");
+        String input = repeat('a', 20000) + "X";
+
+        AtomicReference<String> outcome = new AtomicReference<>("none");
+        AtomicBoolean interruptedAfter = new AtomicBoolean(false);
+
+        Thread worker = new Thread(() -> {
+            try {
+                RegexUtilities.safeMatches(pattern, input);
+                outcome.set("completed");
+            } catch (SecurityException e) {
+                outcome.set("security");
+            }
+            interruptedAfter.set(Thread.currentThread().isInterrupted());
+        });
+
+        worker.start();
+        Thread.sleep(50);
+        worker.interrupt();
+        worker.join(2000);
+
+        assertFalse(worker.isAlive(), "Worker thread should finish promptly after interruption");
+        assertEquals("security", outcome.get());
+        assertTrue(interruptedAfter.get(), "Interrupted status should be preserved");
+    }
+
+    @Test
+    void testTimeoutThreadGrowthIsBounded() throws InterruptedException {
+        System.setProperty("cedarsoftware.security.enabled", "true");
+        System.setProperty("cedarsoftware.regex.timeout.enabled", "true");
+        System.setProperty("cedarsoftware.regex.timeout.milliseconds", "1");
+
+        Pattern pattern = RegexUtilities.getCachedPattern("(a+)+$");
+        String input = repeat('a', 5000) + "X";
+
+        int before = countRegexTimeoutThreads();
+        for (int i = 0; i < 30; i++) {
+            try {
+                RegexUtilities.safeMatches(pattern, input);
+            } catch (SecurityException ignored) {
+            }
+        }
+
+        Thread.sleep(200);
+        int after = countRegexTimeoutThreads();
+
+        assertTrue(after - before <= 8,
+                "Timeout worker thread growth should be bounded (before=" + before + ", after=" + after + ")");
+    }
+
+    private static int countRegexTimeoutThreads() {
+        int count = 0;
+        for (Thread thread : Thread.getAllStackTraces().keySet()) {
+            if (thread.isAlive() && thread.getName().startsWith("RegexUtilities-Timeout-Thread")) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    private static String repeat(char ch, int count) {
+        StringBuilder builder = new StringBuilder(count);
+        for (int i = 0; i < count; i++) {
+            builder.append(ch);
+        }
+        return builder.toString();
     }
 }

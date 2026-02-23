@@ -12,6 +12,8 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
  * Additional tests for low level APIs in {@link EncryptionUtilities}.
@@ -19,6 +21,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 public class EncryptionUtilitiesLowLevelTest {
 
     private static final String SAMPLE = "The quick brown fox jumps over the lazy dog";
+    private static final int MAX_LEGACY_COLLISION_ATTEMPTS = 20000;
 
     @Test
     public void testCalculateHash() {
@@ -53,6 +56,44 @@ public class EncryptionUtilitiesLowLevelTest {
         byte[] value = "binary".getBytes(StandardCharsets.UTF_8);
         byte[] encrypted = enc.doFinal(value);
         assertArrayEquals(value, dec.doFinal(encrypted));
+    }
+
+    @Test
+    public void testLegacyCiphertextWithVersionByteCollisionDecrypts() throws Exception {
+        String key = "GavynRocks";
+        Cipher enc = EncryptionUtilities.createAesEncryptionCipher(key);
+
+        byte[] plain = null;
+        byte[] cipherText = null;
+        for (int i = 0; i < MAX_LEGACY_COLLISION_ATTEMPTS; i++) {
+            String candidateText = String.format("%08x", i)
+                    + "-legacy-collision-payload-abcdefghijklmnopqrstuvwxyz";
+            byte[] candidate = candidateText
+                    .getBytes(StandardCharsets.UTF_8);
+            byte[] encrypted = enc.doFinal(candidate);
+            if (encrypted.length >= 45 && (encrypted[0] & 0xFF) == 1) {
+                plain = candidate;
+                cipherText = encrypted;
+                break;
+            }
+        }
+
+        assertNotNull(cipherText, "Unable to generate legacy collision ciphertext");
+        String hex = ByteUtilities.encode(cipherText);
+
+        assertEquals(new String(plain, StandardCharsets.UTF_8), EncryptionUtilities.decrypt(key, hex));
+        assertArrayEquals(plain, EncryptionUtilities.decryptBytes(key, hex));
+    }
+
+    @Test
+    public void testTamperedVersionedCiphertextStillFails() {
+        String key = "tamperKey";
+        String encrypted = EncryptionUtilities.encrypt(key, "abcd");
+        byte[] data = ByteUtilities.decode(encrypted);
+        data[data.length - 1] ^= 0x01;
+        String tampered = ByteUtilities.encode(data);
+
+        assertThrows(IllegalStateException.class, () -> EncryptionUtilities.decrypt(key, tampered));
     }
 
     @Test

@@ -9,12 +9,13 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import com.cedarsoftware.test.external.ReflectionExternalCaller;
+
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assertions.fail;
 
 /**
  * Comprehensive security tests for ReflectionUtils.
@@ -257,32 +258,23 @@ public class ReflectionUtilsSecurityTest {
     
     @Test
     public void testExternalCallersStillBlocked() {
-        // Test that the security mechanism would still block external callers
-        // We simulate this by verifying the trusted caller check works correctly
-        
-        // Create a mock external caller by using reflection to call from a different context
-        try {
-            // Use a thread with a custom class loader to simulate external caller
-            Thread testThread = new Thread(() -> {
-                try {
-                    // Temporarily modify the stack trace check by calling from a simulated external class
-                    Class<?> runtimeClass = Runtime.class;
-                    
-                    // Since we can't easily simulate an external package in this test,
-                    // we verify that the isTrustedCaller method exists and works
-                    assertTrue(true, "Security mechanism exists and protects against external access");
-                } catch (Exception e) {
-                    // Expected for external callers
-                }
-            });
-            
-            testThread.start();
-            testThread.join();
-            
-            assertTrue(true, "Security mechanism properly validates trusted callers");
-        } catch (Exception e) {
-            fail("Security test failed: " + e.getMessage());
-        }
+        Throwable error = ReflectionExternalCaller.invokeArgCountLookupOnDangerousClass();
+        assertTrue(error instanceof SecurityException,
+                "Untrusted arg-count dangerous-class lookup should be blocked");
+    }
+
+    @Test
+    public void testExternalCallerBlockedForCallByName() {
+        Throwable error = ReflectionExternalCaller.invokeCallByNameOnDangerousClass();
+        assertTrue(error instanceof SecurityException,
+                "Untrusted dangerous-class call-by-name should be blocked");
+    }
+
+    @Test
+    public void testExternalCallerBlockedForNonOverloadedLookup() {
+        Throwable error = ReflectionExternalCaller.invokeNonOverloadedLookupOnDangerousClass();
+        assertTrue(error instanceof SecurityException,
+                "Untrusted dangerous-class non-overloaded lookup should be blocked");
     }
     
     // Test backward compatibility (security disabled by default)

@@ -1569,25 +1569,28 @@ public class ClassUtilities {
         resourceName = validateAndNormalizeResourcePath(resourceName);
 
         InputStream inputStream = null;
-        ClassLoader cl = Thread.currentThread().getContextClassLoader();
-        if (cl != null) {
-            inputStream = cl.getResourceAsStream(resourceName);
+        ClassLoader contextLoader = Thread.currentThread().getContextClassLoader();
+        ClassLoader fallbackLoader = ClassUtilities.class.getClassLoader();
+        if (fallbackLoader == null) {
+            fallbackLoader = SYSTEM_LOADER;
         }
-        if (inputStream == null) {
-            cl = ClassUtilities.getClassLoader(ClassUtilities.class);
-            inputStream = cl.getResourceAsStream(resourceName);
+
+        if (contextLoader != null) {
+            inputStream = contextLoader.getResourceAsStream(resourceName);
+        }
+        if (inputStream == null && fallbackLoader != null && fallbackLoader != contextLoader) {
+            inputStream = fallbackLoader.getResourceAsStream(resourceName);
         }
         
         // ClassLoader.getResourceAsStream() doesn't handle leading slashes,
         // but Class.getResourceAsStream() does. Try without leading slash.
         if (inputStream == null && resourceName.startsWith("/")) {
             String noSlash = resourceName.substring(1);
-            cl = Thread.currentThread().getContextClassLoader();
-            if (cl != null) {
-                inputStream = cl.getResourceAsStream(noSlash);
+            if (contextLoader != null) {
+                inputStream = contextLoader.getResourceAsStream(noSlash);
             }
-            if (inputStream == null) {
-                inputStream = ClassUtilities.getClassLoader(ClassUtilities.class).getResourceAsStream(noSlash);
+            if (inputStream == null && fallbackLoader != null && fallbackLoader != contextLoader) {
+                inputStream = fallbackLoader.getResourceAsStream(noSlash);
             }
         }
 
@@ -1883,15 +1886,17 @@ public class ClassUtilities {
                                                Parameter[] parameters, int paramOffset, int paramCount,
                                                boolean[] parameterMatched, Object[] result,
                                                int valueStartInclusive, int valueEndExclusive) {
-        // Cache ClassHierarchyInfo lookups for unique value classes to avoid repeated map lookups
-        // This optimization is beneficial when the same value class appears multiple times
-        Map<Class<?>, ClassHierarchyInfo> valueClassCache = new HashMap<>();
-        
-        // Pre-cache hierarchy info for all non-null, unused values
-        for (int j = valueStartInclusive; j < valueEndExclusive; j++) {
-            if (!valueUsed[j] && values[j] != null) {
-                Class<?> valueClass = values[j].getClass();
-                valueClassCache.computeIfAbsent(valueClass, ClassUtilities::getClassHierarchyInfo);
+        // Cache ClassHierarchyInfo lookups when multiple candidate values are available.
+        // For single-value cases, direct lookup is cheaper than allocating a map.
+        Map<Class<?>, ClassHierarchyInfo> valueClassCache = null;
+        if (valueEndExclusive - valueStartInclusive > 1) {
+            valueClassCache = new HashMap<>();
+            // Pre-cache hierarchy info for all non-null, unused values
+            for (int j = valueStartInclusive; j < valueEndExclusive; j++) {
+                if (!valueUsed[j] && values[j] != null) {
+                    Class<?> valueClass = values[j].getClass();
+                    valueClassCache.computeIfAbsent(valueClass, ClassUtilities::getClassHierarchyInfo);
+                }
             }
         }
         
@@ -1910,8 +1915,16 @@ public class ClassUtilities {
                 if (value == null) continue;
 
                 Class<?> valueClass = value.getClass();
-                // Use cached hierarchy info for better performance
-                ClassHierarchyInfo hierarchyInfo = valueClassCache.get(valueClass);
+                ClassHierarchyInfo hierarchyInfo;
+                if (valueClassCache != null) {
+                    hierarchyInfo = valueClassCache.get(valueClass);
+                    if (hierarchyInfo == null) {
+                        hierarchyInfo = getClassHierarchyInfo(valueClass);
+                        valueClassCache.put(valueClass, hierarchyInfo);
+                    }
+                } else {
+                    hierarchyInfo = getClassHierarchyInfo(valueClass);
+                }
                 int distance = hierarchyInfo.getDistance(paramType);
 
                 if (distance >= 0 && distance < bestDistance) {
@@ -2338,10 +2351,13 @@ public class ClassUtilities {
                     Class<?> arrayType = parameters[i].getType();
                     Class<?> componentType = arrayType.getComponentType();
                     String paramName = parameters[i].getName();
-                    Object v = namedParams.get(paramName);
+                    boolean hasVarargsValue = namedParams.containsKey(paramName);
+                    Object v = hasVarargsValue ? namedParams.get(paramName) : null;
                     Object array;
-                    
-                    if (v != null && arrayType.isInstance(v)) {
+
+                    if (!hasVarargsValue) {
+                        array = Array.newInstance(componentType, 0);
+                    } else if (v != null && arrayType.isInstance(v)) {
                         // Already the right array type
                         array = v;
                     } else {
@@ -2739,12 +2755,7 @@ public class ClassUtilities {
     }
 
     private static Map<ArgumentShapeKey, Optional<ConstructorPlan>> getConstructorPlanCache(Class<?> c) {
-        Map<ArgumentShapeKey, Optional<ConstructorPlan>> planCache = CONSTRUCTOR_PLAN_CACHE.get(c);
-        if (planCache == null) {
-            planCache = new ConcurrentHashMap<>();
-            CONSTRUCTOR_PLAN_CACHE.put(c, planCache);
-        }
-        return planCache;
+        return CONSTRUCTOR_PLAN_CACHE.computeIfAbsent(c, key -> new ConcurrentHashMap<>());
     }
 
     private static Object invokeConstructorWithPlan(Converter converter, Object[] suppliedArgs, ConstructorPlan plan) throws Exception {

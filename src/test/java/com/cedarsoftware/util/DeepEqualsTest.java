@@ -93,6 +93,28 @@ public class DeepEqualsTest
 		assertFalse(DeepEquals.deepEquals(date1, null));
 	}
 
+    @Test
+    void testDeepEqualsWithNullOptionsMap()
+    {
+        assertTrue(DeepEquals.deepEquals("alpha", "alpha", null));
+        assertFalse(DeepEquals.deepEquals("alpha", "beta", null));
+    }
+
+    @Test
+    void testDiffOutputClearedWhenReusingOptionsMap()
+    {
+        Map<String, Object> options = new HashMap<>();
+        options.put(DeepEquals.INCLUDE_DIFF_ITEM, true);
+
+        assertFalse(DeepEquals.deepEquals("alpha", "beta", options));
+        assertNotNull(options.get(DeepEquals.DIFF));
+        assertNotNull(options.get(DeepEquals.DIFF_ITEM));
+
+        assertTrue(DeepEquals.deepEquals("alpha", "alpha", options));
+        assertFalse(options.containsKey(DeepEquals.DIFF));
+        assertFalse(options.containsKey(DeepEquals.DIFF_ITEM));
+    }
+
 	@Test
     public void testDeepEqualsWithOptions()
     {

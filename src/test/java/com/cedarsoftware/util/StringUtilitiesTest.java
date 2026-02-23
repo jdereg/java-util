@@ -745,6 +745,24 @@ public class StringUtilitiesTest
     }
 
     @Test
+    void testHashCodeIgnoreCase_nonAsciiConsistentWithEqualsIgnoreCase() {
+        String[][] pairs = {
+                {"\u00B5", "\u039C"},   // micro sign / Greek capital mu
+                {"\u0130", "i"},        // Latin capital I with dot / i
+                {"\u03C2", "\u03A3"}    // Greek final sigma / Greek capital sigma
+        };
+
+        for (String[] pair : pairs) {
+            String left = pair[0];
+            String right = pair[1];
+            assertTrue(left.equalsIgnoreCase(right));
+            assertEquals(StringUtilities.hashCodeIgnoreCase(left), StringUtilities.hashCodeIgnoreCase(right));
+            assertEquals(StringUtilities.hashCodeIgnoreCase((CharSequence) new StringBuilder(left)),
+                    StringUtilities.hashCodeIgnoreCase((CharSequence) new StringBuffer(right)));
+        }
+    }
+
+    @Test
     void testGetBytes_withInvalidEncoding_throwsException() {
         assertThatExceptionOfType(IllegalArgumentException.class)
                 .isThrownBy(() -> StringUtilities.getBytes("Some text", "foo-bar"))

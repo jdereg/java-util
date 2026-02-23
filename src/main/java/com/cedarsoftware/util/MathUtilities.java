@@ -2,8 +2,11 @@ package com.cedarsoftware.util;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.ListIterator;
 import java.util.Objects;
+import java.util.RandomAccess;
 
 import static java.util.Collections.swap;
 
@@ -33,9 +36,9 @@ import static java.util.Collections.swap;
  * All security features are <strong>disabled by default</strong> for backward compatibility:</p>
  * <ul>
  *   <li><code>mathutilities.security.enabled=false</code> &mdash; Master switch to enable all security features</li>
- *   <li><code>mathutilities.max.array.size=0</code> &mdash; Array size limit for min/max operations (0=disabled)</li>
- *   <li><code>mathutilities.max.string.length=0</code> &mdash; String length limit for parsing (0=disabled)</li>
- *   <li><code>mathutilities.max.permutation.size=0</code> &mdash; List size limit for permutations (0=disabled)</li>
+ *   <li><code>mathutilities.max.array.size=100000</code> &mdash; Array size limit for min/max operations when security is enabled (0 or negative disables)</li>
+ *   <li><code>mathutilities.max.string.length=100000</code> &mdash; String length limit for parsing when security is enabled (0 or negative disables)</li>
+ *   <li><code>mathutilities.max.permutation.size=10</code> &mdash; List size limit for permutations when security is enabled (0 or negative disables)</li>
  * </ul>
  *
  * <p><strong>Example Usage:</strong></p>
@@ -78,56 +81,96 @@ public final class MathUtilities
     private static final int DEFAULT_MAX_ARRAY_SIZE = 100000;       // 100K array elements
     private static final int DEFAULT_MAX_STRING_LENGTH = 100000;    // 100K character string
     private static final int DEFAULT_MAX_PERMUTATION_SIZE = 10;     // 10! = 3.6M permutations
-    
-    private static boolean isSecurityEnabled() {
-        return Boolean.parseBoolean(System.getProperty("mathutilities.security.enabled", "false"));
-    }
-    
+    private static final Object SECURITY_CONFIG_LOCK = new Object();
+    private static volatile SecurityConfig cachedSecurityConfig;
+
     private static int getMaxArraySize() {
-        if (!isSecurityEnabled()) {
-            return 0; // Disabled
-        }
-        String value = System.getProperty("mathutilities.max.array.size");
-        if (value == null) {
-            return DEFAULT_MAX_ARRAY_SIZE;
-        }
-        try {
-            int limit = Integer.parseInt(value);
-            return limit <= 0 ? 0 : limit; // 0 or negative means disabled
-        } catch (NumberFormatException e) {
-            return DEFAULT_MAX_ARRAY_SIZE;
-        }
+        return getSecurityConfig().maxArraySize;
     }
-    
+
     private static int getMaxStringLength() {
-        if (!isSecurityEnabled()) {
-            return 0; // Disabled
+        return getSecurityConfig().maxStringLength;
+    }
+
+    private static int getMaxPermutationSize() {
+        return getSecurityConfig().maxPermutationSize;
+    }
+
+    private static SecurityConfig getSecurityConfig() {
+        String securityEnabledSource = System.getProperty("mathutilities.security.enabled", "false");
+        boolean securityEnabled = Boolean.parseBoolean(securityEnabledSource);
+        String maxArraySizeSource = securityEnabled ? System.getProperty("mathutilities.max.array.size") : null;
+        String maxStringLengthSource = securityEnabled ? System.getProperty("mathutilities.max.string.length") : null;
+        String maxPermutationSizeSource = securityEnabled ? System.getProperty("mathutilities.max.permutation.size") : null;
+
+        SecurityConfig config = cachedSecurityConfig;
+        if (config != null && config.hasSameSources(securityEnabledSource, maxArraySizeSource, maxStringLengthSource, maxPermutationSizeSource)) {
+            return config;
         }
-        String value = System.getProperty("mathutilities.max.string.length");
-        if (value == null) {
-            return DEFAULT_MAX_STRING_LENGTH;
-        }
-        try {
-            int limit = Integer.parseInt(value);
-            return limit <= 0 ? 0 : limit; // 0 or negative means disabled
-        } catch (NumberFormatException e) {
-            return DEFAULT_MAX_STRING_LENGTH;
+
+        synchronized (SECURITY_CONFIG_LOCK) {
+            config = cachedSecurityConfig;
+            if (config != null && config.hasSameSources(securityEnabledSource, maxArraySizeSource, maxStringLengthSource, maxPermutationSizeSource)) {
+                return config;
+            }
+
+            int maxArraySize = securityEnabled ? parseSecurityLimit(maxArraySizeSource, DEFAULT_MAX_ARRAY_SIZE) : 0;
+            int maxStringLength = securityEnabled ? parseSecurityLimit(maxStringLengthSource, DEFAULT_MAX_STRING_LENGTH) : 0;
+            int maxPermutationSize = securityEnabled ? parseSecurityLimit(maxPermutationSizeSource, DEFAULT_MAX_PERMUTATION_SIZE) : 0;
+
+            config = new SecurityConfig(securityEnabledSource, maxArraySizeSource, maxStringLengthSource,
+                    maxPermutationSizeSource, maxArraySize, maxStringLength, maxPermutationSize);
+            cachedSecurityConfig = config;
+            return config;
         }
     }
-    
-    private static int getMaxPermutationSize() {
-        if (!isSecurityEnabled()) {
-            return 0; // Disabled
-        }
-        String value = System.getProperty("mathutilities.max.permutation.size");
+
+    private static int parseSecurityLimit(String value, int defaultValue) {
         if (value == null) {
-            return DEFAULT_MAX_PERMUTATION_SIZE;
+            return defaultValue;
         }
+
         try {
             int limit = Integer.parseInt(value);
             return limit <= 0 ? 0 : limit; // 0 or negative means disabled
         } catch (NumberFormatException e) {
-            return DEFAULT_MAX_PERMUTATION_SIZE;
+            return defaultValue;
+        }
+    }
+
+    private static void validateValuesArray(Object values) {
+        if (values == null) {
+            throw new IllegalArgumentException("values cannot be null");
+        }
+    }
+
+    private static final class SecurityConfig {
+        private final String securityEnabledSource;
+        private final String maxArraySizeSource;
+        private final String maxStringLengthSource;
+        private final String maxPermutationSizeSource;
+        private final int maxArraySize;
+        private final int maxStringLength;
+        private final int maxPermutationSize;
+
+        private SecurityConfig(String securityEnabledSource, String maxArraySizeSource, String maxStringLengthSource,
+                               String maxPermutationSizeSource, int maxArraySize, int maxStringLength,
+                               int maxPermutationSize) {
+            this.securityEnabledSource = securityEnabledSource;
+            this.maxArraySizeSource = maxArraySizeSource;
+            this.maxStringLengthSource = maxStringLengthSource;
+            this.maxPermutationSizeSource = maxPermutationSizeSource;
+            this.maxArraySize = maxArraySize;
+            this.maxStringLength = maxStringLength;
+            this.maxPermutationSize = maxPermutationSize;
+        }
+
+        private boolean hasSameSources(String securityEnabledSource, String maxArraySizeSource,
+                                       String maxStringLengthSource, String maxPermutationSizeSource) {
+            return Objects.equals(this.securityEnabledSource, securityEnabledSource)
+                    && Objects.equals(this.maxArraySizeSource, maxArraySizeSource)
+                    && Objects.equals(this.maxStringLengthSource, maxStringLengthSource)
+                    && Objects.equals(this.maxPermutationSizeSource, maxPermutationSizeSource);
         }
     }
 
@@ -144,6 +187,7 @@ public final class MathUtilities
      */
     public static long minimum(long... values)
     {
+        validateValuesArray(values);
         final int len = values.length;
         if (len == 0)
         {
@@ -173,6 +217,7 @@ public final class MathUtilities
      */
     public static long maximum(long... values)
     {
+        validateValuesArray(values);
         final int len = values.length;
         if (len == 0)
         {
@@ -202,6 +247,7 @@ public final class MathUtilities
      */
     public static double minimum(double... values)
     {
+        validateValuesArray(values);
         final int len = values.length;
         if (len == 0)
         {
@@ -231,6 +277,7 @@ public final class MathUtilities
      */
     public static double maximum(double... values)
     {
+        validateValuesArray(values);
         final int len = values.length;
         if (len == 0)
         {
@@ -260,6 +307,7 @@ public final class MathUtilities
      */
     public static BigInteger minimum(BigInteger... values)
     {
+        validateValuesArray(values);
         final int len = values.length;
         if (len == 0)
         {
@@ -297,6 +345,7 @@ public final class MathUtilities
      */
     public static BigInteger maximum(BigInteger... values)
     {
+        validateValuesArray(values);
         final int len = values.length;
         if (len == 0)
         {
@@ -334,6 +383,7 @@ public final class MathUtilities
      */
     public static BigDecimal minimum(BigDecimal... values)
     {
+        validateValuesArray(values);
         final int len = values.length;
         if (len == 0)
         {
@@ -371,6 +421,7 @@ public final class MathUtilities
      */
     public static BigDecimal maximum(BigDecimal... values)
     {
+        validateValuesArray(values);
         final int len = values.length;
         if (len == 0)
         {
@@ -441,18 +492,19 @@ public final class MathUtilities
     public static Number parseToMinimalNumericType(CharSequence numStr)
     {
         Objects.requireNonNull(numStr, "numStr");
+        final String text = numStr instanceof String ? (String) numStr : numStr.toString();
 
         // Security check: validate string length
         int maxStringLength = getMaxStringLength();
-        if (maxStringLength > 0 && numStr.length() > maxStringLength)
+        if (maxStringLength > 0 && text.length() > maxStringLength)
         {
             throw new SecurityException("String length exceeds maximum allowed: " + maxStringLength);
         }
 
-        final int len = numStr.length();
+        final int len = text.length();
         int start = 0;
         if (len > 0) {
-            char first = numStr.charAt(0);
+            char first = text.charAt(0);
             if (first == '-' || first == '+') {
                 start = 1;
             }
@@ -460,8 +512,8 @@ public final class MathUtilities
 
         // Trim integer leading zeros (keeping one zero before non-digit, e.g., "000.1" -> "0.1")
         while (start + 1 < len
-                && numStr.charAt(start) == '0'
-                && Character.isDigit(numStr.charAt(start + 1)))
+                && text.charAt(start) == '0'
+                && Character.isDigit(text.charAt(start + 1)))
         {
             start++;
         }
@@ -477,7 +529,7 @@ public final class MathUtilities
         boolean exponentOverflow = false;
 
         for (int i = start; i < len; i++) {
-            char c = numStr.charAt(i);
+            char c = text.charAt(i);
             if (c == '.') {
                 hasDecimalPoint = true;
                 inExponent = false;
@@ -517,7 +569,7 @@ public final class MathUtilities
                 {
                     if (!hasExponent || (exponentHasDigits && !exponentOverflow && Math.abs(exponentSign * (int) exponentAbs) < 308))
                     {
-                        return Double.parseDouble(numStr.toString());
+                        return Double.parseDouble(text);
                     }
                 }
                 catch (NumberFormatException ignore)
@@ -525,13 +577,13 @@ public final class MathUtilities
                     // fall through to BigDecimal
                 }
             }
-            return new BigDecimal(numStr.toString());
+            return new BigDecimal(text);
         } else {
             int digitCount = len - start;
             if (digitCount < 19) {
-                return Long.parseLong(numStr.toString());
+                return Long.parseLong(text);
             }
-            BigInteger bigInt = new BigInteger(numStr.toString());
+            BigInteger bigInt = new BigInteger(text);
             if (bigInt.compareTo(BIG_INT_LONG_MIN) >= 0 && bigInt.compareTo(BIG_INT_LONG_MAX) <= 0) {
                 return bigInt.longValue(); // Correctly convert BigInteger back to Long if within range
             } else {
@@ -580,6 +632,28 @@ public final class MathUtilities
         {
             throw new SecurityException("List size exceeds maximum allowed for permutation: " + maxPermutationSize);
         }
+        if (list.size() < 2) {
+            return false;
+        }
+        if (list instanceof RandomAccess) {
+            return nextPermutationRandomAccess(list);
+        }
+
+        ArrayList<T> orderedCopy = new ArrayList<>(list);
+        boolean hasNext = nextPermutationRandomAccess(orderedCopy);
+        if (!hasNext) {
+            return false;
+        }
+
+        ListIterator<T> iterator = list.listIterator();
+        for (T value : orderedCopy) {
+            iterator.next();
+            iterator.set(value);
+        }
+        return true;
+    }
+
+    private static <T extends Comparable<? super T>> boolean nextPermutationRandomAccess(List<T> list) {
         int k = list.size() - 2;
         while (k >= 0 && list.get(k).compareTo(list.get(k + 1)) >= 0) {
             k--;

@@ -188,11 +188,27 @@ public final class ReflectionUtils {
     // Sentinel methods used to cache negative lookups (avoids repeated expensive hierarchy searches)
     private static final Method NOT_FOUND_METHOD;
     private static final Method OVERLOADED_METHOD;
+    private static final Annotation NOT_FOUND_ANNOTATION = new Annotation() {
+        @Override
+        public Class<? extends Annotation> annotationType() {
+            return Annotation.class;
+        }
+    };
+    private static final Field NOT_FOUND_FIELD;
+
+    private static final class MissingFieldSentinel {
+        @SuppressWarnings("unused")
+        private Object missingField;
+    }
+
     static {
         try {
             NOT_FOUND_METHOD = Object.class.getDeclaredMethod("getClass");
             OVERLOADED_METHOD = Object.class.getDeclaredMethod("hashCode");
+            NOT_FOUND_FIELD = MissingFieldSentinel.class.getDeclaredField("missingField");
         } catch (NoSuchMethodException e) {
+            throw new ExceptionInInitializerError(e);
+        } catch (NoSuchFieldException e) {
             throw new ExceptionInInitializerError(e);
         }
     }
@@ -699,19 +715,29 @@ public final class ReflectionUtils {
     }
 
     private static class MethodCacheKey {
+        private static final byte EXACT_SIGNATURE_LOOKUP = 0;
+        private static final byte ARG_COUNT_LOOKUP = 1;
+        private static final byte NON_OVERLOADED_LOOKUP = 2;
+
         // Use object identity instead of string names to prevent cache poisoning
         private final Class<?> clazz;
         private final String methodName;
+        private final byte lookupType;
         private final Class<?>[] parameterTypes;
         private final int hash;
 
         public MethodCacheKey(Class<?> clazz, String methodName, Class<?>... types) {
+            this(clazz, methodName, EXACT_SIGNATURE_LOOKUP, types);
+        }
+
+        public MethodCacheKey(Class<?> clazz, String methodName, byte lookupType, Class<?>... types) {
             this.clazz = Objects.requireNonNull(clazz, "clazz cannot be null");
             this.methodName = Objects.requireNonNull(methodName, "methodName cannot be null");
+            this.lookupType = lookupType;
             this.parameterTypes = types.clone(); // Defensive copy
 
             // Use System.identityHashCode to prevent hash manipulation
-            this.hash = Objects.hash(System.identityHashCode(clazz), methodName, Arrays.hashCode(parameterTypes));
+            this.hash = Objects.hash(System.identityHashCode(clazz), methodName, lookupType, Arrays.hashCode(parameterTypes));
         }
 
         @Override
@@ -721,6 +747,7 @@ public final class ReflectionUtils {
             MethodCacheKey that = (MethodCacheKey) o;
             // Use reference equality to prevent spoofing
             return this.clazz == that.clazz &&
+                    this.lookupType == that.lookupType &&
                     Objects.equals(this.methodName, that.methodName) &&
                     Arrays.equals(this.parameterTypes, that.parameterTypes);
         }
@@ -800,13 +827,16 @@ public final class ReflectionUtils {
 
         final ClassAnnotationCacheKey key = new ClassAnnotationCacheKey(classToCheck, annoClass);
 
-        // Use computeIfAbsent to ensure only one instance (or null) is stored per key
+        // Use computeIfAbsent to ensure misses are cached with sentinel values.
         Annotation annotation = CLASS_ANNOTATION_CACHE.get().computeIfAbsent(key, k -> {
-            // If findClassAnnotation() returns null, that null will be stored in the cache
-            return findClassAnnotation(classToCheck, annoClass);
+            Annotation found = findClassAnnotation(classToCheck, annoClass);
+            return found == null ? NOT_FOUND_ANNOTATION : found;
         });
 
-        // Cast the stored Annotation (or null) back to the desired type
+        if (annotation == NOT_FOUND_ANNOTATION) {
+            return null;
+        }
+
         return (T) annotation;
     }
 
@@ -921,11 +951,15 @@ public final class ReflectionUtils {
                 }
             }
 
-            // No annotation found - store null
-            return null;
+            // No annotation found - store sentinel
+            return NOT_FOUND_ANNOTATION;
         });
 
-        // Cast result back to T (or null)
+        if (annotation == NOT_FOUND_ANNOTATION) {
+            return null;
+        }
+
+        // Cast result back to T
         return (T) annotation;
     }
 
@@ -969,8 +1003,12 @@ public final class ReflectionUtils {
                     return f;
                 }
             }
-            return null;  // no matching field
+            return NOT_FOUND_FIELD;  // cache miss
         });
+
+        if (field == NOT_FOUND_FIELD) {
+            return null;
+        }
         
         // Security: Validate field access before returning
         if (field != null) {
@@ -1474,8 +1512,8 @@ public final class ReflectionUtils {
 
         final MethodCacheKey key = new MethodCacheKey(c, methodName, types);
 
-        // Atomically retrieve (or compute) the method
-        return METHOD_CACHE.get().computeIfAbsent(key, k -> {
+        // Atomically retrieve (or compute) the method and cache misses.
+        Method cachedMethod = METHOD_CACHE.get().computeIfAbsent(key, k -> {
             // 1) Walk class chain first
             Class<?> current = c;
             while (current != null) {
@@ -1526,9 +1564,10 @@ public final class ReflectionUtils {
                 // Method not found anywhere
             }
             
-            // Will be null if not found
-            return null;
+            return NOT_FOUND_METHOD;
         });
+
+        return cachedMethod == NOT_FOUND_METHOD ? null : cachedMethod;
     }
 
     /**
@@ -1582,9 +1621,21 @@ public final class ReflectionUtils {
 
         Class<?> beanClass = (instance instanceof Class) ? (Class<?>) instance : instance.getClass();
 
+        if (isDangerousClass(beanClass)) {
+            LOG.log(Level.WARNING, "Method access blocked for dangerous class: " + sanitizeClassName(beanClass.getName()) + "." + methodName);
+            throw new SecurityException("Access denied: Method access not permitted for security-sensitive class");
+        }
+
+        if (argCount == 0) {
+            Method exact = getMethod(beanClass, methodName);
+            if (exact != null) {
+                return exact;
+            }
+        }
+
         Class<?>[] types = new Class<?>[argCount];
         Arrays.fill(types, Object.class);
-        MethodCacheKey key = new MethodCacheKey(beanClass, methodName, types);
+        MethodCacheKey key = new MethodCacheKey(beanClass, methodName, MethodCacheKey.ARG_COUNT_LOOKUP, types);
 
         // Use computeIfAbsent for atomic cache access
         Method result = METHOD_CACHE.get().computeIfAbsent(key, k -> {
@@ -1836,8 +1887,13 @@ public final class ReflectionUtils {
             throw new IllegalArgumentException("Attempted to call getMethod() with a null or blank method name on class: " + clazz.getName());
         }
 
+        if (isDangerousClass(clazz)) {
+            LOG.log(Level.WARNING, "Method access blocked for dangerous class: " + sanitizeClassName(clazz.getName()) + "." + methodName);
+            throw new SecurityException("Access denied: Method access not permitted for security-sensitive class");
+        }
+
         // Create a cache key for a method with no parameters
-        MethodCacheKey key = new MethodCacheKey(clazz, methodName);
+        MethodCacheKey key = new MethodCacheKey(clazz, methodName, MethodCacheKey.NON_OVERLOADED_LOOKUP);
 
         Method result = METHOD_CACHE.get().computeIfAbsent(key, k -> {
             // First, check if method name exists at all and count occurrences

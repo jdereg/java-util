@@ -87,6 +87,17 @@ class CaseInsensitiveMapTest
     }
 
     @Test
+    void testUnicodeCaseInsensitiveLookup()
+    {
+        CaseInsensitiveMap<String, Integer> map = new CaseInsensitiveMap<>();
+        map.put("\u00B5", 1);
+
+        assertTrue("\u00B5".equalsIgnoreCase("\u039C"));
+        assertTrue(map.containsKey("\u039C"));
+        assertEquals(Integer.valueOf(1), map.get("\u039C"));
+    }
+
+    @Test
     void testWithNonStringKeys()
     {
         CaseInsensitiveMap<Object, Object> stringMap = new CaseInsensitiveMap<>();

@@ -1,7 +1,10 @@
 package com.cedarsoftware.util;
 
 import java.util.ArrayList;
+import java.util.AbstractCollection;
+import java.util.Collection;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
@@ -261,6 +264,47 @@ public class TraverserSecurityTest {
         
         assertTrue(e.getMessage().contains("exceeded limit"));
     }
+
+    @Test
+    void testStackDepthLimitIgnoresCycleBackEdges() {
+        System.setProperty("traverser.security.enabled", "true");
+        System.setProperty("traverser.max.stack.depth", "2");
+        System.setProperty("traverser.max.objects.visited", "0");
+        System.setProperty("traverser.max.collection.size", "0");
+        System.setProperty("traverser.max.array.length", "0");
+
+        class Node {
+            Node next;
+        }
+
+        Node a = new Node();
+        Node b = new Node();
+        a.next = b;
+        b.next = a;
+
+        assertDoesNotThrow(() -> Traverser.traverse(a, visit -> {}, null),
+                "Cycle back-edges should not trigger stack depth checks after a node was already visited");
+    }
+
+    @Test
+    void testObjectLimitStopsCollectionExpansionEarly() {
+        System.setProperty("traverser.security.enabled", "true");
+        System.setProperty("traverser.max.stack.depth", "0");
+        System.setProperty("traverser.max.objects.visited", "2");
+        System.setProperty("traverser.max.collection.size", "0");
+        System.setProperty("traverser.max.array.length", "0");
+
+        CountingCollectionContainer container = new CountingCollectionContainer();
+        container.items = new CountingCollection(2000);
+
+        SecurityException e = assertThrows(SecurityException.class, () -> {
+            Traverser.traverse(container, visit -> {}, null);
+        }, "Traversal should stop once object-visit budget is exhausted");
+
+        assertTrue(e.getMessage().contains("Objects visited exceeded limit"));
+        assertTrue(((CountingCollection) container.items).nextCalls <= 2,
+                "Traversal should not iterate the entire collection when object budget is exhausted");
+    }
     
     @Test
     void testPrimitiveArraysNotLimited() {
@@ -326,6 +370,10 @@ public class TraverserSecurityTest {
     private static class CollectionContainer {
         public List<String> items = new ArrayList<>();
     }
+
+    private static class CountingCollectionContainer {
+        public Collection<Object> items;
+    }
     
     private static class ArrayContainer {
         public String[] values;
@@ -337,6 +385,40 @@ public class TraverserSecurityTest {
     
     private static class PrimitiveArrayContainer {
         public int[] primitives;
+    }
+
+    private static class CountingCollection extends AbstractCollection<Object> {
+        private final List<Object> values;
+        private int nextCalls;
+
+        private CountingCollection(int size) {
+            values = new ArrayList<>(size);
+            for (int i = 0; i < size; i++) {
+                values.add(new Object());
+            }
+        }
+
+        @Override
+        public Iterator<Object> iterator() {
+            final Iterator<Object> iterator = values.iterator();
+            return new Iterator<Object>() {
+                @Override
+                public boolean hasNext() {
+                    return iterator.hasNext();
+                }
+
+                @Override
+                public Object next() {
+                    nextCalls++;
+                    return iterator.next();
+                }
+            };
+        }
+
+        @Override
+        public int size() {
+            return values.size();
+        }
     }
     
     private static class ComplexObject {

@@ -3,11 +3,16 @@ package com.cedarsoftware.util;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
@@ -74,6 +79,8 @@ public final class RegexUtilities {
 
     // Default configuration values
     private static final long DEFAULT_TIMEOUT_MS = 5000L;
+    private static final int MAX_TIMEOUT_THREADS = Math.max(2, Math.min(8, Runtime.getRuntime().availableProcessors()));
+    private static final int MAX_TIMEOUT_QUEUE_SIZE = MAX_TIMEOUT_THREADS * 16;
 
     // Pattern caches - separate caches for different flag combinations
     private static final Map<String, Pattern> PATTERN_CACHE = new ConcurrentHashMapNullSafe<>();
@@ -84,16 +91,62 @@ public final class RegexUtilities {
     private static final Set<String> INVALID_PATTERNS = ConcurrentHashMap.newKeySet();
     private static final Set<PatternCacheKey> INVALID_PATTERN_KEYS = ConcurrentHashMap.newKeySet();
 
-    // Shared ExecutorService for all regex timeout operations
-    // Set thread to daemon so application can shut down properly
-    private static final ExecutorService REGEX_EXECUTOR = Executors.newCachedThreadPool(r -> {
-        Thread thread = new Thread(r, "RegexUtilities-Timeout-Thread");
-        thread.setDaemon(true);
-        return thread;
-    });
+    // Shared bounded executor for regex timeout operations.
+    private static final ThreadPoolExecutor REGEX_EXECUTOR = createRegexExecutor();
 
     private RegexUtilities() {
         // Utility class - prevent instantiation
+    }
+
+    private static ThreadPoolExecutor createRegexExecutor() {
+        ThreadFactory threadFactory = new ThreadFactory() {
+            private final AtomicInteger threadCounter = new AtomicInteger(1);
+
+            @Override
+            public Thread newThread(Runnable runnable) {
+                Thread thread = new Thread(runnable, "RegexUtilities-Timeout-Thread-" + threadCounter.getAndIncrement());
+                thread.setDaemon(true);
+                return thread;
+            }
+        };
+
+        ThreadPoolExecutor executor = new ThreadPoolExecutor(
+                MAX_TIMEOUT_THREADS,
+                MAX_TIMEOUT_THREADS,
+                30L,
+                TimeUnit.SECONDS,
+                new LinkedBlockingQueue<>(MAX_TIMEOUT_QUEUE_SIZE),
+                threadFactory,
+                new ThreadPoolExecutor.AbortPolicy());
+        executor.allowCoreThreadTimeOut(true);
+        return executor;
+    }
+
+    private static boolean isTimeoutProtectionEnabled() {
+        return isSecurityEnabled() && isRegexTimeoutEnabled();
+    }
+
+    private static <T> T executeWithTimeout(Callable<T> operation, long timeout) {
+        Future<T> future;
+        try {
+            future = REGEX_EXECUTOR.submit(operation);
+        } catch (RejectedExecutionException e) {
+            throw new SecurityException("Regex operation rejected due timeout executor saturation", e);
+        }
+
+        try {
+            return future.get(timeout, TimeUnit.MILLISECONDS);
+        } catch (InterruptedException e) {
+            future.cancel(true);
+            Thread.currentThread().interrupt();
+            throw new SecurityException("Regex operation interrupted", e);
+        } catch (TimeoutException e) {
+            future.cancel(true);
+            throw new SecurityException("Regex operation timed out (>" + timeout + "ms) - possible ReDoS attack", e);
+        } catch (ExecutionException e) {
+            Throwable cause = e.getCause() == null ? e : e.getCause();
+            throw new SecurityException("Regex operation failed: " + cause.getMessage(), cause);
+        }
     }
 
     // ========== Configuration Methods ==========
@@ -122,7 +175,10 @@ public final class RegexUtilities {
         String value = System.getProperty(REGEX_TIMEOUT_MS_PROPERTY);
         if (value != null) {
             try {
-                return Long.parseLong(value);
+                long timeout = Long.parseLong(value);
+                if (timeout > 0L) {
+                    return timeout;
+                }
             } catch (NumberFormatException ignored) {
                 // Fall through to default
             }
@@ -270,22 +326,13 @@ public final class RegexUtilities {
             return false;
         }
 
-        if (!isSecurityEnabled() || !isRegexTimeoutEnabled()) {
+        if (!isTimeoutProtectionEnabled()) {
             // Fast path when security disabled
             return pattern.matcher(input).matches();
         }
 
         long timeout = getRegexTimeoutMilliseconds();
-        Future<Boolean> future = REGEX_EXECUTOR.submit(() -> pattern.matcher(input).matches());
-
-        try {
-            return future.get(timeout, TimeUnit.MILLISECONDS);
-        } catch (TimeoutException e) {
-            future.cancel(true);
-            throw new SecurityException("Regex operation timed out (>" + timeout + "ms) - possible ReDoS attack", e);
-        } catch (Exception e) {
-            throw new SecurityException("Regex operation failed: " + e.getMessage(), e);
-        }
+        return executeWithTimeout(() -> pattern.matcher(input).matches(), timeout);
     }
 
     /**
@@ -302,7 +349,7 @@ public final class RegexUtilities {
             return new SafeMatchResult(null, input);
         }
 
-        if (!isSecurityEnabled() || !isRegexTimeoutEnabled()) {
+        if (!isTimeoutProtectionEnabled()) {
             // Fast path when security disabled
             Matcher matcher = pattern.matcher(input);
             if (matcher.find()) {
@@ -313,23 +360,14 @@ public final class RegexUtilities {
         }
 
         long timeout = getRegexTimeoutMilliseconds();
-        Future<SafeMatchResult> future = REGEX_EXECUTOR.submit(() -> {
+        return executeWithTimeout(() -> {
             Matcher matcher = pattern.matcher(input);
             if (matcher.find()) {
                 return new SafeMatchResult(matcher, input);
             } else {
                 return new SafeMatchResult(null, input);
             }
-        });
-
-        try {
-            return future.get(timeout, TimeUnit.MILLISECONDS);
-        } catch (TimeoutException e) {
-            future.cancel(true);
-            throw new SecurityException("Regex operation timed out (>" + timeout + "ms) - possible ReDoS attack", e);
-        } catch (Exception e) {
-            throw new SecurityException("Regex operation failed: " + e.getMessage(), e);
-        }
+        }, timeout);
     }
 
     /**
@@ -349,24 +387,14 @@ public final class RegexUtilities {
             replacement = "";
         }
 
-        if (!isSecurityEnabled() || !isRegexTimeoutEnabled()) {
+        if (!isTimeoutProtectionEnabled()) {
             // Fast path when security disabled
             return pattern.matcher(input).replaceFirst(replacement);
         }
 
         long timeout = getRegexTimeoutMilliseconds();
         final String finalReplacement = replacement;
-        Future<String> future = REGEX_EXECUTOR.submit(() ->
-            pattern.matcher(input).replaceFirst(finalReplacement));
-
-        try {
-            return future.get(timeout, TimeUnit.MILLISECONDS);
-        } catch (TimeoutException e) {
-            future.cancel(true);
-            throw new SecurityException("Regex operation timed out (>" + timeout + "ms) - possible ReDoS attack", e);
-        } catch (Exception e) {
-            throw new SecurityException("Regex operation failed: " + e.getMessage(), e);
-        }
+        return executeWithTimeout(() -> pattern.matcher(input).replaceFirst(finalReplacement), timeout);
     }
 
     /**
@@ -386,24 +414,14 @@ public final class RegexUtilities {
             replacement = "";
         }
 
-        if (!isSecurityEnabled() || !isRegexTimeoutEnabled()) {
+        if (!isTimeoutProtectionEnabled()) {
             // Fast path when security disabled
             return pattern.matcher(input).replaceAll(replacement);
         }
 
         long timeout = getRegexTimeoutMilliseconds();
         final String finalReplacement = replacement;
-        Future<String> future = REGEX_EXECUTOR.submit(() ->
-            pattern.matcher(input).replaceAll(finalReplacement));
-
-        try {
-            return future.get(timeout, TimeUnit.MILLISECONDS);
-        } catch (TimeoutException e) {
-            future.cancel(true);
-            throw new SecurityException("Regex operation timed out (>" + timeout + "ms) - possible ReDoS attack", e);
-        } catch (Exception e) {
-            throw new SecurityException("Regex operation failed: " + e.getMessage(), e);
-        }
+        return executeWithTimeout(() -> pattern.matcher(input).replaceAll(finalReplacement), timeout);
     }
 
     /**
@@ -419,22 +437,13 @@ public final class RegexUtilities {
             return new String[] { input };
         }
 
-        if (!isSecurityEnabled() || !isRegexTimeoutEnabled()) {
+        if (!isTimeoutProtectionEnabled()) {
             // Fast path when security disabled
             return pattern.split(input);
         }
 
         long timeout = getRegexTimeoutMilliseconds();
-        Future<String[]> future = REGEX_EXECUTOR.submit(() -> pattern.split(input));
-
-        try {
-            return future.get(timeout, TimeUnit.MILLISECONDS);
-        } catch (TimeoutException e) {
-            future.cancel(true);
-            throw new SecurityException("Regex operation timed out (>" + timeout + "ms) - possible ReDoS attack", e);
-        } catch (Exception e) {
-            throw new SecurityException("Regex operation failed: " + e.getMessage(), e);
-        }
+        return executeWithTimeout(() -> pattern.split(input), timeout);
     }
 
     // ========== Inner Classes ==========
@@ -465,10 +474,10 @@ public final class RegexUtilities {
                 for (int i = 0; i <= groupCount; i++) {
                     this.groups[i] = matcher.group(i);
                 }
-                this.replacement = matcher.replaceFirst("");
                 this.matched = true;
                 this.start = matcher.start();
                 this.end = matcher.end();
+                this.replacement = removeMatchedRange(originalInput, this.start, this.end);
             } else {
                 this.groups = new String[0];
                 this.replacement = originalInput;
@@ -544,6 +553,20 @@ public final class RegexUtilities {
          */
         public String getReplacement() {
             return replacement;
+        }
+
+        private static String removeMatchedRange(String input, int start, int end) {
+            if (input == null) {
+                return null;
+            }
+            if (start <= 0 && end >= input.length()) {
+                return "";
+            }
+
+            StringBuilder builder = new StringBuilder(input.length() - (end - start));
+            builder.append(input, 0, start);
+            builder.append(input, end, input.length());
+            return builder.toString();
         }
     }
 

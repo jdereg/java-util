@@ -88,6 +88,19 @@ public class TypeUtilitiesTest {
         public Collection<String> collection;
     }
 
+    public static class OwnerContainer<T> {
+        public class Inner<U> {
+        }
+    }
+
+    public static class OwnerField<V> {
+        public OwnerContainer<V>.Inner<String> nested;
+    }
+
+    public static class OwnerResolvedField {
+        public OwnerContainer<Integer>.Inner<String> nested;
+    }
+
     /**
      * A custom implementation of ParameterizedType used in tests.
      */
@@ -240,6 +253,20 @@ public class TypeUtilitiesTest {
         Type type = field.getGenericType();
         // The component type T is unresolved.
         assertTrue(TypeUtilities.hasUnresolvedType(type));
+    }
+
+    @Test
+    public void testHasUnresolvedTypeWithUnresolvedOwnerType() throws Exception {
+        Field field = OwnerField.class.getField("nested");
+        Type type = field.getGenericType();
+        assertTrue(TypeUtilities.hasUnresolvedType(type));
+    }
+
+    @Test
+    public void testHasUnresolvedTypeWithResolvedOwnerType() throws Exception {
+        Field field = OwnerResolvedField.class.getField("nested");
+        Type type = field.getGenericType();
+        assertFalse(TypeUtilities.hasUnresolvedType(type));
     }
 
     // --- Tests for resolveTypeUsingInstance ---

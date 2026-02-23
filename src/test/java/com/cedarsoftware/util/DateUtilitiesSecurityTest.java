@@ -7,6 +7,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -25,6 +27,8 @@ public class DateUtilitiesSecurityTest {
     private String originalMaxInputLength;
     private String originalMaxEpochDigits;
     private String originalRegexTimeoutMilliseconds;
+    private String originalCedarRegexTimeoutEnabled;
+    private String originalCedarRegexTimeoutMilliseconds;
     
     @BeforeEach
     public void setUp() {
@@ -36,6 +40,8 @@ public class DateUtilitiesSecurityTest {
         originalMaxInputLength = System.getProperty("dateutilities.max.input.length");
         originalMaxEpochDigits = System.getProperty("dateutilities.max.epoch.digits");
         originalRegexTimeoutMilliseconds = System.getProperty("dateutilities.regex.timeout.milliseconds");
+        originalCedarRegexTimeoutEnabled = System.getProperty("cedarsoftware.regex.timeout.enabled");
+        originalCedarRegexTimeoutMilliseconds = System.getProperty("cedarsoftware.regex.timeout.milliseconds");
         
         // Enable security features for testing
         System.setProperty("dateutilities.security.enabled", "true");
@@ -54,6 +60,8 @@ public class DateUtilitiesSecurityTest {
         restoreProperty("dateutilities.max.input.length", originalMaxInputLength);
         restoreProperty("dateutilities.max.epoch.digits", originalMaxEpochDigits);
         restoreProperty("dateutilities.regex.timeout.milliseconds", originalRegexTimeoutMilliseconds);
+        restoreProperty("cedarsoftware.regex.timeout.enabled", originalCedarRegexTimeoutEnabled);
+        restoreProperty("cedarsoftware.regex.timeout.milliseconds", originalCedarRegexTimeoutMilliseconds);
     }
     
     private void restoreProperty(String key, String value) {
@@ -239,6 +247,25 @@ public class DateUtilitiesSecurityTest {
         // Normal input should work fine
         assertDoesNotThrow(() -> DateUtilities.parseDate("2024-01-15"),
                           "Normal input should work with custom timeout");
+    }
+
+    @Test
+    public void testRegexTimeoutEnabledPropertyUsesDateUtilitiesOverride() {
+        System.setProperty("dateutilities.security.enabled", "true");
+        System.setProperty("cedarsoftware.regex.timeout.enabled", "true");
+        System.setProperty("dateutilities.regex.timeout.enabled", "false");
+
+        assertFalse(DateUtilities.isRegexTimeoutProtectionEnabled(),
+                "DateUtilities regex timeout flag should override RegexUtilities flag");
+    }
+
+    @Test
+    public void testRegexTimeoutMillisecondsPropertyUsesDateUtilitiesOverride() {
+        System.setProperty("cedarsoftware.regex.timeout.milliseconds", "5000");
+        System.setProperty("dateutilities.regex.timeout.milliseconds", "123");
+
+        assertEquals(123L, DateUtilities.getRegexTimeoutMilliseconds(),
+                "DateUtilities timeout milliseconds should override RegexUtilities timeout");
     }
     
     // Test individual feature flags

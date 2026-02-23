@@ -94,6 +94,16 @@ class DateUtilitiesNegativeTests {
                 DateUtilities.parseDate("2024-01-10T10:30:00[some junk]", ZoneId.systemDefault(), true));
     }
 
+    @Test
+    void testMalformedBracketedTimezoneRejectedInStrictMode() {
+        assertThrows(IllegalArgumentException.class, () ->
+                DateUtilities.parseDate("2024-01-10T10:30:00 [EST", ZoneId.systemDefault(), true));
+        assertThrows(IllegalArgumentException.class, () ->
+                DateUtilities.parseDate("2024-01-10T10:30:00 EST]", ZoneId.systemDefault(), true));
+        assertThrows(IllegalArgumentException.class, () ->
+                DateUtilities.parseDate("2024-01-10T10:30:00 [America/New_York", ZoneId.systemDefault(), true));
+    }
+
     /**
      * 10) Time zone with no time => fail if we enforce that rule
      *     (like "2024-02-05Z" or "2024-02-05+09:00").

@@ -1707,13 +1707,13 @@ public final class Converter {
             sourceType = Void.class;
             // Also check the cache for (Void.class, toType) to avoid redundant lookups.
             Convert<?> cached = getCachedConverter(sourceType, toType);
-            if (cached != null) {
+            if (isValidConversion(cached)) {
                 return (T) cached.convert(null, this, toType);
             }
         } else {
             sourceType = from.getClass();
             Convert<?> cached = getCachedConverter(sourceType, toType);
-            if (cached != null) {
+            if (isValidConversion(cached)) {
                 return (T) cached.convert(from, this, toType);
             }
             // Try container conversion first (Arrays, Collections, Maps).
@@ -2178,6 +2178,7 @@ public final class Converter {
      *   <li>Array to Collection</li>
      *   <li>Collection to Array</li>
      *   <li>Array to Array (when component types differ)</li>
+     *   <li>Map to Map</li>
      *   <li>Array, Collection, or Map to EnumSet (when target is an Enum type)</li>
      *   <li>EnumSet to Array or Collection</li>
      * </ul>
@@ -2212,6 +2213,13 @@ public final class Converter {
         // If the source is an EnumSet, it can be converted to either an array or another collection.
         if (EnumSet.class.isAssignableFrom(sourceType)) {
             return target.isArray() || Collection.class.isAssignableFrom(target);
+        }
+
+        // If the source is a Map, we support conversion to map types.
+        if (Map.class.isAssignableFrom(sourceType)) {
+            // Keep generic Map->Map capability checks conservative (legacy behavior),
+            // while still reporting concrete map-to-map conversions.
+            return Map.class.isAssignableFrom(target) && !(sourceType == Map.class && target == Map.class);
         }
 
         // If the source is a generic Collection, we only support converting it to an array or collection
@@ -2387,7 +2395,7 @@ public final class Converter {
         }
 
         // Cache the negative result so subsequent lookups are O(1).
-        // addConversion() calls clearCachesForType() to invalidate if a conversion is added later.
+        // addConversion() calls clearCachesForTypeVariations() to invalidate if a conversion is added later.
         cacheConverter(source, target, UNSUPPORTED);
         return false;
     }
@@ -2595,12 +2603,8 @@ public final class Converter {
         Set<Class<?>> sourceTypes = getTypeVariations(source);
         Set<Class<?>> targetTypes = getTypeVariations(target);
 
-        // Clear caches for all combinations
-        for (Class<?> srcType : sourceTypes) {
-            for (Class<?> tgtType : targetTypes) {
-                clearCachesForType(srcType, tgtType);
-            }
-        }
+        // Clear caches for all affected combinations in one pass
+        clearCachesForTypeVariations(sourceTypes, targetTypes);
 
         // Store the wrapper version first to capture return value
         Class<?> wrapperSource = ClassUtilities.toPrimitiveWrapperClass(source);
@@ -2682,20 +2686,22 @@ public final class Converter {
         return null;
     }
 
-    private static void clearCachesForType(Class<?> source, Class<?> target) {
+    private static void clearCachesForTypeVariations(Set<Class<?>> sourceTypes, Set<Class<?>> targetTypes) {
         // Note: Since cache keys now include instance ID, we need to clear all cache entries
-        // that match the source/target classes regardless of instance. This is less efficient
-        // but necessary for the static addConversion API.
+        // that match the changed source/target classes regardless of instance.
+        if (FULL_CONVERSION_CACHE.isEmpty()) {
+            return;
+        }
 
         // Collect keys to remove (can't modify during iteration)
-        java.util.List<ConversionPair> keysToRemove = new java.util.ArrayList<>(16);
+        List<ConversionPair> keysToRemove = new ArrayList<>(16);
         for (Map.Entry<ConversionPair, Convert<?>> entry : FULL_CONVERSION_CACHE.entrySet()) {
             ConversionPair key = entry.getKey();
             Class<?> sourceClass = key.getSource();
             Class<?> targetClass = key.getTarget();
-            if ((sourceClass == source && targetClass == target) ||
-                // Also clear inheritance-based entries
-                isInheritanceRelated(sourceClass, targetClass, source, target)) {
+            if ((sourceTypes.contains(sourceClass) && targetTypes.contains(targetClass)) ||
+                isInheritanceRelatedToAny(sourceClass, sourceTypes) ||
+                isInheritanceRelatedToAny(targetClass, targetTypes)) {
                 keysToRemove.add(key);
             }
         }
@@ -2704,13 +2710,16 @@ public final class Converter {
         for (ConversionPair key : keysToRemove) {
             FULL_CONVERSION_CACHE.remove(key);
         }
-
     }
 
-    private static boolean isInheritanceRelated(Class<?> keySource, Class<?> keyTarget, Class<?> source, Class<?> target) {
-        // Check if this cache entry might be affected by inheritance-based lookups
-        return (keySource != source && (source.isAssignableFrom(keySource) || keySource.isAssignableFrom(source))) ||
-                (keyTarget != target && (target.isAssignableFrom(keyTarget) || keyTarget.isAssignableFrom(target)));
+    private static boolean isInheritanceRelatedToAny(Class<?> keyType, Set<Class<?>> changedTypes) {
+        for (Class<?> changedType : changedTypes) {
+            if (keyType != changedType &&
+                (changedType.isAssignableFrom(keyType) || keyType.isAssignableFrom(changedType))) {
+                return true;
+            }
+        }
+        return false;
     }
 
 }

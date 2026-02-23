@@ -1,5 +1,6 @@
 package com.cedarsoftware.util;
 
+import java.util.Locale;
 import java.util.Map;
 
 import org.junit.jupiter.api.AfterEach;
@@ -28,6 +29,7 @@ public class SystemUtilitiesSecurityTest {
     private String originalMaxShutdownHooks;
     private String originalMaxTempPrefixLength;
     private String originalSensitiveVariablePatterns;
+    private Locale originalLocale;
     
     @BeforeEach
     public void setUp() {
@@ -39,6 +41,7 @@ public class SystemUtilitiesSecurityTest {
         originalMaxShutdownHooks = System.getProperty("systemutilities.max.shutdown.hooks");
         originalMaxTempPrefixLength = System.getProperty("systemutilities.max.temp.prefix.length");
         originalSensitiveVariablePatterns = System.getProperty("systemutilities.sensitive.variable.patterns");
+        originalLocale = Locale.getDefault();
         
         // Set up test environment variables for sensitive data testing
         originalTestPassword = System.getProperty("TEST_PASSWORD");
@@ -66,6 +69,7 @@ public class SystemUtilitiesSecurityTest {
         restoreProperty("systemutilities.max.shutdown.hooks", originalMaxShutdownHooks);
         restoreProperty("systemutilities.max.temp.prefix.length", originalMaxTempPrefixLength);
         restoreProperty("systemutilities.sensitive.variable.patterns", originalSensitiveVariablePatterns);
+        Locale.setDefault(originalLocale);
         
         // Restore test values
         restoreProperty("TEST_PASSWORD", originalTestPassword);
@@ -263,10 +267,25 @@ public class SystemUtilitiesSecurityTest {
         assertNull(SystemUtilities.getExternalVariable("TEST_PASSWORD"),
                   "Uppercase sensitive variables should be filtered");
     }
+
+    @Test
+    public void testSensitiveVariableFilteringIsLocaleIndependent() {
+        System.setProperty("systemutilities.sensitive.variable.patterns", "APIKEY");
+        System.setProperty("apikey", "secret123");
+
+        Locale.setDefault(new Locale("tr", "TR"));
+        try {
+            assertNull(SystemUtilities.getExternalVariable("apikey"),
+                    "Sensitive variable filtering should not depend on default locale");
+        } finally {
+            Locale.setDefault(originalLocale);
+            System.clearProperty("apikey");
+        }
+    }
     
     private boolean containsSensitivePattern(String varName) {
         if (varName == null) return false;
-        String upperVar = varName.toUpperCase();
+        String upperVar = varName.toUpperCase(Locale.ROOT);
         String[] patterns = {
             "PASSWORD", "PASSWD", "PASS", "SECRET", "KEY", "TOKEN", "CREDENTIAL",
             "AUTH", "APIKEY", "API_KEY", "PRIVATE", "CERT", "CERTIFICATE"

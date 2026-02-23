@@ -743,7 +743,10 @@ public final class StringUtilities {
             // use formula to fill in the rest of the row
             for (int j = 0; j < tLen; j++) {
                 int cost = (s.charAt(i) == t.charAt(j)) ? 0 : 1;
-                v1[j + 1] = (int) MathUtilities.minimum(v1[j] + 1, v0[j + 1] + 1, v0[j] + cost);
+                int left = v1[j] + 1;
+                int up = v0[j + 1] + 1;
+                int diagonal = v0[j] + cost;
+                v1[j + 1] = Math.min(left, Math.min(up, diagonal));
             }
 
             // copy v1 (current row) to v0 (previous row) for next iteration
@@ -814,15 +817,10 @@ public final class StringUtilities {
 
                 // Find the current distance by determining the shortest path to a
                 // match (hence the 'minimum' calculation on distances).
-                distanceMatrix[srcIndex][targetIndex] = (int) MathUtilities.minimum(
-                        // Character match between current character in
-                        // source string and next character in target
-                        distanceMatrix[srcIndex - 1][targetIndex] + 1,
-                        // Character match between next character in
-                        // source string and current character in target
-                        distanceMatrix[srcIndex][targetIndex - 1] + 1,
-                        // No match, at current, add cumulative penalty
-                        distanceMatrix[srcIndex - 1][targetIndex - 1] + cost);
+                int deleteCost = distanceMatrix[srcIndex - 1][targetIndex] + 1;
+                int insertCost = distanceMatrix[srcIndex][targetIndex - 1] + 1;
+                int substituteCost = distanceMatrix[srcIndex - 1][targetIndex - 1] + cost;
+                distanceMatrix[srcIndex][targetIndex] = Math.min(deleteCost, Math.min(insertCost, substituteCost));
 
                 // We don't want to do the next series of calculations on
                 // the first pass because we would get an index out of bounds
@@ -836,11 +834,8 @@ public final class StringUtilities {
                 if (source.charAt(srcIndex - 1) == target.charAt(targetIndex - 2) && source.charAt(srcIndex - 2) == target.charAt(targetIndex - 1)) {
                     // What's the minimum cost between the current distance
                     // and a transposition.
-                    distanceMatrix[srcIndex][targetIndex] = (int) MathUtilities.minimum(
-                            // Current cost
-                            distanceMatrix[srcIndex][targetIndex],
-                            // Transposition
-                            distanceMatrix[srcIndex - 2][targetIndex - 2] + cost);
+                    int transpositionCost = distanceMatrix[srcIndex - 2][targetIndex - 2] + cost;
+                    distanceMatrix[srcIndex][targetIndex] = Math.min(distanceMatrix[srcIndex][targetIndex], transpositionCost);
                 }
             }
         }
@@ -936,8 +931,7 @@ public final class StringUtilities {
 
     /**
      * Computes a case-insensitive hash code for a CharSequence.
-     * This method produces the same hash as cs.toString().toLowerCase().hashCode()
-     * for compatibility with existing code.
+     * This method is consistent with {@link #equalsIgnoreCase(CharSequence, CharSequence)} semantics.
      *
      * @param cs the CharSequence to hash (can be String, StringBuilder, etc.)
      * @return the case-insensitive hash code, or 0 if cs is null
@@ -950,53 +944,37 @@ public final class StringUtilities {
             return hashCodeIgnoreCase((String) cs);
         }
 
-        // Single-pass optimization: compute hash while checking for non-ASCII
+        // Single-pass optimization with ASCII fast path.
         final int n = cs.length();
         int h = 0;
         for (int i = 0; i < n; i++) {
-            char c = cs.charAt(i);
-            if (c >= 128) {
-                // Non-ASCII detected - fall back to locale-aware toLowerCase()
-                return cs.toString().toLowerCase().hashCode();
-            }
-            // Convert A-Z to a-z for ASCII
-            if (c >= 'A' && c <= 'Z') {
-                c = (char) (c + 32);
-            }
-            h = 31 * h + c;
+            h = 31 * h + foldCaseForHash(cs.charAt(i));
         }
         return h;
     }
 
     /**
-     * Get the hashCode of a String, insensitive to case, without any new Strings
-     * being created on the heap.
-     * <p>
-     * This implementation uses a fast ASCII shift approach for compatible locales,
-     * and falls back to the more correct but slower Locale-aware approach for locales
-     * where simple ASCII case conversion does not work properly.
+     * Get the hashCode of a String, insensitive to case, without allocating temporary strings.
+     * This implementation is consistent with {@link String#equalsIgnoreCase(String)} char-based
+     * comparison semantics.
      */
     public static int hashCodeIgnoreCase(String s) {
         if (s == null) return 0;
 
-        // Single-pass optimization: compute hash while checking for non-ASCII
-        // If non-ASCII found, fall back to toLowerCase().hashCode() for compatibility
+        // Single-pass optimization with ASCII fast path.
         final int n = s.length();
         int h = 0;
         for (int i = 0; i < n; i++) {
-            char c = s.charAt(i);
-            if (c >= 128) {
-                // Non-ASCII detected - fall back to locale-aware toLowerCase()
-                // This ensures compatibility with existing code
-                return s.toLowerCase().hashCode();
-            }
-            // Convert A-Z to a-z for ASCII
-            if (c >= 'A' && c <= 'Z') {
-                c = (char) (c + 32);
-            }
-            h = 31 * h + c;
+            h = 31 * h + foldCaseForHash(s.charAt(i));
         }
         return h;
+    }
+
+    private static char foldCaseForHash(char c) {
+        if (c < 128) {
+            return (c >= 'A' && c <= 'Z') ? (char) (c + 32) : c;
+        }
+        return Character.toLowerCase(Character.toUpperCase(c));
     }
 
     /**

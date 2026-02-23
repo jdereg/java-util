@@ -290,6 +290,22 @@ public class MathUtilitiesSecurityTest {
             assertTrue(hasNext);
         }, "Should use default values when invalid property values provided");
     }
+
+    @Test
+    void testSecurityConfigRefreshesWhenPropertiesChange() {
+        System.setProperty("mathutilities.security.enabled", "true");
+        System.setProperty("mathutilities.max.array.size", "10");
+
+        long[] elevenValues = new long[11];
+        for (int i = 0; i < elevenValues.length; i++) {
+            elevenValues[i] = i;
+        }
+
+        assertThrows(SecurityException.class, () -> MathUtilities.minimum(elevenValues));
+
+        System.setProperty("mathutilities.max.array.size", "20");
+        assertDoesNotThrow(() -> MathUtilities.minimum(elevenValues));
+    }
     
     @Test
     void testSecurityDisabledIgnoresLimits() {

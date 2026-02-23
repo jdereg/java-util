@@ -1,10 +1,18 @@
 package com.cedarsoftware.util.convert;
 
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.TimeZone;
+import java.util.TreeMap;
+
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -32,6 +40,10 @@ class ConverterInstanceBugTest {
         public String getName() {
             return name;
         }
+    }
+
+    public static class SimplePojo {
+        int x = 7;
     }
 
     // =====================================================================
@@ -175,5 +187,52 @@ class ConverterInstanceBugTest {
         // Instance A should say Widget is NOT supported (it has no conversions for Widget)
         assertFalse(converterA.isConversionSupportedFor(Widget.class, Widget.class),
                 "Instance without Widget conversion should report Widget as unsupported");
+    }
+
+    @Test
+    void testMapToMapSupportQueryMatchesConvertBehavior() {
+        Converter converter = new Converter(new DefaultConverterOptions());
+
+        assertTrue(Converter.isContainerConversionSupported(HashMap.class, TreeMap.class));
+        assertTrue(converter.isConversionSupportedFor(HashMap.class, TreeMap.class));
+
+        Map<String, Object> source = new HashMap<>();
+        source.put("b", 2);
+        source.put("a", 1);
+
+        TreeMap<?, ?> result = converter.convert(source, TreeMap.class);
+        assertNotNull(result);
+        assertEquals(source, result);
+    }
+
+    @Test
+    void testSupportQueryDoesNotPoisonUnsupportedExactRuntimeType() {
+        Converter converter = new Converter(new DefaultConverterOptions());
+        TimeZone timeZone = TimeZone.getDefault();
+        Class<?> runtimeType = timeZone.getClass();
+
+        assertFalse(converter.isConversionSupportedFor(runtimeType, Byte.class));
+        assertThrows(IllegalArgumentException.class, () -> converter.convert(timeZone, Byte.class));
+    }
+
+    @Test
+    void testSupportQueryDoesNotPoisonAssignmentCompatibleFallback() {
+        Converter converter = new Converter(new DefaultConverterOptions());
+        LinkedHashMap<String, Integer> map = new LinkedHashMap<>();
+        map.put("a", 1);
+
+        assertFalse(converter.isConversionSupportedFor(LinkedHashMap.class, Object.class));
+        Object result = converter.convert(map, Object.class);
+        assertSame(map, result);
+    }
+
+    @Test
+    void testSupportQueryDoesNotPoisonObjectToMapFallback() {
+        Converter converter = new Converter(new DefaultConverterOptions());
+
+        assertFalse(converter.isConversionSupportedFor(SimplePojo.class, Map.class));
+        Map<?, ?> result = converter.convert(new SimplePojo(), Map.class);
+        assertNotNull(result);
+        assertEquals(7, result.get("x"));
     }
 }

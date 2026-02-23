@@ -53,10 +53,19 @@ class SystemUtilitiesTest
 
     @Test
     void testGetExternalVariable() {
-        // Test with existing system property
-        String originalValue = System.getProperty("java.home");
-        assertNotNull(SystemUtilities.getExternalVariable("java.home"));
-        assertEquals(originalValue, SystemUtilities.getExternalVariable("java.home"));
+        String key = "SYSTEMUTILITIES_TEST_PROPERTY_ONLY";
+        String originalValue = System.getProperty(key);
+        try {
+            System.setProperty(key, "test-value");
+            assertEquals("test-value", SystemUtilities.getExternalVariable(key));
+            assertEquals("test-value", SystemUtilities.getExternalVariableUnsafe(key));
+        } finally {
+            if (originalValue == null) {
+                System.clearProperty(key);
+            } else {
+                System.setProperty(key, originalValue);
+            }
+        }
 
         // Test with non-existent variable
         assertNull(SystemUtilities.getExternalVariable("NON_EXISTENT_VARIABLE"));
@@ -66,6 +75,50 @@ class SystemUtilitiesTest
 
         // Test with null
         assertNull(SystemUtilities.getExternalVariable(null));
+    }
+
+    @Test
+    void testGetExternalVariablePrefersEnvironmentValues() {
+        String selectedKey = null;
+        String selectedValue = null;
+        for (Map.Entry<String, String> entry : System.getenv().entrySet()) {
+            if (entry.getValue() != null && !entry.getValue().isEmpty()) {
+                selectedKey = entry.getKey();
+                selectedValue = entry.getValue();
+                break;
+            }
+        }
+
+        assertNotNull(selectedKey, "Expected at least one non-empty environment variable");
+        String originalValue = System.getProperty(selectedKey);
+        try {
+            System.setProperty(selectedKey, "__system_override__");
+            assertEquals(selectedValue, SystemUtilities.getExternalVariable(selectedKey));
+            assertEquals(selectedValue, SystemUtilities.getExternalVariableUnsafe(selectedKey));
+        } finally {
+            if (originalValue == null) {
+                System.clearProperty(selectedKey);
+            } else {
+                System.setProperty(selectedKey, originalValue);
+            }
+        }
+    }
+
+    @Test
+    void testGetExternalVariableRetainsWhitespaceValues() {
+        String key = "SYSTEMUTILITIES_TEST_WHITESPACE_VALUE_20260223";
+        String originalValue = System.getProperty(key);
+        try {
+            System.setProperty(key, "   ");
+            assertEquals("   ", SystemUtilities.getExternalVariable(key));
+            assertEquals("   ", SystemUtilities.getExternalVariableUnsafe(key));
+        } finally {
+            if (originalValue == null) {
+                System.clearProperty(key);
+            } else {
+                System.setProperty(key, originalValue);
+            }
+        }
     }
 
     @Test

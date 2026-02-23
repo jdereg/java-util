@@ -2,7 +2,9 @@ package com.cedarsoftware.util;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 import com.cedarsoftware.util.convert.Converter;
 import com.cedarsoftware.util.convert.DefaultConverterOptions;
@@ -75,6 +77,42 @@ class ClassUtilitiesVarargsTest {
         
         public Integer[] getNumbers() {
             return numbers;
+        }
+    }
+
+    static class NamedVarargsWithOptionalTail {
+        private final String prefix;
+        private final String[] values;
+
+        public NamedVarargsWithOptionalTail(String prefix, String... values) {
+            this.prefix = prefix;
+            this.values = values;
+        }
+
+        public String getPrefix() {
+            return prefix;
+        }
+
+        public String[] getValues() {
+            return values;
+        }
+    }
+
+    static class PrimitiveNamedVarargsWithOptionalTail {
+        private final int fixed;
+        private final int[] values;
+
+        public PrimitiveNamedVarargsWithOptionalTail(int fixed, int... values) {
+            this.fixed = fixed;
+            this.values = values;
+        }
+
+        public int getFixed() {
+            return fixed;
+        }
+
+        public int[] getValues() {
+            return values;
         }
     }
     
@@ -190,5 +228,38 @@ class ClassUtilitiesVarargsTest {
         assertEquals("first", instance.getValues()[0]);
         assertNull(instance.getValues()[1]);
         assertEquals("third", instance.getValues()[2]);
+    }
+
+    @Test
+    @DisplayName("Named map missing object varargs key should produce empty varargs array")
+    void testNamedMapMissingObjectVarargsKey() {
+        Converter converter = new Converter(new DefaultConverterOptions());
+        Map<String, Object> args = new LinkedHashMap<>();
+        args.put("prefix", "head");
+
+        NamedVarargsWithOptionalTail instance =
+                (NamedVarargsWithOptionalTail) ClassUtilities.newInstance(converter, NamedVarargsWithOptionalTail.class, args);
+
+        assertNotNull(instance);
+        assertEquals("head", instance.getPrefix());
+        assertNotNull(instance.getValues());
+        assertEquals(0, instance.getValues().length);
+    }
+
+    @Test
+    @DisplayName("Named map missing primitive varargs key should produce empty varargs array")
+    void testNamedMapMissingPrimitiveVarargsKey() {
+        Converter converter = new Converter(new DefaultConverterOptions());
+        Map<String, Object> args = new LinkedHashMap<>();
+        args.put("fixed", 7);
+
+        PrimitiveNamedVarargsWithOptionalTail instance =
+                (PrimitiveNamedVarargsWithOptionalTail) ClassUtilities.newInstance(
+                        converter, PrimitiveNamedVarargsWithOptionalTail.class, args);
+
+        assertNotNull(instance);
+        assertEquals(7, instance.getFixed());
+        assertNotNull(instance.getValues());
+        assertArrayEquals(new int[0], instance.getValues());
     }
 }

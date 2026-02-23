@@ -9,6 +9,12 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.TimeZone;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
@@ -161,6 +167,13 @@ public final class DateUtilities {
     // Default security limits
     private static final int DEFAULT_MAX_INPUT_LENGTH = 1000;
     private static final int DEFAULT_MAX_EPOCH_DIGITS = 19;
+    private static final long DEFAULT_REGEX_TIMEOUT_MILLISECONDS = 1000L;
+
+    private static final ExecutorService DATE_REGEX_EXECUTOR = Executors.newCachedThreadPool(r -> {
+        Thread thread = new Thread(r, "DateUtilities-Regex-Timeout-Thread");
+        thread.setDaemon(true);
+        return thread;
+    });
 
     // Security configuration accessor methods - read dynamically to allow runtime configuration
     // Note: System.getProperty() is efficient (HashMap lookup) and keeping these dynamic allows:
@@ -207,6 +220,102 @@ public final class DateUtilities {
             }
         }
         return DEFAULT_MAX_EPOCH_DIGITS;
+    }
+
+    static boolean isRegexTimeoutProtectionEnabled() {
+        if (!isSecurityEnabled()) {
+            return false;
+        }
+
+        String timeoutEnabled = System.getProperty("dateutilities.regex.timeout.enabled");
+        if (timeoutEnabled != null) {
+            return Boolean.parseBoolean(timeoutEnabled);
+        }
+
+        String globalTimeoutEnabled = System.getProperty("cedarsoftware.regex.timeout.enabled");
+        if (globalTimeoutEnabled != null) {
+            return Boolean.parseBoolean(globalTimeoutEnabled);
+        }
+        return true;
+    }
+
+    static long getRegexTimeoutMilliseconds() {
+        Long timeoutMs = parsePositiveLong(System.getProperty("dateutilities.regex.timeout.milliseconds"));
+        if (timeoutMs != null) {
+            return timeoutMs;
+        }
+
+        timeoutMs = parsePositiveLong(System.getProperty("cedarsoftware.regex.timeout.milliseconds"));
+        if (timeoutMs != null) {
+            return timeoutMs;
+        }
+        return DEFAULT_REGEX_TIMEOUT_MILLISECONDS;
+    }
+
+    private static Long parsePositiveLong(String value) {
+        if (value == null) {
+            return null;
+        }
+        try {
+            long parsed = Long.parseLong(value);
+            return parsed > 0 ? parsed : null;
+        } catch (NumberFormatException ignored) {
+            return null;
+        }
+    }
+
+    private static boolean safeMatches(Pattern pattern, String input) {
+        if (pattern == null || input == null) {
+            return false;
+        }
+
+        if (!isRegexTimeoutProtectionEnabled()) {
+            return pattern.matcher(input).matches();
+        }
+
+        long timeout = getRegexTimeoutMilliseconds();
+        Future<Boolean> future = DATE_REGEX_EXECUTOR.submit(() -> pattern.matcher(input).matches());
+
+        try {
+            return future.get(timeout, TimeUnit.MILLISECONDS);
+        } catch (TimeoutException e) {
+            future.cancel(true);
+            throw new SecurityException("Regex operation timed out (>" + timeout + "ms) - possible ReDoS attack", e);
+        } catch (Exception e) {
+            throw new SecurityException("Regex operation failed: " + e.getMessage(), e);
+        }
+    }
+
+    private static RegexUtilities.SafeMatchResult safeFind(Pattern pattern, String input) {
+        if (pattern == null || input == null) {
+            return new RegexUtilities.SafeMatchResult(null, input);
+        }
+
+        if (!isRegexTimeoutProtectionEnabled()) {
+            Matcher matcher = pattern.matcher(input);
+            if (matcher.find()) {
+                return new RegexUtilities.SafeMatchResult(matcher, input);
+            }
+            return new RegexUtilities.SafeMatchResult(null, input);
+        }
+
+        long timeout = getRegexTimeoutMilliseconds();
+        Future<RegexUtilities.SafeMatchResult> future = DATE_REGEX_EXECUTOR.submit(() -> {
+            Matcher matcher = pattern.matcher(input);
+            if (matcher.find()) {
+                return new RegexUtilities.SafeMatchResult(matcher, input);
+            }
+            return new RegexUtilities.SafeMatchResult(null, input);
+        });
+
+        try {
+            return future.get(timeout, TimeUnit.MILLISECONDS);
+        } catch (TimeoutException e) {
+            future.cancel(true);
+            throw new SecurityException("Regex operation timed out (>" + timeout + "ms) - possible ReDoS attack", e);
+        } catch (Exception e) {
+            throw new SecurityException("Regex operation failed: " + e.getMessage(), e);
+        }
     }
 
     // Pre-compiled pattern for invalid characters check (avoids creating Pattern on each call)
@@ -264,11 +373,10 @@ public final class DateUtilities {
         // Check for repeated substrings of various lengths
         for (int subLen = minLength; subLen <= len / minRepeats; subLen++) {
             for (int start = 0; start <= len - subLen * minRepeats; start++) {
-                String sub = input.substring(start, start + subLen);
                 int repeats = 1;
                 int pos = start + subLen;
 
-                while (pos + subLen <= len && input.substring(pos, pos + subLen).equals(sub)) {
+                while (pos + subLen <= len && input.regionMatches(start, input, pos, subLen)) {
                     repeats++;
                     pos += subLen;
                     if (repeats >= minRepeats) {
@@ -297,7 +405,8 @@ public final class DateUtilities {
     private static final String tz_Hh_MM_SS = "[+-]\\d{1,2}:\\d{2}:\\d{2}";
     private static final String tz_HHMM = "[+-]\\d{4}";
     private static final String tz_Hh = "[+-]\\d{1,2}";
-    private static final String tzNamed = wsOp + "\\[?(?:GMT[+-]\\d{2}:\\d{2}|[A-Za-z][A-Za-z0-9~/._+-]{1,50})]?";
+    private static final String tzNamedCore = "(?:GMT[+-]\\d{2}:\\d{2}|[A-Za-z][A-Za-z0-9~/._+-]{1,50})";
+    private static final String tzNamed = wsOp + "(?:\\[" + tzNamedCore + "]|" + tzNamedCore + ")";
     private static final String nano = "\\.\\d{1,9}";
 
     // Patterns defined in BNF influenced style using above named elements
@@ -566,7 +675,7 @@ public final class DateUtilities {
         }
 
         // If purely digits => epoch millis
-        if (RegexUtilities.safeMatches(allDigits, dateStr)) {
+        if (safeMatches(allDigits, dateStr)) {
             // Security: Validate epoch milliseconds range to prevent overflow
             if (isSecurityEnabled() && isInputValidationEnabled()) {
                 int maxEpochDigits = getMaxEpochDigits();
@@ -587,7 +696,7 @@ public final class DateUtilities {
         int month;
 
         // 1) Try matching ISO or numeric style date
-        RegexUtilities.SafeMatchResult result = RegexUtilities.safeFind(isoDatePattern, dateStr);
+        RegexUtilities.SafeMatchResult result = safeFind(isoDatePattern, dateStr);
         String remnant = result.getReplacement();
         if (remnant.length() < dateStr.length()) {
             if (result.group(1) != null) {
@@ -602,17 +711,17 @@ public final class DateUtilities {
             remains = remnant;
             // Do we have a Date with a TimeZone after it, but no time?
             if (remnant.startsWith("T")) {
-                if (RegexUtilities.safeMatches(zonePattern, remnant.substring(1))) {
+                if (safeMatches(zonePattern, remnant.substring(1))) {
                     throw new IllegalArgumentException("Time zone information without time is invalid: " + dateStr);
                 }
             } else {
-                if (RegexUtilities.safeMatches(zonePattern, remnant)) {
+                if (safeMatches(zonePattern, remnant)) {
                     throw new IllegalArgumentException("Time zone information without time is invalid: " + dateStr);
                 }
             }
         } else {
             // 2) Try alphaMonthPattern
-            result = RegexUtilities.safeFind(alphaMonthPattern, dateStr);
+            result = safeFind(alphaMonthPattern, dateStr);
             remnant = result.getReplacement();
             if (remnant.length() < dateStr.length()) {
                 String mon;
@@ -635,7 +744,7 @@ public final class DateUtilities {
                 month = months.get(mon.trim().toLowerCase());
             } else {
                 // 3) Try unixDateTimePattern
-                result = RegexUtilities.safeFind(unixDateTimePattern, dateStr);
+                result = safeFind(unixDateTimePattern, dateStr);
                 if (result.getReplacement().length() == dateStr.length()) {
                     throw new IllegalArgumentException("Unable to parse: " + dateStr + " as a date-time");
                 }
@@ -655,7 +764,7 @@ public final class DateUtilities {
         // 4) Parse time portion (could appear before or after date)
         String hour = null, min = null, sec = "00", fracSec = "0";
         remains = remains.trim();
-        result = RegexUtilities.safeFind(timePattern, remains);
+        result = safeFind(timePattern, remains);
         remnant = result.getReplacement();
 
         if (remnant.length() < remains.length()) {
@@ -893,23 +1002,42 @@ public final class DateUtilities {
     private static void verifyNoGarbageLeft(String remnant) {
         // Clear out day of week (mon, tue, wed, ...)
         if (StringUtilities.length(remnant) > 0) {
-            RegexUtilities.SafeMatchResult dayResult = RegexUtilities.safeFind(dayPattern, remnant);
+            RegexUtilities.SafeMatchResult dayResult = safeFind(dayPattern, remnant);
             remnant = dayResult.getReplacement().trim();
         }
 
         // Verify that nothing, "T" or "," is all that remains
         if (StringUtilities.length(remnant) > 0) {
-            remnant = remnant.replaceAll("[T,]", "").trim();
+            remnant = removeDateMarkerCharacters(remnant).trim();
             if (!remnant.isEmpty()) {
                 throw new IllegalArgumentException("Issue parsing date-time, other characters present: " + remnant);
             }
         }
     }
 
+    private static String removeDateMarkerCharacters(String input) {
+        StringBuilder builder = null;
+        for (int i = 0; i < input.length(); i++) {
+            char c = input.charAt(i);
+            if (c == 'T' || c == ',') {
+                if (builder == null) {
+                    builder = new StringBuilder(input.length() - 1);
+                    builder.append(input, 0, i);
+                }
+            } else if (builder != null) {
+                builder.append(c);
+            }
+        }
+        return builder == null ? input : builder.toString();
+    }
+
     private static String stripBrackets(String input) {
         if (input == null || input.isEmpty()) {
             return input;
         }
-        return input.replaceAll("^\\[|]$", "");
+        if (input.length() >= 2 && input.charAt(0) == '[' && input.charAt(input.length() - 1) == ']') {
+            return input.substring(1, input.length() - 1);
+        }
+        return input;
     }
 }

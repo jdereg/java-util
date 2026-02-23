@@ -22,7 +22,6 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.security.spec.AlgorithmParameterSpec;
-import java.util.Arrays;
 
 /**
  * Utility class providing cryptographic operations including hashing, encryption, and decryption.
@@ -169,6 +168,16 @@ public class EncryptionUtilities {
     private static final int STANDARD_SALT_SIZE = 16;
     private static final int STANDARD_IV_SIZE = 12;
     private static final int STANDARD_BUFFER_SIZE = 64 * 1024; // 64KB
+    private static final String AES_GCM_ALGORITHM = "AES/GCM/NoPadding";
+    private static final int GCM_TAG_BIT_LENGTH = 128;
+    private static final int GCM_TAG_BYTE_LENGTH = GCM_TAG_BIT_LENGTH / 8;
+    private static final byte VERSION_1 = 1;
+    private static final int VERSION_OFFSET = 0;
+    private static final int SALT_OFFSET = VERSION_OFFSET + 1;
+    private static final int IV_OFFSET = SALT_OFFSET + STANDARD_SALT_SIZE;
+    private static final int CIPHER_TEXT_OFFSET = IV_OFFSET + STANDARD_IV_SIZE;
+    private static final int MIN_VERSIONED_PAYLOAD_SIZE = CIPHER_TEXT_OFFSET + GCM_TAG_BYTE_LENGTH;
+    private static final int LEGACY_AES_BLOCK_SIZE = 16;
 
     // Cached SecureRandom instance (thread-safe)
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
@@ -907,14 +916,14 @@ public class EncryptionUtilities {
             SECURE_RANDOM.nextBytes(iv);
 
             SecretKeySpec sKey = new SecretKeySpec(deriveKey(key, salt, 128), "AES");
-            Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
-            cipher.init(Cipher.ENCRYPT_MODE, sKey, new GCMParameterSpec(128, iv));
+            Cipher cipher = Cipher.getInstance(AES_GCM_ALGORITHM);
+            cipher.init(Cipher.ENCRYPT_MODE, sKey, new GCMParameterSpec(GCM_TAG_BIT_LENGTH, iv));
 
             byte[] encrypted = cipher.doFinal(content.getBytes(StandardCharsets.UTF_8));
 
             // Use ByteBuffer for cleaner assembly of output
             ByteBuffer buffer = ByteBuffer.allocate(1 + salt.length + iv.length + encrypted.length);
-            buffer.put((byte) 1);  // version
+            buffer.put(VERSION_1);  // version
             buffer.put(salt);
             buffer.put(iv);
             buffer.put(encrypted);
@@ -949,13 +958,13 @@ public class EncryptionUtilities {
             SECURE_RANDOM.nextBytes(iv);
 
             SecretKeySpec sKey = new SecretKeySpec(deriveKey(key, salt, 128), "AES");
-            Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
-            cipher.init(Cipher.ENCRYPT_MODE, sKey, new GCMParameterSpec(128, iv));
+            Cipher cipher = Cipher.getInstance(AES_GCM_ALGORITHM);
+            cipher.init(Cipher.ENCRYPT_MODE, sKey, new GCMParameterSpec(GCM_TAG_BIT_LENGTH, iv));
             byte[] encrypted = cipher.doFinal(content);
 
             // Use ByteBuffer for cleaner assembly of output
             ByteBuffer buffer = ByteBuffer.allocate(1 + salt.length + iv.length + encrypted.length);
-            buffer.put((byte) 1);  // version
+            buffer.put(VERSION_1);  // version
             buffer.put(salt);
             buffer.put(iv);
             buffer.put(encrypted);
@@ -963,6 +972,49 @@ public class EncryptionUtilities {
         } catch (Exception e) {
             throw new IllegalStateException("Error occurred encrypting data", e);
         }
+    }
+
+    private static boolean isVersion1Payload(byte[] data) {
+        return data.length >= MIN_VERSIONED_PAYLOAD_SIZE && data[VERSION_OFFSET] == VERSION_1;
+    }
+
+    private static boolean isLegacyCiphertextCandidate(byte[] data) {
+        return data.length > 0 && data.length % LEGACY_AES_BLOCK_SIZE == 0;
+    }
+
+    private static byte[] decryptLegacyPayload(String key, byte[] data) throws Exception {
+        return createAesDecryptionCipher(key).doFinal(data);
+    }
+
+    private static byte[] decryptVersion1Payload(String key, byte[] data) throws Exception {
+        byte[] salt = new byte[STANDARD_SALT_SIZE];
+        System.arraycopy(data, SALT_OFFSET, salt, 0, STANDARD_SALT_SIZE);
+
+        SecretKeySpec sKey = new SecretKeySpec(deriveKey(key, salt, 128), "AES");
+        Cipher cipher = Cipher.getInstance(AES_GCM_ALGORITHM);
+        GCMParameterSpec parameterSpec =
+                new GCMParameterSpec(GCM_TAG_BIT_LENGTH, data, IV_OFFSET, STANDARD_IV_SIZE);
+        cipher.init(Cipher.DECRYPT_MODE, sKey, parameterSpec);
+        return cipher.doFinal(data, CIPHER_TEXT_OFFSET, data.length - CIPHER_TEXT_OFFSET);
+    }
+
+    private static byte[] decryptToBytes(String key, byte[] data) throws Exception {
+        if (isVersion1Payload(data)) {
+            try {
+                return decryptVersion1Payload(key, data);
+            } catch (Exception versionedError) {
+                if (!isLegacyCiphertextCandidate(data)) {
+                    throw versionedError;
+                }
+                try {
+                    return decryptLegacyPayload(key, data);
+                } catch (Exception legacyError) {
+                    legacyError.addSuppressed(versionedError);
+                    throw legacyError;
+                }
+            }
+        }
+        return decryptLegacyPayload(key, data);
     }
 
     /**
@@ -982,22 +1034,7 @@ public class EncryptionUtilities {
             throw new IllegalArgumentException("Invalid hexadecimal input");
         }
         try {
-            // Header: 1 byte version + salt + iv
-            int saltStart = 1;
-            int ivStart = saltStart + STANDARD_SALT_SIZE;
-            int cipherStart = ivStart + STANDARD_IV_SIZE;
-
-            if (data[0] == 1 && data.length > cipherStart) {
-                byte[] salt = Arrays.copyOfRange(data, saltStart, ivStart);
-                byte[] iv = Arrays.copyOfRange(data, ivStart, cipherStart);
-                byte[] cipherText = Arrays.copyOfRange(data, cipherStart, data.length);
-
-                SecretKeySpec sKey = new SecretKeySpec(deriveKey(key, salt, 128), "AES");
-                Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
-                cipher.init(Cipher.DECRYPT_MODE, sKey, new GCMParameterSpec(128, iv));
-                return new String(cipher.doFinal(cipherText), StandardCharsets.UTF_8);
-            }
-            return new String(createAesDecryptionCipher(key).doFinal(data), StandardCharsets.UTF_8);
+            return new String(decryptToBytes(key, data), StandardCharsets.UTF_8);
         } catch (Exception e) {
             throw new IllegalStateException("Error occurred decrypting data", e);
         }
@@ -1020,22 +1057,7 @@ public class EncryptionUtilities {
             throw new IllegalArgumentException("Invalid hexadecimal input");
         }
         try {
-            // Header: 1 byte version + salt + iv
-            int saltStart = 1;
-            int ivStart = saltStart + STANDARD_SALT_SIZE;
-            int cipherStart = ivStart + STANDARD_IV_SIZE;
-
-            if (data[0] == 1 && data.length > cipherStart) {
-                byte[] salt = Arrays.copyOfRange(data, saltStart, ivStart);
-                byte[] iv = Arrays.copyOfRange(data, ivStart, cipherStart);
-                byte[] cipherText = Arrays.copyOfRange(data, cipherStart, data.length);
-
-                SecretKeySpec sKey = new SecretKeySpec(deriveKey(key, salt, 128), "AES");
-                Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
-                cipher.init(Cipher.DECRYPT_MODE, sKey, new GCMParameterSpec(128, iv));
-                return cipher.doFinal(cipherText);
-            }
-            return createAesDecryptionCipher(key).doFinal(data);
+            return decryptToBytes(key, data);
         } catch (Exception e) {
             throw new IllegalStateException("Error occurred decrypting data", e);
         }

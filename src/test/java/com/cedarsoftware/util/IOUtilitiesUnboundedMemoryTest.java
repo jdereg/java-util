@@ -163,6 +163,17 @@ public class IOUtilitiesUnboundedMemoryTest {
             IOUtilities.uncompressBytes(compressedData, 0, compressedData.length, -1);
         });
     }
+
+    @Test
+    public void testInvalidByteRangesAreRejected() {
+        byte[] plainData = "plain".getBytes();
+        byte[] compressedData = IOUtilities.compressBytes(plainData);
+
+        assertThrows(IllegalArgumentException.class, () -> IOUtilities.uncompressBytes(plainData, -1, 2, 10));
+        assertThrows(IllegalArgumentException.class, () -> IOUtilities.uncompressBytes(plainData, 2, -1, 10));
+        assertThrows(IllegalArgumentException.class, () -> IOUtilities.uncompressBytes(plainData, 4, 5, 10));
+        assertThrows(IllegalArgumentException.class, () -> IOUtilities.uncompressBytes(compressedData, 0, compressedData.length + 1, 100));
+    }
     
     @Test
     public void testZipBombProtection() {
@@ -224,5 +235,21 @@ public class IOUtilitiesUnboundedMemoryTest {
         } catch (Exception e) {
             fail("Transfer methods should not have size limits: " + e.getMessage());
         }
+    }
+
+    @Test
+    public void testDefaultSizeLimitCacheRefreshesWhenPropertiesChange() {
+        byte[] data = new byte[1200];
+
+        System.setProperty("io.max.stream.size", "2000");
+        byte[] result = IOUtilities.inputStreamToBytes(new ByteArrayInputStream(data));
+        assertEquals(data.length, result.length);
+
+        System.setProperty("io.max.stream.size", "500");
+        Exception exception = assertThrows(Exception.class, () -> {
+            IOUtilities.inputStreamToBytes(new ByteArrayInputStream(data));
+        });
+        assertTrue(exception instanceof IOException);
+        assertTrue(exception.getMessage().contains("Stream exceeds maximum allowed size"));
     }
 }

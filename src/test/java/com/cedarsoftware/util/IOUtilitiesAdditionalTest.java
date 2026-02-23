@@ -109,4 +109,44 @@ public class IOUtilitiesAdditionalTest {
         IOUtilities.transfer(in, out);
         assertEquals("ABC", new String(out.toByteArray(), StandardCharsets.UTF_8));
     }
+
+    @Test
+    public void testTransferFileToOutputStreamFlushesOnce() throws Exception {
+        File file = File.createTempFile("iou", "flush");
+        try {
+            Files.write(file.toPath(), "abc".getBytes(StandardCharsets.UTF_8));
+            class SecondFlushFailsOutputStream extends ByteArrayOutputStream {
+                private int flushCount;
+
+                @Override
+                public void flush() throws IOException {
+                    flushCount++;
+                    if (flushCount > 1) {
+                        throw new IOException("second flush fails");
+                    }
+                    super.flush();
+                }
+
+                int getFlushCount() {
+                    return flushCount;
+                }
+            }
+
+            SecondFlushFailsOutputStream out = new SecondFlushFailsOutputStream();
+            long transferred = IOUtilities.transfer(file, out);
+            assertEquals(3L, transferred);
+            assertEquals(1, out.getFlushCount());
+            assertEquals("abc", new String(out.toByteArray(), StandardCharsets.UTF_8));
+        } finally {
+            file.delete();
+        }
+    }
+
+    @Test
+    public void testCompressBytesInvalidRangeThrows() {
+        byte[] data = "012345".getBytes(StandardCharsets.UTF_8);
+        assertThrows(IllegalArgumentException.class, () -> IOUtilities.compressBytes(data, -1, 2));
+        assertThrows(IllegalArgumentException.class, () -> IOUtilities.compressBytes(data, 2, -1));
+        assertThrows(IllegalArgumentException.class, () -> IOUtilities.compressBytes(data, 4, 3));
+    }
 }

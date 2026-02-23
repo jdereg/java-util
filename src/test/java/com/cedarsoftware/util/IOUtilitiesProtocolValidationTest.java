@@ -321,6 +321,24 @@ public class IOUtilitiesProtocolValidationTest {
             validateUrlProtocolMethod.invoke(null, connection);
         }, "Should handle whitespace in allowed protocols configuration");
     }
+
+    @Test
+    public void testAllowedProtocolsCacheRefreshesWhenPropertyChanges() throws Exception {
+        URL url = new URL("ftp://example.com/file.txt");
+        URLConnection connection = url.openConnection();
+
+        System.setProperty("io.allowed.protocols", "http,https");
+        Exception exception = assertThrows(Exception.class, () -> {
+            validateUrlProtocolMethod.invoke(null, connection);
+        });
+        Throwable cause = exception.getCause();
+        assertTrue(cause instanceof SecurityException);
+
+        System.setProperty("io.allowed.protocols", "http,https,ftp");
+        assertDoesNotThrow(() -> {
+            validateUrlProtocolMethod.invoke(null, connection);
+        }, "Protocol allow-list cache should refresh when property changes");
+    }
     
     @Test
     public void testEmptyAllowedProtocols() throws Exception {

@@ -123,8 +123,25 @@ public final class IOUtilities {
     private static final int DEFAULT_READ_TIMEOUT = 30000;
     private static final int MIN_TIMEOUT = 1000;  // Minimum 1 second to prevent DoS
     private static final int MAX_TIMEOUT = 300000; // Maximum 5 minutes to prevent resource exhaustion
+    private static final String PROP_CONNECT_TIMEOUT = "io.connect.timeout";
+    private static final String PROP_READ_TIMEOUT = "io.read.timeout";
+    private static final String PROP_MAX_STREAM_SIZE = "io.max.stream.size";
+    private static final String PROP_MAX_DECOMPRESSION_SIZE = "io.max.decompression.size";
+    private static final String PROP_ALLOWED_PROTOCOLS = "io.allowed.protocols";
+    private static final String DEFAULT_ALLOWED_PROTOCOLS = "http,https,file,jar";
     private static final boolean DEBUG = Boolean.parseBoolean(System.getProperty("io.debug", "false"));
     private static final Logger LOG = Logger.getLogger(IOUtilities.class.getName());
+    private static final Object CONFIG_CACHE_LOCK = new Object();
+    private static volatile String cachedConnectTimeoutProperty;
+    private static volatile int cachedConnectTimeout = DEFAULT_CONNECT_TIMEOUT;
+    private static volatile String cachedReadTimeoutProperty;
+    private static volatile int cachedReadTimeout = DEFAULT_READ_TIMEOUT;
+    private static volatile String cachedMaxStreamSizeProperty;
+    private static volatile int cachedMaxStreamSize = Integer.MAX_VALUE;
+    private static volatile String cachedMaxDecompressionSizeProperty;
+    private static volatile int cachedMaxDecompressionSize = Integer.MAX_VALUE;
+    private static volatile String cachedAllowedProtocolsProperty = DEFAULT_ALLOWED_PROTOCOLS;
+    private static volatile String[] cachedAllowedProtocols = {"http", "https", "file", "jar"};
     static { LoggingConfig.init(); }
 
     private static void debug(String msg, Exception e) {
@@ -151,36 +168,41 @@ public final class IOUtilities {
     private static int getValidatedTimeout(String propertyName, int defaultValue, String propertyType) {
         try {
             String propertyValue = System.getProperty(propertyName);
-            if (propertyValue == null || propertyValue.trim().isEmpty()) {
-                return defaultValue;
-            }
-            
-            // Additional validation to prevent injection attacks
-            if (!propertyValue.matches("^-?\\d+$")) {
-                debug("Invalid " + propertyType + " format, using default", null);
-                return defaultValue;
-            }
-            
+            return parseValidatedTimeoutValue(propertyValue, defaultValue, propertyType);
+        } catch (SecurityException e) {
+            debug("Security restriction accessing " + propertyType + " property, using defaults", null);
+            return defaultValue;
+        }
+    }
+
+    private static int parseValidatedTimeoutValue(String propertyValue, int defaultValue, String propertyType) {
+        if (propertyValue == null || propertyValue.trim().isEmpty()) {
+            return defaultValue;
+        }
+
+        // Additional validation to prevent injection attacks
+        if (!propertyValue.matches("^-?\\d+$")) {
+            debug("Invalid " + propertyType + " format, using default", null);
+            return defaultValue;
+        }
+
+        try {
             int timeout = Integer.parseInt(propertyValue.trim());
-            
+
             // Enforce reasonable bounds to prevent DoS attacks
             if (timeout < MIN_TIMEOUT) {
                 debug("Configured " + propertyType + " too low, using minimum value", null);
                 return MIN_TIMEOUT;
             }
-            
+
             if (timeout > MAX_TIMEOUT) {
                 debug("Configured " + propertyType + " too high, using maximum value", null);
                 return MAX_TIMEOUT;
             }
-            
+
             return timeout;
-            
         } catch (NumberFormatException e) {
             debug("Invalid " + propertyType + " configuration detected, using defaults", null);
-            return defaultValue;
-        } catch (SecurityException e) {
-            debug("Security restriction accessing " + propertyType + " property, using defaults", null);
             return defaultValue;
         }
     }
@@ -197,39 +219,132 @@ public final class IOUtilities {
     private static int getValidatedSizeProperty(String propertyName, int defaultValue, String propertyType) {
         try {
             String propertyValue = System.getProperty(propertyName);
-            if (propertyValue == null || propertyValue.trim().isEmpty()) {
-                return defaultValue;
-            }
-            
-            // Additional validation to prevent injection attacks
-            if (!propertyValue.matches("^-?\\d+$")) {
-                debug("Invalid " + propertyType + " format, using default", null);
-                return defaultValue;
-            }
-            
+            return parseValidatedSizeValue(propertyValue, defaultValue, propertyType);
+        } catch (SecurityException e) {
+            debug("Security restriction accessing " + propertyType + " property, using defaults", null);
+            return defaultValue;
+        }
+    }
+
+    private static int parseValidatedSizeValue(String propertyValue, int defaultValue, String propertyType) {
+        if (propertyValue == null || propertyValue.trim().isEmpty()) {
+            return defaultValue;
+        }
+
+        // Additional validation to prevent injection attacks
+        if (!propertyValue.matches("^-?\\d+$")) {
+            debug("Invalid " + propertyType + " format, using default", null);
+            return defaultValue;
+        }
+
+        try {
             long size = Long.parseLong(propertyValue.trim());
-            
+
             // Enforce reasonable bounds to prevent resource exhaustion
             if (size <= 0) {
                 debug("Configured " + propertyType + " must be positive, using default", null);
                 return defaultValue;
             }
-            
+
             // Prevent overflow and extremely large values
             if (size > Integer.MAX_VALUE) {
                 debug("Configured " + propertyType + " too large, using maximum safe value", null);
                 return Integer.MAX_VALUE;
             }
-            
+
             return (int) size;
-            
         } catch (NumberFormatException e) {
             debug("Invalid " + propertyType + " configuration detected, using defaults", null);
             return defaultValue;
+        }
+    }
+
+    private static String getPropertyWithDefault(String propertyName, String defaultValue, String propertyType) {
+        try {
+            return System.getProperty(propertyName, defaultValue);
         } catch (SecurityException e) {
             debug("Security restriction accessing " + propertyType + " property, using defaults", null);
             return defaultValue;
         }
+    }
+
+    private static String getProperty(String propertyName, String propertyType) {
+        try {
+            return System.getProperty(propertyName);
+        } catch (SecurityException e) {
+            debug("Security restriction accessing " + propertyType + " property, using defaults", null);
+            return null;
+        }
+    }
+
+    private static int getCachedConnectTimeout() {
+        String propertyValue = getProperty(PROP_CONNECT_TIMEOUT, "connect timeout");
+        if (!Objects.equals(propertyValue, cachedConnectTimeoutProperty)) {
+            synchronized (CONFIG_CACHE_LOCK) {
+                if (!Objects.equals(propertyValue, cachedConnectTimeoutProperty)) {
+                    cachedConnectTimeout = parseValidatedTimeoutValue(propertyValue, DEFAULT_CONNECT_TIMEOUT, "connect timeout");
+                    cachedConnectTimeoutProperty = propertyValue;
+                }
+            }
+        }
+        return cachedConnectTimeout;
+    }
+
+    private static int getCachedReadTimeout() {
+        String propertyValue = getProperty(PROP_READ_TIMEOUT, "read timeout");
+        if (!Objects.equals(propertyValue, cachedReadTimeoutProperty)) {
+            synchronized (CONFIG_CACHE_LOCK) {
+                if (!Objects.equals(propertyValue, cachedReadTimeoutProperty)) {
+                    cachedReadTimeout = parseValidatedTimeoutValue(propertyValue, DEFAULT_READ_TIMEOUT, "read timeout");
+                    cachedReadTimeoutProperty = propertyValue;
+                }
+            }
+        }
+        return cachedReadTimeout;
+    }
+
+    private static int getCachedMaxStreamSize() {
+        String propertyValue = getProperty(PROP_MAX_STREAM_SIZE, "max stream size");
+        if (!Objects.equals(propertyValue, cachedMaxStreamSizeProperty)) {
+            synchronized (CONFIG_CACHE_LOCK) {
+                if (!Objects.equals(propertyValue, cachedMaxStreamSizeProperty)) {
+                    cachedMaxStreamSize = parseValidatedSizeValue(propertyValue, Integer.MAX_VALUE, "max stream size");
+                    cachedMaxStreamSizeProperty = propertyValue;
+                }
+            }
+        }
+        return cachedMaxStreamSize;
+    }
+
+    private static int getCachedMaxDecompressionSize() {
+        String propertyValue = getProperty(PROP_MAX_DECOMPRESSION_SIZE, "max decompression size");
+        if (!Objects.equals(propertyValue, cachedMaxDecompressionSizeProperty)) {
+            synchronized (CONFIG_CACHE_LOCK) {
+                if (!Objects.equals(propertyValue, cachedMaxDecompressionSizeProperty)) {
+                    cachedMaxDecompressionSize = parseValidatedSizeValue(propertyValue, Integer.MAX_VALUE, "max decompression size");
+                    cachedMaxDecompressionSizeProperty = propertyValue;
+                }
+            }
+        }
+        return cachedMaxDecompressionSize;
+    }
+
+    private static String[] getCachedAllowedProtocols(String allowedProtocolsProperty) {
+        if (!Objects.equals(allowedProtocolsProperty, cachedAllowedProtocolsProperty)) {
+            synchronized (CONFIG_CACHE_LOCK) {
+                if (!Objects.equals(allowedProtocolsProperty, cachedAllowedProtocolsProperty)) {
+                    String[] allowedProtocols = allowedProtocolsProperty.toLowerCase().split(",");
+
+                    // Trim whitespace from protocols
+                    for (int i = 0; i < allowedProtocols.length; i++) {
+                        allowedProtocols[i] = allowedProtocols[i].trim();
+                    }
+                    cachedAllowedProtocols = allowedProtocols;
+                    cachedAllowedProtocolsProperty = allowedProtocolsProperty;
+                }
+            }
+        }
+        return cachedAllowedProtocols;
     }
 
     /**
@@ -240,7 +355,7 @@ public final class IOUtilities {
      * @return the maximum allowed stream size in bytes
      */
     private static int getDefaultMaxStreamSize() {
-        return getValidatedSizeProperty("io.max.stream.size", 2147483647, "max stream size");
+        return getCachedMaxStreamSize();
     }
 
     /**
@@ -251,7 +366,7 @@ public final class IOUtilities {
      * @return the maximum allowed decompressed data size in bytes
      */
     private static int getDefaultMaxDecompressionSize() {
-        return getValidatedSizeProperty("io.max.decompression.size", 2147483647, "max decompression size");
+        return getCachedMaxDecompressionSize();
     }
 
 
@@ -409,13 +524,8 @@ public final class IOUtilities {
         
         // Get allowed protocols from system property or use secure defaults
         // Note: file and jar are included for legitimate resource access but have additional validation
-        String allowedProtocolsProperty = System.getProperty("io.allowed.protocols", "http,https,file,jar");
-        String[] allowedProtocols = allowedProtocolsProperty.toLowerCase().split(",");
-        
-        // Trim whitespace from protocols
-        for (int i = 0; i < allowedProtocols.length; i++) {
-            allowedProtocols[i] = allowedProtocols[i].trim();
-        }
+        String allowedProtocolsProperty = getPropertyWithDefault(PROP_ALLOWED_PROTOCOLS, DEFAULT_ALLOWED_PROTOCOLS, "allowed protocols");
+        String[] allowedProtocols = getCachedAllowedProtocols(allowedProtocolsProperty);
         
         // Check if the protocol is allowed
         boolean isAllowed = false;
@@ -744,8 +854,8 @@ public final class IOUtilities {
             http.setUseCaches(false);
             
             // Use secure timeout validation to prevent injection attacks
-            int connectTimeout = getValidatedTimeout("io.connect.timeout", DEFAULT_CONNECT_TIMEOUT, "connect timeout");
-            int readTimeout = getValidatedTimeout("io.read.timeout", DEFAULT_READ_TIMEOUT, "read timeout");
+            int connectTimeout = getCachedConnectTimeout();
+            int readTimeout = getCachedReadTimeout();
             
             http.setConnectTimeout(connectTimeout);
             http.setReadTimeout(readTimeout);
@@ -970,8 +1080,6 @@ public final class IOUtilities {
         } catch (IOException e) {
             ExceptionUtilities.uncheckedThrow(e);
             return 0; // unreachable
-        } finally {
-            flush(out);
         }
     }
 
@@ -1234,6 +1342,7 @@ public final class IOUtilities {
      */
     public static byte[] compressBytes(byte[] bytes, int offset, int len) {
         Convention.throwIfNull(bytes, "Byte array cannot be null");
+        validateByteArrayRange(bytes, offset, len);
         try (FastByteArrayOutputStream byteStream = new FastByteArrayOutputStream()) {
             try (DeflaterOutputStream gzipStream = new AdjustableGZIPOutputStream(byteStream, Deflater.BEST_SPEED)) {
                 gzipStream.write(bytes, offset, len);
@@ -1295,6 +1404,7 @@ public final class IOUtilities {
         if (maxSize <= 0) {
             throw new IllegalArgumentException("maxSize must be > 0");
         }
+        validateByteArrayRange(bytes, offset, len);
         
         if (ByteUtilities.isGzipped(bytes, offset)) {
             try (ByteArrayInputStream byteStream = new ByteArrayInputStream(bytes, offset, len);
@@ -1305,6 +1415,18 @@ public final class IOUtilities {
             }
         }
         return Arrays.copyOfRange(bytes, offset, offset + len);
+    }
+
+    private static void validateByteArrayRange(byte[] bytes, int offset, int len) {
+        if (offset < 0) {
+            throw new IllegalArgumentException("offset cannot be negative: " + offset);
+        }
+        if (len < 0) {
+            throw new IllegalArgumentException("len cannot be negative: " + len);
+        }
+        if (offset > bytes.length || len > bytes.length - offset) {
+            throw new IllegalArgumentException("offset and len must specify a valid range within the byte array");
+        }
     }
 
     /**

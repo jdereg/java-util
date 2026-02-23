@@ -262,4 +262,18 @@ public class IOUtilitiesSystemPropertyInjectionTest {
         int result = (Integer) getValidatedTimeoutMethod.invoke(null, "io.nonexistent.timeout", 5000, "test timeout");
         assertEquals(5000, result, "Missing property should return default value");
     }
+
+    @Test
+    public void testTimeoutCacheRefreshesWhenPropertyChanges() throws Exception {
+        Method getCachedConnectTimeoutMethod = IOUtilities.class.getDeclaredMethod("getCachedConnectTimeout");
+        getCachedConnectTimeoutMethod.setAccessible(true);
+
+        System.setProperty("io.connect.timeout", "4000");
+        int firstValue = (Integer) getCachedConnectTimeoutMethod.invoke(null);
+        assertEquals(4000, firstValue);
+
+        System.setProperty("io.connect.timeout", "9000");
+        int secondValue = (Integer) getCachedConnectTimeoutMethod.invoke(null);
+        assertEquals(9000, secondValue);
+    }
 }

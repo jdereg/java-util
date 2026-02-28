@@ -1,6 +1,7 @@
 ### Revision History
 
 #### 4.96.0 (Unreleased)
+* **BUG FIX**: `ClassUtilities.trySetAccessible()` no longer caches successful `setAccessible(true)` results. The `WeakHashMap`-based cache uses `equals()` for lookup, but `Field.equals()` matches by declaring class, name, and type — not identity. When `getDeclaredFields()` was called with different predicates, the JVM returned different `Field` instances for the same logical field; the cache returned `TRUE` for the second instance without ever calling `setAccessible(true)` on it, leaving it inaccessible. This caused `Traverser` to silently skip inaccessible fields, breaking `GraphComparator.applyDelta()`. Only failures (`FALSE`) are now cached to avoid expensive repeated exceptions on JPMS-sealed modules.
 
 #### 4.95.0 - 2026-02-28
 * **BUG FIX**: `ArrayUtilities.setPrimitiveElement(char[], ...)` now throws `IllegalArgumentException` for incompatible non-char inputs instead of silently coercing values to `'\0'`.

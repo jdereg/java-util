@@ -1,6 +1,6 @@
 ### Revision History
 
-#### 4.95.0 (Unreleased)
+#### 4.95.0 - 2026-02-28
 * **BUG FIX**: `ArrayUtilities.setPrimitiveElement(char[], ...)` now throws `IllegalArgumentException` for incompatible non-char inputs instead of silently coercing values to `'\0'`.
 * **BUG FIX**: `ArrayUtilities` type-mismatch errors from `setElement(...)` / `setPrimitiveElement(...)` now report stable `IllegalArgumentException` messages without invoking arbitrary `element.toString()` during error construction.
 * **BUG FIX**: `ArrayUtilities` dangerous-class validation now honors `arrayutilities.dangerous.classes.validation.enabled` as an independent runtime toggle (default enabled for backward compatibility).

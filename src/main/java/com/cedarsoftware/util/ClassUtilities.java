@@ -2785,23 +2785,19 @@ public class ClassUtilities {
         Collections.synchronizedMap(new WeakHashMap<>());
     
     static void trySetAccessible(AccessibleObject object) {
-        // Check cache first to avoid repeated failed attempts
-        Boolean prev = accessibilityCache.get(object);
-        if (Boolean.FALSE.equals(prev)) {
-            // Known to fail under current VM/module setup – skip the throwing call
-            // This reduces noisy exceptions on hot paths (constructor/method selection loops) 
-            // in JPMS-sealed modules
+        // Check cache for known failures only. We only cache FALSE (failures) to avoid
+        // expensive repeated exception throwing on JPMS-sealed modules. We do NOT cache
+        // TRUE because WeakHashMap uses equals()-based lookup, and Field.equals() matches
+        // by declaring class + name + type. Different Field instances for the same logical
+        // field (from separate getDeclaredFields() calls) would incorrectly share a TRUE
+        // cache entry, causing the second instance to never get setAccessible(true) called.
+        // Calling setAccessible(true) on an already-accessible field is a cheap no-op.
+        if (Boolean.FALSE.equals(accessibilityCache.get(object))) {
             return;
         }
-        if (Boolean.TRUE.equals(prev)) {
-            // Already accessible, no need to set again
-            return;
-        }
-        
-        // Not in cache, attempt to set accessible
+
         try {
             object.setAccessible(true);
-            accessibilityCache.put(object, Boolean.TRUE);
         } catch (SecurityException e) {
             accessibilityCache.put(object, Boolean.FALSE);
             if (LOG.isLoggable(Level.FINE)) {

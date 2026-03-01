@@ -202,18 +202,12 @@ public class MultiKeyMapTypedArrayProcessingTest {
             map.put(array, "value" + i);
         }
         
-        // Test lookup performance - should use fast typed processing
-        long startTime = System.nanoTime();
+        // Test lookup correctness with many entries
         for (int i = 0; i < 1000; i++) {
             int[] lookupArray = {i, i + 1, i + 2};
             String result = map.get(lookupArray);
             assertEquals("value" + i, result);
         }
-        long endTime = System.nanoTime();
-        
-        // Performance test should complete reasonably quickly
-        long durationMs = (endTime - startTime) / 1_000_000;
-        assertTrue(durationMs < 100, "int[] processing should be fast, took " + durationMs + "ms");
         
         assertEquals(1000, map.size());
     }

@@ -220,22 +220,26 @@ public final class FastReader extends Reader {
                 return totalRead > 0 ? totalRead : -1;
             }
 
-            // Single-pass loop with position localized to avoid per-char field write
+            // Scan for delimiter in a tight loop (reads only, no writes),
+            // then bulk-copy with System.arraycopy (JVM intrinsic).
             int pos = position;
             int end = pos + Math.min(limit - pos, maxLen - totalRead);
-            while (pos < end) {
-                char c = locBuf[pos];
-                if (c == delim1 || c == delim2) {
-                    // Found delimiter — don't consume it
-                    totalRead += pos - position;
-                    position = pos;
-                    return totalRead;
-                }
-                dest[off++] = c;
-                pos++;
+            int scanPos = pos;
+            while (scanPos < end && locBuf[scanPos] != delim1 && locBuf[scanPos] != delim2) {
+                scanPos++;
             }
-            totalRead += pos - position;
-            position = pos;
+            int copyLen = scanPos - pos;
+            if (copyLen > 0) {
+                System.arraycopy(locBuf, pos, dest, off, copyLen);
+                off += copyLen;
+                totalRead += copyLen;
+            }
+            if (scanPos < end) {
+                // Found delimiter — don't consume it
+                position = scanPos;
+                return totalRead;
+            }
+            position = scanPos;
         }
 
         return totalRead;

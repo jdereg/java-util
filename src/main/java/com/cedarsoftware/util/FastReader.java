@@ -225,21 +225,20 @@ public final class FastReader extends Reader {
             int pos = position;
             int end = pos + Math.min(limit - pos, maxLen - totalRead);
             int scanPos = pos;
-            while (scanPos < end && locBuf[scanPos] != delim1 && locBuf[scanPos] != delim2) {
-                scanPos++;
-            }
+            do {
+                char c = locBuf[scanPos];
+                if (c == delim1 || c == delim2) break;
+            } while (++scanPos < end);
             int copyLen = scanPos - pos;
             if (copyLen > 0) {
                 System.arraycopy(locBuf, pos, dest, off, copyLen);
                 off += copyLen;
                 totalRead += copyLen;
             }
-            if (scanPos < end) {
-                // Found delimiter — don't consume it
-                position = scanPos;
-                return totalRead;
-            }
             position = scanPos;
+            if (scanPos < end) {
+                return totalRead;  // Found delimiter — don't consume it
+            }
         }
 
         return totalRead;

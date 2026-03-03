@@ -1,6 +1,8 @@
 ### Revision History
 
-#### 4.97.0 (Unreleased)
+#### 4.97.0 - 2026-03-03
+* **PERFORMANCE**: `FastReader.readUntil()` now splits the inner loop into a read-only delimiter scan followed by a bulk `System.arraycopy`, allowing the JIT to optimize the tight scan loop independently from memory writes.
+* **PERFORMANCE**: `FastReader.readUntil()` scan loop now uses a `do-while` with a single array access per iteration and hoists position assignment above the delimiter check to eliminate a duplicate write.
 
 #### 4.96.0 - 2026-02-28
 * **BUG FIX**: `ClassUtilities.trySetAccessible()` no longer caches successful `setAccessible(true)` results. The `WeakHashMap`-based cache uses `equals()` for lookup, but `Field.equals()` matches by declaring class, name, and type — not identity. When `getDeclaredFields()` was called with different predicates, the JVM returned different `Field` instances for the same logical field; the cache returned `TRUE` for the second instance without ever calling `setAccessible(true)` on it, leaving it inaccessible. This caused `Traverser` to silently skip inaccessible fields, breaking `GraphComparator.applyDelta()`. Only failures (`FALSE`) are now cached to avoid expensive repeated exceptions on JPMS-sealed modules.

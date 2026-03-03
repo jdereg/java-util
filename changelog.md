@@ -1,5 +1,7 @@
 ### Revision History
 
+#### 4.98.0 (Unreleased)
+
 #### 4.97.0 - 2026-03-03
 * **PERFORMANCE**: `FastReader.readUntil()` now splits the inner loop into a read-only delimiter scan followed by a bulk `System.arraycopy`, allowing the JIT to optimize the tight scan loop independently from memory writes.
 * **PERFORMANCE**: `FastReader.readUntil()` scan loop now uses a `do-while` with a single array access per iteration and hoists position assignment above the delimiter check to eliminate a duplicate write.

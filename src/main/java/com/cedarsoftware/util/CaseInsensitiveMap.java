@@ -171,6 +171,7 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
     final Map<K, V> map;
     final boolean isMultiKeyMapBacking;
     final boolean isConcurrentBackingMap;
+    final boolean useLookupKey;
     private final boolean multiKeyMapFlattenDimensions;
     private transient Set<K> cachedKeySet;
     private transient Set<Entry<K, V>> cachedEntrySet;
@@ -375,6 +376,7 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
         map = new LinkedHashMap<>();
         isMultiKeyMapBacking = false;
         isConcurrentBackingMap = false;
+        useLookupKey = true;
         multiKeyMapFlattenDimensions = false;
     }
 
@@ -389,6 +391,7 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
         map = new LinkedHashMap<>(initialCapacity);
         isMultiKeyMapBacking = false;
         isConcurrentBackingMap = false;
+        useLookupKey = true;
         multiKeyMapFlattenDimensions = false;
     }
 
@@ -404,6 +407,7 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
         map = new LinkedHashMap<>(initialCapacity, loadFactor);
         isMultiKeyMapBacking = false;
         isConcurrentBackingMap = false;
+        useLookupKey = true;
         multiKeyMapFlattenDimensions = false;
     }
 
@@ -426,6 +430,7 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
         map = copy(source, mapInstance);
         isMultiKeyMapBacking = multiKeyMapBacking;
         isConcurrentBackingMap = mapInstance instanceof ConcurrentMap;
+        useLookupKey = !multiKeyMapBacking && !(mapInstance instanceof SortedMap);
         multiKeyMapFlattenDimensions = multiKeyMapBacking && ((MultiKeyMap<Object>) mapInstance).getFlattenDimensions();
     }
 
@@ -444,6 +449,7 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
         map = determineBackingMap(source);
         isMultiKeyMapBacking = map instanceof MultiKeyMap;
         isConcurrentBackingMap = map instanceof ConcurrentMap;
+        useLookupKey = !isMultiKeyMapBacking && !(map instanceof SortedMap);
         multiKeyMapFlattenDimensions = isMultiKeyMapBacking && ((MultiKeyMap<Object>) map).getFlattenDimensions();
     }
 
@@ -488,7 +494,15 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
         if (isMultiKeyMapBacking) {
             return map.get(convertKeyForMultiKeyMap(key));
         }
-        return map.get(convertKey(key));
+        if (key instanceof String) {
+            if (useLookupKey) {
+                LookupKey lk = LOOKUP_KEY.get();
+                lk.set((String) key);
+                return map.get(lk);
+            }
+            return map.get(new CaseInsensitiveString((String) key));
+        }
+        return map.get(key);
     }
 
     /**
@@ -501,7 +515,15 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
         if (isMultiKeyMapBacking) {
             return map.containsKey(convertKeyForMultiKeyMap(key));
         }
-        return map.containsKey(convertKey(key));
+        if (key instanceof String) {
+            if (useLookupKey) {
+                LookupKey lk = LOOKUP_KEY.get();
+                lk.set((String) key);
+                return map.containsKey(lk);
+            }
+            return map.containsKey(new CaseInsensitiveString((String) key));
+        }
+        return map.containsKey(key);
     }
 
     /**
@@ -528,7 +550,15 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
         if (isMultiKeyMapBacking) {
             return map.remove(convertKeyForMultiKeyMap(key));
         }
-        return map.remove(convertKey(key));
+        if (key instanceof String) {
+            if (useLookupKey) {
+                LookupKey lk = LOOKUP_KEY.get();
+                lk.set((String) key);
+                return map.remove(lk);
+            }
+            return map.remove(new CaseInsensitiveString((String) key));
+        }
+        return map.remove(key);
     }
 
     /**
@@ -1129,8 +1159,8 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
     public static final class CaseInsensitiveString implements Comparable<Object>, CharSequence, Serializable {
         private static final long serialVersionUID = 1L;
 
-        private final String original;
-        private final int hash;
+        final String original;
+        final int hash;
 
         /**
          * Factory method that creates a new CaseInsensitiveString.
@@ -1184,8 +1214,11 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
             }
             if (other instanceof CaseInsensitiveString) {
                 CaseInsensitiveString cis = (CaseInsensitiveString) other;
-                // Fast reject: different hash codes can never be equal
                 return hash == cis.hash && original.equalsIgnoreCase(cis.original);
+            }
+            if (other instanceof LookupKey) {
+                LookupKey lk = (LookupKey) other;
+                return hash == lk.hash && original.equalsIgnoreCase(lk.value);
             }
             if (other instanceof String) {
                 String str = (String) other;
@@ -1291,6 +1324,46 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
             // The hash field is final, but will be restored by deserialization
         }
     }
+
+    /**
+     * Mutable, reusable key for read-only map operations (get, containsKey, remove).
+     * Avoids allocating a new {@link CaseInsensitiveString} for every lookup.
+     * Used via a {@link ThreadLocal} — one instance per thread, never stored in the map.
+     */
+    static final class LookupKey {
+        String value;
+        int hash;
+
+        void set(String s) {
+            this.value = s;
+            this.hash = StringUtilities.hashCodeIgnoreCase(s);
+        }
+
+        @Override
+        public int hashCode() {
+            return hash;
+        }
+
+        @Override
+        public boolean equals(Object other) {
+            if (other instanceof CaseInsensitiveString) {
+                CaseInsensitiveString cis = (CaseInsensitiveString) other;
+                return hash == cis.hash && value.equalsIgnoreCase(cis.original);
+            }
+            if (other instanceof LookupKey) {
+                LookupKey lk = (LookupKey) other;
+                return hash == lk.hash && value.equalsIgnoreCase(lk.value);
+            }
+            return false;
+        }
+
+        @Override
+        public String toString() {
+            return value;
+        }
+    }
+
+    private static final ThreadLocal<LookupKey> LOOKUP_KEY = ThreadLocal.withInitial(LookupKey::new);
 
     /**
      * Wraps a Function to maintain the map's case-insensitive transparency. When the wrapped

@@ -2955,6 +2955,124 @@ void testComputeIfAbsent() {
         assertEquals(100, map.size());
     }
 
+    // ---- JU-3: LookupKey optimization for read-only operations ----
+
+    @Test
+    void testLookupKeyGetCaseInsensitive() {
+        CaseInsensitiveMap<String, String> map = new CaseInsensitiveMap<>();
+        map.put("Hello", "world");
+        map.put("FOO", "bar");
+
+        // get() with various casings should work via LookupKey (no CaseInsensitiveString allocated)
+        assertEquals("world", map.get("hello"));
+        assertEquals("world", map.get("HELLO"));
+        assertEquals("world", map.get("Hello"));
+        assertEquals("bar", map.get("foo"));
+        assertEquals("bar", map.get("Foo"));
+        assertNull(map.get("missing"));
+    }
+
+    @Test
+    void testLookupKeyContainsKeyCaseInsensitive() {
+        CaseInsensitiveMap<String, String> map = new CaseInsensitiveMap<>();
+        map.put("Alpha", "1");
+
+        assertTrue(map.containsKey("alpha"));
+        assertTrue(map.containsKey("ALPHA"));
+        assertTrue(map.containsKey("Alpha"));
+        assertFalse(map.containsKey("beta"));
+    }
+
+    @Test
+    void testLookupKeyRemoveCaseInsensitive() {
+        CaseInsensitiveMap<String, String> map = new CaseInsensitiveMap<>();
+        map.put("Remove", "me");
+        assertEquals(1, map.size());
+
+        // Remove with different casing
+        assertEquals("me", map.remove("REMOVE"));
+        assertEquals(0, map.size());
+        assertFalse(map.containsKey("remove"));
+    }
+
+    @Test
+    void testLookupKeyWithNonStringKeys() {
+        CaseInsensitiveMap<Object, String> map = new CaseInsensitiveMap<>();
+        map.put(42, "int-key");
+        map.put("str", "str-key");
+
+        // Non-string keys should still work (bypass LookupKey path)
+        assertEquals("int-key", map.get(42));
+        assertTrue(map.containsKey(42));
+        assertEquals("str-key", map.get("STR"));
+
+        assertEquals("int-key", map.remove(42));
+        assertFalse(map.containsKey(42));
+    }
+
+    @Test
+    void testLookupKeyWithNullValues() {
+        CaseInsensitiveMap<String, String> map = new CaseInsensitiveMap<>();
+        map.put("nullval", null);
+
+        assertTrue(map.containsKey("NULLVAL"));
+        assertNull(map.get("nullval"));
+
+        // remove returns null (the value) but the key is gone
+        assertNull(map.remove("NullVal"));
+        assertFalse(map.containsKey("nullval"));
+    }
+
+    @Test
+    void testLookupKeyWithConcurrentHashMapBacking() {
+        // ConcurrentHashMap calls storedKey.equals(lookupKey) — tests CaseInsensitiveString.equals(LookupKey)
+        CaseInsensitiveMap<String, String> map = new CaseInsensitiveMap<>(
+                Collections.emptyMap(),
+                new java.util.concurrent.ConcurrentHashMap<>());
+        map.put("ConcKey", "value");
+
+        assertEquals("value", map.get("conckey"));
+        assertEquals("value", map.get("CONCKEY"));
+        assertTrue(map.containsKey("concKey"));
+        assertEquals("value", map.remove("CONCKEY"));
+        assertFalse(map.containsKey("conckey"));
+    }
+
+    @Test
+    void testLookupKeyThreadSafety() throws Exception {
+        CaseInsensitiveMap<String, Integer> map = new CaseInsensitiveMap<>();
+        for (int i = 0; i < 100; i++) {
+            map.put("key" + i, i);
+        }
+
+        // Multiple threads doing concurrent get() with LookupKey
+        int numThreads = 8;
+        java.util.concurrent.ExecutorService executor = java.util.concurrent.Executors.newFixedThreadPool(numThreads);
+        java.util.concurrent.atomic.AtomicBoolean failed = new java.util.concurrent.atomic.AtomicBoolean(false);
+
+        java.util.List<java.util.concurrent.Future<?>> futures = new java.util.ArrayList<>();
+        for (int t = 0; t < numThreads; t++) {
+            futures.add(executor.submit(() -> {
+                for (int i = 0; i < 10_000; i++) {
+                    int idx = i % 100;
+                    Integer result = map.get("KEY" + idx);
+                    if (result == null || result != idx) {
+                        failed.set(true);
+                    }
+                    if (!map.containsKey("key" + idx)) {
+                        failed.set(true);
+                    }
+                }
+            }));
+        }
+
+        for (java.util.concurrent.Future<?> f : futures) {
+            f.get(10, java.util.concurrent.TimeUnit.SECONDS);
+        }
+        executor.shutdown();
+        assertFalse(failed.get(), "Concurrent LookupKey access failed");
+    }
+
     // ---- JU-2: backing map field accessibility from inner classes ----
 
     @Test

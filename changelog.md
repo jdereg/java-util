@@ -1,6 +1,10 @@
 ### Revision History
 
 #### 4.98.0 (Unreleased)
+* **PERFORMANCE**: `CaseInsensitiveMap` now overrides `size()` and `isEmpty()` to delegate directly to the backing map, bypassing the `AbstractMap.size()` → `entrySet().size()` indirection chain (168 JFR samples eliminated).
+* **PERFORMANCE**: `CaseInsensitiveMap` internal fields (`map`, `isMultiKeyMapBacking`, `isConcurrentBackingMap`) changed from `private` to package-private to eliminate JVM synthetic accessor methods generated for anonymous inner class access (40 JFR samples eliminated).
+* **PERFORMANCE**: `StringUtilities.hashCodeIgnoreCase()` now inlines the case-fold logic directly into the hash loop, ensuring C2 JIT compiles the entire loop as a single compilation unit. Branch ordering optimized so lowercase letters (the most common characters) take only two comparisons.
+* **PERFORMANCE**: `StringUtilities.foldCaseForHash()` branch ordering optimized to check `c <= 'Z'` first, partitioning ASCII so uppercase takes two comparisons and lowercase/symbols take two comparisons, avoiding the previous three-comparison path for lowercase.
 
 #### 4.97.0 - 2026-03-03
 * **PERFORMANCE**: `FastReader.readUntil()` now splits the inner loop into a read-only delimiter scan followed by a bulk `System.arraycopy`, allowing the JIT to optimize the tight scan loop independently from memory writes.

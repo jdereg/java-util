@@ -957,24 +957,42 @@ public final class StringUtilities {
      * Get the hashCode of a String, insensitive to case, without allocating temporary strings.
      * This implementation is consistent with {@link String#equalsIgnoreCase(String)} char-based
      * comparison semantics.
+     *
+     * <p>The fold logic is inlined rather than delegated to a helper method to ensure
+     * C2 JIT compiles the entire loop as a single compilation unit. The branch structure
+     * is ordered so that lowercase letters (the most common characters in map keys) take
+     * only two comparisons: {@code c <= 'Z'} (false) → {@code c >= 128} (false).</p>
      */
     public static int hashCodeIgnoreCase(String s) {
         if (s == null) return 0;
 
-        // Single-pass optimization with ASCII fast path.
         final int n = s.length();
         int h = 0;
         for (int i = 0; i < n; i++) {
-            h = 31 * h + foldCaseForHash(s.charAt(i));
+            char c = s.charAt(i);
+            if (c <= 'Z') {            // digits, symbols, and uppercase all ≤ 90
+                if (c >= 'A') {         // uppercase A-Z: fold to lowercase
+                    c += 32;
+                }
+            } else if (c >= 128) {      // non-ASCII: full Unicode case fold
+                c = Character.toLowerCase(Character.toUpperCase(c));
+            }
+            // else: c is 91-127 (lowercase a-z, '[', '\', ']', '^', '_', '`', '{', '|', '}', '~')
+            // — no folding needed, falls through with just 2 comparisons
+            h = 31 * h + c;
         }
         return h;
     }
 
+    /**
+     * Case-fold a single character for hashing purposes.
+     * Used by the CharSequence overload of hashCodeIgnoreCase.
+     */
     private static char foldCaseForHash(char c) {
-        if (c < 128) {
-            return (c >= 'A' && c <= 'Z') ? (char) (c + 32) : c;
+        if (c <= 'Z') {
+            return (c >= 'A') ? (char) (c + 32) : c;
         }
-        return Character.toLowerCase(Character.toUpperCase(c));
+        return c < 128 ? c : Character.toLowerCase(Character.toUpperCase(c));
     }
 
     /**

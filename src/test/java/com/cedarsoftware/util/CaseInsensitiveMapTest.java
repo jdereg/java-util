@@ -2914,4 +2914,58 @@ void testComputeIfAbsent() {
         assertEquals("IntValue", map.remove(intKeys));
         assertFalse(map.containsKey(intKeys));
     }
+
+    // ---- JU-1: size() and isEmpty() should delegate directly to backing map ----
+
+    @Test
+    void testSizeDirectDelegation() {
+        CaseInsensitiveMap<String, String> map = new CaseInsensitiveMap<>();
+        assertEquals(0, map.size());
+        assertTrue(map.isEmpty());
+
+        map.put("One", "1");
+        assertEquals(1, map.size());
+        assertFalse(map.isEmpty());
+
+        map.put("Two", "2");
+        map.put("Three", "3");
+        assertEquals(3, map.size());
+
+        // Case-insensitive: "one" should overwrite "One", not increase size
+        map.put("one", "1b");
+        assertEquals(3, map.size());
+
+        map.remove("TWO");
+        assertEquals(2, map.size());
+
+        map.clear();
+        assertEquals(0, map.size());
+        assertTrue(map.isEmpty());
+    }
+
+    @Test
+    void testSizeConsistentWithEntrySet() {
+        CaseInsensitiveMap<String, Integer> map = new CaseInsensitiveMap<>();
+        for (int i = 0; i < 100; i++) {
+            map.put("key" + i, i);
+        }
+        // size() and entrySet().size() must agree
+        assertEquals(map.entrySet().size(), map.size());
+        assertEquals(map.keySet().size(), map.size());
+        assertEquals(100, map.size());
+    }
+
+    // ---- JU-2: backing map field accessibility from inner classes ----
+
+    @Test
+    void testBackingMapFieldNotPrivate() throws Exception {
+        // The 'map' field should be package-private (not private) to avoid
+        // synthetic accessor methods when accessed from inner/anonymous classes.
+        java.lang.reflect.Field mapField = CaseInsensitiveMap.class.getDeclaredField("map");
+        int modifiers = mapField.getModifiers();
+        assertFalse(java.lang.reflect.Modifier.isPrivate(modifiers),
+                "Field 'map' should not be private — use package-private to avoid synthetic accessors");
+        assertTrue(java.lang.reflect.Modifier.isFinal(modifiers),
+                "Field 'map' should remain final");
+    }
 }

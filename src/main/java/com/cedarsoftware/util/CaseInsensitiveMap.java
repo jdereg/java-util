@@ -168,9 +168,9 @@ import java.util.function.Function;
  *         limitations under the License.
  */
 public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V> {
-    private final Map<K, V> map;
-    private final boolean isMultiKeyMapBacking;
-    private final boolean isConcurrentBackingMap;
+    final Map<K, V> map;
+    final boolean isMultiKeyMapBacking;
+    final boolean isConcurrentBackingMap;
     private final boolean multiKeyMapFlattenDimensions;
     private transient Set<K> cachedKeySet;
     private transient Set<Entry<K, V>> cachedEntrySet;
@@ -529,6 +529,26 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
             return map.remove(convertKeyForMultiKeyMap(key));
         }
         return map.remove(convertKey(key));
+    }
+
+    /**
+     * {@inheritDoc}
+     * <p>Delegates directly to the backing map, bypassing the {@code AbstractMap.size()}
+     * implementation which routes through {@code entrySet().size()}.</p>
+     */
+    @Override
+    public int size() {
+        return map.size();
+    }
+
+    /**
+     * {@inheritDoc}
+     * <p>Delegates directly to the backing map, bypassing the {@code AbstractMap.isEmpty()}
+     * implementation which routes through {@code size()}.</p>
+     */
+    @Override
+    public boolean isEmpty() {
+        return map.isEmpty();
     }
 
     // ===== PRIVATE HELPER METHODS =====

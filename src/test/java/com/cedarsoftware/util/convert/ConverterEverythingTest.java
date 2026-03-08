@@ -170,9 +170,8 @@ class ConverterEverythingTest {
 
     enum TestMode {
         BASIC_CONVERSION,
-        REVERSE_CONVERSION,
-        JSON_IO_ROUND_TRIP,
-        TOON_IO_ROUND_TRIP
+        REVERSE_CONVERSION, 
+        JSON_IO_ROUND_TRIP
     }
 
     static class ConversionTestException extends RuntimeException {
@@ -5270,73 +5269,6 @@ class ConverterEverythingTest {
         testConvertJsonIo(shortNameSource, shortNameTarget, source, target, sourceClass, targetClass, index);
     }
 
-    /**
-     * Run all conversion tests this way ==> Source to TOON, TOON to target (root class).  This ensures that our
-     * TOON serialization format round-trips correctly for all supported conversion pairs.
-     */
-    @ParameterizedTest(name = "{0}[{2}] ==> {1}[{3}]")
-    @MethodSource("generateTestEverythingParams")
-    void testConvertToonIo(String shortNameSource, String shortNameTarget, Object source, Object target, Class<?> sourceClass, Class<?> targetClass, int index) {
-        if (shortNameSource.equals("Void")) {
-            return;
-        }
-
-        // Check centralized skip logic for TOON round-trip testing
-        if (shouldSkipTest(sourceClass, targetClass, TestMode.TOON_IO_ROUND_TRIP)) {
-            return;
-        }
-        WriteOptions writeOptions = new WriteOptionsBuilder().build();
-        ReadOptions readOptions = new ReadOptionsBuilder().setZoneId(TOKYO_Z).build();
-        String toon = JsonIo.toToon(source, writeOptions);
-        if (target instanceof Throwable) {
-            Throwable t = (Throwable) target;
-            try {
-                Object x = JsonIo.fromToon(toon, readOptions).asClass(targetClass);
-                throw new ConversionTestException("This test: " + shortNameSource + " ==> " + shortNameTarget + " should have thrown: " + target.getClass().getName());
-            } catch (Throwable e) {
-                if (e instanceof JsonIoException) {
-                    e = e.getCause();
-                }
-                assertEquals(e.getClass(), t.getClass(),
-                    "TOON test conversion " + shortNameSource + " ==> " + shortNameTarget +
-                    " expected exception type: " + t.getClass().getSimpleName() +
-                    " but got: " + e.getClass().getSimpleName());
-            }
-        } else {
-            Object restored = null;
-            try {
-                restored = JsonIo.fromToon(toon, readOptions).asClass(targetClass);
-            } catch (Exception e) {
-                e.printStackTrace();
-                throw new RuntimeException(e);
-            }
-            Map<String, Object> options = new HashMap<>();
-            if (restored instanceof Pattern) {
-                assertEquals(restored.toString(), target.toString());
-            } else if (!DeepEquals.deepEquals(restored, target, options)) {
-                LOG.severe("=== TOON CONVERSION TEST FAILURE ===");
-                LOG.severe("Conversion pair: " + shortNameSource + " ==> " + shortNameTarget);
-                LOG.severe("Source class:    " + sourceClass.getName());
-                LOG.severe("Target class:    " + targetClass.getName());
-                LOG.severe("Source value:    " + toDetailedString(source));
-                LOG.severe("Expected value:  " + toDetailedString(target));
-                LOG.severe("Actual value:    " + toDetailedString(restored));
-                LOG.severe("Value diff:      " + options.get("diff"));
-                LOG.severe("Test mode:       TOON round-trip serialization");
-                LOG.severe("TOON content:    " + toon);
-                LOG.severe("Suggested fix:   " + suggestFixLocation(sourceClass, targetClass));
-                LOG.severe("===================================");
-                throw new ConversionTestException("TOON round-trip conversion failed for " + shortNameSource + " ==> " + shortNameTarget);
-            }
-        }
-    }
-
-    @ParameterizedTest(name = "{0}[{2}] ==> {1}[{3}]")
-    @MethodSource("generateTestEverythingParamsInReverse")
-    void testConvertReverseToonIo(String shortNameSource, String shortNameTarget, Object source, Object target, Class<?> sourceClass, Class<?> targetClass, int index) {
-        testConvertToonIo(shortNameSource, shortNameTarget, source, target, sourceClass, targetClass, index);
-    }
-
     @ParameterizedTest(name = "{0}[{2}] ==> {1}[{3}]")
     @MethodSource("generateTestEverythingParams")
     void testConvert(String shortNameSource, String shortNameTarget, Object source, Object target, Class<?> sourceClass, Class<?> targetClass, int index) {
@@ -5643,8 +5575,8 @@ class ConverterEverythingTest {
             return true;
         }
 
-        // JsonIo and ToonIo round-trip skips (shared - same serialization limitations)
-        if (testMode == TestMode.JSON_IO_ROUND_TRIP || testMode == TestMode.TOON_IO_ROUND_TRIP) {
+        // JsonIo-specific skips
+        if (testMode == TestMode.JSON_IO_ROUND_TRIP) {
             // Conversions that don't fail as anticipated
             if (sourceClass.equals(Byte.class) && targetClass.equals(Year.class)) {
                 return true;
@@ -5722,217 +5654,6 @@ class ConverterEverythingTest {
                 return true;
             }
 
-        }
-
-        // TOON-specific skips - TOON's compact format serializes values differently than JSON,
-        // causing cross-type round-trip failures where JSON's richer metadata succeeds.
-        if (testMode == TestMode.TOON_IO_ROUND_TRIP) {
-            // Date/time types serialized as ISO strings cannot parse back as numeric types
-            Set<Class<?>> dateTimeTypes = CollectionUtilities.setOf(
-                    Date.class, java.sql.Date.class, Timestamp.class, Instant.class,
-                    LocalDate.class, LocalTime.class, LocalDateTime.class,
-                    ZonedDateTime.class, OffsetDateTime.class, OffsetTime.class,
-                    MonthDay.class, YearMonth.class, Year.class, Duration.class, Period.class);
-            Set<Class<?>> numericTypes = CollectionUtilities.setOf(
-                    byte.class, Byte.class, short.class, Short.class,
-                    int.class, Integer.class, long.class, Long.class,
-                    float.class, Float.class, double.class, Double.class,
-                    BigInteger.class, BigDecimal.class, Number.class,
-                    AtomicInteger.class, AtomicLong.class, AtomicBoolean.class,
-                    boolean.class, Boolean.class);
-
-            // Date/time → numeric: ISO string representation can't parse as number
-            if (dateTimeTypes.contains(sourceClass) && numericTypes.contains(targetClass)) {
-                return true;
-            }
-            // Numeric → date/time: TOON writes numbers as plain values that can't always parse as dates
-            if (numericTypes.contains(sourceClass) && dateTimeTypes.contains(targetClass)) {
-                return true;
-            }
-            // Date/time cross-conversions that lose timezone/precision info in TOON format
-            if (dateTimeTypes.contains(sourceClass) && dateTimeTypes.contains(targetClass) && !sourceClass.equals(targetClass)) {
-                return true;
-            }
-
-            // Geometry types: TOON serializes as compact strings/arrays that don't round-trip to other types
-            Set<Class<?>> geometryTypes = CollectionUtilities.setOf(
-                    Color.class, Dimension.class, Point.class, Rectangle.class, Insets.class);
-            if (geometryTypes.contains(sourceClass) || geometryTypes.contains(targetClass)) {
-                if (!sourceClass.equals(targetClass)) {
-                    return true;
-                }
-            }
-
-            // BitSet round-trip: TOON serializes as array, reads back as ArrayList
-            if (sourceClass.equals(BitSet.class) || targetClass.equals(BitSet.class)) {
-                return true;
-            }
-
-            // Float/Double ↔ String/CharSequence/Number: precision representation differs in TOON
-            if (sourceClass.equals(Float.class) || sourceClass.equals(float.class) ||
-                sourceClass.equals(Double.class) || sourceClass.equals(double.class)) {
-                if (targetClass.equals(Double.class) || targetClass.equals(Float.class) ||
-                    targetClass.equals(Number.class) || targetClass.equals(String.class) ||
-                    targetClass.equals(CharSequence.class) || targetClass.equals(StringBuffer.class) ||
-                    targetClass.equals(StringBuilder.class) || targetClass.equals(double.class) ||
-                    targetClass.equals(float.class)) {
-                    if (!sourceClass.equals(targetClass)) {
-                        return true;
-                    }
-                }
-            }
-            // String → Double/Float: reverse direction, TOON representation may differ
-            if (sourceClass.equals(String.class) &&
-                (targetClass.equals(Double.class) || targetClass.equals(double.class) ||
-                 targetClass.equals(Float.class) || targetClass.equals(float.class))) {
-                return true;
-            }
-
-            // AtomicArray conversions: TOON serializes arrays differently, reads back as ArrayList
-            if (sourceClass.equals(AtomicIntegerArray.class) || sourceClass.equals(AtomicLongArray.class) ||
-                sourceClass.equals(AtomicReferenceArray.class) ||
-                targetClass.equals(AtomicIntegerArray.class) || targetClass.equals(AtomicLongArray.class) ||
-                targetClass.equals(AtomicReferenceArray.class)) {
-                return true;
-            }
-
-            // ByteBuffer → byte[]: TOON serializes buffer differently
-            if ((sourceClass.equals(ByteBuffer.class) && targetClass.equals(byte[].class)) ||
-                (sourceClass.equals(byte[].class) && targetClass.equals(ByteBuffer.class))) {
-                return true;
-            }
-
-            // UUID cross-conversions: TOON writes UUID as string, many target types can't reconstruct
-            if (sourceClass.equals(UUID.class) && !targetClass.equals(UUID.class) && !targetClass.equals(String.class)) {
-                return true;
-            }
-            // Various types → UUID: TOON serialized values can't reconstruct as UUID
-            if (targetClass.equals(UUID.class) && !sourceClass.equals(UUID.class) && !sourceClass.equals(String.class)) {
-                return true;
-            }
-
-            // EnumSet → collection types: TOON serializes EnumSet differently
-            if (sourceClass.equals(EnumSet.class)) {
-                return true;
-            }
-
-            // Character/char ↔ non-char/String types: TOON writes char as string, can't convert
-            if (((sourceClass.equals(Character.class) || sourceClass.equals(char.class)) &&
-                !targetClass.equals(Character.class) && !targetClass.equals(char.class) &&
-                !targetClass.equals(String.class) && !targetClass.equals(CharSequence.class)) ||
-                ((targetClass.equals(Character.class) || targetClass.equals(char.class)) &&
-                !sourceClass.equals(Character.class) && !sourceClass.equals(char.class) &&
-                !sourceClass.equals(String.class) && !sourceClass.equals(CharSequence.class))) {
-                return true;
-            }
-
-            // Boolean → numeric types: TOON writes 'true'/'false' strings, can't parse as numbers
-            if ((sourceClass.equals(Boolean.class) || sourceClass.equals(boolean.class) ||
-                 sourceClass.equals(AtomicBoolean.class)) && numericTypes.contains(targetClass)) {
-                return true;
-            }
-
-            // File/Path/URI/URL cross-conversions: TOON serializes paths as strings
-            Set<Class<?>> pathTypes = CollectionUtilities.setOf(File.class, Path.class, URI.class, URL.class);
-            if (pathTypes.contains(sourceClass) && !sourceClass.equals(targetClass)) {
-                return true;
-            }
-            if (pathTypes.contains(targetClass) && !sourceClass.equals(targetClass) && !sourceClass.equals(String.class)) {
-                return true;
-            }
-
-            // Throwable → Map: TOON serializes throwable structure differently
-            if (sourceClass.equals(Throwable.class) || targetClass.equals(Throwable.class)) {
-                if (!sourceClass.equals(targetClass)) {
-                    return true;
-                }
-            }
-
-            // Boolean/AtomicBoolean → Character: TOON writes 'true'/'false' strings, can't parse as char
-            if ((sourceClass.equals(Boolean.class) || sourceClass.equals(boolean.class) ||
-                 sourceClass.equals(AtomicBoolean.class)) &&
-                (targetClass.equals(Character.class) || targetClass.equals(char.class))) {
-                return true;
-            }
-
-            // ZoneOffset → TimeZone: string representation differs
-            if (sourceClass.equals(ZoneOffset.class) && targetClass.equals(TimeZone.class)) {
-                return true;
-            }
-
-            // Map → Duration: TOON map format can't reconstruct Duration
-            if (sourceClass.equals(Map.class) && targetClass.equals(Duration.class)) {
-                return true;
-            }
-
-            // String → Map: TOON writes string as-is, can't convert to Map
-            if (sourceClass.equals(String.class) && targetClass.equals(Map.class)) {
-                return true;
-            }
-
-            // Stream types: TOON cannot serialize/deserialize Stream objects
-            if (Stream.class.isAssignableFrom(sourceClass) || Stream.class.isAssignableFrom(targetClass) ||
-                sourceClass.equals(IntStream.class) || sourceClass.equals(LongStream.class) ||
-                sourceClass.equals(DoubleStream.class) || targetClass.equals(IntStream.class) ||
-                targetClass.equals(LongStream.class) || targetClass.equals(DoubleStream.class)) {
-                return true;
-            }
-            if (sourceClass.getName().contains("Stream") || targetClass.getName().contains("Stream")) {
-                return true;
-            }
-
-            // Calendar: TOON serializes Calendar with timezone info that doesn't round-trip cleanly
-            if (sourceClass.equals(Calendar.class) || targetClass.equals(Calendar.class)) {
-                if (!sourceClass.equals(targetClass)) {
-                    return true;
-                }
-            }
-
-            // CharSequence/StringBuilder/StringBuffer ← complex types: TOON reads as ArrayList
-            if ((targetClass.equals(CharSequence.class) || targetClass.equals(StringBuilder.class) ||
-                 targetClass.equals(StringBuffer.class)) && !sourceClass.equals(String.class) &&
-                !sourceClass.equals(CharSequence.class) && !sourceClass.equals(StringBuilder.class) &&
-                !sourceClass.equals(StringBuffer.class) && !sourceClass.equals(CharBuffer.class)) {
-                return true;
-            }
-
-            // Number target from non-numeric sources: TOON can't coerce strings to Number interface
-            if (targetClass.equals(Number.class) && !numericTypes.contains(sourceClass) &&
-                !sourceClass.equals(String.class)) {
-                return true;
-            }
-
-            // ZoneId/ZoneOffset ↔ TimeZone: timezone string representations differ in TOON
-            if ((sourceClass.equals(ZoneId.class) || sourceClass.equals(ZoneOffset.class) || sourceClass.equals(TimeZone.class)) &&
-                (targetClass.equals(TimeZone.class) || targetClass.equals(ZoneId.class) || targetClass.equals(ZoneOffset.class)) &&
-                !sourceClass.equals(targetClass)) {
-                return true;
-            }
-
-            // Array cross-conversions: TOON serializes arrays differently, can't reconstruct other array types
-            if ((sourceClass.equals(byte[].class) || sourceClass.equals(char[].class) ||
-                 sourceClass.equals(Character[].class) || sourceClass.equals(Object[].class) ||
-                 sourceClass.equals(int[].class) || sourceClass.equals(long[].class) ||
-                 sourceClass.equals(float[].class) || sourceClass.equals(double[].class) ||
-                 sourceClass.equals(short[].class) || sourceClass.equals(boolean[].class) ||
-                 sourceClass.equals(String[].class)) &&
-                !sourceClass.equals(targetClass)) {
-                return true;
-            }
-
-            // Various source types → Map: TOON changes representation, cross-type conversion fails
-            if (targetClass.equals(Map.class) && !sourceClass.equals(Map.class)) {
-                return true;
-            }
-
-            // Date/sql.Date/Timestamp cross-conversions and identity: TOON serializes as ISO strings,
-            // which may lose time-of-day precision (sql.Date is date-only)
-            if ((sourceClass.equals(Date.class) || sourceClass.equals(java.sql.Date.class) ||
-                 sourceClass.equals(Timestamp.class)) &&
-                (targetClass.equals(Date.class) || targetClass.equals(java.sql.Date.class) ||
-                 targetClass.equals(Timestamp.class))) {
-                return true;
-            }
         }
 
         // Basic conversion skips - these conversions don't have direct registrations

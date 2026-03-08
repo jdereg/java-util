@@ -1,6 +1,7 @@
 ### Revision History
 
 #### 4.98.0 (Unreleased)
+* **IMPROVEMENT**: Added `ToonRoundTripTest` — dedicated test verifying all Converter-supported types can write to TOON and read back as their original type via `.asClass()`. TOON round-trip tests removed from `ConverterEverythingTest`, which focuses on cross-type conversion through JSON format. TOON serializes Converter-supported types as bare strings without `$type` metadata; cross-type conversion (e.g., ZonedDateTime → Long) should be done by reading back as the original type first, then using the Converter.
 * **PERFORMANCE**: `CaseInsensitiveMap` now overrides `size()` and `isEmpty()` to delegate directly to the backing map, bypassing the `AbstractMap.size()` → `entrySet().size()` indirection chain (168 JFR samples eliminated).
 * **PERFORMANCE**: `CaseInsensitiveMap` internal fields (`map`, `isMultiKeyMapBacking`, `isConcurrentBackingMap`) changed from `private` to package-private to eliminate JVM synthetic accessor methods generated for anonymous inner class access (40 JFR samples eliminated).
 * **PERFORMANCE**: `StringUtilities.hashCodeIgnoreCase()` now inlines the case-fold logic directly into the hash loop, ensuring C2 JIT compiles the entire loop as a single compilation unit. Branch ordering optimized so lowercase letters (the most common characters) take only two comparisons.

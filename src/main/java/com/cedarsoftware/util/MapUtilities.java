@@ -206,9 +206,6 @@ public class MapUtilities {
     }
 
     /**
-     * For JDK1.8 support.  Remove this and change to Map.of() for JDK11+
-     */
-    /**
      * Creates an immutable map with the specified key-value pairs, limited to 10 entries.
      * <p>
      * If more than 10 key-value pairs are provided, an {@link IllegalArgumentException} is thrown.

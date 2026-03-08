@@ -1,6 +1,8 @@
 package com.cedarsoftware.util;
 
 import java.io.File;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -184,53 +186,67 @@ public class ExecutorAdditionalTest {
 
     @Test
     public void testExecArrayMissingCommandReturnsMinusOneAndError() {
-        Executor executor = new Executor();
-        int exitCode = executor.exec(new String[]{"definitely_missing_command_12345"});
-        assertEquals(-1, exitCode);
-        assertEquals("", executor.getOut());
-        assertNotNull(executor.getError());
-        assertTrue(executor.getError().contains("Cannot run program"));
+        Logger executorLog = Logger.getLogger(Executor.class.getName());
+        Level originalLevel = executorLog.getLevel();
+        executorLog.setLevel(Level.OFF);
+        try {
+            Executor executor = new Executor();
+            int exitCode = executor.exec(new String[]{"definitely_missing_command_12345"});
+            assertEquals(-1, exitCode);
+            assertEquals("", executor.getOut());
+            assertNotNull(executor.getError());
+            assertTrue(executor.getError().contains("Cannot run program"));
+        } finally {
+            executorLog.setLevel(originalLevel);
+        }
     }
 
     @Test
     public void testInterruptedExecutionClearsOutputAndTerminatesProcess() throws Exception {
-        Executor executor = new Executor();
-        executor.execute(probeCommand("print", "first"));
-        assertEquals("first", executor.getOut().trim());
-
-        File marker = new File(System.getProperty("java.io.tmpdir"),
-                "executor-interrupt-" + UniqueIdGenerator.getUniqueId() + ".txt");
-        if (marker.exists()) {
-            marker.delete();
-        }
-
-        String[] command = probeCommand("sleep-write", "2000", marker.getAbsolutePath());
-
-        Thread testThread = Thread.currentThread();
-        Thread interrupter = new Thread(() -> {
-            try {
-                Thread.sleep(150);
-            } catch (InterruptedException ignored) {
-                Thread.currentThread().interrupt();
-            }
-            testThread.interrupt();
-        });
-        interrupter.setDaemon(true);
-        interrupter.start();
-
+        Logger executorLog = Logger.getLogger(Executor.class.getName());
+        Level originalLevel = executorLog.getLevel();
+        executorLog.setLevel(Level.OFF);
         try {
-            ExecutionResult result = executor.execute(command);
-            assertEquals(-1, result.getExitCode());
-            assertEquals("", result.getOut());
-            assertNotNull(result.getError());
-            assertEquals("", executor.getOut());
-            assertEquals(result.getError(), executor.getError());
-        } finally {
-            Thread.interrupted(); // clear interrupt status for remaining tests
-        }
+            Executor executor = new Executor();
+            executor.execute(probeCommand("print", "first"));
+            assertEquals("first", executor.getOut().trim());
 
-        Thread.sleep(2500);
-        assertFalse(marker.exists(), "Interrupted execution should terminate spawned process");
-        marker.delete();
+            File marker = new File(System.getProperty("java.io.tmpdir"),
+                    "executor-interrupt-" + UniqueIdGenerator.getUniqueId() + ".txt");
+            if (marker.exists()) {
+                marker.delete();
+            }
+
+            String[] command = probeCommand("sleep-write", "2000", marker.getAbsolutePath());
+
+            Thread testThread = Thread.currentThread();
+            Thread interrupter = new Thread(() -> {
+                try {
+                    Thread.sleep(150);
+                } catch (InterruptedException ignored) {
+                    Thread.currentThread().interrupt();
+                }
+                testThread.interrupt();
+            });
+            interrupter.setDaemon(true);
+            interrupter.start();
+
+            try {
+                ExecutionResult result = executor.execute(command);
+                assertEquals(-1, result.getExitCode());
+                assertEquals("", result.getOut());
+                assertNotNull(result.getError());
+                assertEquals("", executor.getOut());
+                assertEquals(result.getError(), executor.getError());
+            } finally {
+                Thread.interrupted(); // clear interrupt status for remaining tests
+            }
+
+            Thread.sleep(2500);
+            assertFalse(marker.exists(), "Interrupted execution should terminate spawned process");
+            marker.delete();
+        } finally {
+            executorLog.setLevel(originalLevel);
+        }
     }
 }

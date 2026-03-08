@@ -1,5 +1,7 @@
 ### Revision History
 
+#### 4.99.0 (Unreleased)
+
 #### 4.98.0 - 2026-03-08
 * **PERFORMANCE**: `CaseInsensitiveMap.get()`, `containsKey()`, and `remove()` now use a `ThreadLocal<LookupKey>` for String key lookups on hash-based backings (HashMap, LinkedHashMap, ConcurrentHashMap), eliminating per-call `CaseInsensitiveString` allocation. This removes the single largest remaining allocation cost center (403 JFR samples: convertKey 108 + CIS init 95 + CIS hashCode 200). `LookupKey` is a lightweight mutable object reused via ThreadLocal, with bidirectional equals support for both HashMap (key.equals(stored)) and ConcurrentHashMap (stored.equals(key)) lookup directions. SortedMap backings (TreeMap, ConcurrentSkipListMap) continue to use `CaseInsensitiveString` since they require `Comparable` keys.
 * **PERFORMANCE**: `CaseInsensitiveMap` now overrides `size()` and `isEmpty()` to delegate directly to the backing map, bypassing the `AbstractMap.size()` → `entrySet().size()` indirection chain (168 JFR samples eliminated).

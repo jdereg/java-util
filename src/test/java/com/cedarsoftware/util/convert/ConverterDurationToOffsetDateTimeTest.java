@@ -23,10 +23,10 @@ public class ConverterDurationToOffsetDateTimeTest {
         // Test PT0S (zero duration)
         Duration zeroDuration = Duration.ZERO;
         OffsetDateTime result = converter.convert(zeroDuration, OffsetDateTime.class);
-        
+
         // Should be epoch (1970-01-01T00:00:00Z) in the converter's timezone
         TimeZone tz = converter.getOptions().getTimeZone();
-        ZoneOffset expectedOffset = ZoneOffset.ofTotalSeconds(tz.getOffset(System.currentTimeMillis()) / 1000);
+        ZoneOffset expectedOffset = ZoneOffset.ofTotalSeconds(tz.getOffset(Instant.EPOCH.toEpochMilli()) / 1000);
         OffsetDateTime expected = Instant.EPOCH.atOffset(expectedOffset);
         
         assertEquals(expected, result);
@@ -42,7 +42,7 @@ public class ConverterDurationToOffsetDateTimeTest {
         
         // Should be epoch + 1 hour
         TimeZone tz = converter.getOptions().getTimeZone();
-        ZoneOffset expectedOffset = ZoneOffset.ofTotalSeconds(tz.getOffset(System.currentTimeMillis()) / 1000);
+        ZoneOffset expectedOffset = ZoneOffset.ofTotalSeconds(tz.getOffset(Instant.EPOCH.plus(duration).toEpochMilli()) / 1000);
         OffsetDateTime expected = Instant.EPOCH.plus(duration).atOffset(expectedOffset);
         
         assertEquals(expected, result);
@@ -58,7 +58,7 @@ public class ConverterDurationToOffsetDateTimeTest {
         
         // Should be epoch - 1 hour
         TimeZone tz = converter.getOptions().getTimeZone();
-        ZoneOffset expectedOffset = ZoneOffset.ofTotalSeconds(tz.getOffset(System.currentTimeMillis()) / 1000);
+        ZoneOffset expectedOffset = ZoneOffset.ofTotalSeconds(tz.getOffset(Instant.EPOCH.plus(duration).toEpochMilli()) / 1000);
         OffsetDateTime expected = Instant.EPOCH.plus(duration).atOffset(expectedOffset);
         
         assertEquals(expected, result);
@@ -74,7 +74,7 @@ public class ConverterDurationToOffsetDateTimeTest {
         
         // Should be epoch + duration
         TimeZone tz = converter.getOptions().getTimeZone();
-        ZoneOffset expectedOffset = ZoneOffset.ofTotalSeconds(tz.getOffset(System.currentTimeMillis()) / 1000);
+        ZoneOffset expectedOffset = ZoneOffset.ofTotalSeconds(tz.getOffset(Instant.EPOCH.plus(duration).toEpochMilli()) / 1000);
         OffsetDateTime expected = Instant.EPOCH.plus(duration).atOffset(expectedOffset);
         
         assertEquals(expected, result);
@@ -110,7 +110,7 @@ public class ConverterDurationToOffsetDateTimeTest {
         
         // Should preserve nanosecond precision
         TimeZone tz = converter.getOptions().getTimeZone();
-        ZoneOffset expectedOffset = ZoneOffset.ofTotalSeconds(tz.getOffset(System.currentTimeMillis()) / 1000);
+        ZoneOffset expectedOffset = ZoneOffset.ofTotalSeconds(tz.getOffset(Instant.EPOCH.plus(duration).toEpochMilli()) / 1000);
         OffsetDateTime expected = Instant.EPOCH.plus(duration).atOffset(expectedOffset);
         
         assertEquals(expected, result);

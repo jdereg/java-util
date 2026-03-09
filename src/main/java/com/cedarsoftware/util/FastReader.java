@@ -78,28 +78,39 @@ public final class FastReader extends Reader {
     }
 
     private void fill() {
-        // Once EOF is reached, avoid re-reading.
-        if (limit == -1) {
-            return;
+        if (limit != -1 && position >= limit) {
+            refill();
         }
-        if (position >= limit) {
-            try {
-                int zeroReads = 0;
-                while (true) {
-                    limit = in.read(buf, 0, bufferSize);
-                    if (limit != 0) {
-                        break;
-                    }
-                    if (++zeroReads >= MAX_CONSECUTIVE_ZERO_READS) {
-                        ExceptionUtilities.uncheckedThrow(new IOException("Underlying Reader repeatedly returned 0 characters"));
-                    }
+    }
+
+    /**
+     * Unconditionally refills the buffer from the underlying reader.
+     * Caller must ensure this is only called when a refill is actually needed
+     * (i.e., buffer is exhausted and EOF has not been reached).
+     *
+     * @return the new limit (number of chars read, or -1 for EOF)
+     */
+    private int refill() {
+        try {
+            int zeroReads = 0;
+            int n;
+            while (true) {
+                n = in.read(buf, 0, bufferSize);
+                if (n != 0) {
+                    break;
                 }
-            } catch (IOException e) {
-                ExceptionUtilities.uncheckedThrow(e);
+                if (++zeroReads >= MAX_CONSECUTIVE_ZERO_READS) {
+                    ExceptionUtilities.uncheckedThrow(new IOException("Underlying Reader repeatedly returned 0 characters"));
+                }
             }
-            if (limit > 0) {
+            limit = n;
+            if (n > 0) {
                 position = 0;
             }
+            return n;
+        } catch (IOException e) {
+            ExceptionUtilities.uncheckedThrow(e);
+            return -1; // unreachable, but satisfies compiler
         }
     }
 
@@ -207,7 +218,7 @@ public final class FastReader extends Reader {
             if (c == delim1 || c == delim2) {
                 // Found delimiter in pushback - don't consume it
                 pushbackPosition = pbPos;
-                return Math.max(totalRead, 0);
+                return totalRead;
             }
             dest[off++] = c;
             pbPos++;
@@ -215,38 +226,62 @@ public final class FastReader extends Reader {
         }
         pushbackPosition = pbPos;
 
-        // Now read from main buffer
-        while (totalRead < maxLen) {
+        // Ensure buffer has data before entering scan loop.
+        // fill() has a try-catch which inhibits JIT optimization of the scan loop,
+        // so we keep it out of the hot path — only called here and at loop bottom.
+        if (position >= limit) {
             fill();
-            int locLimit = limit;
-            if (locLimit == -1) {
-                // EOF reached
+            if (limit == -1) {
                 return totalRead > 0 ? totalRead : -1;
             }
+        }
 
-            // Scan for delimiter in a tight loop (reads only, no writes),
-            // then bulk-copy with System.arraycopy (JVM intrinsic).
-            int pos = position;
-            int remaining = locLimit - pos;
-            int needed = maxLen - totalRead;
-            int end = pos + (remaining < needed ? remaining : needed);
+        // Cache member fields into locals for the scan loop.
+        // position and limit are only written back at exit points or before refill().
+        int pos = position;
+        int locLimit = limit;
+
+        while (totalRead < maxLen) {
+            // Compute scan boundary: end = min(locLimit, pos + maxLen - totalRead)
+            int end = locLimit;
+            int destEnd = pos + maxLen - totalRead;
+            if (destEnd < end) {
+                end = destEnd;
+            }
+
+            // Tight scan loop — reads only, no writes, no method calls.
+            // JIT can keep this entirely in registers without exception-handler interference.
             int scanPos = pos;
             do {
                 char c = locBuf[scanPos];
                 if (c == delim1 || c == delim2) break;
             } while (++scanPos < end);
+
+            // Bulk-copy scanned characters
             int copyLen = scanPos - pos;
             if (copyLen > 0) {
                 System.arraycopy(locBuf, pos, dest, off, copyLen);
                 off += copyLen;
                 totalRead += copyLen;
             }
-            position = scanPos;
+
             if (scanPos < end) {
-                return totalRead;  // Found delimiter — don't consume it
+                // Found delimiter — write back position and return
+                position = scanPos;
+                return totalRead;
             }
+
+            // Buffer exhausted — refill. Write back position before fill() reads it.
+            position = scanPos;
+            fill();
+            locLimit = limit;
+            if (locLimit == -1) {
+                return totalRead > 0 ? totalRead : -1;
+            }
+            pos = position;  // fill() resets position to 0
         }
 
+        position = pos;
         return totalRead;
     }
 

@@ -201,16 +201,19 @@ public final class FastReader extends Reader {
         final char[] locBuf = buf;
 
         // First, drain any pushback buffer
-        while (pushbackPosition < pushbackBufferSize && totalRead < maxLen) {
-            char c = pushbackBuffer[pushbackPosition];
+        int pbPos = pushbackPosition;
+        while (pbPos < pushbackBufferSize && totalRead < maxLen) {
+            char c = pushbackBuffer[pbPos];
             if (c == delim1 || c == delim2) {
                 // Found delimiter in pushback - don't consume it
+                pushbackPosition = pbPos;
                 return Math.max(totalRead, 0);
             }
             dest[off++] = c;
-            pushbackPosition++;
+            pbPos++;
             totalRead++;
         }
+        pushbackPosition = pbPos;
 
         // Now read from main buffer
         while (totalRead < maxLen) {
@@ -223,7 +226,9 @@ public final class FastReader extends Reader {
             // Scan for delimiter in a tight loop (reads only, no writes),
             // then bulk-copy with System.arraycopy (JVM intrinsic).
             int pos = position;
-            int end = pos + Math.min(limit - pos, maxLen - totalRead);
+            int remaining = limit - pos;
+            int needed = maxLen - totalRead;
+            int end = pos + (remaining < needed ? remaining : needed);
             int scanPos = pos;
             do {
                 char c = locBuf[scanPos];

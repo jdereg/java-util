@@ -218,7 +218,8 @@ public final class FastReader extends Reader {
         // Now read from main buffer
         while (totalRead < maxLen) {
             fill();
-            if (limit == -1) {
+            int locLimit = limit;
+            if (locLimit == -1) {
                 // EOF reached
                 return totalRead > 0 ? totalRead : -1;
             }
@@ -226,7 +227,7 @@ public final class FastReader extends Reader {
             // Scan for delimiter in a tight loop (reads only, no writes),
             // then bulk-copy with System.arraycopy (JVM intrinsic).
             int pos = position;
-            int remaining = limit - pos;
+            int remaining = locLimit - pos;
             int needed = maxLen - totalRead;
             int end = pos + (remaining < needed ? remaining : needed);
             int scanPos = pos;

@@ -306,7 +306,45 @@ public final class StringUtilities {
         if (s1 == null || s2 == null) {
             return false;
         }
+        // Fast path: direct byte comparison for LATIN1 strings (JDK 9+ with compact strings)
+        if (STRING_VALUE_FIELD != null) {
+            try {
+                byte c1 = STRING_CODER_FIELD.getByte(s1);
+                byte c2 = STRING_CODER_FIELD.getByte(s2);
+                if (c1 == 0 && c2 == 0) { // Both LATIN1
+                    byte[] v1 = (byte[]) STRING_VALUE_FIELD.get(s1);
+                    byte[] v2 = (byte[]) STRING_VALUE_FIELD.get(s2);
+                    return equalsIgnoreCaseLatin1(v1, v2);
+                }
+            } catch (IllegalAccessException ignored) {
+                // fall through
+            }
+        }
         return s1.equalsIgnoreCase(s2);
+    }
+
+    /**
+     * Compare two LATIN1 byte arrays case-insensitively.
+     * Each byte represents a single character (0-255).
+     */
+    private static boolean equalsIgnoreCaseLatin1(byte[] v1, byte[] v2) {
+        if (v1.length != v2.length) return false;
+        for (int i = 0; i < v1.length; i++) {
+            int b1 = v1[i] & 0xFF;
+            int b2 = v2[i] & 0xFF;
+            if (b1 == b2) continue;
+            // Fast ASCII case fold
+            if (b1 <= 'Z' && b1 >= 'A') b1 += 32;
+            if (b2 <= 'Z' && b2 >= 'A') b2 += 32;
+            if (b1 == b2) continue;
+            // Non-ASCII: full Unicode fold
+            if (b1 >= 128 || b2 >= 128) {
+                if (Character.toLowerCase(Character.toUpperCase((char) b1)) ==
+                    Character.toLowerCase(Character.toUpperCase((char) b2))) continue;
+            }
+            return false;
+        }
+        return true;
     }
 
     /**

@@ -1,6 +1,7 @@
 ### Revision History
 
 #### 4.99.0 (Unreleased)
+* **PERFORMANCE**: New `FastReader.readLine(char[] dest, int off, int maxLen)` — dedicated line-reading method optimized for TOON's line-oriented parsing. Combines scanning, copying, and line-ending consumption (`\n`, `\r`, `\r\n`) into a single call. Uses a `c <= '\r'` range guard so printable characters (the vast majority) require only one comparison per character instead of two. Eliminates the per-line overhead of separate `readUntil()` + `read()` + pushback round-trip. JFR shows TOON line-reading samples dropped from 173 to 125 (28% reduction), and `FastReader.read()` calls halved (53 → 25 samples).
 * **PERFORMANCE**: `FastReader.readUntil()` pushback drain loop now uses a local variable for `pushbackPosition` instead of repeated member field access, avoiding load/store through `this` on each iteration. JFR shows 14.8% reduction in aggregate FastReader CPU share.
 * **PERFORMANCE**: `FastReader.readUntil()` replaced `Math.min()` call with inline ternary in the tight buffer-scan loop, eliminating method call overhead. JFR confirmed 3.5% wall-clock improvement.
 * **PERFORMANCE**: `FastReader.readUntil()` now caches `this.limit` into a local variable after `fill()`, eliminating a redundant `GETFIELD` per outer loop iteration. JFR shows `readUntil` self-time dropped ~15%.

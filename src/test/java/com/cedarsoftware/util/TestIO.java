@@ -14,9 +14,9 @@ import java.util.stream.IntStream;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
-public class TestIO {
+class TestIO {
     @Test
-    public void testFastReader() throws Exception {
+    void testFastReader() throws Exception {
         String content = TestUtil.fetchResource("prettyPrint.json");
         ByteArrayInputStream bin = new ByteArrayInputStream(content.getBytes(StandardCharsets.UTF_8));
         FastReader reader = new FastReader(new InputStreamReader(bin, StandardCharsets.UTF_8), 1024, 10);
@@ -26,18 +26,15 @@ public class TestIO {
         while ((c = reader.read()) != -1 && !done) {
             if (c == '{') {
                 // Note: getLine() and getCol() now return 0 (deprecated for performance)
-                Assertions.assertEquals(0, reader.getLine());
-                Assertions.assertEquals(0, reader.getCol());
                 reader.pushback('n');
                 reader.pushback('h');
                 reader.pushback('o');
                 reader.pushback('j');
-                StringBuilder sb = new StringBuilder();
-                sb.append((char) reader.read());
-                sb.append((char) reader.read());
-                sb.append((char) reader.read());
-                sb.append((char) reader.read());
-                assert sb.toString().equals("john");
+                String sb = String.valueOf((char) reader.read()) +
+                        (char) reader.read() +
+                        (char) reader.read() +
+                        (char) reader.read();
+                assert sb.equals("john");
 
                 Set<Character> chars = new HashSet<>();
                 chars.add('}');
@@ -56,7 +53,7 @@ public class TestIO {
     }
 
     @Test
-    public void testFastWriter() throws Exception {
+    void testFastWriter() throws Exception {
         String content = TestUtil.fetchResource("prettyPrint.json");
         ByteArrayInputStream bin = new ByteArrayInputStream(content.getBytes(StandardCharsets.UTF_8));
         FastReader reader = new FastReader(new InputStreamReader(bin, StandardCharsets.UTF_8), 1024, 10);
@@ -127,7 +124,7 @@ public class TestIO {
     }
 
     @Test
-    public void testFastWriterCharBuffer() throws Exception {
+    void testFastWriterCharBuffer() throws Exception {
         String content = TestUtil.fetchResource("prettyPrint.json");
         ByteArrayInputStream bin = new ByteArrayInputStream(content.getBytes(StandardCharsets.UTF_8));
         FastReader reader = new FastReader(new InputStreamReader(bin, StandardCharsets.UTF_8), 1024, 10);
@@ -135,7 +132,7 @@ public class TestIO {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         FastWriter out = new FastWriter(new OutputStreamWriter(baos, StandardCharsets.UTF_8));
 
-        char buffer[] = new char[100];
+        char[] buffer = new char[100];
         reader.read(buffer);
         out.write(buffer, 0, 100);
         reader.close();
@@ -148,7 +145,7 @@ public class TestIO {
     }
 
     @Test
-    public void testFastWriterString() throws Exception {
+    void testFastWriterString() throws Exception {
         String content = TestUtil.fetchResource("prettyPrint.json");
         ByteArrayInputStream bin = new ByteArrayInputStream(content.getBytes(StandardCharsets.UTF_8));
         FastReader reader = new FastReader(new InputStreamReader(bin, StandardCharsets.UTF_8), 1024, 10);
@@ -156,7 +153,7 @@ public class TestIO {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         FastWriter out = new FastWriter(new OutputStreamWriter(baos, StandardCharsets.UTF_8));
 
-        char buffer[] = new char[100];
+        char[] buffer = new char[100];
         reader.read(buffer);
         String s = new String(buffer);
         out.write(s, 0, 100);

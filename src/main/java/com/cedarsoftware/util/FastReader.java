@@ -285,6 +285,123 @@ public final class FastReader extends Reader {
         return totalRead;
     }
 
+    /**
+     * Reads a complete line into dest, handling \n, \r, and \r\n line endings.
+     * The line ending is consumed but NOT included in the output.
+     * <p>
+     * Returns the number of characters in the line (excluding the line ending).
+     * If maxLen is reached before a line ending is found, returns maxLen and the
+     * line ending is NOT consumed — the caller should grow the buffer and call again.
+     * Returns -1 on EOF with no data read.
+     * <p>
+     * Optimized for the common case: no pushback active, line fits within the
+     * current buffer. Uses a {@code c <= '\r'} range guard so that printable
+     * characters (the vast majority) require only one comparison per character
+     * instead of two.
+     *
+     * @param dest   destination buffer
+     * @param off    offset in dest to start writing
+     * @param maxLen maximum number of characters to read
+     * @return line length (excluding ending), or -1 on EOF
+     */
+    public int readLine(final char[] dest, int off, int maxLen) {
+        if (in == null) {
+            ExceptionUtilities.uncheckedThrow(new IOException("in is null"));
+        }
+
+        int total = 0;
+
+        // --- Drain pushback buffer (rare path) ---
+        int pbPos = pushbackPosition;
+        while (pbPos < pushbackBufferSize && total < maxLen) {
+            char c = pushbackBuffer[pbPos];
+            if (c <= '\r' && (c == '\n' || c == '\r')) {
+                pbPos++;
+                pushbackPosition = pbPos;
+                // Handle \r\n across pushback boundary
+                if (c == '\r') {
+                    if (pbPos < pushbackBufferSize) {
+                        if (pushbackBuffer[pbPos] == '\n') {
+                            pushbackPosition = pbPos + 1;
+                        }
+                    } else {
+                        // \n might be in main buffer
+                        int peek = read();
+                        if (peek >= 0 && peek != '\n') pushback((char) peek);
+                    }
+                }
+                return total;
+            }
+            dest[off++] = c;
+            pbPos++;
+            total++;
+        }
+        pushbackPosition = pbPos;
+
+        // --- Main buffer scan ---
+        while (total < maxLen) {
+            // Ensure buffer has data
+            if (position >= limit) {
+                if (refill() == -1) {
+                    return total > 0 ? total : -1;
+                }
+            }
+
+            final char[] b = buf;
+            int pos = position;
+            final int lim = limit;
+            int end = lim;
+            int remaining = maxLen - total;
+            if (pos + remaining < end) {
+                end = pos + remaining;
+            }
+
+            // Tight scan loop — c <= '\r' guard means printable chars (> 13) need ONE
+            // comparison.  Only control chars <= 13 (which are rare) enter the inner check.
+            int scanPos = pos;
+            while (scanPos < end) {
+                if (b[scanPos] <= '\r') {
+                    char c = b[scanPos];
+                    if (c == '\n' || c == '\r') {
+                        // Found line ending — bulk-copy content, consume ending, return
+                        int copyLen = scanPos - pos;
+                        if (copyLen > 0) {
+                            System.arraycopy(b, pos, dest, off, copyLen);
+                            total += copyLen;
+                        }
+                        scanPos++; // consume the \n or \r
+                        // Handle \r\n
+                        if (c == '\r') {
+                            if (scanPos < lim) {
+                                if (b[scanPos] == '\n') scanPos++;
+                            } else {
+                                // \n might be in next buffer fill
+                                position = scanPos;
+                                int peek = read();
+                                if (peek >= 0 && peek != '\n') pushback((char) peek);
+                                return total;
+                            }
+                        }
+                        position = scanPos;
+                        return total;
+                    }
+                }
+                scanPos++;
+            }
+
+            // No line ending found in this chunk — copy and continue
+            int copyLen = scanPos - pos;
+            if (copyLen > 0) {
+                System.arraycopy(b, pos, dest, off, copyLen);
+                off += copyLen;
+                total += copyLen;
+            }
+            position = scanPos;
+        }
+
+        return total;
+    }
+
     @Override
     public void close() {
         if (in != null) {

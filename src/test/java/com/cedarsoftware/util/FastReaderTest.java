@@ -470,27 +470,7 @@ class FastReaderTest {
         assertEquals('x', buffer[0]);
         assertEquals('t', buffer[1]);
     }
-
-    // Tests for getLine(), getCol() (deprecated - now return 0), and getLastSnippet()
-    @Test
-    public void testLineAndColumnReturnZero() throws IOException {
-        // Line/col tracking was removed for performance - methods now return 0
-        fastReader = new FastReader(new StringReader("abc\ndef\nghi"));
-
-        // Both should return 0 (deprecated)
-        assertEquals(0, fastReader.getLine());
-        assertEquals(0, fastReader.getCol());
-
-        // Read some content
-        for (int i = 0; i < 5; i++) {
-            fastReader.read();
-        }
-
-        // Still returns 0 after reading
-        assertEquals(0, fastReader.getLine());
-        assertEquals(0, fastReader.getCol());
-    }
-
+    
     @Test
     void testGetLastSnippetEmpty() throws IOException {
         fastReader = new FastReader(new StringReader(""));

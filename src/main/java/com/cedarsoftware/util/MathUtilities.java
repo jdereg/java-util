@@ -502,10 +502,9 @@ public final class MathUtilities
         }
 
         final int len = text.length();
-        char[] buf = StringUtilities.getChars(text);
         int start = 0;
         if (len > 0) {
-            char first = buf[0];
+            char first = text.charAt(0);
             if (first == '-' || first == '+') {
                 start = 1;
             }
@@ -513,8 +512,8 @@ public final class MathUtilities
 
         // Trim integer leading zeros (keeping one zero before non-digit, e.g., "000.1" -> "0.1")
         while (start + 1 < len
-                && buf[start] == '0'
-                && Character.isDigit(buf[start + 1]))
+                && text.charAt(start) == '0'
+                && Character.isDigit(text.charAt(start + 1)))
         {
             start++;
         }
@@ -530,7 +529,7 @@ public final class MathUtilities
         boolean exponentOverflow = false;
 
         for (int i = start; i < len; i++) {
-            char c = buf[i];
+            char c = text.charAt(i);
             if (c == '.') {
                 hasDecimalPoint = true;
                 inExponent = false;

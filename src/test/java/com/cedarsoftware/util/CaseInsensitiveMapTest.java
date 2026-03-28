@@ -1787,19 +1787,19 @@ class CaseInsensitiveMapTest
     }
 
     @Test
-void testComputeIfAbsent() {
-    CaseInsensitiveMap<String, String> map = new CaseInsensitiveMap<>();
-    map.put("One", "Two");
-    map.put("Three", "Four");
+    void testComputeIfAbsent() {
+        CaseInsensitiveMap<String, String> map = new CaseInsensitiveMap<>();
+        map.put("One", "Two");
+        map.put("Three", "Four");
 
-    // Key present, should not overwrite
-    map.computeIfAbsent("oNe", k -> "NotUsed");
-    assertEquals("Two", map.get("one"));
+        // Key present, should not overwrite
+        map.computeIfAbsent("oNe", k -> "NotUsed");
+        assertEquals("Two", map.get("one"));
 
-    // Key absent, should add
-    map.computeIfAbsent("fIvE", k -> "Six");
-    assertEquals("Six", map.get("five"));
-}
+        // Key absent, should add
+        map.computeIfAbsent("fIvE", k -> "Six");
+        assertEquals("Six", map.get("five"));
+    }
 
     @Test
     void testComputeIfPresent() {

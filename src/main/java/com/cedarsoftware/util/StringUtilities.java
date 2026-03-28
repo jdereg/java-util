@@ -974,11 +974,7 @@ public final class StringUtilities {
         if (s == null) return 0;
 
         final int n = s.length();
-        // Bulk-copy chars via getChars (SIMD-optimized), then hash from the array.
-        // Avoids charAt()'s per-character method call and JDK 9+ coder check overhead.
-        // Uses no reflection, no VarHandle — works on all JDK versions.
-        char[] buf = getCharBuf(n);
-        s.getChars(0, n, buf, 0);
+        char[] buf = getChars(s);
 
         int h = 0;
         for (int i = 0; i < n; i++) {
@@ -996,7 +992,31 @@ public final class StringUtilities {
         return h;
     }
 
-    /** Get a reusable char buffer from ThreadLocal, growing if needed. */
+    /**
+     * Returns a ThreadLocal {@code char[]} buffer populated with the string's characters
+     * via {@link String#getChars(int, int, char[], int)} (SIMD-optimized bulk copy).
+     * <p>
+     * Use {@code s.length()} for the valid range — the returned buffer may be larger.
+     * <p>
+     * This avoids {@code charAt()}'s per-character method call and JDK 9+ compact-string
+     * coder check overhead. Callers can loop over the returned array with direct array access
+     * instead of {@code str.charAt(i)}.
+     * <p>
+     * <b>Important:</b> The returned array is a shared ThreadLocal buffer. It is valid only
+     * until the next call to {@code getChars()} on the same thread. Do not store the reference
+     * beyond the immediate scope.
+     *
+     * @param s the string whose characters to extract (must not be null)
+     * @return a char[] containing the string's characters starting at index 0
+     */
+    public static char[] getChars(String s) {
+        int n = s.length();
+        char[] buf = getCharBuf(n);
+        s.getChars(0, n, buf, 0);
+        return buf;
+    }
+
+    /** Internal: get a reusable char buffer from ThreadLocal, growing if needed. */
     private static char[] getCharBuf(int minSize) {
         char[] buf = TL_CHAR_BUF.get();
         if (minSize > buf.length) {

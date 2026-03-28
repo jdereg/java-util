@@ -2,6 +2,7 @@ package com.cedarsoftware.util;
 
 import java.io.File;
 import java.io.UnsupportedEncodingException;
+import java.lang.reflect.Field;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.LinkedHashSet;
@@ -139,6 +140,35 @@ public final class StringUtilities {
     public static final String FOLDER_SEPARATOR = File.separator;
 
     public static final String EMPTY = "";
+
+    // Reflective access to String's internal byte[] value and byte coder fields (JDK 9+).
+    // Enables direct byte-level hashing, bypassing charAt()'s per-character coder check.
+    // null on JDK 8 (value is char[], not byte[]) or JDK 16+ without --add-opens.
+    private static final Field STRING_VALUE_FIELD;
+    private static final Field STRING_CODER_FIELD;
+
+    static {
+        Field sv = null, sc = null;
+        try {
+            // JDK 9+ stores String internally as byte[] with a coder flag.
+            // On JDK 8, 'value' is char[] and 'coder' doesn't exist — we detect and skip.
+            sv = String.class.getDeclaredField("value");
+            sc = String.class.getDeclaredField("coder");
+            if (sv.getType() != byte[].class) {
+                // JDK 8: value is char[], not byte[] — VarHandle optimization not applicable
+                sv = null; sc = null;
+            } else {
+                sv.setAccessible(true);
+                sc.setAccessible(true);
+                // Verify access works (fails on JDK 16+ without --add-opens)
+                sc.getByte("");
+            }
+        } catch (Throwable ignored) {
+            sv = null; sc = null;
+        }
+        STRING_VALUE_FIELD = sv;
+        STRING_CODER_FIELD = sc;
+    }
     
     // Security configuration - all disabled by default for backward compatibility
     // Read dynamically to allow runtime configuration changes for testing
@@ -966,6 +996,47 @@ public final class StringUtilities {
     public static int hashCodeIgnoreCase(String s) {
         if (s == null) return 0;
 
+        // Fast path: direct byte[] access for LATIN1 strings (JDK 9+ with compact strings).
+        // Bypasses charAt()'s per-character coder check and method call overhead.
+        if (STRING_VALUE_FIELD != null) {
+            try {
+                byte coder = STRING_CODER_FIELD.getByte(s);
+                if (coder == 0) { // LATIN1 — one byte per char, all values 0-255
+                    byte[] value = (byte[]) STRING_VALUE_FIELD.get(s);
+                    return hashLatin1Bytes(value);
+                }
+            } catch (IllegalAccessException e) {
+                // Unreachable after setAccessible(true) — fall through to charAt path
+            }
+        }
+
+        return hashCodeIgnoreCaseChars(s);
+    }
+
+    /**
+     * Hash LATIN1 String bytes directly — no charAt() overhead, no coder check per char.
+     * For ASCII keys (the 99% case in map lookups), each byte IS the character value.
+     */
+    private static int hashLatin1Bytes(byte[] value) {
+        int h = 0;
+        for (int i = 0; i < value.length; i++) {
+            int c = value[i] & 0xFF;
+            if (c <= 'Z') {
+                if (c >= 'A') {
+                    c += 32;
+                }
+            } else if (c >= 128) {
+                c = Character.toLowerCase(Character.toUpperCase((char) c));
+            }
+            h = 31 * h + c;
+        }
+        return h;
+    }
+
+    /**
+     * Fallback: charAt-based hash for when VarHandle is unavailable or string is UTF16.
+     */
+    private static int hashCodeIgnoreCaseChars(String s) {
         final int n = s.length();
         int h = 0;
         for (int i = 0; i < n; i++) {
@@ -977,8 +1048,6 @@ public final class StringUtilities {
             } else if (c >= 128) {      // non-ASCII: full Unicode case fold
                 c = Character.toLowerCase(Character.toUpperCase(c));
             }
-            // else: c is 91-127 (lowercase a-z, '[', '\', ']', '^', '_', '`', '{', '|', '}', '~')
-            // — no folding needed, falls through with just 2 comparisons
             h = 31 * h + c;
         }
         return h;

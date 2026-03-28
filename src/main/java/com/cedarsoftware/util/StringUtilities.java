@@ -2,7 +2,6 @@ package com.cedarsoftware.util;
 
 import java.io.File;
 import java.io.UnsupportedEncodingException;
-import java.lang.reflect.Field;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.LinkedHashSet;
@@ -141,35 +140,13 @@ public final class StringUtilities {
 
     public static final String EMPTY = "";
 
-    // Reflective access to String's internal byte[] value and byte coder fields (JDK 9+).
-    // Enables direct byte-level hashing, bypassing charAt()'s per-character coder check.
-    // null on JDK 8 (value is char[], not byte[]) or JDK 16+ without --add-opens.
-    private static final Field STRING_VALUE_FIELD;
-    private static final Field STRING_CODER_FIELD;
+    // Reusable char buffer for hashCodeIgnoreCase and equalsIgnoreCase.
+    // getChars() bulk-copies chars via SIMD, then the hash/compare loop
+    // uses direct array access — no charAt() method call or coder check per char.
+    private static final int CHAR_BUF_SIZE = 256;
+    private static final ThreadLocal<char[]> TL_CHAR_BUF = ThreadLocal.withInitial(() -> new char[CHAR_BUF_SIZE]);
 
-    static {
-        Field sv = null, sc = null;
-        try {
-            // JDK 9+ stores String internally as byte[] with a coder flag.
-            // On JDK 8, 'value' is char[] and 'coder' doesn't exist — we detect and skip.
-            sv = String.class.getDeclaredField("value");
-            sc = String.class.getDeclaredField("coder");
-            if (sv.getType() != byte[].class) {
-                // JDK 8: value is char[], not byte[] — VarHandle optimization not applicable
-                sv = null; sc = null;
-            } else {
-                sv.setAccessible(true);
-                sc.setAccessible(true);
-                // Verify access works (fails on JDK 16+ without --add-opens)
-                sc.getByte("");
-            }
-        } catch (Throwable ignored) {
-            sv = null; sc = null;
-        }
-        STRING_VALUE_FIELD = sv;
-        STRING_CODER_FIELD = sc;
-    }
-    
+
     // Security configuration - all disabled by default for backward compatibility
     // Read dynamically to allow runtime configuration changes for testing
     private static boolean isSecurityEnabled() {
@@ -306,45 +283,7 @@ public final class StringUtilities {
         if (s1 == null || s2 == null) {
             return false;
         }
-        // Fast path: direct byte comparison for LATIN1 strings (JDK 9+ with compact strings)
-        if (STRING_VALUE_FIELD != null) {
-            try {
-                byte c1 = STRING_CODER_FIELD.getByte(s1);
-                byte c2 = STRING_CODER_FIELD.getByte(s2);
-                if (c1 == 0 && c2 == 0) { // Both LATIN1
-                    byte[] v1 = (byte[]) STRING_VALUE_FIELD.get(s1);
-                    byte[] v2 = (byte[]) STRING_VALUE_FIELD.get(s2);
-                    return equalsIgnoreCaseLatin1(v1, v2);
-                }
-            } catch (IllegalAccessException ignored) {
-                // fall through
-            }
-        }
         return s1.equalsIgnoreCase(s2);
-    }
-
-    /**
-     * Compare two LATIN1 byte arrays case-insensitively.
-     * Each byte represents a single character (0-255).
-     */
-    private static boolean equalsIgnoreCaseLatin1(byte[] v1, byte[] v2) {
-        if (v1.length != v2.length) return false;
-        for (int i = 0; i < v1.length; i++) {
-            int b1 = v1[i] & 0xFF;
-            int b2 = v2[i] & 0xFF;
-            if (b1 == b2) continue;
-            // Fast ASCII case fold
-            if (b1 <= 'Z' && b1 >= 'A') b1 += 32;
-            if (b2 <= 'Z' && b2 >= 'A') b2 += 32;
-            if (b1 == b2) continue;
-            // Non-ASCII: full Unicode fold
-            if (b1 >= 128 || b2 >= 128) {
-                if (Character.toLowerCase(Character.toUpperCase((char) b1)) ==
-                    Character.toLowerCase(Character.toUpperCase((char) b2))) continue;
-            }
-            return false;
-        }
-        return true;
     }
 
     /**
@@ -1034,51 +973,16 @@ public final class StringUtilities {
     public static int hashCodeIgnoreCase(String s) {
         if (s == null) return 0;
 
-        // Fast path: direct byte[] access for LATIN1 strings (JDK 9+ with compact strings).
-        // Bypasses charAt()'s per-character coder check and method call overhead.
-        if (STRING_VALUE_FIELD != null) {
-            try {
-                byte coder = STRING_CODER_FIELD.getByte(s);
-                if (coder == 0) { // LATIN1 — one byte per char, all values 0-255
-                    byte[] value = (byte[]) STRING_VALUE_FIELD.get(s);
-                    return hashLatin1Bytes(value);
-                }
-            } catch (IllegalAccessException e) {
-                // Unreachable after setAccessible(true) — fall through to charAt path
-            }
-        }
-
-        return hashCodeIgnoreCaseChars(s);
-    }
-
-    /**
-     * Hash LATIN1 String bytes directly — no charAt() overhead, no coder check per char.
-     * For ASCII keys (the 99% case in map lookups), each byte IS the character value.
-     */
-    private static int hashLatin1Bytes(byte[] value) {
-        int h = 0;
-        for (int i = 0; i < value.length; i++) {
-            int c = value[i] & 0xFF;
-            if (c <= 'Z') {
-                if (c >= 'A') {
-                    c += 32;
-                }
-            } else if (c >= 128) {
-                c = Character.toLowerCase(Character.toUpperCase((char) c));
-            }
-            h = 31 * h + c;
-        }
-        return h;
-    }
-
-    /**
-     * Fallback: charAt-based hash for when VarHandle is unavailable or string is UTF16.
-     */
-    private static int hashCodeIgnoreCaseChars(String s) {
         final int n = s.length();
+        // Bulk-copy chars via getChars (SIMD-optimized), then hash from the array.
+        // Avoids charAt()'s per-character method call and JDK 9+ coder check overhead.
+        // Uses no reflection, no VarHandle — works on all JDK versions.
+        char[] buf = getCharBuf(n);
+        s.getChars(0, n, buf, 0);
+
         int h = 0;
         for (int i = 0; i < n; i++) {
-            char c = s.charAt(i);
+            char c = buf[i];
             if (c <= 'Z') {            // digits, symbols, and uppercase all ≤ 90
                 if (c >= 'A') {         // uppercase A-Z: fold to lowercase
                     c += 32;
@@ -1086,9 +990,20 @@ public final class StringUtilities {
             } else if (c >= 128) {      // non-ASCII: full Unicode case fold
                 c = Character.toLowerCase(Character.toUpperCase(c));
             }
+            // else: c is 91-127 (lowercase a-z, symbols) — no folding, 2 comparisons
             h = 31 * h + c;
         }
         return h;
+    }
+
+    /** Get a reusable char buffer from ThreadLocal, growing if needed. */
+    private static char[] getCharBuf(int minSize) {
+        char[] buf = TL_CHAR_BUF.get();
+        if (minSize > buf.length) {
+            buf = new char[minSize];
+            TL_CHAR_BUF.set(buf);
+        }
+        return buf;
     }
 
     /**

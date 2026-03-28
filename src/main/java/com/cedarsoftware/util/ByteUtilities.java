@@ -255,9 +255,10 @@ public final class ByteUtilities {
             return null;
         }
         byte[] bytes = new byte[len >> 1];
+        char[] buf = (s instanceof String) ? StringUtilities.getChars((String) s) : s.toString().toCharArray();
         for (int i = 0, j = 0; i < len; i += 2) {
-            char c1 = s.charAt(i);
-            char c2 = s.charAt(i + 1);
+            char c1 = buf[i];
+            char c2 = buf[i + 1];
             // Check if the characters are within ASCII range
             if (c1 >= HEX_LOOKUP.length || c2 >= HEX_LOOKUP.length) {
                 return null;

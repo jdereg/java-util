@@ -336,8 +336,10 @@ public final class DateUtilities {
         // Check for excessive nested grouping
         int openParens = 0;
         int maxNesting = 0;
-        for (int i = 0; i < input.length(); i++) {
-            char c = input.charAt(i);
+        int inputLen = input.length();
+        char[] inputBuf = StringUtilities.getChars(input);
+        for (int i = 0; i < inputLen; i++) {
+            char c = inputBuf[i];
             if (c == '(') {
                 openParens++;
                 maxNesting = Math.max(maxNesting, openParens);
@@ -872,8 +874,9 @@ public final class DateUtilities {
         int len = digits.length();
 
         // Validate all characters are digits
+        char[] digitBuf = StringUtilities.getChars(digits);
         for (int i = 0; i < len; i++) {
-            char c = digits.charAt(i);
+            char c = digitBuf[i];
             if (c < '0' || c > '9') {
                 throw new IllegalArgumentException("Invalid fractional second: " + fracSec);
             }
@@ -914,8 +917,9 @@ public final class DateUtilities {
         }
 
         // Additional security validation: prevent control characters and null bytes
+        char[] tzBuf = StringUtilities.getChars(tz);
         for (int i = 0; i < tz.length(); i++) {
-            char c = tz.charAt(i);
+            char c = tzBuf[i];
             if (c < 32 || c == 127) { // Control characters including null byte
                 throw new IllegalArgumentException("Invalid timezone string contains control characters");
             }
@@ -1016,9 +1020,11 @@ public final class DateUtilities {
     }
 
     private static String removeDateMarkerCharacters(String input) {
+        int inputLen = input.length();
+        char[] buf = StringUtilities.getChars(input);
         StringBuilder builder = null;
-        for (int i = 0; i < input.length(); i++) {
-            char c = input.charAt(i);
+        for (int i = 0; i < inputLen; i++) {
+            char c = buf[i];
             if (c == 'T' || c == ',') {
                 if (builder == null) {
                     builder = new StringBuilder(input.length() - 1);

@@ -480,10 +480,11 @@ public final class StringUtilities {
         }
         int start = 0;
         int end = s.length();
-        while (start < end && s.charAt(start) <= ' ') {
+        char[] buf = getChars(s);
+        while (start < end && buf[start] <= ' ') {
             start++;
         }
-        while (end > start && s.charAt(end - 1) <= ' ') {
+        while (end > start && buf[end - 1] <= ' ') {
             end--;
         }
         return end - start;
@@ -527,9 +528,10 @@ public final class StringUtilities {
         byte[] bytes = new byte[len / 2];
         int pos = 0;
 
+        char[] buf = getChars(s);
         for (int i = 0; i < len; i += 2) {
-            int hi = Character.digit(s.charAt(i), 16);
-            int lo = Character.digit(s.charAt(i + 1), 16);
+            int hi = Character.digit(buf[i], 16);
+            int lo = Character.digit(buf[i + 1], 16);
             if (hi == -1 || lo == -1) {
                 return null;
             }
@@ -578,8 +580,9 @@ public final class StringUtilities {
 
         int answer = 0;
         int len = s.length();
+        char[] buf = getChars(s);
         for (int i = 0; i < len; i++) {
-            if (s.charAt(i) == c) {
+            if (buf[i] == c) {
                 answer++;
             }
         }
@@ -740,6 +743,8 @@ public final class StringUtilities {
 
         int sLen = s.length();
         int tLen = t.length();
+        char[] sBuf = (s instanceof String) ? getChars((String) s) : charSequenceToArray(s);
+        char[] tBuf = (t instanceof String) ? ((String) t).toCharArray() : charSequenceToArray(t);
         for (int i = 0; i < sLen; i++) {
             // calculate v1 (current row distances) from the previous row v0
 
@@ -749,7 +754,7 @@ public final class StringUtilities {
 
             // use formula to fill in the rest of the row
             for (int j = 0; j < tLen; j++) {
-                int cost = (s.charAt(i) == t.charAt(j)) ? 0 : 1;
+                int cost = (sBuf[i] == tBuf[j]) ? 0 : 1;
                 int left = v1[j] + 1;
                 int up = v0[j + 1] + 1;
                 int diagonal = v0[j] + cost;
@@ -817,10 +822,12 @@ public final class StringUtilities {
             distanceMatrix[0][targetIndex] = targetIndex;
         }
 
+        char[] srcBuf = (source instanceof String) ? getChars((String) source) : charSequenceToArray(source);
+        char[] tgtBuf = (target instanceof String) ? ((String) target).toCharArray() : charSequenceToArray(target);
         for (int srcIndex = 1; srcIndex <= srcLen; srcIndex++) {
             for (int targetIndex = 1; targetIndex <= targetLen; targetIndex++) {
                 // If the current characters in both strings are equal
-                int cost = source.charAt(srcIndex - 1) == target.charAt(targetIndex - 1) ? 0 : 1;
+                int cost = srcBuf[srcIndex - 1] == tgtBuf[targetIndex - 1] ? 0 : 1;
 
                 // Find the current distance by determining the shortest path to a
                 // match (hence the 'minimum' calculation on distances).
@@ -838,7 +845,7 @@ public final class StringUtilities {
 
                 // transposition check (if the current and previous
                 // character are switched around (e.g.: t[se]t and t[es]t)...
-                if (source.charAt(srcIndex - 1) == target.charAt(targetIndex - 2) && source.charAt(srcIndex - 2) == target.charAt(targetIndex - 1)) {
+                if (srcBuf[srcIndex - 1] == tgtBuf[targetIndex - 2] && srcBuf[srcIndex - 2] == tgtBuf[targetIndex - 1]) {
                     // What's the minimum cost between the current distance
                     // and a transposition.
                     int transpositionCost = distanceMatrix[srcIndex - 2][targetIndex - 2] + cost;
@@ -1016,6 +1023,16 @@ public final class StringUtilities {
         return buf;
     }
 
+    /** Convert a CharSequence to a char array (for non-String CharSequences). */
+    private static char[] charSequenceToArray(CharSequence cs) {
+        int n = cs.length();
+        char[] arr = new char[n];
+        for (int i = 0; i < n; i++) {
+            arr[i] = cs.charAt(i);
+        }
+        return arr;
+    }
+
     /** Internal: get a reusable char buffer from ThreadLocal, growing if needed. */
     private static char[] getCharBuf(int minSize) {
         char[] buf = TL_CHAR_BUF.get();
@@ -1179,10 +1196,11 @@ public final class StringUtilities {
             return null;
         }
         int len = snake.length();
+        char[] buf = getChars(snake);
         StringBuilder result = new StringBuilder(len);
         boolean upper = false;
         for (int i = 0; i < len; i++) {
-            char c = snake.charAt(i);
+            char c = buf[i];
             if (c == '_') {
                 upper = true;
                 continue;
@@ -1203,9 +1221,11 @@ public final class StringUtilities {
         if (camel == null) {
             return null;
         }
+        int len = camel.length();
+        char[] buf = getChars(camel);
         StringBuilder result = new StringBuilder();
-        for (int i = 0; i < camel.length(); i++) {
-            char c = camel.charAt(i);
+        for (int i = 0; i < len; i++) {
+            char c = buf[i];
             if (Character.isUpperCase(c) && i > 0) {
                 result.append('_');
             }
@@ -1224,8 +1244,9 @@ public final class StringUtilities {
         if (s == null || s.isEmpty()) {
             return false;
         }
+        char[] buf = getChars(s);
         for (int i = 0; i < s.length(); i++) {
-            if (!Character.isDigit(s.charAt(i))) {
+            if (!Character.isDigit(buf[i])) {
                 return false;
             }
         }

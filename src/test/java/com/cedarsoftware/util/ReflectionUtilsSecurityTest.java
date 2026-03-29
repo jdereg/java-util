@@ -23,7 +23,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 public class ReflectionUtilsSecurityTest {
     
-    private SecurityManager originalSecurityManager;
     private String originalSecurityEnabled;
     private String originalDangerousClassValidationEnabled;
     private String originalSensitiveFieldValidationEnabled;
@@ -33,8 +32,6 @@ public class ReflectionUtilsSecurityTest {
     
     @BeforeEach
     public void setUp() {
-        originalSecurityManager = System.getSecurityManager();
-        
         // Save original system property values
         originalSecurityEnabled = System.getProperty("reflectionutils.security.enabled");
         originalDangerousClassValidationEnabled = System.getProperty("reflectionutils.dangerous.class.validation.enabled");
@@ -51,8 +48,6 @@ public class ReflectionUtilsSecurityTest {
     
     @AfterEach
     public void tearDown() {
-        System.setSecurityManager(originalSecurityManager);
-        
         // Restore original system property values
         restoreProperty("reflectionutils.security.enabled", originalSecurityEnabled);
         restoreProperty("reflectionutils.dangerous.class.validation.enabled", originalDangerousClassValidationEnabled);

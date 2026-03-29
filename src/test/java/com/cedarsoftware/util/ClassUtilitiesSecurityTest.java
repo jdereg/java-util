@@ -21,16 +21,8 @@ import static org.junit.jupiter.api.Assertions.fail;
  */
 public class ClassUtilitiesSecurityTest {
     
-    private SecurityManager originalSecurityManager;
-    
-    @BeforeEach
-    public void setUp() {
-        originalSecurityManager = System.getSecurityManager();
-    }
-    
     @AfterEach
     public void tearDown() {
-        System.setSecurityManager(originalSecurityManager);
         ClassUtilities.setUseUnsafe(false); // Reset to safe default
     }
     

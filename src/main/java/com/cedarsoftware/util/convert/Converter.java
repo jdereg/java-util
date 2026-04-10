@@ -63,6 +63,8 @@ import java.util.stream.LongStream;
 import com.cedarsoftware.util.ClassUtilities;
 import com.cedarsoftware.util.ClassValueMap;
 import com.cedarsoftware.util.IdentitySet;
+import com.cedarsoftware.util.LRUCache;
+import com.cedarsoftware.util.TTLCache;
 import com.cedarsoftware.util.geom.Color;
 import com.cedarsoftware.util.geom.Dimension;
 import com.cedarsoftware.util.geom.Insets;
@@ -1784,7 +1786,16 @@ public final class Converter {
     }
 
     private void cacheConverter(Class<?> source, Class<?> target, Convert<?> converter) {
-        FULL_CONVERSION_CACHE.put(pair(source, target, this.instanceId), converter);
+        // Cache at the shared level (0L) only when this instance has no user conversions,
+        // guaranteeing the resolved converter came from CONVERSION_DB (same for all instances).
+        // Never cache UNSUPPORTED at 0L — another instance with user conversions may support
+        // the same type pair.
+        // Previously, caching with this.instanceId caused unbounded static cache growth:
+        // each short-lived Converter (e.g., one per JsonIo.toJava() call) left entries
+        // keyed by its unique instanceId that were never looked up again after GC.
+        if (!hasUserConversions && converter != UNSUPPORTED) {
+            FULL_CONVERSION_CACHE.put(pair(source, target, 0L), converter);
+        }
     }
 
     @SuppressWarnings("unchecked")

@@ -1,5 +1,8 @@
 ### Revision History
 
+#### 4.100.0 (Unreleased)
+* **BUG FIX**: Fixed unbounded memory leak in `Converter.FULL_CONVERSION_CACHE`. Each short-lived `Converter` instance (e.g., one per `JsonIo.toJava()` call) cached inheritance-resolved conversions keyed by its unique `instanceId` in a static `ConcurrentHashMap`. When the instance was GC'd, its entries remained forever. In production under sustained load, this grew to 1GB+. Fix: cache resolved conversions at the shared level (`instanceId=0L`) when no user-added conversions exist; skip static caching otherwise. The cache is now bounded by the number of unique `(source, target)` type pairs, not by the number of `Converter` instances created.
+
 #### 4.99.0 - 2026-03-28
 * **FEATURE**: New `StringUtilities.getChars(String s)` — public API that returns a ThreadLocal `char[]` buffer populated via `String.getChars()` (SIMD-optimized bulk copy). Callers can replace `str.charAt(i)` loops with direct `buf[i]` array access, avoiding per-character method call and JDK 9+ coder check overhead. Use `s.length()` for the valid range. Buffer is shared per-thread — valid until the next `getChars()` call on the same thread.
 * **PERFORMANCE**: `StringUtilities.hashCodeIgnoreCase(String)` — uses `StringUtilities.getChars()` (SIMD-optimized bulk copy) into a ThreadLocal `char[]` buffer, then hashes from the array directly. Avoids `charAt()`'s per-character method call and JDK 9+ compact-string coder check overhead. No reflection, no VarHandle, no `--add-opens` — works on all JDK versions (8-25+). Benchmark shows CaseInsensitiveMap GET improved **70-75%** (230 → 58-69 ns/op), PUT improved **48-52%** (135 → 65-71 ns/op), and MIXED-CASE GET improved **68%** (302 → 93-97 ns/op) on 100K entries.

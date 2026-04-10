@@ -1776,12 +1776,8 @@ public final class Converter {
     }
 
     private Convert<?> getCachedConverter(Class<?> source, Class<?> target) {
-        // Check instance-specific cache first, then fall back to shared conversions.
-        Convert<?> converter = FULL_CONVERSION_CACHE.get(pair(source, target, this.instanceId));
-        if (converter != null) {
-            return converter;
-        }
-        // Fall back to shared conversions (instance ID 0)
+        // All cached entries use the shared key (instanceId=0L) since cacheConverter()
+        // only stores at the shared level. No instance-specific lookup needed.
         return FULL_CONVERSION_CACHE.get(pair(source, target, 0L));
     }
 

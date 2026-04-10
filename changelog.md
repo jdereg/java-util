@@ -1,6 +1,6 @@
 ### Revision History
 
-#### 4.100.0 (Unreleased)
+#### 4.100.0 - 2026-04-10
 * **BUG FIX**: Fixed unbounded memory leak in `Converter.FULL_CONVERSION_CACHE`. Each short-lived `Converter` instance (e.g., one per `JsonIo.toJava()` call) cached inheritance-resolved conversions keyed by its unique `instanceId` in a static `ConcurrentHashMap`. When the instance was GC'd, its entries remained forever. In production under sustained load, this grew to 1GB+. Fix: cache resolved conversions at the shared level (`instanceId=0L`) when no user-added conversions exist; skip static caching otherwise. The cache is now bounded by the number of unique `(source, target)` type pairs, not by the number of `Converter` instances created.
 
 #### 4.99.0 - 2026-03-28

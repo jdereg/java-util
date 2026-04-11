@@ -219,6 +219,15 @@ public final class Converter {
     private final long instanceId;
     private volatile boolean hasUserConversions;
 
+    // Performance: 1-slot cache for the most recent (source, target) lookup.
+    // Collections of homogeneous values (e.g., List<UUID>, List<Date>) call the
+    // same conversion repeatedly — this eliminates the per-call ConversionPair
+    // allocation on the hot iteration path. Instance-scoped so each Converter
+    // (which is typically per-parse) has its own warm slot.
+    private volatile Class<?> lastLookupSource;
+    private volatile Class<?> lastLookupTarget;
+    private volatile Convert<?> lastLookupResult;
+
     // Efficient key that combines two Class instances and instance ID for fast creation and lookup
     public static final class ConversionPair {
         private final Class<?> source;
@@ -1776,9 +1785,18 @@ public final class Converter {
     }
 
     private Convert<?> getCachedConverter(Class<?> source, Class<?> target) {
+        // Performance: 1-slot cache eliminates ConversionPair allocation when the
+        // same (source, target) is looked up repeatedly (e.g., iterating List<UUID>).
+        if (source == lastLookupSource && target == lastLookupTarget) {
+            return lastLookupResult;
+        }
         // All cached entries use the shared key (instanceId=0L) since cacheConverter()
         // only stores at the shared level. No instance-specific lookup needed.
-        return FULL_CONVERSION_CACHE.get(pair(source, target, 0L));
+        Convert<?> result = FULL_CONVERSION_CACHE.get(pair(source, target, 0L));
+        lastLookupSource = source;
+        lastLookupTarget = target;
+        lastLookupResult = result;
+        return result;
     }
 
     private void cacheConverter(Class<?> source, Class<?> target, Convert<?> converter) {

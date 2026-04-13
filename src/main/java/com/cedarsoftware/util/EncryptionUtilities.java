@@ -399,7 +399,8 @@ public class EncryptionUtilities {
         } catch (FileNotFoundException e) {
             return null;
         } catch (IOException e) {
-            throw new java.io.UncheckedIOException(e);
+            ExceptionUtilities.uncheckedThrow(e);
+            return null; // unreachable
         }
     }
 
@@ -462,7 +463,8 @@ public class EncryptionUtilities {
         } catch (FileNotFoundException e) {
             return null;
         } catch (IOException e) {
-            throw new java.io.UncheckedIOException(e);
+            ExceptionUtilities.uncheckedThrow(e);
+            return null; // unreachable
         }
     }
 
@@ -488,7 +490,8 @@ public class EncryptionUtilities {
         } catch (FileNotFoundException e) {
             return null;
         } catch (IOException e) {
-            throw new java.io.UncheckedIOException(e);
+            ExceptionUtilities.uncheckedThrow(e);
+            return null; // unreachable
         }
     }
 
@@ -507,7 +510,8 @@ public class EncryptionUtilities {
         } catch (FileNotFoundException e) {
             return null;
         } catch (IOException e) {
-            throw new java.io.UncheckedIOException(e);
+            ExceptionUtilities.uncheckedThrow(e);
+            return null; // unreachable
         }
     }
 
@@ -533,7 +537,8 @@ public class EncryptionUtilities {
         } catch (FileNotFoundException e) {
             return null;
         } catch (IOException e) {
-            throw new java.io.UncheckedIOException(e);
+            ExceptionUtilities.uncheckedThrow(e);
+            return null; // unreachable
         }
     }
 
@@ -552,7 +557,8 @@ public class EncryptionUtilities {
         } catch (FileNotFoundException e) {
             return null;
         } catch (IOException e) {
-            throw new java.io.UncheckedIOException(e);
+            ExceptionUtilities.uncheckedThrow(e);
+            return null; // unreachable
         }
     }
 
@@ -571,7 +577,8 @@ public class EncryptionUtilities {
         } catch (FileNotFoundException e) {
             return null;
         } catch (IOException e) {
-            throw new java.io.UncheckedIOException(e);
+            ExceptionUtilities.uncheckedThrow(e);
+            return null; // unreachable
         }
     }
 

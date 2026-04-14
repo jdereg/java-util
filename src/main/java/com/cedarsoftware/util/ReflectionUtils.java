@@ -1858,7 +1858,35 @@ public final class ReflectionUtils {
 
                 // Within same accessibility level, sort by parameter count
                 // Always prefer more parameters (more specific constructors first)
-                return c2.getParameterCount() - c1.getParameterCount();
+                int countDiff = c2.getParameterCount() - c1.getParameterCount();
+                if (countDiff != 0) {
+                    return countDiff;
+                }
+
+                // Tie-breaker: sort by parameter type names for deterministic ordering.
+                // Class.getDeclaredConstructors() returns constructors in JVM-dependent
+                // order that can vary across runs (especially with bytecode instrumentation
+                // like JaCoCo). Without this tie-breaker, constructor selection becomes
+                // non-deterministic when multiple constructors have identical modifiers
+                // and parameter counts (e.g., String... vs Integer...).
+                // Prefer String parameters first (most widely convertible), then alphabetical.
+                Class<?>[] types1 = c1.getParameterTypes();
+                Class<?>[] types2 = c2.getParameterTypes();
+                for (int i = 0; i < types1.length; i++) {
+                    Class<?> t1 = types1[i];
+                    Class<?> t2 = types2[i];
+                    if (t1 == t2) continue;
+                    // For varargs, unwrap the array component type for comparison
+                    Class<?> compare1 = t1.isArray() ? t1.getComponentType() : t1;
+                    Class<?> compare2 = t2.isArray() ? t2.getComponentType() : t2;
+                    // Prefer String — it's the most widely convertible type via Converter
+                    if (compare1 == String.class && compare2 != String.class) return -1;
+                    if (compare2 == String.class && compare1 != String.class) return 1;
+                    // Fall back to alphabetical by name for stable ordering
+                    int cmp = t1.getName().compareTo(t2.getName());
+                    if (cmp != 0) return cmp;
+                }
+                return 0;
             });
         }
 

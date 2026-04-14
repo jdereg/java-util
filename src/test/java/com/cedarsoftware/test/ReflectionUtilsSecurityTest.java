@@ -43,11 +43,22 @@ class ReflectionUtilsSecurityTest {
 
     // ========== Dangerous class blocking via custom pattern ==========
 
-    // Note: getDeclaredFields (shallow) cannot be tested for dangerous-class blocking
-    // because its security check runs inside the cache-populating lambda, and
-    // isTrustedCaller() returns true when LRUCache/LockingLRUCacheStrategy (in
-    // com.cedarsoftware.util.*) are on the call stack. getAllDeclaredFields (deep)
-    // checks isDangerousClass at the top BEFORE the cache, so it works.
+    @Test
+    void testDangerousClassFieldsBlocked() {
+        // After the isTrustedCaller() fix, getDeclaredFields (shallow) properly
+        // blocks external callers even though its security check runs inside the
+        // cache-populating lambda. Previously, LRUCache/LockingLRUCacheStrategy
+        // frames in com.cedarsoftware.util.* triggered the trusted-caller bypass.
+        System.setProperty("reflectionutils.security.enabled", "true");
+        System.setProperty("reflectionutils.dangerous.class.validation.enabled", "true");
+        System.setProperty("reflectionutils.dangerous.class.patterns", "java.util.Currency");
+
+        // Unique filter instance → unique cache key → validation re-runs
+        java.util.function.Predicate<Field> uniqueFilter = f -> true;
+        assertThatThrownBy(() -> ReflectionUtils.getDeclaredFields(java.util.Currency.class, uniqueFilter))
+                .isInstanceOf(SecurityException.class)
+                .hasMessageContaining("Access denied");
+    }
 
     @Test
     void testGetAllDeclaredFieldsBlocksDangerous() {

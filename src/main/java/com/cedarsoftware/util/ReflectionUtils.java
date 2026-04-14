@@ -489,10 +489,21 @@ public final class ReflectionUtils {
     
     /**
      * Checks if the current caller is from a trusted package (java-util library).
-     * Skips frames from ReflectionUtils itself (always on the stack) to find
-     * the actual external caller chain.
+     * Skips frames from ReflectionUtils itself AND internal infrastructure
+     * (caches, lambdas) that can appear on the stack during normal operation
+     * without representing a real caller.
+     * <p>
+     * <b>Why this is careful:</b> When ReflectionUtils uses its own cache
+     * (LRUCache, LockingLRUCacheStrategy) via {@code computeIfAbsent}, those
+     * cache classes appear on the stack between ReflectionUtils and the
+     * security check. A naive {@code startsWith("com.cedarsoftware.util.")}
+     * check would incorrectly treat those cache frames as "trusted callers"
+     * and bypass security for EVERY caller, including external ones.
+     * </p>
      *
-     * @return true if a caller other than ReflectionUtils is from the trusted package
+     * @return true if the external caller chain includes a trusted java-util
+     *         class (e.g., a java-util internal helper that legitimately needs
+     *         reflective access to dangerous classes)
      */
     private static boolean isTrustedCaller() {
         String thisClassName = ReflectionUtils.class.getName();
@@ -506,6 +517,12 @@ public final class ReflectionUtils {
                 continue;
             }
 
+            // Skip internal infrastructure classes that appear on the stack as
+            // cache callback frames (not real callers).
+            if (isInfrastructureFrame(className)) {
+                continue;
+            }
+
             // Check if any other caller is from the trusted java-util package
             if (className.startsWith("com.cedarsoftware.util.")) {
                 return true;
@@ -513,6 +530,19 @@ public final class ReflectionUtils {
         }
 
         return false;
+    }
+
+    /**
+     * Returns true if the given class name is a java-util infrastructure class
+     * that may appear on the stack during callback/lambda execution but does
+     * not represent a real caller. These are intermediaries between
+     * ReflectionUtils and its actual caller.
+     */
+    private static boolean isInfrastructureFrame(String className) {
+        return className.equals("com.cedarsoftware.util.LRUCache")
+                || className.equals("com.cedarsoftware.util.cache.LockingLRUCacheStrategy")
+                || className.equals("com.cedarsoftware.util.cache.ThreadedLRUCacheStrategy")
+                || className.equals("com.cedarsoftware.util.ConcurrentHashMapNullSafe");
     }
     
     /**

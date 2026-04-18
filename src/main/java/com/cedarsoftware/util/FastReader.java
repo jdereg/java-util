@@ -356,12 +356,15 @@ public final class FastReader extends Reader {
                 end = pos + remaining;
             }
 
-            // Tight scan loop — c <= '\r' guard means printable chars (> 13) need ONE
-            // comparison.  Only control chars <= 13 (which are rare) enter the inner check.
+            // Tight scan loop — single array load per iteration. The outer c <= '\r' check is
+            // a performance prefilter (printable chars > 13 need only ONE comparison); only
+            // control chars <= 13 (which are rare in typical text) enter the inner equality
+            // tests. Eliminating the prior double-read of b[scanPos] removes one potential
+            // bounds check per character even when JIT CSE is imperfect.
             int scanPos = pos;
             while (scanPos < end) {
-                if (b[scanPos] <= '\r') {
-                    char c = b[scanPos];
+                char c = b[scanPos];
+                if (c <= '\r') {
                     if (c == '\n' || c == '\r') {
                         // Found line ending — bulk-copy content, consume ending, return
                         int copyLen = scanPos - pos;

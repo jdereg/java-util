@@ -397,7 +397,7 @@ public final class Converter {
             ClassValueMap<V> byTarget = outer.get(source);
             if (byTarget == null) {
                 ClassValueMap<V> fresh = new ClassValueMap<>();
-                ClassValueMap<V> existing = (ClassValueMap<V>) outer.putIfAbsent(source, fresh);
+                ClassValueMap<V> existing = outer.putIfAbsent(source, fresh);
                 byTarget = existing == null ? fresh : existing;
             }
             return byTarget;

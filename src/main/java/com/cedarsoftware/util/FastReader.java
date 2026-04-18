@@ -78,7 +78,8 @@ public final class FastReader extends Reader {
     }
 
     private void fill() {
-        if (limit != -1 && position >= limit) {
+        final int lim = limit;
+        if (lim != -1 && position >= lim) {
             refill();
         }
     }
@@ -100,7 +101,7 @@ public final class FastReader extends Reader {
                     break;
                 }
                 if (++zeroReads >= MAX_CONSECUTIVE_ZERO_READS) {
-                    ExceptionUtilities.uncheckedThrow(new IOException("Underlying Reader repeatedly returned 0 characters"));
+                    throw new IOException("Underlying Reader repeatedly returned 0 characters");
                 }
             }
             limit = n;
@@ -211,37 +212,65 @@ public final class FastReader extends Reader {
         int totalRead = 0;
         final char[] locBuf = buf;
 
-        // First, drain any pushback buffer
+        // Drain pushback buffer first (rare path — empty in most calls). Cache
+        // pushbackBufferSize into pbSize so the inner while-condition check does not
+        // re-issue GETFIELD per iteration. pushbackBuffer is NOT cached — it is
+        // read at one source location, so a local would add a stack variable with
+        // no second reader to amortize it against.
         int pbPos = pushbackPosition;
-        while (pbPos < pushbackBufferSize && totalRead < maxLen) {
-            char c = pushbackBuffer[pbPos];
-            if (c == delim1 || c == delim2) {
-                // Found delimiter in pushback - don't consume it
-                pushbackPosition = pbPos;
-                return totalRead;
+        final int pbSize = pushbackBufferSize;
+        if (pbPos < pbSize) {
+            while (pbPos < pbSize && totalRead < maxLen) {
+                char c = pushbackBuffer[pbPos];
+                if (c == delim1 || c == delim2) {
+                    // Found delimiter in pushback — don't consume it.
+                    pushbackPosition = pbPos;
+                    return totalRead;
+                }
+                dest[off++] = c;
+                pbPos++;
+                totalRead++;
             }
-            dest[off++] = c;
-            pbPos++;
-            totalRead++;
-        }
-        pushbackPosition = pbPos;
-
-        // Ensure buffer has data before entering scan loop.
-        // fill() has a try-catch which inhibits JIT optimization of the scan loop,
-        // so we keep it out of the hot path — only called here and at loop bottom.
-        if (position >= limit) {
-            fill();
-            if (limit == -1) {
-                return totalRead > 0 ? totalRead : -1;
-            }
+            pushbackPosition = pbPos;
         }
 
-        // Cache member fields into locals for the scan loop.
-        // position and limit are only written back at exit points or before refill().
+        // Cache position / limit into locals. These are the ONLY fields fill() mutates,
+        // so every assignment from `limit` must be followed by enough reads to amortize
+        // the local-store cost. The refill check is placed at the TOP of the scan loop
+        // so that each in-loop `locLimit = limit;` is immediately used TWICE in the
+        // same iteration (EOF check and `end = locLimit` boundary init) — no reliance
+        // on cross-iteration loop-back to hit the second read.
         int pos = position;
         int locLimit = limit;
 
+        // Entry refill-and-EOF guard: preserves the "return -1 if EOF reached before
+        // any chars read" contract even when maxLen == 0 (which would otherwise skip
+        // the while loop entirely and return 0). The locLimit assignment inside this
+        // block is used twice — the EOF check here, then (if we don't return) the
+        // `end = locLimit` line in the first scan iteration.
+        if (pos >= locLimit) {
+            fill();
+            locLimit = limit;
+            if (locLimit == -1) {
+                return totalRead > 0 ? totalRead : -1;
+            }
+            pos = position;
+        }
+
         while (totalRead < maxLen) {
+            // In-loop refill when the current buffer slice is exhausted. Kept at the
+            // top of the loop so the `locLimit = limit;` assignment below is used
+            // twice within this same iteration (EOF check + end init) and NOT reliant
+            // on loop-back.
+            if (pos >= locLimit) {
+                fill();
+                locLimit = limit;
+                if (locLimit == -1) {
+                    return totalRead > 0 ? totalRead : -1;
+                }
+                pos = position;
+            }
+
             // Compute scan boundary: end = min(locLimit, pos + maxLen - totalRead)
             int end = locLimit;
             int destEnd = pos + maxLen - totalRead;
@@ -265,23 +294,27 @@ public final class FastReader extends Reader {
                 totalRead += copyLen;
             }
 
+            // Write back position once — needed by fill()'s refill check on the next
+            // iteration and by the caller's next read after a delimiter match.
+            position = scanPos;
+
             if (scanPos < end) {
-                // Found delimiter — write back position and return
-                position = scanPos;
+                // Found delimiter — don't consume it.
                 return totalRead;
             }
 
-            // Buffer exhausted — refill. Write back position before fill() reads it.
-            position = scanPos;
-            fill();
-            locLimit = limit;
-            if (locLimit == -1) {
-                return totalRead > 0 ? totalRead : -1;
-            }
-            pos = position;  // fill() resets position to 0
+            // Scan hit `end` without a delimiter. If `end == destEnd` we've also hit
+            // maxLen, and the `while` condition will exit; no refill happens this call
+            // (previously we eagerly called fill() here — wasted work when the caller
+            // only wanted a bounded read). If `end == locLimit`, pos will be >= locLimit
+            // on the next iteration and the top-of-loop refill fires.
+            pos = scanPos;
         }
 
-        position = pos;
+        // Loop exit: totalRead >= maxLen. position was written inside the loop body
+        // (to scanPos), so no bottom write-back is needed. If the loop never ran
+        // (maxLen == 0, or pushback drain already filled it), pos still equals the
+        // entry-time position — no change required.
         return totalRead;
     }
 
@@ -311,45 +344,64 @@ public final class FastReader extends Reader {
 
         int total = 0;
 
-        // --- Drain pushback buffer (rare path) ---
+        // --- Drain pushback buffer (rare path — empty in most calls) ---
+        // Cache pushbackBufferSize (3 uses: guard, while-check, \r-ahead check) and
+        // pushbackBuffer (2 uses: main scan + \r-ahead probe). Wrapping the drain in
+        // `if (pbPos < pbSize)` also skips the unconditional `pushbackPosition = pbPos;`
+        // PUTFIELD that the original always executed even when the drain didn't run.
         int pbPos = pushbackPosition;
-        while (pbPos < pushbackBufferSize && total < maxLen) {
-            char c = pushbackBuffer[pbPos];
-            if (c <= '\r' && (c == '\n' || c == '\r')) {
-                pbPos++;
-                pushbackPosition = pbPos;
-                // Handle \r\n across pushback boundary
-                if (c == '\r') {
-                    if (pbPos < pushbackBufferSize) {
-                        if (pushbackBuffer[pbPos] == '\n') {
-                            pushbackPosition = pbPos + 1;
+        final int pbSize = pushbackBufferSize;
+        if (pbPos < pbSize) {
+            final char[] pbBuf = pushbackBuffer;
+            while (pbPos < pbSize && total < maxLen) {
+                char c = pbBuf[pbPos];
+                if (c <= '\r' && (c == '\n' || c == '\r')) {
+                    pbPos++;
+                    pushbackPosition = pbPos;
+                    // Handle \r\n across pushback boundary
+                    if (c == '\r') {
+                        if (pbPos < pbSize) {
+                            if (pbBuf[pbPos] == '\n') {
+                                pushbackPosition = pbPos + 1;
+                            }
+                        } else {
+                            // \n might be in main buffer
+                            int peek = read();
+                            if (peek >= 0 && peek != '\n') pushback((char) peek);
                         }
-                    } else {
-                        // \n might be in main buffer
-                        int peek = read();
-                        if (peek >= 0 && peek != '\n') pushback((char) peek);
                     }
+                    return total;
                 }
-                return total;
+                dest[off++] = c;
+                pbPos++;
+                total++;
             }
-            dest[off++] = c;
-            pbPos++;
-            total++;
+            pushbackPosition = pbPos;
         }
-        pushbackPosition = pbPos;
 
         // --- Main buffer scan ---
+        // Cache buf / position / limit into locals ONCE. `buf` is never reassigned by
+        // refill() (refill reads INTO buf at index 0), so it can be final. `pos` and
+        // `lim` are refreshed only after refill() — the sole field mutator on this
+        // path. Hoisting these out of the outer-while eliminates 3 per-iteration
+        // GETFIELDs (buf, position, limit re-reads) and the 2 GETFIELDs of the old
+        // top-of-loop `position >= limit` check, leaving just the two post-refill
+        // reads on the rare iteration where refill actually fires.
+        final char[] b = buf;
+        int pos = position;
+        int lim = limit;
+
         while (total < maxLen) {
-            // Ensure buffer has data
-            if (position >= limit) {
+            if (pos >= lim) {
+                // refill() does not read `position` (it writes pos=0 unconditionally
+                // on success), so no write-back is needed before the call.
                 if (refill() == -1) {
                     return total > 0 ? total : -1;
                 }
+                pos = position;
+                lim = limit;
             }
 
-            final char[] b = buf;
-            int pos = position;
-            final int lim = limit;
             int end = lim;
             int remaining = maxLen - total;
             if (pos + remaining < end) {
@@ -392,16 +444,20 @@ public final class FastReader extends Reader {
                 scanPos++;
             }
 
-            // No line ending found in this chunk — copy and continue
+            // No line ending found in this chunk — copy what we have and let the
+            // top-of-loop `pos >= lim` check fire the refill on the next iteration.
             int copyLen = scanPos - pos;
             if (copyLen > 0) {
                 System.arraycopy(b, pos, dest, off, copyLen);
                 off += copyLen;
                 total += copyLen;
             }
-            position = scanPos;
+            pos = scanPos;
         }
 
+        // Loop exited via `total >= maxLen` without finding a terminator — write back
+        // the final position so the next reader sees where we stopped.
+        position = pos;
         return total;
     }
 

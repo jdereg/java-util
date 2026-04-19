@@ -813,40 +813,73 @@ public final class ReflectionUtils {
     };
 
     /**
-     * Searches for a specific annotation on a class, examining the entire inheritance hierarchy.
-     * Results (including misses) are cached for performance.
+     * Searches for an annotation anywhere in a class's <strong>entire type hierarchy</strong> —
+     * the class itself, every superclass, every implemented interface, and every
+     * super-interface — and returns the first one found. Intended for framework-style,
+     * Spring-{@code AnnotationUtils.findAnnotation()}-equivalent lookup where a type is
+     * considered "marked with {@code @X}" whenever {@code @X} appears anywhere in its
+     * declared contract.
      * <p>
-     * This method performs an exhaustive search through:
+     * <strong>This method intentionally goes beyond the JDK's built-in
+     * {@link Class#getAnnotation(Class)} in two ways:</strong>
+     * <ol>
+     *     <li>It walks the <em>full superclass chain regardless of whether the annotation
+     *         is marked {@link java.lang.annotation.Inherited @Inherited}</em>. The JDK
+     *         only walks superclasses for {@code @Inherited} annotations.</li>
+     *     <li>It also walks all implemented <em>interfaces</em>. The JDK never walks
+     *         interfaces for class annotations, even when {@code @Inherited} is present.</li>
+     * </ol>
+     * <p>
+     * <strong>When to use this method:</strong>
      * <ul>
-     *     <li>The class itself</li>
-     *     <li>All superclasses</li>
-     *     <li>All implemented interfaces</li>
-     *     <li>All super-interfaces</li>
+     *     <li>Framework scanning: "Is this type {@code @Component} / {@code @Transactional} /
+     *         {@code @Audit} anywhere in its contract hierarchy?"</li>
+     *     <li>Interface-defined markers: an annotation on a role interface (e.g.
+     *         {@code @Auditable interface Auditable}) should apply to implementing
+     *         classes without re-annotation.</li>
+     *     <li>AOP / interceptor discovery: checking whether a class participates in a
+     *         cross-cutting concern declared on a base class or interface.</li>
      * </ul>
      * <p>
-     * Key behaviors:
+     * <strong>When NOT to use this method:</strong>
      * <ul>
-     *     <li>Caches both found annotations and misses (nulls)</li>
-     *     <li>Handles different classloaders correctly</li>
-     *     <li>Uses depth-first search through the inheritance hierarchy</li>
-     *     <li>Prevents circular reference issues</li>
-     *     <li>Returns the first matching annotation found</li>
-     *     <li>Thread-safe implementation</li>
+     *     <li>"Identity-tied" annotations whose meaning is specific to the declaring
+     *         class — e.g. JPA {@code @Entity}, json-io {@code @IoNaming} /
+     *         {@code @IoTypeName}, Jackson {@code @JsonNaming}. For those, use
+     *         {@link #getDirectClassAnnotation(Class, Class)} to match the JDK's
+     *         {@code @Inherited}-respecting semantics.</li>
+     *     <li>Code that must match {@link Class#getAnnotation} exactly — again,
+     *         use {@link #getDirectClassAnnotation(Class, Class)}.</li>
+     * </ul>
+     * <p>
+     * <strong>Implementation details:</strong>
+     * <ul>
+     *     <li>Depth-first traversal via a work stack with an {@link IdentitySet}
+     *         visited guard, so type diamonds (interface inherited through multiple
+     *         paths) are visited once.</li>
+     *     <li>Both found results and misses are cached in {@code CLASS_ANNOTATION_CACHE}
+     *         keyed on {@code (class, annotationClass)}, with a {@code NOT_FOUND_ANNOTATION}
+     *         sentinel for the miss entries. The cache is justified here because the
+     *         walk itself is O(superclasses + interfaces); without the cache every
+     *         call would repeat that walk.</li>
+     *     <li>Thread-safe via the underlying {@code LRUCacheStrategy}.</li>
      * </ul>
      * <p>
      * Example usage:
      * <pre>
-     * JsonObject anno = ReflectionUtils.getClassAnnotation(MyClass.class, JsonObject.class);
+     * Transactional anno = ReflectionUtils.getClassAnnotation(UserService.class, Transactional.class);
      * if (anno != null) {
-     *     // Process annotation...
+     *     // UserService, a superclass, OR any implemented interface declared @Transactional
      * }
      * </pre>
      *
-     * @param classToCheck The class to search for the annotation (may be null)
-     * @param annoClass The annotation class to search for
-     * @param <T> The type of the annotation
-     * @return The annotation if found, null if not found or if classToCheck is null
-     * @throws IllegalArgumentException if annoClass is null
+     * @param classToCheck the class whose hierarchy should be searched (may be null)
+     * @param annoClass the annotation class to search for (must not be null)
+     * @param <T> the annotation type
+     * @return the annotation if found anywhere in the type hierarchy, {@code null} if
+     *         not found or if {@code classToCheck} is null
+     * @throws IllegalArgumentException if {@code annoClass} is null
+     * @see #getDirectClassAnnotation(Class, Class) For strict JDK {@code getAnnotation} semantics
      */
     @SuppressWarnings("unchecked")
     public static <T extends Annotation> T getClassAnnotation(final Class<?> classToCheck, final Class<T> annoClass) {
@@ -868,6 +901,81 @@ public final class ReflectionUtils {
         }
 
         return (T) annotation;
+    }
+
+    /**
+     * Returns the annotation if it is present on {@code classToCheck} exactly as the
+     * JDK's {@link Class#getAnnotation(Class)} would — respecting
+     * {@link java.lang.annotation.Inherited @Inherited} for the superclass chain,
+     * but <strong>never</strong> walking interfaces. This is the right method when
+     * you want an annotation's author-declared inheritance semantics honored.
+     * <p>
+     * <strong>Semantics (identical to {@link Class#getAnnotation(Class)}):</strong>
+     * <ul>
+     *     <li>If {@code @X} is declared directly on {@code classToCheck}, it is returned.</li>
+     *     <li>If {@code @X} is marked {@code @Inherited} and declared on a superclass
+     *         but not on {@code classToCheck}, it is returned (JDK walks the superclass
+     *         chain for {@code @Inherited} annotations automatically).</li>
+     *     <li>If {@code @X} is declared only on an interface implemented by
+     *         {@code classToCheck}, {@code null} is returned. The JDK never considers
+     *         interface annotations as inheritable, even under {@code @Inherited}.</li>
+     * </ul>
+     * <p>
+     * <strong>When to use this method:</strong>
+     * <ul>
+     *     <li>"Identity-tied" annotations — JPA {@code @Entity}, json-io
+     *         {@code @IoNaming}, {@code @IoTypeName}, Jackson {@code @JsonNaming},
+     *         Lombok {@code @Data}, etc. For these, the author deliberately chose not
+     *         to mark the annotation {@code @Inherited}; that choice should be
+     *         honored, and interface walks would silently change serialization /
+     *         persistence / processing semantics in surprising ways.</li>
+     *     <li>Any code that was written against {@link Class#getAnnotation(Class)}
+     *         and must preserve its exact behavior.</li>
+     * </ul>
+     * <p>
+     * <strong>When to use {@link #getClassAnnotation(Class, Class)} instead:</strong>
+     * Framework-style lookup where a class should be considered "marked with {@code @X}"
+     * when {@code @X} appears anywhere in its type hierarchy (any superclass or
+     * interface), regardless of {@code @Inherited}. See that method's documentation
+     * for details and use cases.
+     * <p>
+     * <strong>Caching:</strong> this method deliberately does NOT consult
+     * {@code CLASS_ANNOTATION_CACHE}. The JVM already caches annotation instances
+     * per class internally (via {@code Class.reflectionData()}), so
+     * {@code clazz.getAnnotation(annoClass)} is effectively a fast identity-keyed
+     * lookup after the first call. Layering a {@code ClassAnnotationCacheKey}
+     * allocation + {@code ConcurrentHashMap} probe on top of it would be pessimization,
+     * not optimization, and would pollute the hierarchy-walker's cache with
+     * direct-lookup entries that have different semantics.
+     * <p>
+     * Example usage:
+     * <pre>
+     * &#64;IoNaming(IoNaming.Strategy.SNAKE_CASE)
+     * class BaseDto { ... }
+     *
+     * class ChildDto extends BaseDto { ... }
+     *
+     * // Returns the @IoNaming — only if it is @Inherited. @IoNaming is not,
+     * // so this returns null. Semantic correctness: ChildDto didn't opt in.
+     * IoNaming anno = ReflectionUtils.getDirectClassAnnotation(ChildDto.class, IoNaming.class);
+     * </pre>
+     *
+     * @param classToCheck the class to inspect (may be null)
+     * @param annoClass the annotation class to look up (must not be null)
+     * @param <T> the annotation type
+     * @return the annotation if present directly on {@code classToCheck} — or on a
+     *         superclass when the annotation is {@code @Inherited} — otherwise
+     *         {@code null}; also {@code null} if {@code classToCheck} is null
+     * @throws IllegalArgumentException if {@code annoClass} is null
+     * @see #getClassAnnotation(Class, Class) For framework-style full-hierarchy lookup
+     *      (walks interfaces and superclasses regardless of {@code @Inherited})
+     */
+    public static <T extends Annotation> T getDirectClassAnnotation(final Class<?> classToCheck, final Class<T> annoClass) {
+        if (classToCheck == null) {
+            return null;
+        }
+        Convention.throwIfNull(annoClass, "annotation class cannot be null");
+        return classToCheck.getAnnotation(annoClass);
     }
 
     private static <T extends Annotation> T findClassAnnotation(Class<?> classToCheck, Class<T> annoClass) {

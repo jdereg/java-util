@@ -529,6 +529,7 @@ A high-performance `Set` implementation for `Class` objects that leverages Java'
 ### Key Features
 
 - **Ultra-fast membership tests**: 2-10x faster than `HashSet` and 3-15x faster than `ConcurrentHashMap.keySet()` for `contains()` operations
+- **Typed fast path**: `containsClass(Class)` skips the `instanceof Class` guard for hot paths
 - **Thread-safe**: Fully concurrent support for all operations
 - **Complete Set interface**: Implements the full `Set` contract
 - **Null support**: Null elements are properly supported
@@ -545,9 +546,12 @@ ClassValueSet blockedClasses = ClassValueSet.of(
     System.class
 );
 
-// Fast membership check in security-sensitive code
+// Fast membership check in security-sensitive code.
+// containsClass(Class) is the typed fast path — it skips the null check and the
+// instanceof-Class guard that contains(Object) must perform, compiling to a
+// near-direct ClassValue.get(type) call.
 public void verifyClass(Class<?> clazz) {
-    if (blockedClasses.contains(clazz)) {
+    if (blockedClasses.containsClass(clazz)) {
         throw new SecurityException("Access to " + clazz.getName() + " is not allowed");
     }
 }
@@ -561,7 +565,8 @@ ClassValueSet fromCollection = ClassValueSet.from(existingCollection);
 
 The `ClassValueSet` provides dramatically improved membership testing performance:
 
-- **contains()**: 2-10x faster than standard sets due to JVM-optimized `ClassValue` caching
+- **containsClass(Class)**: Typed fast path — skips the `instanceof` guard that `contains(Object)` must perform; prefer this in hot paths
+- **contains(Object)**: 2-10x faster than standard sets due to JVM-optimized `ClassValue` caching
 - **add() / remove()**: Comparable to ConcurrentHashMap-backed sets (standard performance)
 - **Best for**: Read-heavy workloads where membership tests vastly outnumber modifications
 
@@ -571,6 +576,7 @@ The `ClassValueSet` provides dramatically improved membership testing performanc
 - Thread-local caching eliminates contention for membership tests
 - All standard `Set` operations are supported
 - Thread-safe - no external synchronization required
+- For `containsClass(Class)` to resolve statically, hold the reference as `ClassValueSet` (not `Set<Class<?>>`)
 
 ### Important Performance Warning
 
@@ -583,6 +589,10 @@ Set<Class<?>> slowSet = Collections.unmodifiableSet(blockedClasses);
 // Instead, use the built-in unmodifiable view method
 Set<Class<?>> fastSet = blockedClasses.unmodifiableView();
 ```
+
+Note: `unmodifiableView()` returns a `Set<Class<?>>`, which does not expose
+`containsClass(Class)`. Callers that need the typed fast path should hold the view as a
+reference to the raw `ClassValueSet`.
 
 ### Ideal Use Cases
 
@@ -1497,6 +1507,7 @@ A high-performance `Map` implementation keyed on `Class` objects that leverages 
 ### Key Features
 
 - **Ultra-fast lookups**: 2-10x faster than `HashMap` and 3-15x faster than `ConcurrentHashMap` for `get()` operations
+- **Typed fast path**: `getByClass(Class)` skips the `instanceof Class` guard for hot paths
 - **Thread-safe**: Fully concurrent support for all operations
 - **Drop-in replacement**: Completely implements `ConcurrentMap` interface
 - **Null support**: Both null keys and null values are supported
@@ -1513,9 +1524,11 @@ handlerRegistry.put(String.class, new StringHandler());
 handlerRegistry.put(Integer.class, new IntegerHandler());
 handlerRegistry.put(List.class, new ListHandler());
 
-// Ultra-fast lookup in performance-critical code
+// Ultra-fast lookup in performance-critical code.
+// getByClass(Class) is the typed fast path — it skips the instanceof-Class guard
+// that get(Object) must perform, compiling to a near-direct ClassValue.get(type) call.
 public void process(Object object) {
-    Handler handler = handlerRegistry.get(object.getClass());
+    Handler handler = handlerRegistry.getByClass(object.getClass());
     if (handler != null) {
         handler.handle(object);
     }
@@ -1526,7 +1539,8 @@ public void process(Object object) {
 
 The `ClassValueMap` provides dramatically improved lookup performance:
 
-- **get() / containsKey()**: 2-10x faster than standard maps due to JVM-optimized `ClassValue` caching
+- **getByClass(Class)**: Typed fast path — skips the `instanceof` guard that `get(Object)` must perform; prefer this in hot paths
+- **get(Object) / containsKey()**: 2-10x faster than standard maps due to JVM-optimized `ClassValue` caching
 - **put() / remove()**: Comparable to `ConcurrentHashMap` (standard performance)
 - **Best for**: Read-heavy workloads where lookups vastly outnumber modifications
 
@@ -1536,6 +1550,7 @@ The `ClassValueMap` provides dramatically improved lookup performance:
 - `ClassValue` provides thread-local caching and identity-based lookup optimization
 - All standard Map operations are supported, including bulk operations
 - Thread-safe - no external synchronization required
+- For `getByClass(Class)` to resolve statically, hold the reference as `ClassValueMap<V>` (not `Map<Class<?>, V>`)
 
 ### Important Performance Warning
 
@@ -1548,6 +1563,10 @@ Map<Class<?>, Handler> slowMap = Collections.unmodifiableMap(handlerRegistry);
 // Instead, use the built-in unmodifiable view method
 Map<Class<?>, Handler> fastMap = handlerRegistry.unmodifiableView();
 ```
+
+Note: `unmodifiableView()` returns a `Map<Class<?>, V>`, which does not expose
+`getByClass(Class)`. Callers that need the typed fast path should hold the view as a
+reference to the raw `ClassValueMap`.
 
 ### Ideal Use Cases
 

@@ -26,6 +26,19 @@ import java.util.concurrent.atomic.AtomicBoolean;
  *   <li>Most significant when checking the same classes repeatedly</li>
  * </ul>
  *
+ * <h2>Typed fast path: {@link #containsClass(Class)}</h2>
+ * <p>
+ * The standard {@link #contains(Object)} method must accept an {@code Object} and perform both
+ * a null check and a runtime {@code o.getClass() != Class.class} guard before routing to the
+ * {@link ClassValue} cache (non-{@code Class} inputs return {@code false}). When the caller
+ * already knows the input is a {@code Class}, {@link #containsClass(Class)} skips both guards
+ * and compiles to a near-direct {@link ClassValue#get(Class)} call — a JIT-intrinsified,
+ * identity-based per-{@code Class} load.
+ * <p>
+ * For performance-critical call sites, prefer {@code containsClass(Class)}. To take advantage of
+ * it, hold the field as {@code ClassValueSet} (not {@code Set<Class<?>>}), so the compiler
+ * resolves the typed lookup statically.
+ *
  * <h2>How It Works</h2>
  * <p>
  * The implementation utilizes Java's {@link ClassValue} mechanism, which is specially optimized
@@ -71,9 +84,10 @@ import java.util.concurrent.atomic.AtomicBoolean;
  *     ProcessBuilder.class
  * );
  *
- * // Fast membership check in a security-sensitive context
+ * // Fast membership check in a security-sensitive context — containsClass
+ * // skips the null check + instanceof-Class guard that contains(Object) must perform.
  * public void verifyClass(Class<?> clazz) {
- *     if (blockedClasses.contains(clazz)) {
+ *     if (blockedClasses.containsClass(clazz)) {
  *         throw new SecurityException("Access to " + clazz.getName() + " is not allowed");
  *     }
  * }
@@ -83,7 +97,10 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * <p>
  * Wrapping this class with standard collection wrappers like {@code Collections.unmodifiableSet()}
  * will destroy the {@code ClassValue} performance benefits. Always use the raw {@code ClassValueSet} directly
- * or use the provided {@code unmodifiableView()} method if immutability is required.
+ * or use the provided {@code unmodifiableView()} method if immutability is required. Note that
+ * {@code unmodifiableView()} returns a {@code Set<Class<?>>}, which does not expose
+ * {@link #containsClass(Class)} — callers that need the typed fast path should hold the view as
+ * a reference to the raw {@code ClassValueSet}.
  *
  * @see ClassValue
  * @see Set

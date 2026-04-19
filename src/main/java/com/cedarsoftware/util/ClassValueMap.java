@@ -28,6 +28,19 @@ import java.util.concurrent.atomic.AtomicReference;
  *   <li>Most significant when looking up the same class keys repeatedly</li>
  * </ul>
  *
+ * <h2>Typed fast path: {@link #getByClass(Class)}</h2>
+ * <p>
+ * The standard {@link #get(Object)} method must accept an {@code Object} and perform a runtime
+ * {@code instanceof Class} guard before routing to the {@link ClassValue} cache (keys that are
+ * not {@code Class} instances fall through to the backing {@link ConcurrentHashMap}). When the
+ * caller already knows the key is a {@code Class}, {@link #getByClass(Class)} skips that guard
+ * entirely and compiles to a near-direct {@link ClassValue#get(Class)} call — a JIT-intrinsified,
+ * identity-based per-{@code Class} load.
+ * <p>
+ * For performance-critical call sites, prefer {@code getByClass(Class)}. To take advantage of it,
+ * hold the field as {@code ClassValueMap<V>} (not {@code Map<Class<?>, V>}), so the compiler
+ * resolves the typed lookup statically.
+ *
  * <h2>How It Works</h2>
  * <p>
  * The implementation utilizes Java's {@link ClassValue} mechanism, which is specially optimized
@@ -82,9 +95,10 @@ import java.util.concurrent.atomic.AtomicReference;
  * handlerRegistry.put(Integer.class, new IntegerHandler());
  * handlerRegistry.put(List.class, new ListHandler());
  *
- * // Fast lookup in a performance-critical context
+ * // Fast lookup in a performance-critical context — getByClass skips the
+ * // instanceof-Class guard that get(Object) must perform.
  * public void process(Object obj) {
- *     Handler handler = handlerRegistry.get(obj.getClass());
+ *     Handler handler = handlerRegistry.getByClass(obj.getClass());
  *     if (handler != null) {
  *         handler.handle(obj);
  *     } else {
@@ -98,7 +112,9 @@ import java.util.concurrent.atomic.AtomicReference;
  * Wrapping this class with standard collection wrappers like {@code Collections.unmodifiableMap()}
  * or {@code Collections.newSetFromMap()} will destroy the {@code ClassValue} performance benefits.
  * Always use the raw {@code ClassValueMap} directly or use the provided {@code unmodifiableView()} method
- * if immutability is required.
+ * if immutability is required. Note that {@code unmodifiableView()} returns a
+ * {@code Map<Class<?>, V>}, which does not expose {@link #getByClass(Class)} — callers that need
+ * the typed fast path should hold the view as a reference to the raw {@code ClassValueMap}.
  * </p>
  * @see ClassValue
  * @see Map

@@ -213,7 +213,7 @@ public final class Converter {
     private static final ClassPairMap<Convert<?>> CONVERSION_DB = new ClassPairMap<>();
     private final ClassPairMap<Convert<?>> USER_DB = new ClassPairMap<>();
     private static final ClassPairMap<Convert<?>> FULL_CONVERSION_CACHE = new ClassPairMap<>();
-    private static final Map<Class<?>, String> CUSTOM_ARRAY_NAMES = new ClassValueMap<>();
+    private static final ClassValueMap<String> CUSTOM_ARRAY_NAMES = new ClassValueMap<>();
     private static final AtomicLong INSTANCE_ID_GENERATOR = new AtomicLong(1);
 
     // Identity converter for marking non-standard types and handling identity conversions
@@ -303,8 +303,8 @@ public final class Converter {
          * Looks up a value by (source, target). Zero allocation. Returns {@code null} if absent.
          */
         V get(Class<?> source, Class<?> target) {
-            ClassValueMap<V> byTarget = outer.get(source);
-            return byTarget == null ? null : byTarget.get(target);
+            ClassValueMap<V> byTarget = outer.getByClass(source);
+            return byTarget == null ? null : byTarget.getByClass(target);
         }
 
         /**
@@ -328,7 +328,7 @@ public final class Converter {
          * Removes the value at (source, target). Returns the previous value or {@code null}.
          */
         V remove(Class<?> source, Class<?> target) {
-            ClassValueMap<V> byTarget = outer.get(source);
+            ClassValueMap<V> byTarget = outer.getByClass(source);
             return byTarget == null ? null : byTarget.remove(target);
         }
 
@@ -394,7 +394,7 @@ public final class Converter {
         // Internal: obtain (or lazily create) the inner map for a given source class,
         // coordinated via putIfAbsent on the outer ClassValueMap for thread safety.
         private ClassValueMap<V> innerForWrite(Class<?> source) {
-            ClassValueMap<V> byTarget = outer.get(source);
+            ClassValueMap<V> byTarget = outer.getByClass(source);
             if (byTarget == null) {
                 ClassValueMap<V> fresh = new ClassValueMap<>();
                 ClassValueMap<V> existing = outer.putIfAbsent(source, fresh);
@@ -2277,7 +2277,7 @@ public final class Converter {
     static String getShortName(Class<?> type) {
         if (type.isArray()) {
             // Check if the array type has a custom short name
-            String customName = CUSTOM_ARRAY_NAMES.get(type);
+            String customName = CUSTOM_ARRAY_NAMES.getByClass(type);
             if (customName != null) {
                 return customName;
             }

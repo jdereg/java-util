@@ -355,15 +355,15 @@ public class ClassUtilities {
     private static final Map<String, Class<?>> BUILTIN_ALIASES = new ConcurrentHashMap<>();
     private static final Map<String, Class<?>> USER_ALIASES = new ConcurrentHashMap<>();
     private static final Map<Class<?>, Class<?>> wrapperMap;
-    private static final Map<Class<?>, Class<?>> PRIMITIVE_TO_WRAPPER = new ClassValueMap<>();
-    private static final Map<Class<?>, Class<?>> WRAPPER_TO_PRIMITIVE = new ClassValueMap<>();
+    private static final ClassValueMap<Class<?>> PRIMITIVE_TO_WRAPPER = new ClassValueMap<>();
+    private static final ClassValueMap<Class<?>> WRAPPER_TO_PRIMITIVE = new ClassValueMap<>();
     
     // Primitive widening conversion distances (JLS 5.1.2)
     // Maps from source primitive to Map<destination primitive, distance>
     private static final Map<Class<?>, Map<Class<?>, Integer>> PRIMITIVE_WIDENING_DISTANCES;
 
     // Cache for OSGi ClassLoader to avoid repeated reflection calls
-    private static final Map<Class<?>, ClassLoader> osgiClassLoaders = new ClassValueMap<>();
+    private static final ClassValueMap<ClassLoader> osgiClassLoaders = new ClassValueMap<>();
     private static final ClassLoader SYSTEM_LOADER = ClassLoader.getSystemClassLoader();
     // Counter-based ThreadLocal for reentrant unsafe mode support.
     // Each setUseUnsafe(true) increments, each setUseUnsafe(false) decrements.
@@ -424,11 +424,11 @@ public class ClassUtilities {
         }
         return defaultValue;
     }
-    private static final Map<Class<?>, Supplier<Object>> DIRECT_CLASS_MAPPING = new ClassValueMap<>();
+    private static final ClassValueMap<Supplier<Object>> DIRECT_CLASS_MAPPING = new ClassValueMap<>();
     private static final Map<Class<?>, Supplier<Object>> ASSIGNABLE_CLASS_MAPPING = new LinkedHashMap<>();
     // Cache for assignable type lookups to avoid repeated O(n) scans of ASSIGNABLE_CLASS_MAPPING.
     // Uses Optional to distinguish "no match" (Optional.empty()) from "not cached" (null).
-    private static final Map<Class<?>, Optional<Supplier<Object>>> ASSIGNABLE_TYPE_CACHE = new ClassValueMap<>();
+    private static final ClassValueMap<Optional<Supplier<Object>>> ASSIGNABLE_TYPE_CACHE = new ClassValueMap<>();
     /**
      * A cache that maps a Class<?> to its associated enum type (if any).
      */
@@ -445,9 +445,9 @@ public class ClassUtilities {
      * - Optional.empty() = no constructor works, go directly to unsafe or fail
      * - null (not in map) = not yet determined
      */
-    private static final Map<Class<?>, Optional<Constructor<?>>> SUCCESSFUL_CONSTRUCTOR_CACHE = new ClassValueMap<>();
+    private static final ClassValueMap<Optional<Constructor<?>>> SUCCESSFUL_CONSTRUCTOR_CACHE = new ClassValueMap<>();
     private static final Map<Class<?>, Map<ArgumentShapeKey, Optional<ConstructorPlan>>> CONSTRUCTOR_PLAN_CACHE = new ClassValueMap<>();
-    private static final Map<Class<?>, Boolean> NAMED_PARAMETER_MATCHING_VIABLE_CACHE = new ClassValueMap<>();
+    private static final ClassValueMap<Boolean> NAMED_PARAMETER_MATCHING_VIABLE_CACHE = new ClassValueMap<>();
 
     private static final class NullArgType { }
     private static final Class<?> NULL_ARG_TYPE = NullArgType.class;
@@ -785,7 +785,7 @@ public class ClassUtilities {
         if (toType == null) {
             throw new IllegalArgumentException("toType cannot be null");
         }
-        return WRAPPER_TO_PRIMITIVE.get(toType);
+        return WRAPPER_TO_PRIMITIVE.getByClass(toType);
     }
 
     /**
@@ -887,8 +887,8 @@ public class ClassUtilities {
         boolean dp = isPrimitive(destination);
         if (sp && dp) {
             // Get the actual primitive types (unwrap if needed)
-            Class<?> sourcePrim = source.isPrimitive() ? source : WRAPPER_TO_PRIMITIVE.get(source);
-            Class<?> destPrim = destination.isPrimitive() ? destination : WRAPPER_TO_PRIMITIVE.get(destination);
+            Class<?> sourcePrim = source.isPrimitive() ? source : WRAPPER_TO_PRIMITIVE.getByClass(source);
+            Class<?> destPrim = destination.isPrimitive() ? destination : WRAPPER_TO_PRIMITIVE.getByClass(destination);
             
             if (sourcePrim != null && destPrim != null) {
                 // Calculate widening distance (includes same type check)
@@ -902,7 +902,7 @@ public class ClassUtilities {
         if (sp && !dp) {
             // Source is primitive/wrapper, destination is reference type
             // Box the primitive if needed, then check hierarchy distance
-            Class<?> src = source.isPrimitive() ? PRIMITIVE_TO_WRAPPER.get(source) : source;
+            Class<?> src = source.isPrimitive() ? PRIMITIVE_TO_WRAPPER.getByClass(source) : source;
             if (src != null) {
                 return getClassHierarchyInfo(src).getDistance(destination);
             }
@@ -1248,7 +1248,7 @@ public class ClassUtilities {
             return primitiveClass;
         }
 
-        Class<?> c = PRIMITIVE_TO_WRAPPER.get(primitiveClass);
+        Class<?> c = PRIMITIVE_TO_WRAPPER.getByClass(primitiveClass);
 
         if (c == null) {
             throw new IllegalArgumentException("Passed in class: " + primitiveClass + " is not a primitive class");
@@ -1277,7 +1277,7 @@ public class ClassUtilities {
             throw new IllegalArgumentException("Passed in class cannot be null");
         }
 
-        Class<?> primitive = WRAPPER_TO_PRIMITIVE.get(wrapperClass);
+        Class<?> primitive = WRAPPER_TO_PRIMITIVE.getByClass(wrapperClass);
         return primitive != null ? primitive : wrapperClass;
     }
 
@@ -1390,7 +1390,7 @@ public class ClassUtilities {
      * @return the OSGi Bundle's ClassLoader if in an OSGi environment; otherwise, null
      */
     private static ClassLoader getOSGiClassLoader(final Class<?> classFromBundle) {
-        ClassLoader cl = osgiClassLoaders.get(classFromBundle);
+        ClassLoader cl = osgiClassLoaders.getByClass(classFromBundle);
         if (cl != null) {
             return cl;
         }
@@ -1632,14 +1632,14 @@ public class ClassUtilities {
             return converter.convert(null, argType);  // Get the defaults (false, 0, 0.0d, etc.)
         }
 
-        Supplier<Object> directClassMapping = DIRECT_CLASS_MAPPING.get(argType);
+        Supplier<Object> directClassMapping = DIRECT_CLASS_MAPPING.getByClass(argType);
 
         if (directClassMapping != null) {
             return directClassMapping.get();
         }
 
         // Check cache first to avoid repeated O(n) scans of ASSIGNABLE_CLASS_MAPPING
-        Optional<Supplier<Object>> cached = ASSIGNABLE_TYPE_CACHE.get(argType);
+        Optional<Supplier<Object>> cached = ASSIGNABLE_TYPE_CACHE.getByClass(argType);
         if (cached != null) {
             // Cache hit - return cached result (may be empty for "no match")
             return cached.map(Supplier::get).orElse(null);
@@ -2288,7 +2288,7 @@ public class ClassUtilities {
                     new Object[]{sortedConstructors.length, c.getName()});
         }
 
-        Boolean namedMatchingViable = NAMED_PARAMETER_MATCHING_VIABLE_CACHE.get(c);
+        Boolean namedMatchingViable = NAMED_PARAMETER_MATCHING_VIABLE_CACHE.getByClass(c);
         if (namedMatchingViable == null) {
             namedMatchingViable = isNamedParameterMatchingViable(sortedConstructors);
             NAMED_PARAMETER_MATCHING_VIABLE_CACHE.put(c, namedMatchingViable);
@@ -2582,7 +2582,7 @@ public class ClassUtilities {
         }
 
         // Check if we have a previously cached result for this class
-        Optional<Constructor<?>> cachedResult = suppliedArgs.length == 0 ? SUCCESSFUL_CONSTRUCTOR_CACHE.get(c) : null;
+        Optional<Constructor<?>> cachedResult = suppliedArgs.length == 0 ? SUCCESSFUL_CONSTRUCTOR_CACHE.getByClass(c) : null;
 
         if (cachedResult != null) {
             if (!cachedResult.isPresent()) {
@@ -3217,9 +3217,9 @@ public class ClassUtilities {
 
             // Add primitive/wrapper counterpart at distance 1 so that inheritance matching
             // handles boxing/unboxing (e.g., Integer value → int parameter) without a separate phase.
-            Class<?> counterpart = PRIMITIVE_TO_WRAPPER.get(key);
+            Class<?> counterpart = PRIMITIVE_TO_WRAPPER.getByClass(key);
             if (counterpart == null) {
-                counterpart = WRAPPER_TO_PRIMITIVE.get(key);
+                counterpart = WRAPPER_TO_PRIMITIVE.getByClass(key);
             }
             if (counterpart != null && !distanceMap.containsKey(counterpart)) {
                 distanceMap.put(counterpart, 1);

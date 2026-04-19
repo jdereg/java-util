@@ -149,10 +149,15 @@ public class ClassValueMap<V> extends AbstractMap<Class<?>, V> implements Concur
     // - any other value: null key maps to that value
     private final AtomicReference<Object> nullKeyStore = new AtomicReference<>(NO_NULL_KEY_MAPPING);
 
-    // Cached view objects (following JDK AbstractMap/HashMap pattern)
-    private transient Set<Entry<Class<?>, V>> cachedEntrySet;
-    private transient Collection<V> cachedValues;
-    private transient Map<Class<?>, V> cachedUnmodifiableView;
+    // Cached view objects (following JDK AbstractMap/HashMap pattern).
+    // Marked volatile to close the DCL race: without volatile, a thread that reads a
+    // non-null cached view reference has no happens-before guarantee that the view's
+    // internal fields are fully visible. Views are instantiated at most once per map
+    // lifetime, so the volatile write is paid once; the volatile reads on the
+    // entrySet()/values()/unmodifiableView() access paths are off the hot lookup path.
+    private transient volatile Set<Entry<Class<?>, V>> cachedEntrySet;
+    private transient volatile Collection<V> cachedValues;
+    private transient volatile Map<Class<?>, V> cachedUnmodifiableView;
 
     // A ClassValue cache for extremely fast lookups on non-null Class keys.
     // Replaced atomically on clear() to invalidate all cached entries at once.
@@ -257,6 +262,41 @@ public class ClassValueMap<V> extends AbstractMap<Class<?>, V> implements Concur
             return (V) value;
         }
         return null;
+    }
+
+    /**
+     * Typed-access companion to {@link #get(Object)} for callers that already hold a
+     * {@code Class<?>} reference. Bypasses the {@code key.getClass() == Class.class}
+     * type guard that {@link #get(Object)} must perform because its {@code Map}
+     * contract takes {@code Object}. Results are identical to {@link #get(Object)};
+     * the only difference is fewer instructions on the hot path.
+     * <p>
+     * Null-safe: a null {@code key} returns the current null-key mapping (or
+     * {@code null} if none), matching the semantics of {@link #get(Object)} with
+     * a {@code null} argument.
+     * <p>
+     * Use this method anywhere the caller has a {@code Class<?>} in hand —
+     * internal caches, type registries, annotation metadata lookups, conversion
+     * dispatch tables, etc. The saved work is small per call (a {@code GETFIELD}
+     * + {@code CMP} + branch + a cast the JIT doesn't always elide), but adds up
+     * across the millions of calls per second that a library like this sees
+     * through its hot paths.
+     *
+     * @param key the class key, or {@code null}
+     * @return the mapped value, or {@code null} if no mapping exists (or if the
+     *         null key has no mapping, for a {@code null} argument)
+     * @see #get(Object)
+     */
+    @SuppressWarnings("unchecked")
+    public V getByClass(Class<?> key) {
+        if (key == null) {
+            return getNullKeyValue();
+        }
+        Object value = cache.get(key);
+        if (value == NO_VALUE) {
+            return null;
+        }
+        return (V) value;
     }
 
     @Override

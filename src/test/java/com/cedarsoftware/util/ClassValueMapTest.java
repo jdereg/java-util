@@ -637,4 +637,71 @@ class ClassValueMapTest {
                 "ClassValueMap should not be significantly slower than HashMap. " +
                         "HashMap: " + hashMapMs + "ms, ClassValueMap: " + classValueMapMs + "ms");
     }
+
+    @Test
+    void testGetByClassReturnsMappedValue() {
+        ClassValueMap<String> map = new ClassValueMap<>();
+        map.put(String.class, "string-value");
+        map.put(Integer.class, "int-value");
+
+        assertEquals("string-value", map.getByClass(String.class));
+        assertEquals("int-value", map.getByClass(Integer.class));
+    }
+
+    @Test
+    void testGetByClassReturnsNullWhenAbsent() {
+        ClassValueMap<String> map = new ClassValueMap<>();
+        map.put(String.class, "present");
+
+        assertNull(map.getByClass(Integer.class));
+        assertNull(map.getByClass(Object.class));
+    }
+
+    @Test
+    void testGetByClassReturnsNullKeyValue() {
+        ClassValueMap<String> map = new ClassValueMap<>();
+        map.put(null, "null-key-value");
+        map.put(String.class, "string-value");
+
+        assertEquals("null-key-value", map.getByClass(null));
+        assertEquals("string-value", map.getByClass(String.class));
+    }
+
+    @Test
+    void testGetByClassReturnsNullWhenNullKeyNotMapped() {
+        ClassValueMap<String> map = new ClassValueMap<>();
+        map.put(String.class, "string-value");
+
+        assertNull(map.getByClass(null));
+    }
+
+    @Test
+    void testGetByClassAfterRemove() {
+        ClassValueMap<String> map = new ClassValueMap<>();
+        map.put(String.class, "value");
+        assertEquals("value", map.getByClass(String.class));
+
+        map.remove(String.class);
+        assertNull(map.getByClass(String.class));
+    }
+
+    @Test
+    void testGetByClassWithExplicitNullValue() {
+        ClassValueMap<String> map = new ClassValueMap<>();
+        map.put(String.class, null);
+
+        assertTrue(map.containsKey(String.class));
+        assertNull(map.getByClass(String.class));
+    }
+
+    @Test
+    void testGetByClassReturnsSameResultAsGet() {
+        ClassValueMap<String> map = new ClassValueMap<>();
+        map.put(String.class, "value");
+        map.put(null, "null-key");
+
+        assertEquals(map.get(String.class), map.getByClass(String.class));
+        assertEquals(map.get(Integer.class), map.getByClass(Integer.class));
+        assertEquals(map.get(null), map.getByClass(null));
+    }
 }

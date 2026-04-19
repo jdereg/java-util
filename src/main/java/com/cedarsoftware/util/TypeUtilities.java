@@ -41,7 +41,7 @@ public class TypeUtilities {
             ThreadLocal.withInitial(ResolveTypeCacheKey::new);
 
     // Cache for array class lookups to avoid Array.newInstance() allocations
-    private static final Map<Class<?>, Class<?>> ARRAY_CLASS_CACHE = new ClassValueMap<>();
+    private static final ClassValueMap<Class<?>> ARRAY_CLASS_CACHE = new ClassValueMap<>();
 
     /**
      * Made constructor private - this class is static.
@@ -206,7 +206,7 @@ public class TypeUtilities {
      * @return the array class (e.g., String[].class for String.class)
      */
     private static Class<?> getArrayClass(Class<?> componentClass) {
-        Class<?> arrayClass = ARRAY_CLASS_CACHE.get(componentClass);
+        Class<?> arrayClass = ARRAY_CLASS_CACHE.getByClass(componentClass);
         if (arrayClass == null) {
             arrayClass = Array.newInstance(componentClass, 0).getClass();
             ARRAY_CLASS_CACHE.put(componentClass, arrayClass);

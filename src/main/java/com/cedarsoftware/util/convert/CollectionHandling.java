@@ -74,7 +74,7 @@ final class CollectionHandling {
     // Base collection type mappings (most specific to most general)
     private static final Map<Class<?>, Function<Integer, Collection<?>>> BASE_FACTORIES = new LinkedHashMap<>();
 
-    private static final Map<Class<?>, Function<Integer, Collection<?>>> FACTORY_CACHE = new ClassValueMap<>();
+    private static final ClassValueMap<Function<Integer, Collection<?>>> FACTORY_CACHE = new ClassValueMap<>();
 
     static {
         // Initialize special collection handlers (most specific to most general)
@@ -265,7 +265,7 @@ final class CollectionHandling {
     }
 
     private static Function<Integer, Collection<?>> getBaseCollectionFactory(Class<?> targetType) {
-        Function<Integer, Collection<?>> factory = FACTORY_CACHE.get(targetType);
+        Function<Integer, Collection<?>> factory = FACTORY_CACHE.getByClass(targetType);
         if (factory == null) {
             factory = FACTORY_CACHE.computeIfAbsent(targetType, type -> {
                 for (Map.Entry<Class<?>, Function<Integer, Collection<?>>> entry : BASE_FACTORIES.entrySet()) {

@@ -107,7 +107,7 @@ final class Unsafe {
         // Strategy 1: ReflectionFactory — serialization constructor cached per class
         if (reflectionFactory != null) {
             try {
-                Constructor<?> ctor = serializationConstructorCache.get(clazz);
+                Constructor<?> ctor = serializationConstructorCache.getByClass(clazz);
                 if (ctor == null) {
                     ctor = createSerializationConstructor(clazz);
                     if (ctor != null) {

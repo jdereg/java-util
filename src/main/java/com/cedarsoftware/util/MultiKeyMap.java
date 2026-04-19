@@ -992,7 +992,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
 
         // Fast path: O(1) ClassValueMap lookup for common types (replaces 12 sequential class == checks)
         Class<?> clazz = o.getClass();
-        ToIntFunction<Object> hashFn = HASH_FUNCTIONS.get(clazz);
+        ToIntFunction<Object> hashFn = HASH_FUNCTIONS.getByClass(clazz);
         if (hashFn != null) return hashFn.applyAsInt(o);
 
         // BigInteger/BigDecimal: convert to primitive type for consistent hashing
@@ -2952,7 +2952,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
 
         // 0) Same-class fast path: O(1) ClassValueMap lookup (replaces 10 sequential class == checks)
         if (ca == cb) {
-            BiPredicate<Object, Object> cmp = SAME_TYPE_COMPARATORS.get(ca);
+            BiPredicate<Object, Object> cmp = SAME_TYPE_COMPARATORS.getByClass(ca);
             if (cmp != null) return cmp.test(a, b);
         }
 
@@ -3001,7 +3001,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     }
 
     private static long extractLongFast(Object o) {
-        ToLongFunction<Object> extractor = LONG_EXTRACTORS.get(o.getClass());
+        ToLongFunction<Object> extractor = LONG_EXTRACTORS.getByClass(o.getClass());
         if (extractor != null) return extractor.applyAsLong(o);
         return ((Number) o).longValue();
     }

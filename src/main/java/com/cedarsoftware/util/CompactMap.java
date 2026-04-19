@@ -278,7 +278,7 @@ public class CompactMap<K, V> implements Map<K, V> {
      */
     private boolean getCachedLegacyConstructed() {
         Class<?> clazz = getClass();
-        Boolean legacy = LEGACY_CONSTRUCTED_CACHE.get(clazz);
+        Boolean legacy = LEGACY_CONSTRUCTED_CACHE.getByClass(clazz);
         if (legacy == null) {
             legacy = !clazz.getName().startsWith("com.cedarsoftware.util.CompactMap$");
             LEGACY_CONSTRUCTED_CACHE.put(clazz, legacy);

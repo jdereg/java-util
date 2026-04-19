@@ -3254,7 +3254,7 @@ public class ClassUtilities {
         @Override
         protected Boolean computeValue(Class<?> type) {
             // Direct blocked class check (ultra-fast with ClassValueSet)
-            if (BLOCKED_CLASSES.contains(type)) {
+            if (BLOCKED_CLASSES.containsClass(type)) {
                 return Boolean.TRUE;
             }
 
@@ -3264,18 +3264,18 @@ public class ClassUtilities {
             }
 
             // Check if already verified as inheriting from blocked
-            if (INHERITS_FROM_BLOCKED.contains(type)) {
+            if (INHERITS_FROM_BLOCKED.containsClass(type)) {
                 return Boolean.TRUE;
             }
 
             // Check if already verified as safe
-            if (VERIFIED_SAFE_CLASSES.contains(type)) {
+            if (VERIFIED_SAFE_CLASSES.containsClass(type)) {
                 return Boolean.FALSE;
             }
 
             // Need to check inheritance - use ClassHierarchyInfo
             for (Class<?> superType : getClassHierarchyInfo(type).getAllSupertypes()) {
-                if (BLOCKED_CLASSES.contains(superType)) {
+                if (BLOCKED_CLASSES.containsClass(superType)) {
                     // Cache for future checks
                     INHERITS_FROM_BLOCKED.add(type);
                     return Boolean.TRUE;

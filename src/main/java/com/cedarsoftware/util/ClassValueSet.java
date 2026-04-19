@@ -155,6 +155,24 @@ public class ClassValueSet extends AbstractSet<Class<?>> {
         return membershipCache.get((Class<?>) o);
     }
 
+    /**
+     * Typed fast-path membership test for {@link Class} keys. Unlike {@link #contains(Object)},
+     * this skips the null check and the {@code o.getClass() != Class.class} guard that
+     * {@link #contains(Object)} must perform to reject non-{@code Class} keys — compiling
+     * to a near-direct {@link ClassValue#get(Class)} call, which the JVM intrinsifies as a
+     * per-{@code Class} identity load.
+     *
+     * @param clazz the class to test for membership; {@code null} returns the null-element flag
+     * @return {@code true} if this set contains the given class (or {@code null} is mapped when
+     *         {@code clazz} is {@code null})
+     */
+    public boolean containsClass(Class<?> clazz) {
+        if (clazz == null) {
+            return containsNull.get();
+        }
+        return membershipCache.get(clazz);
+    }
+
     @Override
     public boolean add(Class<?> cls) {
         if (cls == null) {

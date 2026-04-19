@@ -314,7 +314,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
 
     // JDK DTO array types that are guaranteed to be 1D (elements can't be arrays/collections)
     // Using ConcurrentHashMap-backed Set for thread-safe, high-performance lookups
-    private static final Set<Class<?>> SIMPLE_ARRAY_TYPES = new ClassValueSet();
+    private static final ClassValueSet SIMPLE_ARRAY_TYPES = new ClassValueSet();
     static {
         // Wrapper types
         SIMPLE_ARRAY_TYPES.add(String[].class);
@@ -1417,7 +1417,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         }
         // Fast path: known simple types are never arrays or collections
         Class<?> c = o.getClass();
-        if (LEAF_TYPES.contains(c)) {
+        if (LEAF_TYPES.containsClass(c)) {
             return false;
         }
         // Check for Collection or array
@@ -1451,7 +1451,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         // === FAST PATH: Known common simple types ===
         // O(1) ClassValueSet lookup (replaces 4 sequential class == checks)
         Class<?> keyClass = key.getClass();
-        if (LEAF_TYPES.contains(keyClass)) {
+        if (LEAF_TYPES.containsClass(keyClass)) {
             return new MultiKey<>(key, computeElementHash(key, caseSensitive), null, 1, MultiKey.KIND_SINGLE);
         }
 
@@ -1822,7 +1822,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         // Handle JDK DTO array types for optimization (elements guaranteed to be simple)
         
         // Handle simple array types efficiently (these can't contain nested arrays/collections)
-        if (SIMPLE_ARRAY_TYPES.contains(clazz)) {
+        if (SIMPLE_ARRAY_TYPES.containsClass(clazz)) {
             
             Object[] objArray = (Object[]) arr;
             final int len = objArray.length;
@@ -1917,7 +1917,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
 
         // Fast path: O(1) ClassValueSet lookup for common leaf types (replaces 9 sequential class == checks)
         Class<?> clazz = current.getClass();
-        if (LEAF_TYPES.contains(clazz)) {
+        if (LEAF_TYPES.containsClass(clazz)) {
             result.add(current);
             return runningHash * 31 + computeElementHash(current, caseSensitive);
         }
@@ -2993,7 +2993,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     }
     
     private static boolean isIntegralLike(Class<?> c) {
-        return INTEGRAL_TYPES.contains(c);
+        return INTEGRAL_TYPES.containsClass(c);
     }
     
     private static boolean isBig(Class<?> c) {

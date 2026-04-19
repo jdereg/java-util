@@ -1004,4 +1004,62 @@ class ClassValueSetTest {
                 "ClassValueSet should not be significantly slower than HashSet. " +
                         "HashSet: " + hashSetMs + "ms, ClassValueSet: " + classValueSetMs + "ms");
     }
+
+    @Test
+    void testContainsClassReturnsTrueWhenPresent() {
+        ClassValueSet set = new ClassValueSet();
+        set.add(String.class);
+        set.add(Integer.class);
+
+        assertTrue(set.containsClass(String.class));
+        assertTrue(set.containsClass(Integer.class));
+    }
+
+    @Test
+    void testContainsClassReturnsFalseWhenAbsent() {
+        ClassValueSet set = new ClassValueSet();
+        set.add(String.class);
+
+        assertFalse(set.containsClass(Integer.class));
+        assertFalse(set.containsClass(Object.class));
+    }
+
+    @Test
+    void testContainsClassReflectsNullElement() {
+        ClassValueSet set = new ClassValueSet();
+        set.add(null);
+        set.add(String.class);
+
+        assertTrue(set.containsClass(null));
+        assertTrue(set.containsClass(String.class));
+    }
+
+    @Test
+    void testContainsClassReturnsFalseWhenNullNotAdded() {
+        ClassValueSet set = new ClassValueSet();
+        set.add(String.class);
+
+        assertFalse(set.containsClass(null));
+    }
+
+    @Test
+    void testContainsClassAfterRemove() {
+        ClassValueSet set = new ClassValueSet();
+        set.add(String.class);
+        assertTrue(set.containsClass(String.class));
+
+        set.remove(String.class);
+        assertFalse(set.containsClass(String.class));
+    }
+
+    @Test
+    void testContainsClassMatchesContainsForClassKeys() {
+        ClassValueSet set = new ClassValueSet();
+        set.add(String.class);
+        set.add(null);
+
+        assertEquals(set.contains(String.class), set.containsClass(String.class));
+        assertEquals(set.contains(Integer.class), set.containsClass(Integer.class));
+        assertEquals(set.contains(null), set.containsClass(null));
+    }
 }

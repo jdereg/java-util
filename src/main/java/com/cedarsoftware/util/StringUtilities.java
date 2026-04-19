@@ -990,13 +990,13 @@ public final class StringUtilities {
      * @return the case-insensitive hash code, or 0 if cs is null
      */
     public static int hashCodeIgnoreCase(CharSequence cs) {
-        if (cs == null) return 0;
-
         // For String, delegate to the optimized String-specific version
         if (cs instanceof String) {
             return hashCodeIgnoreCase((String) cs);
         }
 
+        if (cs == null) return 0;
+        
         // Single-pass optimization with ASCII fast path.
         final int n = cs.length();
         int h = 0;

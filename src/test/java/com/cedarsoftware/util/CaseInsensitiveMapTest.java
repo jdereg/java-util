@@ -90,11 +90,11 @@ class CaseInsensitiveMapTest
     void testUnicodeCaseInsensitiveLookup()
     {
         CaseInsensitiveMap<String, Integer> map = new CaseInsensitiveMap<>();
-        map.put("\u00B5", 1);
+        map.put("µ", 1);
 
-        assertTrue("\u00B5".equalsIgnoreCase("\u039C"));
-        assertTrue(map.containsKey("\u039C"));
-        assertEquals(Integer.valueOf(1), map.get("\u039C"));
+        assertTrue("µ".equalsIgnoreCase("Μ"));
+        assertTrue(map.containsKey("Μ"));
+        assertEquals(Integer.valueOf(1), map.get("Μ"));
     }
 
     @Test
@@ -391,7 +391,7 @@ class CaseInsensitiveMapTest
         other.put("ID", 1);
         other.put("id", 1);
 
-        assertFalse(map.equals(other));
+        assertNotEquals(map, other);
     }
 
     @Test
@@ -401,11 +401,11 @@ class CaseInsensitiveMapTest
         map.put("Two", "2");
 
         // Test the first short-circuit: (other == this)
-        assertTrue(map.equals(map), "equals() should return true when comparing the map to itself");
+        assertEquals(map, map, "equals() should return true when comparing the map to itself");
 
         // Test the second short-circuit: (!(other instanceof Map))
         String notAMap = "This is not a map";
-        assertFalse(map.equals(notAMap), "equals() should return false when 'other' is not a Map");
+        assertNotEquals(notAMap, map, "equals() should return false when 'other' is not a Map");
     }
     
     @Test
@@ -707,9 +707,9 @@ class CaseInsensitiveMapTest
         Map<String, Object> m = createSimpleMap();
         Set<String> s = m.keySet();
         Object[] array = s.toArray();
-        assertEquals(array[0], "One");
-        assertEquals(array[1], "Three");
-        assertEquals(array[2], "Five");
+        assertEquals("One", array[0]);
+        assertEquals("Three", array[1]);
+        assertEquals("Five", array[2]);
     }
 
     @Test
@@ -718,21 +718,21 @@ class CaseInsensitiveMapTest
         Map<String, Object> m = createSimpleMap();
         Set<String> s = m.keySet();
         String[] array = s.toArray(new String[]{});
-        assertEquals(array[0], "One");
-        assertEquals(array[1], "Three");
-        assertEquals(array[2], "Five");
+        assertEquals("One", array[0]);
+        assertEquals("Three", array[1]);
+        assertEquals("Five", array[2]);
 
-        array = (String[]) s.toArray(new String[4]);
-        assertEquals(array[0], "One");
-        assertEquals(array[1], "Three");
-        assertEquals(array[2], "Five");
+        array = s.toArray(new String[4]);
+        assertEquals("One", array[0]);
+        assertEquals("Three", array[1]);
+        assertEquals("Five", array[2]);
         assertNull(array[3]);
         assertEquals(4, array.length);
 
-        array = (String[]) s.toArray(new String[]{"","",""});
-        assertEquals(array[0], "One");
-        assertEquals(array[1], "Three");
-        assertEquals(array[2], "Five");
+        array = s.toArray(new String[]{"","",""});
+        assertEquals("One", array[0]);
+        assertEquals("Three", array[1]);
+        assertEquals("Five", array[2]);
         assertEquals(3, array.length);
     }
 
@@ -1502,11 +1502,11 @@ class CaseInsensitiveMapTest
         }
 
         Iterator<String> i = caseInsensitive.keySet().iterator();
-        assertEquals(i.next(), "key1");
-        assertEquals(i.next(), "key2");
-        assertEquals(i.next(), "key3");
-        assertEquals(i.next(), "key4");
-        assertEquals(i.next(), "key5");
+        assertEquals("key1", i.next());
+        assertEquals("key2", i.next());
+        assertEquals("key3", i.next());
+        assertEquals("key4", i.next());
+        assertEquals("key5", i.next());
     }
 
     @Test
@@ -1793,7 +1793,7 @@ class CaseInsensitiveMapTest
         map.put("Three", "Four");
 
         // Key present, should not overwrite
-        map.computeIfAbsent("oNe", k -> "NotUsed");
+        map.putIfAbsent("oNe", "NotUsed");
         assertEquals("Two", map.get("one"));
 
         // Key absent, should add

@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class FastReaderTest {
@@ -540,5 +541,70 @@ class FastReaderTest {
         if (startPos < 0) startPos = 0;
         String expected = largeContent.substring(startPos, largeContent.length() / 2);
         assertEquals(expected, snippet);
+    }
+
+    @Test
+    void testReadUntilBorrowedReturnsSliceAndLeavesDelimiter() throws IOException {
+        fastReader = new FastReader(new StringReader("abc\"rest"), CUSTOM_BUFFER_SIZE, CUSTOM_PUSHBACK_SIZE);
+        FastReader.BufferSlice slice = new FastReader.BufferSlice();
+
+        int len = fastReader.readUntilBorrowed(slice, 16, '"', '\\');
+
+        assertEquals(3, len);
+        assertEquals(3, slice.getLength());
+        assertEquals("abc", new String(slice.getBuffer(), slice.getOffset(), slice.getLength()));
+        assertEquals('"', fastReader.read());
+    }
+
+    @Test
+    void testReadUntilBorrowedReturnsCopyRequiredWhenTokenCrossesBuffer() {
+        fastReader = new FastReader(new StringReader("abcdef\""), 4, CUSTOM_PUSHBACK_SIZE);
+        FastReader.BufferSlice slice = new FastReader.BufferSlice();
+
+        assertEquals(FastReader.COPY_REQUIRED, fastReader.readUntilBorrowed(slice, 16, '"', '\\'));
+    }
+
+    @Test
+    void testReadLineBorrowedReturnsSliceAndConsumesLineEnding() throws IOException {
+        fastReader = new FastReader(new StringReader("first\nsecond"), CUSTOM_BUFFER_SIZE, CUSTOM_PUSHBACK_SIZE);
+        FastReader.BufferSlice slice = new FastReader.BufferSlice();
+
+        int len = fastReader.readLineBorrowed(slice);
+
+        assertEquals(5, len);
+        assertEquals("first", new String(slice.getBuffer(), slice.getOffset(), slice.getLength()));
+        assertEquals('s', fastReader.read());
+    }
+
+    @Test
+    void testReadLineBorrowedHandlesCrLfInCurrentBuffer() throws IOException {
+        fastReader = new FastReader(new StringReader("first\r\nsecond"), CUSTOM_BUFFER_SIZE, CUSTOM_PUSHBACK_SIZE);
+        FastReader.BufferSlice slice = new FastReader.BufferSlice();
+
+        int len = fastReader.readLineBorrowed(slice);
+
+        assertEquals(5, len);
+        assertEquals("first", new String(slice.getBuffer(), slice.getOffset(), slice.getLength()));
+        assertEquals('s', fastReader.read());
+    }
+
+    @Test
+    void testReadLineBorrowedReturnsCopyRequiredWhenLineCrossesBuffer() {
+        fastReader = new FastReader(new StringReader("abcdef\n"), 4, CUSTOM_PUSHBACK_SIZE);
+        FastReader.BufferSlice slice = new FastReader.BufferSlice();
+
+        assertEquals(FastReader.COPY_REQUIRED, fastReader.readLineBorrowed(slice));
+    }
+
+    @Test
+    void testReadLineBorrowedCanReturnMultipleSlicesFromSameBuffer() {
+        fastReader = new FastReader(new StringReader("first\nsecond\n"), CUSTOM_BUFFER_SIZE, CUSTOM_PUSHBACK_SIZE);
+        FastReader.BufferSlice first = new FastReader.BufferSlice();
+        FastReader.BufferSlice second = new FastReader.BufferSlice();
+
+        assertEquals(5, fastReader.readLineBorrowed(first));
+        assertEquals(6, fastReader.readLineBorrowed(second));
+        assertSame(first.getBuffer(), second.getBuffer());
+        assertEquals("second", new String(second.getBuffer(), second.getOffset(), second.getLength()));
     }
 }

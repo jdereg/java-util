@@ -25,6 +25,12 @@ import java.io.Reader;
  *         limitations under the License.
  */
 public final class FastReader extends Reader {
+    /**
+     * Returned by borrowed-slice methods when the requested token/line is not
+     * fully available in the current internal buffer and the caller should fall
+     * back to the copying API.
+     */
+    public static final int COPY_REQUIRED = Integer.MIN_VALUE;
     private static final int MAX_CONSECUTIVE_ZERO_READS = 3;
     private Reader in;
     private final char[] buf;
@@ -35,6 +41,34 @@ public final class FastReader extends Reader {
     private final char[] pushbackBuffer;
     private int pushbackPosition; // Current position in the pushback buffer
     // Line/col tracking removed for performance - use getLastSnippet() for error context
+
+    /**
+     * Borrowed view of a contiguous range inside {@link FastReader}'s internal buffers.
+     * The contents are valid only until the next read operation on the same reader.
+     */
+    public static final class BufferSlice {
+        private char[] buffer;
+        private int offset;
+        private int length;
+
+        public char[] getBuffer() {
+            return buffer;
+        }
+
+        public int getOffset() {
+            return offset;
+        }
+
+        public int getLength() {
+            return length;
+        }
+
+        private void set(char[] buffer, int offset, int length) {
+            this.buffer = buffer;
+            this.offset = offset;
+            this.length = length;
+        }
+    }
 
     public FastReader(Reader in) {
         this(in, 8192, 16);
@@ -319,6 +353,71 @@ public final class FastReader extends Reader {
     }
 
     /**
+     * Borrow a contiguous slice from the internal buffer up to either delimiter.
+     * <p>
+     * On success, the delimiter is not consumed and the returned length matches
+     * {@code slice.getLength()}. The borrowed slice remains valid only until the
+     * next read operation on this reader. If pushback is active or the requested
+     * range crosses the current buffer boundary before a delimiter or {@code maxLen}
+     * is reached, this method returns {@link #COPY_REQUIRED} without consuming any
+     * characters; callers should then use {@link #readUntil(char[], int, int, char, char)}.
+     *
+     * @param slice destination for the borrowed buffer, offset, and length
+     * @param maxLen maximum number of characters to borrow
+     * @param delim1 first delimiter character to stop at
+     * @param delim2 second delimiter character to stop at
+     * @return borrowed length, -1 on EOF before any chars, or {@link #COPY_REQUIRED}
+     */
+    public int readUntilBorrowed(final BufferSlice slice, int maxLen, char delim1, char delim2) {
+        if (in == null) {
+            ExceptionUtilities.uncheckedThrow(new IOException("in is null"));
+        }
+        if (pushbackPosition < pushbackBufferSize) {
+            return COPY_REQUIRED;
+        }
+
+        int pos = position;
+        int lim = limit;
+        if (pos >= lim) {
+            if (lim == -1) {
+                return -1;
+            }
+            lim = refill();
+            if (lim == -1) {
+                return -1;
+            }
+            pos = position;
+        }
+
+        int end = lim;
+        int requestedEnd = pos + maxLen;
+        if (requestedEnd < end) {
+            end = requestedEnd;
+        }
+
+        char[] b = buf;
+        int scanPos = pos;
+        while (scanPos < end) {
+            char c = b[scanPos];
+            if (c == delim1 || c == delim2) {
+                int len = scanPos - pos;
+                slice.set(b, pos, len);
+                position = scanPos;
+                return len;
+            }
+            scanPos++;
+        }
+
+        if (scanPos - pos == maxLen) {
+            slice.set(b, pos, maxLen);
+            position = scanPos;
+            return maxLen;
+        }
+
+        return COPY_REQUIRED;
+    }
+
+    /**
      * Reads a complete line into dest, handling \n, \r, and \r\n line endings.
      * The line ending is consumed but NOT included in the output.
      * <p>
@@ -459,6 +558,65 @@ public final class FastReader extends Reader {
         // the final position so the next reader sees where we stopped.
         position = pos;
         return total;
+    }
+
+    /**
+     * Borrow a complete line from the current internal buffer without copying.
+     * <p>
+     * The line ending is consumed but not included in the borrowed slice. The slice
+     * remains valid only until the next read operation on this reader. If pushback is
+     * active, the line crosses the current buffer boundary, or CRLF handling would
+     * require looking into the next buffer, this method returns {@link #COPY_REQUIRED}
+     * without consuming any characters; callers should then use
+     * {@link #readLine(char[], int, int)}.
+     *
+     * @param slice destination for the borrowed buffer, offset, and length
+     * @return line length, -1 on EOF before any chars, or {@link #COPY_REQUIRED}
+     */
+    public int readLineBorrowed(final BufferSlice slice) {
+        if (in == null) {
+            ExceptionUtilities.uncheckedThrow(new IOException("in is null"));
+        }
+        if (pushbackPosition < pushbackBufferSize) {
+            return COPY_REQUIRED;
+        }
+
+        int pos = position;
+        int lim = limit;
+        if (pos >= lim) {
+            if (lim == -1) {
+                return -1;
+            }
+            lim = refill();
+            if (lim == -1) {
+                return -1;
+            }
+            pos = position;
+        }
+
+        char[] b = buf;
+        int scanPos = pos;
+        while (scanPos < lim) {
+            char c = b[scanPos];
+            if (c <= '\r' && (c == '\n' || c == '\r')) {
+                int afterTerminator = scanPos + 1;
+                if (c == '\r') {
+                    if (afterTerminator >= lim) {
+                        return COPY_REQUIRED;
+                    }
+                    if (b[afterTerminator] == '\n') {
+                        afterTerminator++;
+                    }
+                }
+                int len = scanPos - pos;
+                slice.set(b, pos, len);
+                position = afterTerminator;
+                return len;
+            }
+            scanPos++;
+        }
+
+        return COPY_REQUIRED;
     }
 
     @Override

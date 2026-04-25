@@ -11,6 +11,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class FastReaderTest {
 
@@ -553,6 +554,7 @@ class FastReaderTest {
         assertEquals(3, len);
         assertEquals(3, slice.getLength());
         assertEquals("abc", new String(slice.getBuffer(), slice.getOffset(), slice.getLength()));
+        slice.release();
         assertEquals('"', fastReader.read());
     }
 
@@ -573,6 +575,7 @@ class FastReaderTest {
 
         assertEquals(5, len);
         assertEquals("first", new String(slice.getBuffer(), slice.getOffset(), slice.getLength()));
+        slice.release();
         assertEquals('s', fastReader.read());
     }
 
@@ -585,6 +588,7 @@ class FastReaderTest {
 
         assertEquals(5, len);
         assertEquals("first", new String(slice.getBuffer(), slice.getOffset(), slice.getLength()));
+        slice.release();
         assertEquals('s', fastReader.read());
     }
 
@@ -603,8 +607,79 @@ class FastReaderTest {
         FastReader.BufferSlice second = new FastReader.BufferSlice();
 
         assertEquals(5, fastReader.readLineBorrowed(first));
+        char[] firstBuffer = first.getBuffer();
+        first.release();
         assertEquals(6, fastReader.readLineBorrowed(second));
-        assertSame(first.getBuffer(), second.getBuffer());
+        assertSame(firstBuffer, second.getBuffer());
         assertEquals("second", new String(second.getBuffer(), second.getOffset(), second.getLength()));
+        second.release();
+    }
+
+    @Test
+    void testBorrowedSliceMustBeReleasedBeforeNextRead() throws IOException {
+        assertTrue(assertionsEnabled(), "Assertions must be enabled for borrowed-slice lifecycle tests");
+        fastReader = new FastReader(new StringReader("abc\"rest"), CUSTOM_BUFFER_SIZE, CUSTOM_PUSHBACK_SIZE);
+        FastReader.BufferSlice slice = new FastReader.BufferSlice();
+
+        assertEquals(3, fastReader.readUntilBorrowed(slice, 16, '"', '\\'));
+        char[] chars = slice.getBuffer();
+        int offset = slice.getOffset();
+        int length = slice.getLength();
+        assertEquals("abc", new String(chars, offset, length));
+
+        assertThrows(AssertionError.class, () -> fastReader.read());
+
+        slice.release();
+        assertEquals('"', fastReader.read());
+    }
+
+    @Test
+    void testBorrowedSliceMustBeReleasedBeforeNextBorrowedRead() {
+        assertTrue(assertionsEnabled(), "Assertions must be enabled for borrowed-slice lifecycle tests");
+        fastReader = new FastReader(new StringReader("first\nsecond\n"), CUSTOM_BUFFER_SIZE, CUSTOM_PUSHBACK_SIZE);
+        FastReader.BufferSlice first = new FastReader.BufferSlice();
+        FastReader.BufferSlice second = new FastReader.BufferSlice();
+
+        assertEquals(5, fastReader.readLineBorrowed(first));
+        assertThrows(AssertionError.class, () -> fastReader.readLineBorrowed(second));
+
+        first.release();
+        assertEquals(6, fastReader.readLineBorrowed(second));
+        assertEquals("second", new String(second.getBuffer(), second.getOffset(), second.getLength()));
+        second.release();
+    }
+
+    @Test
+    void testBorrowedSliceAccessFailsAfterRelease() {
+        assertTrue(assertionsEnabled(), "Assertions must be enabled for borrowed-slice lifecycle tests");
+        fastReader = new FastReader(new StringReader("abc\"rest"), CUSTOM_BUFFER_SIZE, CUSTOM_PUSHBACK_SIZE);
+        FastReader.BufferSlice slice = new FastReader.BufferSlice();
+
+        assertEquals(3, fastReader.readUntilBorrowed(slice, 16, '"', '\\'));
+        assertEquals("abc", new String(slice.getBuffer(), slice.getOffset(), slice.getLength()));
+
+        slice.release();
+        assertThrows(AssertionError.class, slice::getBuffer);
+        assertThrows(AssertionError.class, slice::getOffset);
+        assertThrows(AssertionError.class, slice::getLength);
+    }
+
+    @Test
+    void testBorrowedSliceMustBeReleasedBeforeClose() {
+        assertTrue(assertionsEnabled(), "Assertions must be enabled for borrowed-slice lifecycle tests");
+        fastReader = new FastReader(new StringReader("abc\"rest"), CUSTOM_BUFFER_SIZE, CUSTOM_PUSHBACK_SIZE);
+        FastReader.BufferSlice slice = new FastReader.BufferSlice();
+
+        assertEquals(3, fastReader.readUntilBorrowed(slice, 16, '"', '\\'));
+        assertThrows(AssertionError.class, () -> fastReader.close());
+
+        slice.release();
+        fastReader.close();
+    }
+
+    private static boolean assertionsEnabled() {
+        boolean enabled = false;
+        assert enabled = true;
+        return enabled;
     }
 }

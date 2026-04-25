@@ -40,33 +40,72 @@ public final class FastReader extends Reader {
     private int limit;    // Number of characters currently in the buffer, or -1 for EOF
     private final char[] pushbackBuffer;
     private int pushbackPosition; // Current position in the pushback buffer
+    private BufferSlice activeBorrowedSlice;
     // Line/col tracking removed for performance - use getLastSnippet() for error context
 
     /**
      * Borrowed view of a contiguous range inside {@link FastReader}'s internal buffers.
-     * The contents are valid only until the next read operation on the same reader.
+     * The contents are valid only until {@link #release()} or the next read operation on
+     * the same reader, whichever comes first.
+     * <p>
+     * Callers must consume or copy the slice contents, then call {@link #release()}
+     * before invoking any other {@link FastReader} method that reads, pushes back, or
+     * closes the reader. With assertions enabled, {@code FastReader} verifies this
+     * lifecycle and fails fast if a borrowed slice is left outstanding.
      */
     public static final class BufferSlice {
         private char[] buffer;
         private int offset;
         private int length;
+        private FastReader reader;
+        private boolean released = true;
 
         public char[] getBuffer() {
+            assert isAccessibleForDebug() : "BufferSlice is not active; consume borrowed data before release";
             return buffer;
         }
 
         public int getOffset() {
+            assert isAccessibleForDebug() : "BufferSlice is not active; consume borrowed data before release";
             return offset;
         }
 
         public int getLength() {
+            assert isAccessibleForDebug() : "BufferSlice is not active; consume borrowed data before release";
             return length;
+        }
+
+        /**
+         * Mark this borrowed slice as consumed. Call after copying or otherwise
+         * materializing the borrowed contents, and before the next FastReader operation.
+         */
+        public void release() {
+            assert releaseForDebug();
         }
 
         private void set(char[] buffer, int offset, int length) {
             this.buffer = buffer;
             this.offset = offset;
             this.length = length;
+        }
+
+        private boolean attachForDebug(FastReader reader) {
+            this.reader = reader;
+            this.released = false;
+            return true;
+        }
+
+        private boolean releaseForDebug() {
+            released = true;
+            FastReader owner = reader;
+            if (owner != null && owner.activeBorrowedSlice == this) {
+                owner.activeBorrowedSlice = null;
+            }
+            return true;
+        }
+
+        private boolean isAccessibleForDebug() {
+            return !released;
         }
     }
 
@@ -111,6 +150,16 @@ public final class FastReader extends Reader {
         this.pushbackPosition = this.pushbackBufferSize;
     }
 
+    private boolean noActiveBorrowedSliceForDebug() {
+        BufferSlice slice = activeBorrowedSlice;
+        return slice == null || slice.released;
+    }
+
+    private boolean borrowedSliceCreatedForDebug(BufferSlice slice) {
+        activeBorrowedSlice = slice;
+        return slice.attachForDebug(this);
+    }
+
     private void fill() {
         final int lim = limit;
         if (lim != -1 && position >= lim) {
@@ -153,6 +202,8 @@ public final class FastReader extends Reader {
         if (pushbackPosition == 0) {
             ExceptionUtilities.uncheckedThrow(new IOException("Pushback buffer is full"));
         }
+        assert noActiveBorrowedSliceForDebug() :
+                "FastReader.BufferSlice must be released before pushback()";
         pushbackBuffer[--pushbackPosition] = ch;
     }
 
@@ -161,6 +212,8 @@ public final class FastReader extends Reader {
         if (in == null) {
             ExceptionUtilities.uncheckedThrow(new IOException("in is null"));
         }
+        assert noActiveBorrowedSliceForDebug() :
+                "FastReader.BufferSlice must be released before read()";
 
         // First, serve from pushback buffer if available
         if (pushbackPosition < pushbackBufferSize) {
@@ -187,6 +240,8 @@ public final class FastReader extends Reader {
         if (len == 0) {
             return 0;
         }
+        assert noActiveBorrowedSliceForDebug() :
+                "FastReader.BufferSlice must be released before read(char[], int, int)";
 
         int charsRead = 0;
 
@@ -242,6 +297,8 @@ public final class FastReader extends Reader {
         if (in == null) {
             ExceptionUtilities.uncheckedThrow(new IOException("in is null"));
         }
+        assert noActiveBorrowedSliceForDebug() :
+                "FastReader.BufferSlice must be released before readUntil()";
 
         int totalRead = 0;
         final char[] locBuf = buf;
@@ -356,11 +413,12 @@ public final class FastReader extends Reader {
      * Borrow a contiguous slice from the internal buffer up to either delimiter.
      * <p>
      * On success, the delimiter is not consumed and the returned length matches
-     * {@code slice.getLength()}. The borrowed slice remains valid only until the
-     * next read operation on this reader. If pushback is active or the requested
-     * range crosses the current buffer boundary before a delimiter or {@code maxLen}
-     * is reached, this method returns {@link #COPY_REQUIRED} without consuming any
-     * characters; callers should then use {@link #readUntil(char[], int, int, char, char)}.
+     * {@code slice.getLength()}. The caller must consume or copy the borrowed
+     * contents and call {@link BufferSlice#release()} before the next read operation
+     * on this reader. If pushback is active or the requested range crosses the
+     * current buffer boundary before a delimiter or {@code maxLen} is reached, this
+     * method returns {@link #COPY_REQUIRED} without consuming any characters; callers
+     * should then use {@link #readUntil(char[], int, int, char, char)}.
      *
      * @param slice destination for the borrowed buffer, offset, and length
      * @param maxLen maximum number of characters to borrow
@@ -372,6 +430,8 @@ public final class FastReader extends Reader {
         if (in == null) {
             ExceptionUtilities.uncheckedThrow(new IOException("in is null"));
         }
+        assert noActiveBorrowedSliceForDebug() :
+                "FastReader.BufferSlice must be released before readUntilBorrowed()";
         if (pushbackPosition < pushbackBufferSize) {
             return COPY_REQUIRED;
         }
@@ -402,6 +462,7 @@ public final class FastReader extends Reader {
             if (c == delim1 || c == delim2) {
                 int len = scanPos - pos;
                 slice.set(b, pos, len);
+                assert borrowedSliceCreatedForDebug(slice);
                 position = scanPos;
                 return len;
             }
@@ -410,6 +471,7 @@ public final class FastReader extends Reader {
 
         if (scanPos - pos == maxLen) {
             slice.set(b, pos, maxLen);
+            assert borrowedSliceCreatedForDebug(slice);
             position = scanPos;
             return maxLen;
         }
@@ -440,6 +502,8 @@ public final class FastReader extends Reader {
         if (in == null) {
             ExceptionUtilities.uncheckedThrow(new IOException("in is null"));
         }
+        assert noActiveBorrowedSliceForDebug() :
+                "FastReader.BufferSlice must be released before readLine()";
 
         int total = 0;
 
@@ -564,10 +628,11 @@ public final class FastReader extends Reader {
      * Borrow a complete line from the current internal buffer without copying.
      * <p>
      * The line ending is consumed but not included in the borrowed slice. The slice
-     * remains valid only until the next read operation on this reader. If pushback is
-     * active, the line crosses the current buffer boundary, or CRLF handling would
-     * require looking into the next buffer, this method returns {@link #COPY_REQUIRED}
-     * without consuming any characters; callers should then use
+     * must be consumed or copied and then released via {@link BufferSlice#release()}
+     * before the next read operation on this reader. If pushback is active, the line
+     * crosses the current buffer boundary, or CRLF handling would require looking
+     * into the next buffer, this method returns {@link #COPY_REQUIRED} without
+     * consuming any characters; callers should then use
      * {@link #readLine(char[], int, int)}.
      *
      * @param slice destination for the borrowed buffer, offset, and length
@@ -577,6 +642,8 @@ public final class FastReader extends Reader {
         if (in == null) {
             ExceptionUtilities.uncheckedThrow(new IOException("in is null"));
         }
+        assert noActiveBorrowedSliceForDebug() :
+                "FastReader.BufferSlice must be released before readLineBorrowed()";
         if (pushbackPosition < pushbackBufferSize) {
             return COPY_REQUIRED;
         }
@@ -610,6 +677,7 @@ public final class FastReader extends Reader {
                 }
                 int len = scanPos - pos;
                 slice.set(b, pos, len);
+                assert borrowedSliceCreatedForDebug(slice);
                 position = afterTerminator;
                 return len;
             }
@@ -621,6 +689,8 @@ public final class FastReader extends Reader {
 
     @Override
     public void close() {
+        assert noActiveBorrowedSliceForDebug() :
+                "FastReader.BufferSlice must be released before close()";
         if (in != null) {
             try {
                 in.close();

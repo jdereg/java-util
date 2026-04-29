@@ -37,6 +37,7 @@ import java.util.regex.Pattern;
 
 import com.cedarsoftware.util.ClassUtilities;
 import com.cedarsoftware.util.DateUtilities;
+import com.cedarsoftware.util.MathUtilities;
 import com.cedarsoftware.util.RegexUtilities;
 import com.cedarsoftware.util.StringUtilities;
 import com.cedarsoftware.util.geom.Color;
@@ -150,7 +151,7 @@ final class StringConversions {
 
     private static Long toLong(String s, BigDecimal low, BigDecimal high) {
         try {
-            BigDecimal big = new BigDecimal(s);
+            BigDecimal big = MathUtilities.parseBigDecimal(s);
             big = big.setScale(0, RoundingMode.DOWN);
             if (big.compareTo(low) < 0 || big.compareTo(high) > 0) {
                 return null;
@@ -167,7 +168,7 @@ final class StringConversions {
             return 0f;
         }
         try {
-            return Float.valueOf(str);
+            return MathUtilities.parseFloat(str);
         } catch (Exception e) {
             throw new IllegalArgumentException("Value '" + from + "' not parseable as a float value", e);
         }
@@ -179,7 +180,7 @@ final class StringConversions {
             return 0.0;
         }
         try {
-            return Double.valueOf(str);
+            return MathUtilities.parseDouble(str);
         } catch (Exception e) {
             throw new IllegalArgumentException("Value '" + from + "' not parseable as a double value", e);
         }
@@ -239,7 +240,7 @@ final class StringConversions {
             return BigInteger.ZERO;
         }
         try {
-            BigDecimal bigDec = new BigDecimal(str);
+            BigDecimal bigDec = MathUtilities.parseBigDecimal(str);
             return bigDec.toBigInteger();
         } catch (Exception e) {
             throw new IllegalArgumentException("Value '" + from + "' not parseable as a BigInteger value.", e);
@@ -252,7 +253,7 @@ final class StringConversions {
             return BigDecimal.ZERO;
         }
         try {
-            return new BigDecimal(str);
+            return MathUtilities.parseBigDecimal(str);
         } catch (NumberFormatException e) {
             throw new IllegalArgumentException("Value '" + from + "' not parseable as a BigDecimal value.", e);
         }
@@ -303,7 +304,7 @@ final class StringConversions {
         try {
             // If the string matches a plain decimal number, treat it as seconds.
             if (DECIMAL_PATTERN.matcher(str).matches()) {
-                BigDecimal seconds = new BigDecimal(str);
+                BigDecimal seconds = MathUtilities.parseBigDecimal(str);
                 long wholeSecs = seconds.longValue();
                 long nanos = seconds.subtract(BigDecimal.valueOf(wholeSecs))
                         .multiply(BigDecimalConversions.BILLION)

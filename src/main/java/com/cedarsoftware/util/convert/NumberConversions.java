@@ -19,6 +19,8 @@ import java.util.Date;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
+import com.cedarsoftware.util.MathUtilities;
+
 /**
  * @author Kenny Partlow (kpartlow@gmail.com)
  *         <br>
@@ -129,7 +131,7 @@ final class NumberConversions {
             throw new IllegalArgumentException("Cannot convert " + d + " to BigInteger");
         }
         String s = String.format("%.0f", (d > 0.0) ? Math.floor(d) : Math.ceil(d));
-        return new BigInteger(s);
+        return MathUtilities.parseBigInteger(s);
     }
 
     static boolean isIntTypeNotZero(Object from, Converter converter) {

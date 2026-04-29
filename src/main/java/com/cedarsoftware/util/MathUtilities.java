@@ -8,6 +8,11 @@ import java.util.ListIterator;
 import java.util.Objects;
 import java.util.RandomAccess;
 
+import com.cedarsoftware.util.fastdoubleparser.JavaBigDecimalParser;
+import com.cedarsoftware.util.fastdoubleparser.JavaBigIntegerParser;
+import com.cedarsoftware.util.fastdoubleparser.JavaDoubleParser;
+import com.cedarsoftware.util.fastdoubleparser.JavaFloatParser;
+
 import static java.util.Collections.swap;
 
 /**
@@ -569,7 +574,7 @@ public final class MathUtilities
                 {
                     if (!hasExponent || (exponentHasDigits && !exponentOverflow && Math.abs(exponentSign * (int) exponentAbs) < 308))
                     {
-                        return Double.parseDouble(text);
+                        return JavaDoubleParser.parseDouble(text);
                     }
                 }
                 catch (NumberFormatException ignore)
@@ -577,19 +582,148 @@ public final class MathUtilities
                     // fall through to BigDecimal
                 }
             }
-            return new BigDecimal(text);
+            return JavaBigDecimalParser.parseBigDecimal(text);
         } else {
             int digitCount = len - start;
             if (digitCount < 19) {
                 return Long.parseLong(text);
             }
-            BigInteger bigInt = new BigInteger(text);
+            BigInteger bigInt = JavaBigIntegerParser.parseBigInteger(text);
             if (bigInt.compareTo(BIG_INT_LONG_MIN) >= 0 && bigInt.compareTo(BIG_INT_LONG_MAX) <= 0) {
                 return bigInt.longValue(); // Correctly convert BigInteger back to Long if within range
             } else {
                 return bigInt;
             }
         }
+    }
+
+    // ========== Fast Number Parsing ==========
+    // Backed by the vendored Randelshofer FastDoubleParser (Eisel-Lemire algorithm).
+    // 2-4x faster than the JDK parsers on typical inputs and dramatically faster
+    // on large BigInteger / BigDecimal values. Output is bit-identical to the
+    // JDK reference parsers (Double.parseDouble, Float.parseFloat, new BigDecimal/BigInteger(String))
+    // — covered by FastDoubleParserParityTest.
+
+    /**
+     * Parses a {@code double} from a {@link CharSequence} (String, StringBuilder, etc.).
+     * Equivalent to {@link Double#parseDouble(String)} but ~2-4x faster.
+     *
+     * @throws NumberFormatException if the input is not a valid double representation
+     * @throws NullPointerException if {@code s} is null
+     */
+    public static double parseDouble(CharSequence s) {
+        return JavaDoubleParser.parseDouble(s);
+    }
+
+    /**
+     * Parses a {@code double} from a {@code char[]} slice without materializing
+     * an intermediate {@link String}. Faster than {@code Double.parseDouble(new String(chars, off, len))}.
+     */
+    public static double parseDouble(char[] chars, int offset, int length) {
+        return JavaDoubleParser.parseDouble(chars, offset, length);
+    }
+
+    /** @see #parseDouble(char[], int, int) */
+    public static double parseDouble(char[] chars) {
+        return JavaDoubleParser.parseDouble(chars, 0, chars.length);
+    }
+
+    /**
+     * Parses a {@code double} from an ASCII/UTF-8 {@code byte[]} slice. Useful when
+     * reading from an {@link java.io.InputStream}-backed buffer.
+     */
+    public static double parseDouble(byte[] bytes, int offset, int length) {
+        return JavaDoubleParser.parseDouble(bytes, offset, length);
+    }
+
+    /** @see #parseDouble(byte[], int, int) */
+    public static double parseDouble(byte[] bytes) {
+        return JavaDoubleParser.parseDouble(bytes, 0, bytes.length);
+    }
+
+    /**
+     * Parses a {@code float} from a {@link CharSequence}. Equivalent to
+     * {@link Float#parseFloat(String)} but ~2-4x faster.
+     */
+    public static float parseFloat(CharSequence s) {
+        return JavaFloatParser.parseFloat(s);
+    }
+
+    /** @see #parseFloat(CharSequence) */
+    public static float parseFloat(char[] chars, int offset, int length) {
+        return JavaFloatParser.parseFloat(chars, offset, length);
+    }
+
+    /** @see #parseFloat(CharSequence) */
+    public static float parseFloat(char[] chars) {
+        return JavaFloatParser.parseFloat(chars, 0, chars.length);
+    }
+
+    /** @see #parseFloat(CharSequence) */
+    public static float parseFloat(byte[] bytes, int offset, int length) {
+        return JavaFloatParser.parseFloat(bytes, offset, length);
+    }
+
+    /** @see #parseFloat(CharSequence) */
+    public static float parseFloat(byte[] bytes) {
+        return JavaFloatParser.parseFloat(bytes, 0, bytes.length);
+    }
+
+    /**
+     * Parses a {@link BigDecimal}. Materially faster than {@code new BigDecimal(String)}
+     * for long mantissas; uses recursive multiplication for the digit accumulation.
+     */
+    public static BigDecimal parseBigDecimal(CharSequence s) {
+        return JavaBigDecimalParser.parseBigDecimal(s);
+    }
+
+    /** @see #parseBigDecimal(CharSequence) */
+    public static BigDecimal parseBigDecimal(char[] chars, int offset, int length) {
+        return JavaBigDecimalParser.parseBigDecimal(chars, offset, length);
+    }
+
+    /** @see #parseBigDecimal(CharSequence) */
+    public static BigDecimal parseBigDecimal(char[] chars) {
+        return JavaBigDecimalParser.parseBigDecimal(chars, 0, chars.length);
+    }
+
+    /** @see #parseBigDecimal(CharSequence) */
+    public static BigDecimal parseBigDecimal(byte[] bytes, int offset, int length) {
+        return JavaBigDecimalParser.parseBigDecimal(bytes, offset, length);
+    }
+
+    /** @see #parseBigDecimal(CharSequence) */
+    public static BigDecimal parseBigDecimal(byte[] bytes) {
+        return JavaBigDecimalParser.parseBigDecimal(bytes, 0, bytes.length);
+    }
+
+    /**
+     * Parses a {@link BigInteger}. Dramatically faster than {@code new BigInteger(String)}
+     * for large numbers (5-50x on values with 100+ digits) — JDK uses an O(n²) algorithm
+     * where this uses recursive multiplication.
+     */
+    public static BigInteger parseBigInteger(CharSequence s) {
+        return JavaBigIntegerParser.parseBigInteger(s);
+    }
+
+    /** @see #parseBigInteger(CharSequence) */
+    public static BigInteger parseBigInteger(char[] chars, int offset, int length) {
+        return JavaBigIntegerParser.parseBigInteger(chars, offset, length);
+    }
+
+    /** @see #parseBigInteger(CharSequence) */
+    public static BigInteger parseBigInteger(char[] chars) {
+        return JavaBigIntegerParser.parseBigInteger(chars, 0, chars.length);
+    }
+
+    /** @see #parseBigInteger(CharSequence) */
+    public static BigInteger parseBigInteger(byte[] bytes, int offset, int length) {
+        return JavaBigIntegerParser.parseBigInteger(bytes, offset, length);
+    }
+
+    /** @see #parseBigInteger(CharSequence) */
+    public static BigInteger parseBigInteger(byte[] bytes) {
+        return JavaBigIntegerParser.parseBigInteger(bytes, 0, bytes.length);
     }
 
     /**

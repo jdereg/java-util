@@ -13,6 +13,7 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.regex.MatchResult;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
@@ -454,11 +455,15 @@ public final class RegexUtilities {
      * allowing the data to be used after the timeout-protected execution completes.
      */
     public static class SafeMatchResult {
-        private final String[] groups;
+        // Lazy snapshot: matchResult is a MatchResult (Matcher.toMatchResult()) which copies the
+        // internal int[] of group start/end indices but does NOT eagerly allocate group strings.
+        // Each group(i) call lazily slices the input on demand. For patterns with many capturing
+        // groups where callers read only a few, this is dramatically cheaper than the prior
+        // "extract every group as a String at construction time" pattern.
+        private final MatchResult matchResult;
+        private final String input;
         private final String replacement;
         private final boolean matched;
-        private final int start;
-        private final int end;
 
         /**
          * Creates a SafeMatchResult from a Matcher.
@@ -469,21 +474,15 @@ public final class RegexUtilities {
          */
         public SafeMatchResult(Matcher matcher, String originalInput) {
             if (matcher != null) {
-                int groupCount = matcher.groupCount();
-                this.groups = new String[groupCount + 1];
-                for (int i = 0; i <= groupCount; i++) {
-                    this.groups[i] = matcher.group(i);
-                }
+                this.matchResult = matcher.toMatchResult();
+                this.input = originalInput;
                 this.matched = true;
-                this.start = matcher.start();
-                this.end = matcher.end();
-                this.replacement = removeMatchedRange(originalInput, this.start, this.end);
+                this.replacement = removeMatchedRange(originalInput, matchResult.start(), matchResult.end());
             } else {
-                this.groups = new String[0];
-                this.replacement = originalInput;
+                this.matchResult = null;
+                this.input = originalInput;
                 this.matched = false;
-                this.start = -1;
-                this.end = -1;
+                this.replacement = originalInput;
             }
         }
 
@@ -494,10 +493,10 @@ public final class RegexUtilities {
          * @return The captured string, or null if index is out of range or no match
          */
         public String group(int index) {
-            if (index < 0 || index >= groups.length) {
+            if (matchResult == null || index < 0 || index > matchResult.groupCount()) {
                 return null;
             }
-            return groups[index];
+            return matchResult.group(index);
         }
 
         /**
@@ -515,7 +514,7 @@ public final class RegexUtilities {
          * @return Number of capturing groups (0 if no match)
          */
         public int groupCount() {
-            return matched ? groups.length - 1 : 0;
+            return matchResult == null ? 0 : matchResult.groupCount();
         }
 
         /**
@@ -533,7 +532,7 @@ public final class RegexUtilities {
          * @return Start index, or -1 if no match
          */
         public int start() {
-            return start;
+            return matchResult == null ? -1 : matchResult.start();
         }
 
         /**
@@ -542,7 +541,7 @@ public final class RegexUtilities {
          * @return End index, or -1 if no match
          */
         public int end() {
-            return end;
+            return matchResult == null ? -1 : matchResult.end();
         }
 
         /**

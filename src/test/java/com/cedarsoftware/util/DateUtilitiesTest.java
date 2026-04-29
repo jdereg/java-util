@@ -1417,14 +1417,15 @@ class DateUtilitiesTest
             System.setProperty("dateutilities.security.enabled", "true");
             System.setProperty("dateutilities.input.validation.enabled", "true");
             System.setProperty("dateutilities.max.input.length", "256");
-            
+            DateUtilities.resetSecurityConfigCacheForTesting();
+
             // Test date string length validation (max 256 characters)
             StringBuilder longString = new StringBuilder("2024-01-01");
             for (int i = 0; i < 250; i++) {
                 longString.append("X"); // Use non-whitespace characters to avoid trimming
             }
             // This should be > 256 characters total (10 + 250 = 260)
-            
+
             assertThatThrownBy(() -> DateUtilities.parseDate(longString.toString(), ZoneId.of("UTC"), true))
                 .isInstanceOf(SecurityException.class)
                 .hasMessageContaining("Date string too long");
@@ -1445,6 +1446,7 @@ class DateUtilitiesTest
             } else {
                 System.setProperty("dateutilities.max.input.length", originalMaxLength);
             }
+            DateUtilities.resetSecurityConfigCacheForTesting();
         }
     }
 
@@ -1454,18 +1456,19 @@ class DateUtilitiesTest
         String originalSecurity = System.getProperty("dateutilities.security.enabled");
         String originalInputValidation = System.getProperty("dateutilities.input.validation.enabled");
         String originalMaxEpochDigits = System.getProperty("dateutilities.max.epoch.digits");
-        
+
         try {
             System.setProperty("dateutilities.security.enabled", "true");
             System.setProperty("dateutilities.input.validation.enabled", "true");
             System.setProperty("dateutilities.max.epoch.digits", "19");
-            
+            DateUtilities.resetSecurityConfigCacheForTesting();
+
             // Test epoch milliseconds bounds (max 19 digits)
             String tooLong = "12345678901234567890"; // 20 digits
             assertThatThrownBy(() -> DateUtilities.parseDate(tooLong, ZoneId.of("UTC"), true))
                 .isInstanceOf(SecurityException.class)
                 .hasMessageContaining("Epoch milliseconds value too large");
-            
+
             // Test valid epoch milliseconds still works
             String valid = "1640995200000"; // 13 digits - valid
             ZonedDateTime result = DateUtilities.parseDate(valid, ZoneId.of("UTC"), true);
@@ -1488,6 +1491,7 @@ class DateUtilitiesTest
             } else {
                 System.setProperty("dateutilities.max.epoch.digits", originalMaxEpochDigits);
             }
+            DateUtilities.resetSecurityConfigCacheForTesting();
         }
     }
 

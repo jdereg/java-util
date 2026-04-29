@@ -9,6 +9,8 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.TimeZone;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -175,21 +177,64 @@ public final class DateUtilities {
         return thread;
     });
 
-    // Security configuration accessor methods - read dynamically to allow runtime configuration
-    // Note: System.getProperty() is efficient (HashMap lookup) and keeping these dynamic allows:
-    // 1. Runtime configuration changes
-    // 2. Test flexibility
-    // 3. Framework compatibility (properties set after class loading)
+    // ----- Security configuration cache -----
+    // System.getProperty() reads from the synchronized java.util.Properties singleton; in date-parsing-heavy
+    // workloads safeFind/safeMatches were calling several of these per regex match, dominating the profile
+    // (~190 ms per million calls just for isRegexTimeoutProtectionEnabled). The values below are resolved
+    // lazily on first use and cached in volatile fields. Tests that toggle the relevant system properties
+    // at runtime must call resetSecurityConfigCacheForTesting() afterward to pick up the new values.
+    private static final int TRI_UNRESOLVED = 0;
+    private static final int TRI_FALSE = 1;
+    private static final int TRI_TRUE = 2;
+    private static final long TIMEOUT_UNRESOLVED = -1L;
+
+    private static volatile int cachedSecurityEnabled = TRI_UNRESOLVED;
+    private static volatile int cachedInputValidationEnabled = TRI_UNRESOLVED;
+    private static volatile int cachedMalformedStringProtectionEnabled = TRI_UNRESOLVED;
+    private static volatile int cachedRegexTimeoutEnabled = TRI_UNRESOLVED;
+    private static volatile long cachedRegexTimeoutMs = TIMEOUT_UNRESOLVED;
+
     private static boolean isSecurityEnabled() {
-        return Boolean.parseBoolean(System.getProperty("dateutilities.security.enabled", "false"));
+        int tri = cachedSecurityEnabled;
+        if (tri != TRI_UNRESOLVED) {
+            return tri == TRI_TRUE;
+        }
+        boolean value = Boolean.parseBoolean(System.getProperty("dateutilities.security.enabled", "false"));
+        cachedSecurityEnabled = value ? TRI_TRUE : TRI_FALSE;
+        return value;
     }
 
     private static boolean isInputValidationEnabled() {
-        return Boolean.parseBoolean(System.getProperty("dateutilities.input.validation.enabled", "false"));
+        int tri = cachedInputValidationEnabled;
+        if (tri != TRI_UNRESOLVED) {
+            return tri == TRI_TRUE;
+        }
+        boolean value = Boolean.parseBoolean(System.getProperty("dateutilities.input.validation.enabled", "false"));
+        cachedInputValidationEnabled = value ? TRI_TRUE : TRI_FALSE;
+        return value;
     }
 
     private static boolean isMalformedStringProtectionEnabled() {
-        return Boolean.parseBoolean(System.getProperty("dateutilities.malformed.string.protection.enabled", "false"));
+        int tri = cachedMalformedStringProtectionEnabled;
+        if (tri != TRI_UNRESOLVED) {
+            return tri == TRI_TRUE;
+        }
+        boolean value = Boolean.parseBoolean(System.getProperty("dateutilities.malformed.string.protection.enabled", "false"));
+        cachedMalformedStringProtectionEnabled = value ? TRI_TRUE : TRI_FALSE;
+        return value;
+    }
+
+    /**
+     * Reset the cached security configuration. Intended for tests that toggle the
+     * {@code dateutilities.*} / {@code cedarsoftware.regex.timeout.*} system properties at runtime;
+     * production callers should not need this.
+     */
+    static void resetSecurityConfigCacheForTesting() {
+        cachedSecurityEnabled = TRI_UNRESOLVED;
+        cachedInputValidationEnabled = TRI_UNRESOLVED;
+        cachedMalformedStringProtectionEnabled = TRI_UNRESOLVED;
+        cachedRegexTimeoutEnabled = TRI_UNRESOLVED;
+        cachedRegexTimeoutMs = TIMEOUT_UNRESOLVED;
     }
 
     private static int getMaxInputLength() {
@@ -223,15 +268,23 @@ public final class DateUtilities {
     }
 
     static boolean isRegexTimeoutProtectionEnabled() {
+        int tri = cachedRegexTimeoutEnabled;
+        if (tri != TRI_UNRESOLVED) {
+            return tri == TRI_TRUE;
+        }
+        boolean value = computeRegexTimeoutProtectionEnabled();
+        cachedRegexTimeoutEnabled = value ? TRI_TRUE : TRI_FALSE;
+        return value;
+    }
+
+    private static boolean computeRegexTimeoutProtectionEnabled() {
         if (!isSecurityEnabled()) {
             return false;
         }
-
         String timeoutEnabled = System.getProperty("dateutilities.regex.timeout.enabled");
         if (timeoutEnabled != null) {
             return Boolean.parseBoolean(timeoutEnabled);
         }
-
         String globalTimeoutEnabled = System.getProperty("cedarsoftware.regex.timeout.enabled");
         if (globalTimeoutEnabled != null) {
             return Boolean.parseBoolean(globalTimeoutEnabled);
@@ -240,11 +293,20 @@ public final class DateUtilities {
     }
 
     static long getRegexTimeoutMilliseconds() {
+        long ms = cachedRegexTimeoutMs;
+        if (ms != TIMEOUT_UNRESOLVED) {
+            return ms;
+        }
+        ms = computeRegexTimeoutMilliseconds();
+        cachedRegexTimeoutMs = ms;
+        return ms;
+    }
+
+    private static long computeRegexTimeoutMilliseconds() {
         Long timeoutMs = parsePositiveLong(System.getProperty("dateutilities.regex.timeout.milliseconds"));
         if (timeoutMs != null) {
             return timeoutMs;
         }
-
         timeoutMs = parsePositiveLong(System.getProperty("cedarsoftware.regex.timeout.milliseconds"));
         if (timeoutMs != null) {
             return timeoutMs;
@@ -264,16 +326,34 @@ public final class DateUtilities {
         }
     }
 
+    // ----- Per-pattern thread-local Matcher cache -----
+    // Pattern.matcher(input) allocates a fresh Matcher (plus internal int[] groups, locals, and
+    // localsPos arrays) on every call. Reusing a single Matcher per (Pattern, Thread) and calling
+    // reset(input) skips that allocation entirely. Keyed on the Pattern instance so each compiled
+    // Pattern (small, fixed set within DateUtilities) gets its own ThreadLocal<Matcher>.
+    private static final ConcurrentMap<Pattern, ThreadLocal<Matcher>> PATTERN_MATCHERS = new ConcurrentHashMap<>();
+
+    private static Matcher reusableMatcherFor(Pattern pattern, String input) {
+        ThreadLocal<Matcher> tl = PATTERN_MATCHERS.get(pattern);
+        if (tl == null) {
+            tl = PATTERN_MATCHERS.computeIfAbsent(pattern,
+                    p -> ThreadLocal.withInitial(() -> p.matcher("")));
+        }
+        return tl.get().reset(input);
+    }
+
     private static boolean safeMatches(Pattern pattern, String input) {
         if (pattern == null || input == null) {
             return false;
         }
 
         if (!isRegexTimeoutProtectionEnabled()) {
-            return pattern.matcher(input).matches();
+            return reusableMatcherFor(pattern, input).matches();
         }
 
         long timeout = getRegexTimeoutMilliseconds();
+        // Slow path runs on a different thread inside DATE_REGEX_EXECUTOR; let it allocate its own
+        // Matcher to avoid sharing thread-local state across the executor boundary.
         Future<Boolean> future = DATE_REGEX_EXECUTOR.submit(() -> pattern.matcher(input).matches());
 
         try {
@@ -292,7 +372,7 @@ public final class DateUtilities {
         }
 
         if (!isRegexTimeoutProtectionEnabled()) {
-            Matcher matcher = pattern.matcher(input);
+            Matcher matcher = reusableMatcherFor(pattern, input);
             if (matcher.find()) {
                 return new RegexUtilities.SafeMatchResult(matcher, input);
             }

@@ -48,8 +48,11 @@ public class DateUtilitiesSecurityTest {
         System.setProperty("dateutilities.input.validation.enabled", "true");
         System.setProperty("dateutilities.regex.timeout.enabled", "true");
         System.setProperty("dateutilities.malformed.string.protection.enabled", "true");
+        // The cached resolution of these system properties must be invalidated whenever the test
+        // mutates them, otherwise DateUtilities will keep returning the previously-resolved values.
+        DateUtilities.resetSecurityConfigCacheForTesting();
     }
-    
+
     @AfterEach
     public void tearDown() {
         // Restore original system property values
@@ -62,8 +65,9 @@ public class DateUtilitiesSecurityTest {
         restoreProperty("dateutilities.regex.timeout.milliseconds", originalRegexTimeoutMilliseconds);
         restoreProperty("cedarsoftware.regex.timeout.enabled", originalCedarRegexTimeoutEnabled);
         restoreProperty("cedarsoftware.regex.timeout.milliseconds", originalCedarRegexTimeoutMilliseconds);
+        DateUtilities.resetSecurityConfigCacheForTesting();
     }
-    
+
     private void restoreProperty(String key, String value) {
         if (value == null) {
             System.clearProperty(key);
@@ -71,6 +75,7 @@ public class DateUtilitiesSecurityTest {
             System.setProperty(key, value);
         }
     }
+
     
     @Test
     public void testInputLengthValidation() {

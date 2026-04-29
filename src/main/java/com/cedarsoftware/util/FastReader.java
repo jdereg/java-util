@@ -362,12 +362,10 @@ public final class FastReader extends Reader {
                 pos = position;
             }
 
-            // Compute scan boundary: end = min(locLimit, pos + maxLen - totalRead)
-            int end = locLimit;
-            int destEnd = pos + maxLen - totalRead;
-            if (destEnd < end) {
-                end = destEnd;
-            }
+            // Compute scan boundary without pos + remaining overflow.
+            int remaining = maxLen - totalRead;
+            int available = locLimit - pos;
+            int end = pos + Math.min(remaining, available);
 
             // Tight scan loop — reads only, no writes, no method calls.
             // JIT can keep this entirely in registers without exception-handler interference.
@@ -449,11 +447,9 @@ public final class FastReader extends Reader {
             pos = position;
         }
 
-        int end = lim;
-        int requestedEnd = pos + maxLen;
-        if (requestedEnd < end) {
-            end = requestedEnd;
-        }
+        int available = lim - pos;
+        int scanLen = Math.min(maxLen, available);
+        int end = pos + scanLen;
 
         char[] b = buf;
         int scanPos = pos;

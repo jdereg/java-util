@@ -559,6 +559,20 @@ class FastReaderTest {
     }
 
     @Test
+    void testReadUntilBorrowedHandlesMaxLenOverflowSafely() throws IOException {
+        fastReader = new FastReader(new StringReader("xabc\"rest"), CUSTOM_BUFFER_SIZE, CUSTOM_PUSHBACK_SIZE);
+        assertEquals('x', fastReader.read());
+        FastReader.BufferSlice slice = new FastReader.BufferSlice();
+
+        int len = fastReader.readUntilBorrowed(slice, Integer.MAX_VALUE, '"', '\\');
+
+        assertEquals(3, len);
+        assertEquals("abc", new String(slice.getBuffer(), slice.getOffset(), slice.getLength()));
+        slice.release();
+        assertEquals('"', fastReader.read());
+    }
+
+    @Test
     void testReadUntilBorrowedReturnsCopyRequiredWhenTokenCrossesBuffer() {
         fastReader = new FastReader(new StringReader("abcdef\""), 4, CUSTOM_PUSHBACK_SIZE);
         FastReader.BufferSlice slice = new FastReader.BufferSlice();

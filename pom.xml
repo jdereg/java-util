@@ -340,6 +340,7 @@
                                     exports com.cedarsoftware.util.cache;
                                     exports com.cedarsoftware.util.convert;
                                     exports com.cedarsoftware.util.geom;
+                                    exports com.cedarsoftware.util.internal to com.cedarsoftware.io;
                                     }
                                 </moduleInfoSource>
                             </module>

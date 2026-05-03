@@ -29,4 +29,8 @@ module com.cedarsoftware.util {
     exports com.cedarsoftware.util.cache;
     exports com.cedarsoftware.util.convert;
     exports com.cedarsoftware.util.geom;
+
+    // Internal helpers — qualified-exported to friend modules only. Public API users
+    // should NOT depend on anything in com.cedarsoftware.util.internal.
+    exports com.cedarsoftware.util.internal to com.cedarsoftware.io;
 }

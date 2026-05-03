@@ -9,6 +9,8 @@ import java.util.Random;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import com.cedarsoftware.util.internal.CharBufScratch;
+
 /**
  * Comprehensive utility class for string operations providing enhanced manipulation, comparison,
  * and conversion capabilities with null-safe implementations.
@@ -139,12 +141,6 @@ public final class StringUtilities {
     public static final String FOLDER_SEPARATOR = File.separator;
 
     public static final String EMPTY = "";
-
-    // Reusable char buffer for hashCodeIgnoreCase and equalsIgnoreCase.
-    // getChars() bulk-copies chars via SIMD, then the hash/compare loop
-    // uses direct array access — no charAt() method call or coder check per char.
-    private static final int CHAR_BUF_SIZE = 256;
-    private static final ThreadLocal<char[]> TL_CHAR_BUF = ThreadLocal.withInitial(() -> new char[CHAR_BUF_SIZE]);
 
 
     // Security configuration - all disabled by default for backward compatibility
@@ -527,12 +523,13 @@ public final class StringUtilities {
         byte[] bytes = new byte[len / 2];
         int pos = 0;
 
-        // Bulk-copy the hex string to a local char[] via the SIMD-intrinsic getChars()
-        // so the pair-wise decode loop below does straight-line array access instead of
-        // two charAt calls per byte (with coder/bounds overhead). Typical inputs —
-        // SHA-256 (64 chars), SHA-512 (128 chars), encrypted blobs — are comfortably
-        // above the 7-char break-even where this optimization pays off.
-        char[] buf = getChars(s, len);
+        // Bulk-copy the hex string to a local char[] via the SIMD-intrinsic
+        // CharBufScratch.getChars() so the pair-wise decode loop below does
+        // straight-line array access instead of two charAt calls per byte (with
+        // coder/bounds overhead). Typical inputs — SHA-256 (64 chars), SHA-512
+        // (128 chars), encrypted blobs — are comfortably above the 7-char
+        // break-even where this optimization pays off.
+        char[] buf = CharBufScratch.getChars(s, len);
         for (int i = 0; i < len; i += 2) {
             int hi = Character.digit(buf[i], 16);
             int lo = Character.digit(buf[i + 1], 16);
@@ -1020,7 +1017,7 @@ public final class StringUtilities {
         if (s == null) return 0;
 
         final int n = s.length();
-        char[] buf = getChars(s, n);
+        char[] buf = CharBufScratch.getChars(s, n);
 
         int h = 0;
         for (int i = 0; i < n; i++) {
@@ -1036,67 +1033,6 @@ public final class StringUtilities {
             h = 31 * h + c;
         }
         return h;
-    }
-
-    /**
-     * Returns a thread-local {@code char[]} buffer populated with the first {@code len} characters
-     * of {@code s} via {@link String#getChars(int, int, char[], int)} — which on HotSpot is a JIT
-     * intrinsic that uses SIMD bulk-copy (SSE2/AVX2/NEON) to expand compact-string {@code byte[]}
-     * storage into chars in one pass. This avoids the per-character overhead of
-     * {@link String#charAt(int)}: the coder ({@code LATIN1}/{@code UTF16}) branch, the bounds
-     * check, and the method dispatch. After this call, loops that walk the string via
-     * {@code buf[i]} run as straight-line array access — typically 20-50% faster than the
-     * equivalent {@code charAt} loop for strings of 7+ characters.
-     * <p>
-     * The two-arg signature lets the caller pass a length it already computed (e.g., from its
-     * own loop bound) without the method re-invoking {@code s.length()}. It also supports
-     * prefix extraction: passing {@code len < s.length()} copies only the first {@code len}
-     * chars. Passing {@code len > s.length()} raises {@link StringIndexOutOfBoundsException}
-     * via the underlying {@code String.getChars} call.
-     * <p>
-     * <b>Thread-local semantics:</b> the returned array is a shared per-thread scratch buffer.
-     * It is valid only until the next call to {@code getChars(String, int)} on the same thread.
-     * Consume its contents (or copy them out) before invoking any other {@code getChars}-based
-     * helper or calling methods that might do so transitively. Do NOT store the reference
-     * beyond the immediate scope. If you need two buffers simultaneously on the same thread
-     * (e.g., comparing two strings), copy one out or allocate a local {@code new char[]}.
-     *
-     * @param s   the string whose characters to extract (must not be null)
-     * @param len the number of characters to copy, starting at index 0. Must satisfy
-     *            {@code 0 <= len <= s.length()}.
-     * @return a thread-local char[] whose first {@code len} entries hold the string's
-     *         characters; indices beyond that are unspecified.
-     */
-    public static char[] getChars(String s, int len) {
-        char[] buf = getCharBuf(len);
-        s.getChars(0, len, buf, 0);
-        return buf;
-    }
-
-    /**
-     * Convenience overload that computes {@code s.length()} once and delegates to
-     * {@link #getChars(String, int)}. Prefer the two-arg form when the caller already
-     * has the length available — this wrapper exists for callers who don't.
-     * <p>
-     * All thread-local semantics of {@link #getChars(String, int)} apply here.
-     *
-     * @param s the string whose characters to extract (must not be null)
-     * @return a thread-local char[] whose first {@code s.length()} entries hold the
-     *         string's characters; indices beyond that are unspecified.
-     * @see #getChars(String, int)
-     */
-    public static char[] getChars(String s) {
-        return getChars(s, s.length());
-    }
-
-    /** Internal: get a reusable char buffer from ThreadLocal, growing if needed. */
-    private static char[] getCharBuf(int minSize) {
-        char[] buf = TL_CHAR_BUF.get();
-        if (minSize > buf.length) {
-            buf = new char[minSize];
-            TL_CHAR_BUF.set(buf);
-        }
-        return buf;
     }
 
     /**

@@ -35,11 +35,9 @@ A collection of high-performance Java utilities designed to enhance standard Jav
 Available on [Maven Central](https://central.sonatype.com/search?q=java-util&namespace=com.cedarsoftware).
 This library has <b>no dependencies</b> on other libraries for runtime.
 The`.jar`file is `~850K` and works with `JDK 1.8` through `JDK 24`.
-The `.jar` file classes are version 52 `(JDK 1.8)`
-
-As of version 3.6.0 the library is built with the `-parameters`
-compiler flag. Parameter names are now retained for tasks such as
-constructor discovery (increased the jar size by about 10K.)
+The `.jar` file classes are version 52 `(JDK 1.8)`. Built with `-parameters`,
+so reflection-based tools (constructor discovery, dependency injection,
+etc.) see real parameter names.
 
 ---
 

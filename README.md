@@ -34,7 +34,7 @@ A collection of high-performance Java utilities designed to enhance standard Jav
 
 Available on [Maven Central](https://central.sonatype.com/search?q=java-util&namespace=com.cedarsoftware).
 This library has <b>no dependencies</b> on other libraries for runtime.
-The`.jar`file is `~700K` and works with `JDK 1.8` through `JDK 24`.
+The`.jar`file is `~850K` and works with `JDK 1.8` through `JDK 24`.
 The `.jar` file classes are version 52 `(JDK 1.8)`
 
 As of version 3.6.0 the library is built with the `-parameters`
@@ -79,7 +79,7 @@ constructor discovery (increased the jar size by about 10K.)
 Optimized for modern cloud deployments and container environments:
 
 **Technical Characteristics:**
-- **Minimal Footprint**: ~700KB JAR
+- **Minimal Footprint**: ~850KB JAR
 - **Zero Runtime Dependencies**: No transitive dependencies to manage, reducing classpath conflicts and container image complexity
 - **Fast Startup**: JDK 8 bytecode (class file format 52) with instant classloading, optimized for serverless cold starts
 - **Thread-Safe**: All concurrent collections designed for horizontal scaling in Kubernetes and containerized environments
@@ -286,7 +286,7 @@ From reflection helpers to graph traversal, concurrent collections to date utili
 | Feature | JDK Collections | Google Guava | Eclipse Collections | Apache Commons | **java-util**                 |
 |---------|----------------|--------------|---------------------|----------------|-------------------------------|
 | **Dependencies** | None | 3+ libraries | 2+ libraries | Multiple | None                          |
-| **Jar Size** | N/A | ~2.7MB | ~2.8MB | ~500KB each | ~700KB total                  |
+| **Jar Size** | N/A | ~2.7MB | ~2.8MB | ~500KB each | ~850KB total                  |
 | **JDK Compatibility** | 8+ | 11+ (latest) | 11+ | 8+ | 8+                            |
 | **Null-Safe Concurrent** | ❌ | ❌ | ❌ | ❌ | ✅ ConcurrentMapNullSafe       |
 | **Memory-Adaptive Collections** | ❌ | ❌ | ✅ | ❌ | ✅ CompactMap/Set              |

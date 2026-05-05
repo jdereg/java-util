@@ -27,13 +27,19 @@ else
     FAIL=$((FAIL + 1))
 fi
 
-# 2. Working tree clean
-echo "[2/7] Working tree clean..."
-if [ -z "$(git status --porcelain)" ]; then
-    green "      ✓ no uncommitted changes"
+# 2. No modified tracked files (untracked is OK; analysis notes shouldn't block a release)
+echo "[2/7] No modified tracked files..."
+MODIFIED=$(git status --porcelain | grep -v '^??' || true)
+if [ -z "$MODIFIED" ]; then
+    UNTRACKED_COUNT=$(git status --porcelain | grep -c '^??' || true)
+    if [ "$UNTRACKED_COUNT" -gt 0 ]; then
+        green "      ✓ no modified tracked files (${UNTRACKED_COUNT} untracked items present, ignored for release)"
+    else
+        green "      ✓ no modified tracked files"
+    fi
 else
-    red "      ✗ uncommitted changes detected:"
-    git status --porcelain | sed 's/^/        /'
+    red "      ✗ modified tracked files detected:"
+    echo "$MODIFIED" | sed 's/^/        /'
     FAIL=$((FAIL + 1))
 fi
 

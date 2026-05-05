@@ -1,6 +1,8 @@
 ### Revision History
 
-#### 4.102.0 - (Unreleased)
+#### 4.103.0 - (Unreleased)
+
+#### 4.102.0 - 2026-05-04
 * **BUILD**: jackson-databind test dependency bumped 2.21.2 → 2.21.3 (patch). Test-scope only; no runtime impact.
 * **CORRECTNESS**: `FastReader.readUntilBorrowed()` now computes its scan boundary without `pos + maxLen` overflow. Very large `maxLen` values with a non-zero buffer position could previously return `COPY_REQUIRED` even when the delimiter was already in the current buffer; the borrowed-slice fast path now clamps by available buffer length instead. Added regression coverage.
 * **CORRECTNESS**: `FastReader.BufferSlice` — added an assertion-checked `release()` lifecycle for borrowed slices. With assertions enabled, callers must consume or copy borrowed data and release the slice before the next `FastReader` read/pushback/close; attempts to read with an outstanding borrowed slice fail fast, catching stale-buffer misuse. Production behavior unchanged when assertions are disabled. JFR comparison post-change showed no measurable guard overhead (samples/sec flat at 49.83, `readLineBorrowed` share 1.301% → 1.264%).

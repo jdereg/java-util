@@ -128,6 +128,18 @@ class ClassUtilitiesTest {
     }
 
     @Test
+    @DisplayName("Should reuse cached no-arg constructor plan")
+    void shouldReuseCachedNoArgConstructorPlan() {
+        ClassUtilities.clearCaches();
+
+        Object first = ClassUtilities.newInstance(converter, NoArgConstructor.class, (Object) null);
+        Object second = ClassUtilities.newInstance(converter, NoArgConstructor.class, (Object) null);
+
+        assertInstanceOf(NoArgConstructor.class, first);
+        assertInstanceOf(NoArgConstructor.class, second);
+    }
+
+    @Test
     @DisplayName("Should create instance with single argument")
     void shouldCreateInstanceWithSingleArgument() {
         List<Object> args = Collections.singletonList("test");

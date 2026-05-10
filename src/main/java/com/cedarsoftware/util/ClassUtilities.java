@@ -464,7 +464,7 @@ public class ClassUtilities {
 
         static ArgumentShapeKey from(Object[] suppliedArgs) {
             if (suppliedArgs.length == 0) {
-                return new ArgumentShapeKey(ArrayUtilities.EMPTY_CLASS_ARRAY);
+                return EMPTY_ARGUMENT_SHAPE_KEY;
             }
             Class<?>[] types = new Class<?>[suppliedArgs.length];
             for (int i = 0; i < suppliedArgs.length; i++) {
@@ -491,6 +491,8 @@ public class ClassUtilities {
             return Arrays.equals(argTypes, other.argTypes);
         }
     }
+    private static final ArgumentShapeKey EMPTY_ARGUMENT_SHAPE_KEY =
+            new ArgumentShapeKey(ArrayUtilities.EMPTY_CLASS_ARRAY);
 
     private static final class ConstructorPlan {
         private final Constructor<?> constructor;
@@ -2183,7 +2185,7 @@ public class ClassUtilities {
         if (LOG.isLoggable(Level.FINER)) {
             LOG.log(Level.FINER, "Using positional argument matching for {0}", c.getName());
         }
-        Set<Class<?>> visited = new IdentitySet<>();
+        Set<Class<?>> visited = null;
 
         try {
             return newInstance(converter, c, normalizedArgs, visited);
@@ -2526,11 +2528,10 @@ public class ClassUtilities {
         SecurityChecker.verifyClass(c);
 
         // Enhanced security: Validate constructor argument count
-        if (argumentValues != null) {
-            validateEnhancedSecurity("Constructor argument", argumentValues.size(), getMaxConstructorArgs());
-        }
+        int argumentCount = argumentValues == null ? 0 : argumentValues.size();
+        validateEnhancedSecurity("Constructor argument", argumentCount, getMaxConstructorArgs());
 
-        if (visitedClasses.contains(c)) {
+        if (visitedClasses != null && visitedClasses.contains(c)) {
             throw new IllegalStateException("Circular reference detected for " + c.getName());
         }
 
@@ -2543,8 +2544,8 @@ public class ClassUtilities {
         }
         
         // Prepare arguments
-        List<Object> normalizedArgs = argumentValues == null ? new ArrayList<>() : new ArrayList<>(argumentValues);
-        Object[] suppliedArgs = normalizedArgs.isEmpty() ? ArrayUtilities.EMPTY_OBJECT_ARRAY : normalizedArgs.toArray();
+        boolean noArgs = argumentCount == 0;
+        Object[] suppliedArgs = noArgs ? ArrayUtilities.EMPTY_OBJECT_ARRAY : argumentValues.toArray();
         ArgumentShapeKey argumentShapeKey = ArgumentShapeKey.from(suppliedArgs);
         Map<ArgumentShapeKey, Optional<ConstructorPlan>> classPlanCache = getConstructorPlanCache(c);
 
@@ -2567,11 +2568,11 @@ public class ClassUtilities {
         }
         
         // Fast-path: zero-arg constructor - common case that avoids the whole matching pipeline
-        if (normalizedArgs.isEmpty()) {
+        if (noArgs) {
             try {
                 Constructor<?> noArg = c.getDeclaredConstructor();
                 trySetAccessible(noArg);
-                Object instance = noArg.newInstance();
+                Object instance = noArg.newInstance(ArrayUtilities.EMPTY_OBJECT_ARRAY);
                 SUCCESSFUL_CONSTRUCTOR_CACHE.put(c, Optional.of(noArg));
                 classPlanCache.put(argumentShapeKey, Optional.of(new ConstructorPlan(noArg, EMPTY_PARAMETERS, false)));
                 return instance;
@@ -2622,6 +2623,9 @@ public class ClassUtilities {
 
         // Handle inner classes - with circular reference protection
         if (c.getEnclosingClass() != null && !Modifier.isStatic(c.getModifiers())) {
+            if (visitedClasses == null) {
+                visitedClasses = new IdentitySet<>();
+            }
             visitedClasses.add(c);
 
             try {
@@ -2763,6 +2767,9 @@ public class ClassUtilities {
 
     private static Object invokeConstructorWithPlan(Converter converter, Object[] suppliedArgs, ConstructorPlan plan) throws Exception {
         Parameter[] parameters = plan.parameters;
+        if (parameters.length == 0) {
+            return plan.constructor.newInstance(ArrayUtilities.EMPTY_OBJECT_ARRAY);
+        }
         if (plan.allowNullsFirst) {
             try {
                 Object[] argsNull = matchArgumentsToParameters(converter, suppliedArgs, parameters, true);

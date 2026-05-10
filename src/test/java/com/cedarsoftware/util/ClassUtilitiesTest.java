@@ -152,6 +152,23 @@ class ClassUtilitiesTest {
     }
 
     @Test
+    @DisplayName("Should reuse cached constructor plan on repeated instantiation")
+    void shouldReuseCachedConstructorPlanOnRepeatedInstantiation() {
+        ClassUtilities.clearCaches();
+        List<Object> args = Arrays.asList("cached", 17);
+
+        MultiArgConstructor first = (MultiArgConstructor) ClassUtilities.newInstance(
+                converter, MultiArgConstructor.class, (Object) args);
+        MultiArgConstructor second = (MultiArgConstructor) ClassUtilities.newInstance(
+                converter, MultiArgConstructor.class, (Object) args);
+
+        assertEquals("cached", first.getStr());
+        assertEquals(17, first.getNum());
+        assertEquals("cached", second.getStr());
+        assertEquals(17, second.getNum());
+    }
+
+    @Test
     @DisplayName("Should handle private constructors")
     void shouldHandlePrivateConstructors() {
         List<Object> args = Collections.singletonList("private");

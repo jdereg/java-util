@@ -1,6 +1,7 @@
 ### Revision History
 
 #### 4.103.0 - (Unreleased)
+* **PERFORMANCE**: `ClassUtilities.newInstance()` constructor-plan cache entries now retain constructor parameter metadata, avoiding repeated `Constructor.getParameters()` calls on cached construction paths.
 
 #### 4.102.0 - 2026-05-04
 * **BUILD**: jackson-databind test dependency bumped 2.21.2 → 2.21.3. Test-scope only.

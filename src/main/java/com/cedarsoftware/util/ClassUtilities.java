@@ -451,6 +451,7 @@ public class ClassUtilities {
 
     private static final class NullArgType { }
     private static final Class<?> NULL_ARG_TYPE = NullArgType.class;
+    private static final Parameter[] EMPTY_PARAMETERS = new Parameter[0];
 
     private static final class ArgumentShapeKey {
         private final Class<?>[] argTypes;
@@ -493,10 +494,12 @@ public class ClassUtilities {
 
     private static final class ConstructorPlan {
         private final Constructor<?> constructor;
+        private final Parameter[] parameters;
         private final boolean allowNullsFirst;
 
-        private ConstructorPlan(Constructor<?> constructor, boolean allowNullsFirst) {
+        private ConstructorPlan(Constructor<?> constructor, Parameter[] parameters, boolean allowNullsFirst) {
             this.constructor = constructor;
+            this.parameters = parameters == null ? EMPTY_PARAMETERS : parameters;
             this.allowNullsFirst = allowNullsFirst;
         }
     }
@@ -2570,7 +2573,7 @@ public class ClassUtilities {
                 trySetAccessible(noArg);
                 Object instance = noArg.newInstance();
                 SUCCESSFUL_CONSTRUCTOR_CACHE.put(c, Optional.of(noArg));
-                classPlanCache.put(argumentShapeKey, Optional.of(new ConstructorPlan(noArg, false)));
+                classPlanCache.put(argumentShapeKey, Optional.of(new ConstructorPlan(noArg, EMPTY_PARAMETERS, false)));
                 return instance;
             } catch (NoSuchMethodException ignored) {
                 // No no-arg constructor, fall through to normal logic
@@ -2603,12 +2606,12 @@ public class ClassUtilities {
                 try {
                     Object[] argsNonNull = matchArgumentsToParameters(converter, suppliedArgs, parameters, false);
                     Object instance = cachedConstructor.newInstance(argsNonNull);
-                    classPlanCache.put(argumentShapeKey, Optional.of(new ConstructorPlan(cachedConstructor, false)));
+                    classPlanCache.put(argumentShapeKey, Optional.of(new ConstructorPlan(cachedConstructor, parameters, false)));
                     return instance;
                 } catch (Exception e) {
                     Object[] argsNull = matchArgumentsToParameters(converter, suppliedArgs, parameters, true);
                     Object instance = cachedConstructor.newInstance(argsNull);
-                    classPlanCache.put(argumentShapeKey, Optional.of(new ConstructorPlan(cachedConstructor, true)));
+                    classPlanCache.put(argumentShapeKey, Optional.of(new ConstructorPlan(cachedConstructor, parameters, true)));
                     return instance;
                 }
             } catch (Exception ignored) {
@@ -2649,7 +2652,7 @@ public class ClassUtilities {
                                     // Simple case: only takes enclosing instance
                                     Object instance = constructor.newInstance(enclosingInstance);
                                     SUCCESSFUL_CONSTRUCTOR_CACHE.put(c, Optional.of(constructor));
-                                    classPlanCache.put(argumentShapeKey, Optional.of(new ConstructorPlan(constructor, false)));
+                                    classPlanCache.put(argumentShapeKey, Optional.of(new ConstructorPlan(constructor, params, false)));
                                     return instance;
                                 } else {
                                     // Complex case: takes enclosing instance plus more arguments
@@ -2661,7 +2664,7 @@ public class ClassUtilities {
 
                                     Object instance = constructor.newInstance(allArgs);
                                     SUCCESSFUL_CONSTRUCTOR_CACHE.put(c, Optional.of(constructor));
-                                    classPlanCache.put(argumentShapeKey, Optional.of(new ConstructorPlan(constructor, false)));
+                                    classPlanCache.put(argumentShapeKey, Optional.of(new ConstructorPlan(constructor, params, false)));
                                     return instance;
                                 }
                             } catch (Exception e) {
@@ -2701,7 +2704,7 @@ public class ClassUtilities {
 
                 // Cache this successful constructor for future use
                 SUCCESSFUL_CONSTRUCTOR_CACHE.put(c, Optional.of(constructor));
-                classPlanCache.put(argumentShapeKey, Optional.of(new ConstructorPlan(constructor, false)));
+                classPlanCache.put(argumentShapeKey, Optional.of(new ConstructorPlan(constructor, parameters, false)));
                 return instance;
             } catch (Exception e1) {
                 exceptions.add(e1);
@@ -2713,7 +2716,7 @@ public class ClassUtilities {
 
                     // Cache this successful constructor for future use
                     SUCCESSFUL_CONSTRUCTOR_CACHE.put(c, Optional.of(constructor));
-                    classPlanCache.put(argumentShapeKey, Optional.of(new ConstructorPlan(constructor, true)));
+                    classPlanCache.put(argumentShapeKey, Optional.of(new ConstructorPlan(constructor, parameters, true)));
                     return instance;
                 } catch (Exception e2) {
                     exceptions.add(e2);
@@ -2759,7 +2762,7 @@ public class ClassUtilities {
     }
 
     private static Object invokeConstructorWithPlan(Converter converter, Object[] suppliedArgs, ConstructorPlan plan) throws Exception {
-        Parameter[] parameters = plan.constructor.getParameters();
+        Parameter[] parameters = plan.parameters;
         if (plan.allowNullsFirst) {
             try {
                 Object[] argsNull = matchArgumentsToParameters(converter, suppliedArgs, parameters, true);

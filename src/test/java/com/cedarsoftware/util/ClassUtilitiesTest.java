@@ -113,6 +113,19 @@ class ClassUtilitiesTest {
         public int getIntValue() { return intValue; }
         public boolean getBoolValue() { return boolValue; }
     }
+
+    static class OrderedPrimitiveWideningConstructor {
+        private final String str;
+        private final long num;
+
+        public OrderedPrimitiveWideningConstructor(String str, long num) {
+            this.str = str;
+            this.num = num;
+        }
+
+        public String getStr() { return str; }
+        public long getNum() { return num; }
+    }
     
     @BeforeEach
     void setUp() {
@@ -178,6 +191,23 @@ class ClassUtilitiesTest {
         assertEquals(17, first.getNum());
         assertEquals("cached", second.getStr());
         assertEquals(17, second.getNum());
+    }
+
+    @Test
+    @DisplayName("Should reuse cached constructor plan with ordered primitive widening arguments")
+    void shouldReuseCachedConstructorPlanWithOrderedPrimitiveWideningArguments() {
+        ClassUtilities.clearCaches();
+        List<Object> args = Arrays.asList("cached", 17);
+
+        OrderedPrimitiveWideningConstructor first = (OrderedPrimitiveWideningConstructor) ClassUtilities.newInstance(
+                converter, OrderedPrimitiveWideningConstructor.class, (Object) args);
+        OrderedPrimitiveWideningConstructor second = (OrderedPrimitiveWideningConstructor) ClassUtilities.newInstance(
+                converter, OrderedPrimitiveWideningConstructor.class, (Object) args);
+
+        assertEquals("cached", first.getStr());
+        assertEquals(17L, first.getNum());
+        assertEquals("cached", second.getStr());
+        assertEquals(17L, second.getNum());
     }
 
     @Test

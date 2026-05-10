@@ -1,6 +1,7 @@
 ### Revision History
 
 #### 4.103.0 - (Unreleased)
+* **PERFORMANCE**: `ClassUtilities.newInstance()` cached constructor plans now fast-invoke non-varargs constructors when supplied arguments are already in constructor-parameter order and directly assignable, bypassing the matcher allocations on repeated positional construction.
 * **PERFORMANCE**: `ClassUtilities.newInstance()` no-arg cached construction now reuses the empty argument-shape key, skips argument-matching on cached zero-parameter plans, avoids defensive collection copying when preparing arguments, and allocates the circular-reference `IdentitySet` only for inner-class recursion.
 * **PERFORMANCE**: `ClassUtilities.newInstance()` constructor-plan cache entries now retain constructor parameter metadata, avoiding repeated `Constructor.getParameters()` calls on cached construction paths.
 

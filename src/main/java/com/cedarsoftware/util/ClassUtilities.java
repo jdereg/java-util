@@ -497,11 +497,15 @@ public class ClassUtilities {
     private static final class ConstructorPlan {
         private final Constructor<?> constructor;
         private final Parameter[] parameters;
+        private final Class<?>[] parameterTypes;
+        private final boolean varArgs;
         private final boolean allowNullsFirst;
 
         private ConstructorPlan(Constructor<?> constructor, Parameter[] parameters, boolean allowNullsFirst) {
             this.constructor = constructor;
             this.parameters = parameters == null ? EMPTY_PARAMETERS : parameters;
+            this.parameterTypes = extractParameterTypes(this.parameters);
+            this.varArgs = this.parameters.length > 0 && this.parameters[this.parameters.length - 1].isVarArgs();
             this.allowNullsFirst = allowNullsFirst;
         }
     }
@@ -2770,6 +2774,9 @@ public class ClassUtilities {
         if (parameters.length == 0) {
             return plan.constructor.newInstance(ArrayUtilities.EMPTY_OBJECT_ARRAY);
         }
+        if (canInvokeDirectly(suppliedArgs, plan)) {
+            return plan.constructor.newInstance(suppliedArgs);
+        }
         if (plan.allowNullsFirst) {
             try {
                 Object[] argsNull = matchArgumentsToParameters(converter, suppliedArgs, parameters, true);
@@ -2786,6 +2793,38 @@ public class ClassUtilities {
             Object[] argsNull = matchArgumentsToParameters(converter, suppliedArgs, parameters, true);
             return plan.constructor.newInstance(argsNull);
         }
+    }
+
+    private static Class<?>[] extractParameterTypes(Parameter[] parameters) {
+        if (parameters.length == 0) {
+            return ArrayUtilities.EMPTY_CLASS_ARRAY;
+        }
+        Class<?>[] types = new Class<?>[parameters.length];
+        for (int i = 0; i < parameters.length; i++) {
+            types[i] = parameters[i].getType();
+        }
+        return types;
+    }
+
+    private static boolean canInvokeDirectly(Object[] suppliedArgs, ConstructorPlan plan) {
+        if (plan.varArgs || suppliedArgs.length != plan.parameterTypes.length) {
+            return false;
+        }
+        for (int i = 0; i < suppliedArgs.length; i++) {
+            Object arg = suppliedArgs[i];
+            if (arg == null || !isDirectlyAssignable(arg.getClass(), plan.parameterTypes[i])) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static boolean isDirectlyAssignable(Class<?> sourceType, Class<?> targetType) {
+        if (targetType.isPrimitive()) {
+            Class<?> sourcePrimitive = WRAPPER_TO_PRIMITIVE.getByClass(sourceType);
+            return sourcePrimitive != null && getPrimitiveWideningDistance(sourcePrimitive, targetType) >= 0;
+        }
+        return targetType.isAssignableFrom(sourceType);
     }
 
     // Cache for tracking which AccessibleObjects we've already tried to make accessible

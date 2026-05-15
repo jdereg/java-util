@@ -24,6 +24,7 @@ import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
+import java.util.Base64;
 import java.util.Calendar;
 import java.util.Currency;
 import java.util.Date;
@@ -594,6 +595,50 @@ final class StringConversions {
         return CharBuffer.wrap(asString(from));
     }
 
+    /**
+     * Convert a String to a {@code byte[]} using format detection. Tries — in order — to
+     * recognise structured binary-encoded forms; falls back to charset-encoding the string's
+     * characters if no format matches.
+     *
+     * <h3>Detection ladder</h3>
+     * <ol>
+     *   <li>Leading {@code [} → parse stringified JSON-style number array
+     *       ({@code "[1, 2, 3]"} → {@code byte[]{1,2,3}}); each element must be {@code 0-255}.
+     *       Falls through to later formats if parsing fails.</li>
+     *   <li>Hex-pairs separated by whitespace ({@code "CA FE BA BE"}) → hex decode.
+     *       Requires at least 2 pairs (5 chars) to avoid mis-classifying short tokens.</li>
+     *   <li>Unspaced hex (even length, alphabet {@code [0-9a-fA-F]}, length &ge; 8) → hex
+     *       decode. Catches common debug magic numbers like {@code "CAFEBABE"} /
+     *       {@code "DEADBEEF"} and compact 32-char UUIDs. The 8-char minimum prevents
+     *       short text tokens like {@code "ABCD"} / {@code "0123"} / {@code "ab"} from
+     *       being mis-classified as hex.</li>
+     *   <li>URL-safe Base64 (alphabet {@code [A-Za-z0-9_-]=}) — applied when the string
+     *       contains {@code _} or {@code -} and matches the tight rule below.</li>
+     *   <li>Standard Base64 (alphabet {@code [A-Za-z0-9+/]=}) — applied when the string
+     *       matches the tight rule below.</li>
+     *   <li>Otherwise → {@code s.getBytes(charset)} using the Converter's configured charset
+     *       (the historical behaviour, preserved as a fallback).</li>
+     * </ol>
+     *
+     * <h3>Tight Base64 rule</h3>
+     * To avoid mis-classifying short text tokens as Base64, the Base64 layers only fire when
+     * the input <em>also</em> satisfies at least one of:
+     * <ul>
+     *   <li>length &ge; 16 (real binary blobs are rarely shorter),</li>
+     *   <li>contains {@code =} padding, or</li>
+     *   <li>contains one of {@code + / _ -} (Base64-specific symbols).</li>
+     * </ul>
+     * Strings like {@code "DATA"}, {@code "CODE"}, {@code "TEST"} (all-uppercase 4-char words
+     * in the Base64 alphabet) therefore fall through to the charset path, preserving the
+     * historical interpretation when a {@code byte[]} field receives short text.
+     *
+     * <h3>Edge case (documented, accepted)</h3>
+     * A 16+-character all-Base64-alphabet string containing {@code /} (e.g.
+     * {@code "prod/2026/backup"}) will be Base64-decoded under the length &ge; 16 trigger.
+     * This is intentionally accepted as the residual cost of file-path-like strings being
+     * extremely rare on {@code byte[]} fields; callers that need a path-as-bytes semantic
+     * should call {@code s.getBytes(charset)} directly.
+     */
     static byte[] toByteArray(Object from, Converter converter) {
         String s = asString(from);
 
@@ -601,9 +646,198 @@ final class StringConversions {
             return EMPTY_BYTE_ARRAY;
         }
 
+        // Trim outer whitespace for shape-detection purposes; doesn't affect charset fallback
+        // since we work from the original 's' there.
+        String trimmed = s.trim();
+        if (trimmed.isEmpty()) {
+            return s.getBytes(converter.getOptions().getCharset());
+        }
+
+        // 1. Stringified JSON-style number array
+        if (trimmed.charAt(0) == '[') {
+            byte[] parsed = tryParseJsonNumberArray(trimmed);
+            if (parsed != null) {
+                return parsed;
+            }
+        }
+
+        // 2. Spaced hex pairs (require >= 2 pairs to avoid mis-classifying single short tokens)
+        if (trimmed.length() >= 5 && HEX_PAIRS_WITH_SPACES.matcher(trimmed).matches()) {
+            return decodeSpacedHex(trimmed);
+        }
+
+        // 3. Unspaced hex (require length >= 8 = 4 bytes, mirroring the "real binary blobs
+        // are bigger" intuition behind the base64-tight rule; prevents "ABCD"/"0123"/"ab"
+        // from being mis-classified as hex)
+        if (trimmed.length() >= 8 && (trimmed.length() & 1) == 0 && HEX_UNSPACED.matcher(trimmed).matches()) {
+            return decodeUnspacedHex(trimmed);
+        }
+
+        // 4 & 5. Base64 (URL-safe variant first if the string contains '-' / '_';
+        // otherwise standard variant).
+        boolean hasUrlSafeChar = trimmed.indexOf('-') >= 0 || trimmed.indexOf('_') >= 0;
+        if (hasUrlSafeChar) {
+            if (BASE64_URL_SAFE.matcher(trimmed).matches() && isTightBase64(trimmed)) {
+                try {
+                    return Base64.getUrlDecoder().decode(trimmed);
+                } catch (IllegalArgumentException ignored) {
+                    // fall through to charset
+                }
+            }
+        } else if (BASE64_STANDARD.matcher(trimmed).matches() && isTightBase64(trimmed)) {
+            try {
+                return Base64.getDecoder().decode(trimmed);
+            } catch (IllegalArgumentException ignored) {
+                // fall through to charset
+            }
+        }
+
+        // 6. Charset fallback (historical behaviour)
         return s.getBytes(converter.getOptions().getCharset());
     }
-    
+
+    private static final java.util.regex.Pattern HEX_PAIRS_WITH_SPACES =
+            java.util.regex.Pattern.compile("^[0-9a-fA-F]{2}(\\s+[0-9a-fA-F]{2})*$");
+    private static final java.util.regex.Pattern HEX_UNSPACED =
+            java.util.regex.Pattern.compile("^[0-9a-fA-F]+$");
+    private static final java.util.regex.Pattern BASE64_STANDARD =
+            java.util.regex.Pattern.compile("^[A-Za-z0-9+/]+={0,2}$");
+    private static final java.util.regex.Pattern BASE64_URL_SAFE =
+            java.util.regex.Pattern.compile("^[A-Za-z0-9_\\-]+={0,2}$");
+
+    /**
+     * Tight Base64 trigger: length &ge; 16 OR padding present OR string contains a
+     * Base64-specific symbol ({@code + / _ -}). Prevents short uppercase tokens like
+     * {@code "DATA"}/{@code "CODE"} from being mis-classified as Base64.
+     */
+    private static boolean isTightBase64(String s) {
+        if (s.length() >= 16) {
+            return true;
+        }
+        for (int i = 0; i < s.length(); i++) {
+            char c = s.charAt(i);
+            if (c == '=' || c == '+' || c == '/' || c == '_' || c == '-') {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Parse a stringified JSON-style number array like {@code "[1, 2, 3]"}. Returns {@code null}
+     * (fall-through) if the input is structurally invalid or contains a value outside
+     * {@code 0-255}. Lenient about whitespace; trailing comma rejected.
+     */
+    private static byte[] tryParseJsonNumberArray(String s) {
+        int n = s.length();
+        if (n < 2 || s.charAt(0) != '[' || s.charAt(n - 1) != ']') {
+            return null;
+        }
+        if (n == 2) {
+            return EMPTY_BYTE_ARRAY;
+        }
+        // Quick capacity estimate — at most one element per 2 chars (e.g. "1,")
+        java.util.ArrayList<Byte> bytes = new java.util.ArrayList<>(Math.max(8, n / 2));
+        int i = 1;
+        boolean expectingValue = true;
+        while (i < n - 1) {
+            // Skip whitespace
+            while (i < n - 1 && Character.isWhitespace(s.charAt(i))) {
+                i++;
+            }
+            if (i >= n - 1) {
+                break;
+            }
+            if (expectingValue) {
+                // Parse a non-negative integer
+                int start = i;
+                while (i < n - 1) {
+                    char c = s.charAt(i);
+                    if (c >= '0' && c <= '9') {
+                        i++;
+                    } else {
+                        break;
+                    }
+                }
+                if (start == i) {
+                    return null; // non-digit where digit expected
+                }
+                int value;
+                try {
+                    value = Integer.parseInt(s.substring(start, i));
+                } catch (NumberFormatException e) {
+                    return null;
+                }
+                if (value < 0 || value > 255) {
+                    return null;
+                }
+                bytes.add((byte) value);
+                expectingValue = false;
+            } else {
+                if (s.charAt(i) != ',') {
+                    return null;
+                }
+                i++;
+                expectingValue = true;
+            }
+        }
+        if (expectingValue && !bytes.isEmpty()) {
+            return null; // trailing comma
+        }
+        byte[] out = new byte[bytes.size()];
+        for (int k = 0; k < bytes.size(); k++) {
+            out[k] = bytes.get(k);
+        }
+        return out;
+    }
+
+    private static byte[] decodeSpacedHex(String s) {
+        // Pre-validated by HEX_PAIRS_WITH_SPACES; count pairs to size the output.
+        int pairs = 1;
+        for (int i = 0; i < s.length(); i++) {
+            if (Character.isWhitespace(s.charAt(i))) {
+                pairs++;
+            }
+        }
+        byte[] out = new byte[pairs];
+        int outIdx = 0;
+        int i = 0;
+        while (i < s.length()) {
+            // Skip whitespace
+            while (i < s.length() && Character.isWhitespace(s.charAt(i))) {
+                i++;
+            }
+            if (i + 1 >= s.length()) {
+                break;
+            }
+            out[outIdx++] = (byte) ((hexDigit(s.charAt(i)) << 4) | hexDigit(s.charAt(i + 1)));
+            i += 2;
+        }
+        // Defensive: shrink if we over-allocated
+        if (outIdx != out.length) {
+            byte[] trimmed = new byte[outIdx];
+            System.arraycopy(out, 0, trimmed, 0, outIdx);
+            return trimmed;
+        }
+        return out;
+    }
+
+    private static byte[] decodeUnspacedHex(String s) {
+        int n = s.length();
+        byte[] out = new byte[n / 2];
+        for (int i = 0; i < n; i += 2) {
+            out[i / 2] = (byte) ((hexDigit(s.charAt(i)) << 4) | hexDigit(s.charAt(i + 1)));
+        }
+        return out;
+    }
+
+    private static int hexDigit(char c) {
+        if (c >= '0' && c <= '9') return c - '0';
+        if (c >= 'a' && c <= 'f') return c - 'a' + 10;
+        if (c >= 'A' && c <= 'F') return c - 'A' + 10;
+        return 0; // unreachable when called from validated input
+    }
+
     static ByteBuffer toByteBuffer(Object from, Converter converter) {
         return ByteBuffer.wrap(toByteArray(from, converter));
     }

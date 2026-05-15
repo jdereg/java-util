@@ -59,9 +59,6 @@ public final class CollectionConversions {
      */
     @SuppressWarnings("unchecked")
     public static <T extends Collection<?>> T arrayToCollection(Object array, Class<T> targetType) {
-        // Track visited arrays to handle circular references
-        IdentityHashMap<Object, Object> visited = new IdentityHashMap<>();
-
         // Determine if the target type requires unmodifiable behavior
         boolean requiresUnmodifiable = isUnmodifiable(targetType);
         boolean requiresSynchronized = isSynchronized(targetType);
@@ -74,8 +71,11 @@ public final class CollectionConversions {
             return (T) rootCollection;
         }
 
-        // Track source array → target collection mapping
-        visited.put(array, rootCollection);
+        // Cycle-tracking via IdentityHashMap, lazily allocated. The map is only
+        // consulted when a nested array element is encountered (line below); most
+        // conversions are flat, so the previous unconditional alloc+put-root was
+        // wasted work. Mirrors the optimization shipped in ArrayConversions.
+        IdentityHashMap<Object, Object> visited = null;
 
         // Work queue for iterative processing
         Deque<ArrayToCollectionWorkItem> queue = new ArrayDeque<>();
@@ -89,6 +89,12 @@ public final class CollectionConversions {
                 Object element = ArrayUtilities.getElement(work.sourceArray, i);
 
                 if (element != null && element.getClass().isArray()) {
+                    // Lazy-allocate the visited map on first nested-array encounter
+                    // and seed it with the root mapping.
+                    if (visited == null) {
+                        visited = new IdentityHashMap<>(16);
+                        visited.put(array, rootCollection);
+                    }
                     // Check if we've already converted this array (circular reference)
                     if (visited.containsKey(element)) {
                         // Reuse existing collection - preserves cycles
@@ -135,9 +141,6 @@ public final class CollectionConversions {
      */
     @SuppressWarnings("unchecked")
     public static Object collectionToCollection(Collection<?> source, Class<?> targetType) {
-        // Track visited collections to handle circular references
-        IdentityHashMap<Object, Object> visited = new IdentityHashMap<>();
-
         // Determine if the target type requires unmodifiable behavior
         boolean requiresUnmodifiable = isUnmodifiable(targetType);
         boolean requiresSynchronized = isSynchronized(targetType);
@@ -150,8 +153,11 @@ public final class CollectionConversions {
             return rootCollection;
         }
 
-        // Track source collection → target collection mapping
-        visited.put(source, rootCollection);
+        // Cycle-tracking via IdentityHashMap, lazily allocated. The map is only
+        // consulted when a nested Collection element is encountered; most conversions
+        // are flat, so the previous unconditional alloc+put-root was wasted work.
+        // Mirrors the optimization shipped in ArrayConversions.
+        IdentityHashMap<Object, Object> visited = null;
 
         // Work queue for iterative processing
         Deque<CollectionToCollectionWorkItem> queue = new ArrayDeque<>();
@@ -162,6 +168,12 @@ public final class CollectionConversions {
 
             for (Object element : work.sourceCollection) {
                 if (element instanceof Collection) {
+                    // Lazy-allocate the visited map on first nested-collection encounter
+                    // and seed it with the root mapping.
+                    if (visited == null) {
+                        visited = new IdentityHashMap<>(16);
+                        visited.put(source, rootCollection);
+                    }
                     // Check if we've already converted this collection (circular reference)
                     if (visited.containsKey(element)) {
                         // Reuse existing collection - preserves cycles

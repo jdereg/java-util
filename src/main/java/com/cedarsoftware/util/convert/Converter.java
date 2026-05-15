@@ -1147,6 +1147,7 @@ public final class Converter {
         CONVERSION_DB.put(char[].class, byte[].class, (from, converter) -> ArrayConversions.arrayToArray(from, byte[].class, converter));
         CONVERSION_DB.put(byte[].class, byte[].class, ByteArrayConversions::copy);
         CONVERSION_DB.put(File.class, byte[].class, FileConversions::toByteArray);
+        CONVERSION_DB.put(Map.class, byte[].class, MapConversions::toByteArray);
         CONVERSION_DB.put(Path.class, byte[].class, PathConversions::toByteArray);
         CONVERSION_DB.put(UUID.class, byte[].class, UUIDConversions::toByteArray);
 

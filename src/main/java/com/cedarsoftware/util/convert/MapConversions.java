@@ -19,10 +19,10 @@ import java.time.OffsetTime;
 import java.time.Period;
 import java.time.Year;
 import java.time.YearMonth;
+import java.util.Base64;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
-import java.util.Base64;
 import java.util.BitSet;
 import java.util.Calendar;
 import java.util.Collections;
@@ -394,40 +394,57 @@ final class MapConversions {
     }
 
     /**
-     * Converts a Map to a ByteBuffer by decoding a Base64-encoded string value.
+     * Convert a Map to a {@code byte[]} by extracting the value under the {@code "value"}
+     * (or legacy {@code "_v"}) key.
      *
-     * @param from The Map containing a Base64-encoded string under "value" or "_v" key
-     * @param converter The Converter instance for configuration access
-     * @return A ByteBuffer containing the decoded bytes
-     * @throws IllegalArgumentException If the map is missing required keys or contains invalid data
-     * @throws NullPointerException If the map or its required values are null
+     * <p>The wrapped-form contract used by json-io's tree writer for binary types is
+     * {@code {"@type":"byte[]","value":"<base64>"}} (or simply {@code {"value":"..."}}).
+     * When the extracted value is a {@link String} we attempt a strict Base64 decode first
+     * — this preserves round-trip for short blobs whose Base64 encoding is too short to pass
+     * the tight rules in {@link StringConversions#toByteArray(Object, Converter)} (e.g. a
+     * 3-byte ByteBuffer encodes to 4 unpadded chars like {@code "AQL9"} that don't carry the
+     * length/padding/symbol discriminators the standalone path relies on). On invalid Base64,
+     * we fall through to the smart dispatch path so other string formats (stringified JSON
+     * arrays, hex with sufficient length, etc.) still work in the Map context.
+     *
+     * <p>Non-String values dispatch through Converter, supporting other Converter-known
+     * sources (ByteBuffer, char[], etc.).
+     */
+    static byte[] toByteArray(Object from, Converter converter) {
+        Map<?, ?> map = (Map<?, ?>) from;
+        Object valueObj = map.containsKey(VALUE) ? map.get(VALUE) : map.get(V);
+        if (valueObj instanceof String) {
+            try {
+                return Base64.getDecoder().decode((String) valueObj);
+            } catch (IllegalArgumentException ignored) {
+                // Not strict Base64 — fall through to smart dispatch (JSON-array, hex, etc.)
+            }
+        }
+        return dispatch(from, converter, byte[].class, VALUE_KEYS);
+    }
+
+    /**
+     * Convert a Map to a {@link ByteBuffer} by extracting the value under the {@code "value"}
+     * (or legacy {@code "_v"}) key.
+     *
+     * <p>See {@link #toByteArray(Object, Converter)} for the full contract; this method wraps
+     * the resulting bytes in a {@link ByteBuffer}.
+     *
+     * @param from      The Map containing a value under "value" or "_v" key
+     * @param converter The Converter instance for recursive dispatch
+     * @return A ByteBuffer wrapping the decoded bytes
      */
     static ByteBuffer toByteBuffer(Object from, Converter converter) {
         Map<?, ?> map = (Map<?, ?>) from;
-
-        // Check for the value in preferred order (VALUE first, then V)
         Object valueObj = map.containsKey(VALUE) ? map.get(VALUE) : map.get(V);
-
-        if (valueObj == null) {
-            throw new IllegalArgumentException("Unable to convert map to ByteBuffer: Missing or null 'value' or '_v' field");
+        if (valueObj instanceof String) {
+            try {
+                return ByteBuffer.wrap(Base64.getDecoder().decode((String) valueObj));
+            } catch (IllegalArgumentException ignored) {
+                // Not strict Base64 — fall through to smart dispatch
+            }
         }
-
-        if (!(valueObj instanceof String)) {
-            throw new IllegalArgumentException("Unable to convert map to ByteBuffer: Value must be a Base64-encoded String, found: "
-                    + valueObj.getClass().getName());
-        }
-
-        String base64 = (String) valueObj;
-
-        try {
-            // Decode the Base64 string into a byte array
-            byte[] decoded = Base64.getDecoder().decode(base64);
-
-            // Wrap the byte array with a ByteBuffer (creates a backed array that can be gc'd when no longer referenced)
-            return ByteBuffer.wrap(decoded);
-        } catch (IllegalArgumentException e) {
-            throw new IllegalArgumentException("Unable to convert map to ByteBuffer: Invalid Base64 encoding", e);
-        }
+        return dispatch(from, converter, ByteBuffer.class, VALUE_KEYS);
     }
 
     static CharBuffer toCharBuffer(Object from, Converter converter) {

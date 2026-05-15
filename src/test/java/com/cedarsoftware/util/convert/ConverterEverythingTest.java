@@ -1163,6 +1163,67 @@ class ConverterEverythingTest {
         TEST_DB.put(pair(ByteBuffer.class, String.class), new Object[][]{
                 {ByteBuffer.wrap(new byte[]{(byte) 0x30, (byte) 0x31, (byte) 0x32, (byte) 0x33}), "0123", true}
         });
+
+        // -------------------------------------------------------------------
+        // String → byte[] — multi-format detection ladder (commits f889b09b + 1951c830)
+        // -------------------------------------------------------------------
+        // Detection order: JSON-array → spaced-hex → unspaced-hex (length≥8) →
+        // URL-safe base64 (tight) → standard base64 (tight) → charset fallback.
+        // Tight base64: length≥16 OR padding OR contains +/_-.
+        TEST_DB.put(pair(String.class, byte[].class), new Object[][]{
+                // 1. Stringified JSON number array
+                {"[1, 2, 3]", new byte[]{1, 2, 3}},
+                {"[ 1 , 2 , 3 ]", new byte[]{1, 2, 3}},
+                {"[0, 255, 128]", new byte[]{0, (byte) 255, (byte) 128}},
+                {"[]", new byte[]{}},
+
+                // 2. Spaced hex pairs (length ≥ 5, i.e. ≥ 2 pairs)
+                {"CA FE BA BE", new byte[]{(byte) 0xCA, (byte) 0xFE, (byte) 0xBA, (byte) 0xBE}},
+                {"de ad be ef", new byte[]{(byte) 0xDE, (byte) 0xAD, (byte) 0xBE, (byte) 0xEF}},
+                {"00 01 02 FF", new byte[]{0, 1, 2, (byte) 0xFF}},
+
+                // 3. Unspaced hex (length ≥ 8) — Java magic numbers, compact UUIDs, hashes
+                {"CAFEBABE", new byte[]{(byte) 0xCA, (byte) 0xFE, (byte) 0xBA, (byte) 0xBE}},
+                {"DEADBEEF", new byte[]{(byte) 0xDE, (byte) 0xAD, (byte) 0xBE, (byte) 0xEF}},
+                {"FEEDFACE", new byte[]{(byte) 0xFE, (byte) 0xED, (byte) 0xFA, (byte) 0xCE}},
+                {"BAADF00D", new byte[]{(byte) 0xBA, (byte) 0xAD, (byte) 0xF0, (byte) 0x0D}},
+                // Compact UUID (32 hex chars) → 16 bytes
+                {"550e8400e29b41d4a716446655440000",
+                        new byte[]{0x55, 0x0e, (byte) 0x84, 0x00, (byte) 0xe2, (byte) 0x9b, 0x41, (byte) 0xd4,
+                                (byte) 0xa7, 0x16, 0x44, 0x66, 0x55, 0x44, 0x00, 0x00}},
+
+                // 4. URL-safe Base64 (tight: contains _ or -, plus length/padding)
+                {"SGVsbG8sIFdvcmxkIQ==", new byte[]{72, 101, 108, 108, 111, 44, 32, 87, 111, 114, 108, 100, 33}},  // "Hello, World!" with padding
+                {"SGVsbG8tV29ybGRfQg==", "Hello-World_B".getBytes(StandardCharsets.UTF_8)},  // URL-safe chars present, padding
+
+                // 5. Standard Base64 (tight rule fires)
+                {"SGVsbG8=", new byte[]{72, 101, 108, 108, 111}},  // "Hello" — padded, length 8
+                {"VGhpcyBpcyBhIGxvbmcgc3RyaW5n", "This is a long string".getBytes(StandardCharsets.UTF_8)},  // length 28 ≥ 16
+                // "AAAA" — 4-char Base64-alphabet without padding/symbols, fails tight rule → charset
+                {"AAAA", "AAAA".getBytes(StandardCharsets.UTF_8)},
+
+                // 6. Charset fallback — short uppercase tokens preserved (the documented narrow case)
+                {"DATA", "DATA".getBytes(StandardCharsets.UTF_8)},
+                {"CODE", "CODE".getBytes(StandardCharsets.UTF_8)},
+                {"TEST", "TEST".getBytes(StandardCharsets.UTF_8)},
+                {"hello", "hello".getBytes(StandardCharsets.UTF_8)},
+                {"ABCD", "ABCD".getBytes(StandardCharsets.UTF_8)},
+                {"0123", "0123".getBytes(StandardCharsets.UTF_8)},  // length 4 hex but < 8 hex-tight
+                {"ab", "ab".getBytes(StandardCharsets.UTF_8)},
+                {"hello world", "hello world".getBytes(StandardCharsets.UTF_8)},  // contains space, fails patterns
+        });
+
+        // -------------------------------------------------------------------
+        // String → ByteBuffer — inherits everything from String → byte[]
+        // (toByteBuffer just wraps the result of toByteArray)
+        // -------------------------------------------------------------------
+        TEST_DB.put(pair(String.class, ByteBuffer.class), new Object[][]{
+                {"[1, 2, 3]", ByteBuffer.wrap(new byte[]{1, 2, 3})},
+                {"CAFEBABE", ByteBuffer.wrap(new byte[]{(byte) 0xCA, (byte) 0xFE, (byte) 0xBA, (byte) 0xBE})},
+                {"CA FE BA BE", ByteBuffer.wrap(new byte[]{(byte) 0xCA, (byte) 0xFE, (byte) 0xBA, (byte) 0xBE})},
+                {"SGVsbG8=", ByteBuffer.wrap(new byte[]{72, 101, 108, 108, 111})},
+                {"DATA", ByteBuffer.wrap("DATA".getBytes(StandardCharsets.UTF_8))},
+        });
         TEST_DB.put(pair(java.sql.Date.class, String.class), new Object[][]{
                 // Basic cases around epoch
                 {java.sql.Date.valueOf("1969-12-31"), "1969-12-31", true},
@@ -4945,6 +5006,29 @@ class ConverterEverythingTest {
         TEST_DB.put(pair(Map.class, ByteBuffer.class), new Object[][]{
                 {mapOf(VALUE, "QUJDRAAAenl4dw=="), ByteBuffer.wrap(new byte[]{'A', 'B', 'C', 'D', 0, 0, 'z', 'y', 'x', 'w'})},
                 {mapOf(V, "AABmb28AAA=="), ByteBuffer.wrap(new byte[]{0, 0, 'f', 'o', 'o', 0, 0})},
+                // Short Base64 (3 bytes → 4 unpadded chars) — wrapped-form contract preserves
+                // round-trip via try-base64-first in MapConversions.toByteBuffer (commit 1951c830).
+                {mapOf(VALUE, "AQL9"), ByteBuffer.wrap(new byte[]{1, 2, -3})},
+                // Stringified JSON array — falls through to smart dispatch
+                {mapOf(VALUE, "[1, 2, 3]"), ByteBuffer.wrap(new byte[]{1, 2, 3})},
+                {mapOf(V, "[10, 20, 30]"), ByteBuffer.wrap(new byte[]{10, 20, 30})},
+        });
+
+        // -------------------------------------------------------------------
+        // Map → byte[] — wrapped-form contract: try strict Base64 first,
+        // fall through to smart dispatch (JSON-array, hex, etc.) on invalid Base64.
+        // -------------------------------------------------------------------
+        TEST_DB.put(pair(Map.class, byte[].class), new Object[][]{
+                // Padded Base64 under VALUE / V (legacy) keys
+                {mapOf(VALUE, "SGVsbG8="), new byte[]{72, 101, 108, 108, 111}},
+                {mapOf(V, "SGVsbG8="), new byte[]{72, 101, 108, 108, 111}},
+                // Short unpadded Base64 (3 bytes → 4 chars) — wrapped-form preserves round-trip
+                {mapOf(VALUE, "AQL9"), new byte[]{1, 2, -3}},
+                {mapOf(VALUE, "QUJDRA=="), new byte[]{'A', 'B', 'C', 'D'}},
+                // Stringified JSON array — fall-through to smart dispatch via dispatch()
+                {mapOf(VALUE, "[1, 2, 3]"), new byte[]{1, 2, 3}},
+                {mapOf(VALUE, "[0, 255, 128]"), new byte[]{0, (byte) 255, (byte) 128}},
+                {mapOf(V, "[]"), new byte[]{}},
         });
     }
 

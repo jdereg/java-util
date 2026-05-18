@@ -170,7 +170,7 @@ public final class JavaBigIntegerParser {
      * Parses a {@code BigIntegerString} from a {@code byte}-Array and converts it
      * into a {@link BigInteger} value.
      * <p>
-     * See {@link JsonDoubleParser} for the syntax of {@code FloatingPointLiteral}.
+     * See {@link JavaDoubleParser} for the syntax of {@code FloatingPointLiteral}.
      *
      * @param str    the string to be parsed, a byte array with characters
      *               in ISO-8859-1, ASCII or UTF-8 encoding
@@ -189,7 +189,7 @@ public final class JavaBigIntegerParser {
      * Parses a {@code BigIntegerString} from a {@code byte}-Array and converts it
      * into a {@link BigInteger} value.
      * <p>
-     * See {@link JsonDoubleParser} for the syntax of {@code FloatingPointLiteral}.
+     * See {@link JavaDoubleParser} for the syntax of {@code FloatingPointLiteral}.
      *
      * @param str    the string to be parsed, a byte array with characters
      *               in ISO-8859-1, ASCII or UTF-8 encoding
@@ -234,7 +234,7 @@ public final class JavaBigIntegerParser {
      * Parses a {@code BigIntegerString} from a {@code char}-Array and converts it
      * into a {@link BigInteger} value.
      * <p>
-     * See {@link JsonDoubleParser} for the syntax of {@code FloatingPointLiteral}.
+     * See {@link JavaDoubleParser} for the syntax of {@code FloatingPointLiteral}.
      *
      * @param str    the string to be parsed, a byte array with characters
      *               in ISO-8859-1, ASCII or UTF-8 encoding
@@ -253,7 +253,7 @@ public final class JavaBigIntegerParser {
      * Parses a {@code BigIntegerString} from a {@code char}-Array and converts it
      * into a {@link BigInteger} value.
      * <p>
-     * See {@link JsonDoubleParser} for the syntax of {@code FloatingPointLiteral}.
+     * See {@link JavaDoubleParser} for the syntax of {@code FloatingPointLiteral}.
      *
      * @param str    the string to be parsed, a byte array with characters
      *               in ISO-8859-1, ASCII or UTF-8 encoding

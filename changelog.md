@@ -1,6 +1,8 @@
 ### Revision History
 
-#### 4.103.0 - (Unreleased)
+#### 4.104.0 - (Unreleased)
+
+#### 4.103.0 - 2026-05-25
 * **BUILD**: Test-scope dependency bumps — `junit-jupiter` 5.14.3 → 5.14.4; `agrona` 1.22.0 → 1.23.1 (still JDK 8 compatible; agrona 2.x dropped Java 8).
 * **BUILD**: Registered the JDK 9+ standard `@apiNote` / `@implSpec` / `@implNote` tags with `maven-javadoc-plugin` so the javadoc tool no longer emits "unknown tag" warnings for these.
 * **FEATURE**: New `com.cedarsoftware.util.internal.VectorizedArrays` — exposes `equalsRange` / `mismatchRange` / `compareRange` for both `char[]` and `byte[]`. Dispatches at runtime to JDK 9+ SIMD-vectorized `Arrays.*` intrinsics, with hand-rolled loop fallbacks for JDK 8. Resolution happens once at class load via `MethodHandle`s, so per-call cost is a static-field read + `invokeExact`. Internal package for now; promoted to public API once the contract stabilizes. 21 new tests.

@@ -9,6 +9,7 @@
 * **PERFORMANCE**: `ClassUtilities.newInstance()` cached constructor plans now fast-invoke non-varargs constructors when supplied arguments are already in constructor-parameter order and directly assignable, bypassing the matcher allocations on repeated positional construction.
 * **PERFORMANCE**: `ClassUtilities.newInstance()` no-arg cached construction now reuses the empty argument-shape key, skips argument-matching on cached zero-parameter plans, avoids defensive collection copying when preparing arguments, and allocates the circular-reference `IdentitySet` only for inner-class recursion.
 * **PERFORMANCE**: `ClassUtilities.newInstance()` constructor-plan cache entries now retain constructor parameter metadata, avoiding repeated `Constructor.getParameters()` calls on cached construction paths.
+* **BUILD**: Test-scope dependency bumps — `junit-jupiter-api`/`junit-jupiter-params` 5.14.3 → 5.14.4; `agrona` 1.22.0 → 1.23.1 (still class-file 52 / JDK 8 compatible; agrona 2.x dropped Java 8). Pom comment updated to reflect the real JDK 8 ceiling.
 
 #### 4.102.0 - 2026-05-04
 * **BUILD**: jackson-databind test dependency bumped 2.21.2 → 2.21.3. Test-scope only.

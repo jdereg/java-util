@@ -754,6 +754,17 @@ public final class DateUtilities {
             validateMalformedInput(dateStr);
         }
 
+        // FAST PATH: strict ISO-8601 date-time with explicit zone/offset — the machine
+        // wire format (json-io, Jackson, java.time toString()). Parses via the JDK's
+        // strict parser, several times faster than the regex-driven flexible recognition
+        // below. Only fully-zoned forms are taken (unambiguous, so defaultZoneId is not
+        // consulted — matching how the flexible path treats explicit zones). Zone-less
+        // ISO, human-readable formats, and epoch millis fall through unchanged.
+        ZonedDateTime isoFast = tryStrictIsoParse(dateStr);
+        if (isoFast != null) {
+            return isoFast;
+        }
+
         // If purely digits => epoch millis
         if (safeMatches(allDigits, dateStr)) {
             // Security: Validate epoch milliseconds range to prevent overflow
@@ -883,6 +894,67 @@ public final class DateUtilities {
 
         // 6) Build the ZonedDateTime
         return getDate(dateStr, zoneId, year, month, day, hour, min, sec, fracSec);
+    }
+
+    /**
+     * Strict-ISO fast path for {@link #parseDate(String, ZoneId, boolean)}: attempt
+     * {@link ZonedDateTime#parse(CharSequence)} for strings shaped like
+     * {@code yyyy-MM-ddTHH...} that carry an explicit zone or offset. Returns {@code null}
+     * when the shape doesn't match or strict parsing fails — the caller falls through to
+     * the flexible regex path, so nothing the flexible path accepted is lost.
+     * <p>
+     * Output parity: bare-offset results are re-zoned with {@code ZoneId.ofOffset("GMT", ...)}
+     * — the same normalization {@code getTimeZone} applies on the flexible path — so
+     * {@code "+05:30"} yields zone {@code GMT+05:30} and {@code "+00:00"} yields {@code GMT},
+     * exactly as before. A trailing {@code Z} keeps zone {@code Z} (also as before). The one
+     * deliberate difference: bracketed offset forms like {@code ...+05:30[+05:30]} — valid
+     * ISO-8601 that the flexible path rejects — now parse successfully.
+     */
+    private static ZonedDateTime tryStrictIsoParse(String dateStr) {
+        final int len = dateStr.length();
+        // Shape gate: "yyyy-MM-ddT..." — dashes at 4 and 7, 'T' at 10 (case-sensitive,
+        // matching the flexible path, which also rejects lowercase 't').
+        if (len < 12 || dateStr.charAt(4) != '-' || dateStr.charAt(7) != '-' || dateStr.charAt(10) != 'T') {
+            return null;
+        }
+        // Zone/offset scan beyond the 'T': any of 'Z', '+', '-' marks an offset/UTC form,
+        // '[' a bracketed zone id. Zone-less ISO must use the flexible path so the
+        // caller's defaultZoneId is applied.
+        boolean zoned = false;
+        boolean bracketed = false;
+        for (int i = 11; i < len; i++) {
+            char c = dateStr.charAt(i);
+            if (c == '[') {
+                bracketed = true;
+                zoned = true;
+                break;
+            }
+            if (c == 'Z' || c == '+' || c == '-') {
+                zoned = true;
+            }
+        }
+        if (!zoned) {
+            return null;
+        }
+        ZonedDateTime zdt;
+        try {
+            if (dateStr.charAt(len - 1) == 'Z') {
+                // Trailing-Z (the most common machine form): ISO_INSTANT's specialized
+                // parser is measurably faster than the general ZonedDateTime.parse.
+                // Output parity: ZonedDateTime.parse on a trailing-Z string also yields
+                // zone Z, so the two are interchangeable here.
+                return Instant.parse(dateStr).atZone(ZoneOffset.UTC);
+            }
+            zdt = ZonedDateTime.parse(dateStr);
+        } catch (Exception notStrictIso) {
+            return null;
+        }
+        if (!bracketed && zdt.getZone() instanceof ZoneOffset && dateStr.charAt(len - 1) != 'Z') {
+            // Bare numeric offset ("+05:30", "+00:00"): normalize to the GMT-prefixed
+            // ZoneId the flexible path has always produced. Trailing-Z forms keep zone Z.
+            zdt = zdt.withZoneSameLocal(ZoneId.ofOffset("GMT", (ZoneOffset) zdt.getZone()));
+        }
+        return zdt;
     }
 
     private static ZonedDateTime getDate(String dateStr,

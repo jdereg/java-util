@@ -1,6 +1,7 @@
 ### Revision History
 
 #### 4.104.0 - (Unreleased)
+* **PERFORMANCE**: **Strict-ISO fast path in `DateUtilities.parseDate`.** Fully-zoned ISO-8601 date-times (`yyyy-MM-ddTHH...` with explicit `Z`/offset/`[zone]` — the machine wire format emitted by json-io, Jackson, and `java.time` `toString()`) now parse via the JDK's strict parsers (`Instant.parse` for trailing-Z, `ZonedDateTime.parse` otherwise) before the regex-driven flexible recognizer. Measured per-parse: trailing-Z instants **-38%** (759 → ~470 ns), nanos-precision **-49%**, bare-offset **-29%**, bracketed-zone **-43%**. All `Converter` String → temporal conversions (`Instant`, `ZonedDateTime`, `OffsetDateTime`, `LocalDate`, `LocalDateTime`, `Date`, `Timestamp`, `Calendar`, …) ride the funnel and benefit. Output parity is exact — bare-offset results keep the historical `GMT±HH:MM` zone normalization, `+00:00` still maps to `GMT`, trailing `Z` keeps zone `Z`, zone-less strings still receive the caller's default `ZoneId` via the flexible path, and every human-readable/epoch format is untouched. One deliberate leniency gain: bracketed-offset forms like `...+05:30[+05:30]` (valid ISO-8601, emitted by json-io for offset-zoned `ZonedDateTime`s) now parse instead of throwing.
 
 #### 4.103.0 - 2026-05-25
 * **BUILD**: Test-scope dependency bumps — `junit-jupiter` 5.14.3 → 5.14.4; `agrona` 1.22.0 → 1.23.1 (still JDK 8 compatible; agrona 2.x dropped Java 8).

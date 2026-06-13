@@ -64,11 +64,22 @@ class DateUtilitiesIsoFastPathTest {
     }
 
     @Test
-    void bracketedOffsetFormNowParses() {
-        // Valid ISO-8601 that the flexible path rejected — the strict fast path accepts it.
-        // (json-io emits this form for ZonedDateTime values whose zone is a plain offset.)
-        ZonedDateTime zdt = DateUtilities.parseDate("2026-06-10T13:45:30+05:30[+05:30]", CHICAGO, true);
-        assertEquals(ZoneOffset.ofHoursMinutes(5, 30), zdt.getZone());
+    void bracketedFormsDeferToFlexiblePath() {
+        // Bracketed [zone] forms must NOT be handled by the strict fast path — it would skip
+        // GMT->Etc/GMT normalization and trust a minute-truncated offset over the region,
+        // shifting the instant for ancient LMT dates. They defer to the flexible path instead.
+        // (Regression fix: a 4.104.0 fast path mishandled these.)
+
+        // (a) GMT normalization preserved.
+        ZonedDateTime gmt = DateUtilities.parseDate("2024-02-02T12:00:00Z[GMT]", CHICAGO, true);
+        assertEquals(ZoneId.of("Etc/GMT"), gmt.getZone());
+
+        // (b) Ancient LMT date: the region's true offset (-04:56:02) wins over the written,
+        // minute-truncated -04:56, so the instant is preserved (no 2-second drift).
+        ZonedDateTime lmt = DateUtilities.parseDate(
+                "0003-01-31T12:03:58-04:56[America/New_York]", CHICAGO, true);
+        assertEquals(ZoneId.of("America/New_York"), lmt.getZone());
+        assertEquals(ZoneOffset.ofTotalSeconds(-17762), lmt.getOffset());   // -04:56:02
     }
 
     @Test

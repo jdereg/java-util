@@ -906,9 +906,14 @@ public final class DateUtilities {
      * Output parity: bare-offset results are re-zoned with {@code ZoneId.ofOffset("GMT", ...)}
      * — the same normalization {@code getTimeZone} applies on the flexible path — so
      * {@code "+05:30"} yields zone {@code GMT+05:30} and {@code "+00:00"} yields {@code GMT},
-     * exactly as before. A trailing {@code Z} keeps zone {@code Z} (also as before). The one
-     * deliberate difference: bracketed offset forms like {@code ...+05:30[+05:30]} — valid
-     * ISO-8601 that the flexible path rejects — now parse successfully.
+     * exactly as before. A trailing {@code Z} keeps zone {@code Z} (also as before).
+     * <p>
+     * Bracketed {@code [zone]} forms (e.g. {@code ...Z[GMT]}, {@code ...-04:56[America/New_York]})
+     * are deliberately NOT handled here — they return {@code null} so the flexible path runs.
+     * The flexible path (a) normalizes {@code GMT -> Etc/GMT} and (b) reconciles the region
+     * against a possibly minute-truncated written offset, preserving the instant for ancient
+     * LMT dates. {@code ZonedDateTime.parse} does neither — it trusts the literal offset, which
+     * shifts the instant by the dropped seconds. This bail-out is the fix for that regression.
      */
     private static ZonedDateTime tryStrictIsoParse(String dateStr) {
         final int len = dateStr.length();
@@ -917,17 +922,14 @@ public final class DateUtilities {
         if (len < 12 || dateStr.charAt(4) != '-' || dateStr.charAt(7) != '-' || dateStr.charAt(10) != 'T') {
             return null;
         }
-        // Zone/offset scan beyond the 'T': any of 'Z', '+', '-' marks an offset/UTC form,
-        // '[' a bracketed zone id. Zone-less ISO must use the flexible path so the
-        // caller's defaultZoneId is applied.
+        // Zone/offset scan beyond the 'T': 'Z'/'+'/'-' marks an offset/UTC form. A '[' marks a
+        // bracketed zone region — defer entirely to the flexible path (see Javadoc). Zone-less
+        // ISO also defers, so the caller's defaultZoneId is applied.
         boolean zoned = false;
-        boolean bracketed = false;
         for (int i = 11; i < len; i++) {
             char c = dateStr.charAt(i);
             if (c == '[') {
-                bracketed = true;
-                zoned = true;
-                break;
+                return null;
             }
             if (c == 'Z' || c == '+' || c == '-') {
                 zoned = true;
@@ -949,7 +951,7 @@ public final class DateUtilities {
         } catch (Exception notStrictIso) {
             return null;
         }
-        if (!bracketed && zdt.getZone() instanceof ZoneOffset && dateStr.charAt(len - 1) != 'Z') {
+        if (zdt.getZone() instanceof ZoneOffset && dateStr.charAt(len - 1) != 'Z') {
             // Bare numeric offset ("+05:30", "+00:00"): normalize to the GMT-prefixed
             // ZoneId the flexible path has always produced. Trailing-Z forms keep zone Z.
             zdt = zdt.withZoneSameLocal(ZoneId.ofOffset("GMT", (ZoneOffset) zdt.getZone()));

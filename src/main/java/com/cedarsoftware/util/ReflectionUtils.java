@@ -26,6 +26,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -236,6 +237,42 @@ public final class ReflectionUtils {
     private static <T> void swap(AtomicReference<T> ref, T newValue) {
         Objects.requireNonNull(newValue, "cache must not be null");
         ref.set(newValue);                        // atomic & happens-before
+    }
+
+    /**
+     * Lock-free fast path over the reflection caches: try a concurrent {@link Map#get}
+     * first, falling back to {@link Map#computeIfAbsent} only on a genuine miss.
+     * <p>
+     * These caches are written once per (class, member) key and read indefinitely
+     * thereafter — the overwhelmingly common case is a hit. The default {@link LRUCache}
+     * LOCKING strategy backs reads with a {@code ConcurrentHashMap} and only uses a
+     * non-blocking {@code tryLock} for LRU reordering in {@code get}, but its
+     * {@code computeIfAbsent} acquires the cache's exclusive {@link java.util.concurrent.locks.ReentrantLock}
+     * unconditionally — even on a hit. Calling {@code computeIfAbsent} directly therefore
+     * serialized all concurrent reflection lookups (e.g. multi-threaded deserialization)
+     * on a single per-cache lock. Reading via {@code get} first keeps the hit path
+     * lock-free; only the rare cold miss takes the lock, where it is needed for atomic
+     * insertion and LRU bookkeeping anyway.
+     * <p>
+     * Negative lookups are cached as sentinels (never {@code null}) and no mapping
+     * function stores {@code null}, so a {@code null} from {@code get} unambiguously
+     * means "absent." The returned value is therefore identical to what a direct
+     * {@code computeIfAbsent} call would yield. The pattern is also valid for any
+     * user-supplied {@code Map} (via the {@code setXxxCache} hooks): {@code get} and
+     * {@code computeIfAbsent} are both standard {@code Map} operations.
+     */
+    @SuppressWarnings("unchecked")
+    private static <K, V> V getOrCompute(Map<? super K, V> cache, K key,
+                                         Function<? super K, ? extends V> mappingFunction) {
+        V existing = cache.get(key);
+        if (existing != null) {
+            return existing;
+        }
+        // View the `? super K` cache as an invariant Map<K, V> for computeIfAbsent: its
+        // key-type wildcard otherwise rejects the Function<? super K, ...> argument. Safe
+        // because this helper only ever reads/writes the cache with key type K and value
+        // type V — the same contract every call site already satisfies.
+        return ((Map<K, V>) cache).computeIfAbsent(key, mappingFunction);
     }
 
     /**
@@ -891,7 +928,7 @@ public final class ReflectionUtils {
         final ClassAnnotationCacheKey key = new ClassAnnotationCacheKey(classToCheck, annoClass);
 
         // Use computeIfAbsent to ensure misses are cached with sentinel values.
-        Annotation annotation = CLASS_ANNOTATION_CACHE.get().computeIfAbsent(key, k -> {
+        Annotation annotation = getOrCompute(CLASS_ANNOTATION_CACHE.get(), key, k -> {
             Annotation found = findClassAnnotation(classToCheck, annoClass);
             return found == null ? NOT_FOUND_ANNOTATION : found;
         });
@@ -1051,7 +1088,7 @@ public final class ReflectionUtils {
         final MethodAnnotationCacheKey key = new MethodAnnotationCacheKey(method, annoClass);
 
         // Atomically retrieve or compute the annotation from the cache
-        Annotation annotation = METHOD_ANNOTATION_CACHE.get().computeIfAbsent(key, k -> {
+        Annotation annotation = getOrCompute(METHOD_ANNOTATION_CACHE.get(), key, k -> {
             // Search the entire class and interface hierarchy
             Set<Class<?>> visited = new IdentitySet<>();
             Deque<Class<?>> toVisit = new ArrayDeque<>();
@@ -1134,7 +1171,7 @@ public final class ReflectionUtils {
         final FieldNameCacheKey key = new FieldNameCacheKey(c, fieldName);
 
         // Atomically retrieve or compute the field from the cache
-        Field field = FIELD_NAME_CACHE.get().computeIfAbsent(key, k -> {
+        Field field = getOrCompute(FIELD_NAME_CACHE.get(), key, k -> {
             Collection<Field> fields = getAllDeclaredFields(c);  // returns all fields in c's hierarchy
             for (Field f : fields) {
                 if (fieldName.equals(f.getName())) {
@@ -1205,7 +1242,7 @@ public final class ReflectionUtils {
         final FieldsCacheKey key = new FieldsCacheKey(c, fieldFilter, false);
 
         // Atomically compute and cache the unmodifiable List<Field> if absent
-        Collection<Field> cachedFields = FIELDS_CACHE.get().computeIfAbsent(key, k -> {
+        Collection<Field> cachedFields = getOrCompute(FIELDS_CACHE.get(), key, k -> {
             Field[] declared = c.getDeclaredFields();
             List<Field> filteredList = new ArrayList<>(declared.length);
 
@@ -1299,7 +1336,7 @@ public final class ReflectionUtils {
         final FieldsCacheKey key = new FieldsCacheKey(c, fieldFilter, true);
 
         // Atomically compute and cache the unmodifiable list, if not already present
-        Collection<Field> cached = FIELDS_CACHE.get().computeIfAbsent(key, k -> {
+        Collection<Field> cached = getOrCompute(FIELDS_CACHE.get(), key, k -> {
             // Collect fields from class + superclasses
             List<Field> allFields = new ArrayList<>();
             Class<?> current = c;
@@ -1651,7 +1688,7 @@ public final class ReflectionUtils {
         final MethodCacheKey key = new MethodCacheKey(c, methodName, types);
 
         // Atomically retrieve (or compute) the method and cache misses.
-        Method cachedMethod = METHOD_CACHE.get().computeIfAbsent(key, k -> {
+        Method cachedMethod = getOrCompute(METHOD_CACHE.get(), key, k -> {
             // 1) Walk class chain first
             Class<?> current = c;
             while (current != null) {
@@ -1776,7 +1813,7 @@ public final class ReflectionUtils {
         MethodCacheKey key = new MethodCacheKey(beanClass, methodName, MethodCacheKey.ARG_COUNT_LOOKUP, types);
 
         // Use computeIfAbsent for atomic cache access
-        Method result = METHOD_CACHE.get().computeIfAbsent(key, k -> {
+        Method result = getOrCompute(METHOD_CACHE.get(), key, k -> {
             // Collect all matching methods from class hierarchy and interfaces
             List<Method> candidates = new ArrayList<>();
             Set<Class<?>> visited = new IdentitySet<>();
@@ -1897,7 +1934,7 @@ public final class ReflectionUtils {
         // The mapping function returns Constructor<T>, which is compatible with Constructor<?> for storage.
         // The final return then casts the Constructor<?> from the cache to Constructor<T>.
         // This cast is safe because the key ensures we're getting the constructor for Class<T>.
-        Constructor<?> cachedCtor = CONSTRUCTOR_CACHE.get().computeIfAbsent(key, k -> {
+        Constructor<?> cachedCtor = getOrCompute(CONSTRUCTOR_CACHE.get(), key, k -> {
             try {
                 // Try to fetch the constructor reflectively
                 Constructor<T> ctor = clazz.getDeclaredConstructor(parameterTypes); // This already returns Constructor<T>
@@ -1937,7 +1974,7 @@ public final class ReflectionUtils {
         SortedConstructorsCacheKey key = new SortedConstructorsCacheKey(clazz);
 
         // Use the cache to avoid repeated sorting
-        return SORTED_CONSTRUCTORS_CACHE.get().computeIfAbsent(key,
+        return getOrCompute(SORTED_CONSTRUCTORS_CACHE.get(), key,
                 k -> getAllConstructorsInternal(clazz));
     }
 
@@ -1959,7 +1996,7 @@ public final class ReflectionUtils {
             ConstructorCacheKey key = new ConstructorCacheKey(clazz, paramTypes);
 
             // Retrieve from cache or add to cache
-            declared[i] = CONSTRUCTOR_CACHE.get().computeIfAbsent(key, k -> {
+            declared[i] = getOrCompute(CONSTRUCTOR_CACHE.get(), key, k -> {
                 secureSetAccessible(ctor);
                 return ctor;
             });
@@ -2061,7 +2098,7 @@ public final class ReflectionUtils {
         // Create a cache key for a method with no parameters
         MethodCacheKey key = new MethodCacheKey(clazz, methodName, MethodCacheKey.NON_OVERLOADED_LOOKUP);
 
-        Method result = METHOD_CACHE.get().computeIfAbsent(key, k -> {
+        Method result = getOrCompute(METHOD_CACHE.get(), key, k -> {
             // First, check if method name exists at all and count occurrences
             int methodCount = 0;
             Method foundMethod = null;

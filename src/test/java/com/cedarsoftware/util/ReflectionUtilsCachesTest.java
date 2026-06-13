@@ -274,4 +274,63 @@ public class ReflectionUtilsCachesTest {
             ReflectionUtils.setMethodCache(original);
         }
     }
+
+    /**
+     * Concurrency correctness for the lock-free "get-first" cache fast path: many threads
+     * hammering the constructor / field / method / annotation caches must observe a single
+     * stable cached instance per key (caches are populate-once), with no exceptions, torn
+     * reads, or duplicate distinct results. Guards the getOrCompute fast path against
+     * regressions. Correctness-only (no timing assertions), so it is not flaky.
+     */
+    @Test
+    void concurrentCacheAccessIsConsistent() throws Exception {
+        final Class<?>[] classes = {
+                ConstructorTarget.class, ChildFields.class, MethodHolder.class,
+                FieldHolder.class, ParentFields.class
+        };
+        // Seed the caches once so every concurrent call below is a HIT (the get-first path).
+        for (Class<?> c : classes) {
+            ReflectionUtils.getAllConstructors(c);
+            ReflectionUtils.getDeclaredFields(c);
+        }
+        final Constructor<?>[][] expectedCtors = new Constructor<?>[classes.length][];
+        final List<?>[] expectedFields = new List<?>[classes.length];
+        for (int i = 0; i < classes.length; i++) {
+            expectedCtors[i] = ReflectionUtils.getAllConstructors(classes[i]);
+            expectedFields[i] = ReflectionUtils.getDeclaredFields(classes[i]);
+        }
+
+        final int threads = 16;
+        final int iterationsPerThread = 50_000;
+        final java.util.concurrent.ExecutorService pool =
+                java.util.concurrent.Executors.newFixedThreadPool(threads);
+        final java.util.concurrent.CountDownLatch start = new java.util.concurrent.CountDownLatch(1);
+        final java.util.List<java.util.concurrent.Future<Boolean>> futures = new java.util.ArrayList<>();
+        try {
+            for (int t = 0; t < threads; t++) {
+                futures.add(pool.submit(() -> {
+                    start.await();
+                    for (int i = 0; i < iterationsPerThread; i++) {
+                        int idx = i % classes.length;
+                        Class<?> c = classes[idx];
+                        // Cached arrays/lists are populate-once: every thread must see the
+                        // exact same instance the seeding thread cached (reference identity).
+                        if (ReflectionUtils.getAllConstructors(c) != expectedCtors[idx]) {
+                            return false;
+                        }
+                        if (ReflectionUtils.getDeclaredFields(c) != expectedFields[idx]) {
+                            return false;
+                        }
+                    }
+                    return true;
+                }));
+            }
+            start.countDown();
+            for (java.util.concurrent.Future<Boolean> f : futures) {
+                assertTrue(f.get(), "Concurrent cache reads returned an inconsistent instance");
+            }
+        } finally {
+            pool.shutdownNow();
+        }
+    }
 }

@@ -1,0 +1,43 @@
+diff --git a/src/main/java/com/cedarsoftware/util/CaseInsensitiveMap.java b/src/main/java/com/cedarsoftware/util/CaseInsensitiveMap.java
+index a00b3922..d290b843 100644
+--- a/src/main/java/com/cedarsoftware/util/CaseInsensitiveMap.java
++++ b/src/main/java/com/cedarsoftware/util/CaseInsensitiveMap.java
+@@ -1333,10 +1333,37 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
+     static final class LookupKey {
+         String value;
+         int hash;
++        // Per-thread reusable buffer (LookupKey is held in a ThreadLocal, so this field is
++        // per-thread). set() folds the hash using this buffer instead of CharBufScratch,
++        // eliminating a second ThreadLocal probe on every case-insensitive read.
++        private char[] cbuf = new char[256];
+ 
+         void set(String s) {
+             this.value = s;
+-            this.hash = StringUtilities.hashCodeIgnoreCase(s);
++            // Inlined case-insensitive hash — MUST stay byte-identical to
++            // StringUtilities.hashCodeIgnoreCase(String), or LookupKey will not find the
++            // CaseInsensitiveString keys stored in the backing map. Same getChars + ASCII
++            // fast-path fold, but over this instance's own buffer (no CharBufScratch TL).
++            final int n = s.length();
++            char[] b = cbuf;
++            if (n > b.length) {
++                b = new char[n];
++                cbuf = b;
++            }
++            s.getChars(0, n, b, 0);
++            int h = 0;
++            for (int i = 0; i < n; i++) {
++                char c = b[i];
++                if (c <= 'Z') {
++                    if (c >= 'A') {
++                        c += 32;
++                    }
++                } else if (c >= 128) {
++                    c = Character.toLowerCase(Character.toUpperCase(c));
++                }
++                h = 31 * h + c;
++            }
++            this.hash = h;
+         }
+ 
+         @Override

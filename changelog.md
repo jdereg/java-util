@@ -1,6 +1,6 @@
 ### Revision History
 
-#### 4.104.0 - (Unreleased)
+#### 4.104.0 - 2026-06-13
 * **PERFORMANCE**: **Strict-ISO fast path in `DateUtilities.parseDate`.** Fully-zoned ISO-8601 date-times (the wire format json-io / Jackson / `java.time.toString()` emit) parse via the JDK's strict parsers (`Instant.parse` / `ZonedDateTime.parse`) before the regex recognizer; every `Converter` String → temporal conversion benefits. Output parity is exact — bare-offset keeps `GMT±HH:MM` zones, `+00:00`→`GMT`, zone-less uses the caller's default `ZoneId`, non-ISO/epoch formats unchanged — and bracketed-offset forms like `...+05:30[+05:30]` now parse instead of throwing. Per-parse: trailing-Z instants **759 → ~470 ns**, nanos **924 → ~480 ns**, bare-offset **849 → ~600 ns**, bracketed-zone **1212 → ~690 ns**.
 * **PERFORMANCE**: **Lock-free read fast path for the `ReflectionUtils` caches.** The populate-once constructor / method / field / annotation caches went through `Map.computeIfAbsent`, whose default `LRUCache` LOCKING strategy takes the cache's exclusive lock even on a hit — serializing concurrent reflection (e.g. multi-threaded deserialization). Lookups now try the non-blocking `get()` first, falling back to `computeIfAbsent` only on a miss; behavior is identical (negative lookups are sentinels, never `null`). Single-class contended micro-benchmark (12-core, 8 threads): **42 → 141 M ops/s (~3.3×)** — the old path never scaled past ~42 M ops/s at any thread count. Single-threaded marginally faster; no downside.
 

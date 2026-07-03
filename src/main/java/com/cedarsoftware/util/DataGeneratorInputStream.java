@@ -257,10 +257,17 @@ public class DataGeneratorInputStream extends InputStream {
      * @param separator the byte to place between strings (e.g., ' ' or '\n')
      * @return a DataGeneratorInputStream that generates random strings
      * @throws NullPointerException if random is null
+     * @throws IllegalArgumentException if minWordLen is less than 1 or greater than maxWordLen
      */
     public static DataGeneratorInputStream withRandomStrings(long size, Random random, int minWordLen, int maxWordLen, int separator) {
         if (random == null) {
             throw new NullPointerException("Random cannot be null");
+        }
+        // minWordLen 0 would let getRandomString() return "", and the empty word's
+        // byte array would be indexed out of bounds by the generator below
+        if (minWordLen < 1 || maxWordLen < minWordLen) {
+            throw new IllegalArgumentException("minWordLen must be >= 1 and <= maxWordLen (got "
+                    + minWordLen + ".." + maxWordLen + ")");
         }
 
         return new DataGeneratorInputStream(size, new IntSupplier() {

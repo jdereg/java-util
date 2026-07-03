@@ -1847,6 +1847,18 @@ public class DeepEquals {
             value = 0.0;  // This ensures -0.0 becomes 0.0
         }
 
+        // Large-magnitude regime: value * 1e10 would exceed Long.MAX_VALUE, making
+        // Math.round saturate — which previously collapsed EVERY double above ~9.2e8
+        // into a single hash bucket (degrading unordered-collection comparison to
+        // O(n^2) pairwise probes). Quantize relatively instead by masking the low
+        // 12 mantissa bits (~2^-40 ≈ 1e-12 relative granularity, matching
+        // nearlyEqual's relative epsilon). Near-equal pairs that straddle a mask
+        // boundary are still found by the cross-bucket slow-path fallback.
+        if (value >= 9.0e8 || value <= -9.0e8) {
+            long bits = Double.doubleToLongBits(value) & 0xFFFFFFFFFFFFF000L;
+            return (int) (bits ^ (bits >>> 32));
+        }
+
         // FIX: Use coarser quantization (1e10 instead of 1e12) to align with nearlyEqual's
         // epsilon tolerance of 1e-12. This ensures values within epsilon hash to same bucket.
         // The quantization is intentionally 100x coarser than epsilon to handle:
@@ -1878,6 +1890,16 @@ public class DeepEquals {
         // Normalize negative zero to positive zero
         if (value == 0.0f) {
             value = 0.0f;  // This ensures -0.0f becomes 0.0f
+        }
+
+        // Large-magnitude regime: value * 1e5 would exceed Integer.MAX_VALUE, making
+        // Math.round saturate — which previously collapsed EVERY float above ~21,474
+        // into a single hash bucket. Quantize relatively instead by masking the low
+        // 3 mantissa bits (~2^-20 ≈ 1e-6 relative granularity, matching nearlyEqual's
+        // relative epsilon). Near-equal pairs that straddle a mask boundary are still
+        // found by the cross-bucket slow-path fallback.
+        if (value >= 2.0e4f || value <= -2.0e4f) {
+            return Float.floatToIntBits(value) & 0xFFFFFFF8;
         }
 
         // FIX: Use coarser quantization (1e5 instead of 1e6) to align with nearlyEqual's

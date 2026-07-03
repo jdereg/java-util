@@ -7,6 +7,7 @@ import java.time.ZonedDateTime;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 import java.util.TimeZone;
 import java.util.concurrent.ConcurrentHashMap;
@@ -342,6 +343,45 @@ public final class DateUtilities {
         return tl.get().reset(input);
     }
 
+    /**
+     * CharSequence wrapper whose {@code charAt} checks the thread's interrupt flag, so a
+     * Matcher operating on it aborts promptly when {@code Future.cancel(true)} interrupts
+     * the regex thread. {@code java.util.regex} never checks interrupts on its own, so
+     * without this a timed-out (possibly ReDoS) match keeps burning a pool thread's CPU
+     * until the backtracking completes — and the cached thread pool grows unboundedly
+     * under repeated attacks. Post-match reads (group(), subSequence) bypass charAt.
+     */
+    private static final class InterruptibleCharSequence implements CharSequence {
+        private final String delegate;
+
+        InterruptibleCharSequence(String delegate) {
+            this.delegate = delegate;
+        }
+
+        @Override
+        public int length() {
+            return delegate.length();
+        }
+
+        @Override
+        public char charAt(int index) {
+            if (Thread.currentThread().isInterrupted()) {
+                throw new java.util.concurrent.CancellationException("Regex match cancelled after timeout");
+            }
+            return delegate.charAt(index);
+        }
+
+        @Override
+        public CharSequence subSequence(int start, int end) {
+            return delegate.subSequence(start, end);
+        }
+
+        @Override
+        public String toString() {
+            return delegate;
+        }
+    }
+
     private static boolean safeMatches(Pattern pattern, String input) {
         if (pattern == null || input == null) {
             return false;
@@ -353,8 +393,10 @@ public final class DateUtilities {
 
         long timeout = getRegexTimeoutMilliseconds();
         // Slow path runs on a different thread inside DATE_REGEX_EXECUTOR; let it allocate its own
-        // Matcher to avoid sharing thread-local state across the executor boundary.
-        Future<Boolean> future = DATE_REGEX_EXECUTOR.submit(() -> pattern.matcher(input).matches());
+        // Matcher to avoid sharing thread-local state across the executor boundary. The
+        // InterruptibleCharSequence lets cancel(true) actually stop a runaway match.
+        Future<Boolean> future = DATE_REGEX_EXECUTOR.submit(
+                () -> pattern.matcher(new InterruptibleCharSequence(input)).matches());
 
         try {
             return future.get(timeout, TimeUnit.MILLISECONDS);
@@ -381,7 +423,10 @@ public final class DateUtilities {
 
         long timeout = getRegexTimeoutMilliseconds();
         Future<RegexUtilities.SafeMatchResult> future = DATE_REGEX_EXECUTOR.submit(() -> {
-            Matcher matcher = pattern.matcher(input);
+            // InterruptibleCharSequence lets cancel(true) actually stop a runaway match.
+            // group()/subSequence reads after a successful match bypass charAt, so the
+            // returned Matcher remains fully usable by the caller.
+            Matcher matcher = pattern.matcher(new InterruptibleCharSequence(input));
             if (matcher.find()) {
                 return new RegexUtilities.SafeMatchResult(matcher, input);
             }
@@ -832,7 +877,7 @@ public final class DateUtilities {
                     day = result.group(11);
                     remains = remnant;
                 }
-                month = months.get(mon.trim().toLowerCase());
+                month = months.get(mon.trim().toLowerCase(Locale.ROOT));
             } else {
                 // 3) Try unixDateTimePattern
                 result = safeFind(unixDateTimePattern, dateStr);
@@ -841,7 +886,7 @@ public final class DateUtilities {
                 }
                 year = result.group(6);
                 String mon = result.group(2);
-                month = months.get(mon.trim().toLowerCase());
+                month = months.get(mon.trim().toLowerCase(Locale.ROOT));
                 day = result.group(3);
 
                 // e.g. "EST"
@@ -1095,7 +1140,7 @@ public final class DateUtilities {
         }
 
         // 3) Check custom abbreviation map first (case insensitive lookup)
-        String mappedZone = ABBREVIATION_TO_TIMEZONE.get(tz.toUpperCase());
+        String mappedZone = ABBREVIATION_TO_TIMEZONE.get(tz.toUpperCase(Locale.ROOT));
         if (mappedZone != null) {
             try {
                 // e.g. "EST" => "America/New_York"

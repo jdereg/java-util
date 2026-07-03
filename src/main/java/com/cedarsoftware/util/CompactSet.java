@@ -470,6 +470,9 @@ public class CompactSet<E> implements Set<E> {
     }
 
     private boolean isCaseSensitiveConfigured() {
-        return Boolean.TRUE.equals(map.getConfig().get(CompactMap.CASE_SENSITIVE));
+        // Ask the map directly. Going through map.getConfig() constructed a config map AND
+        // a throwaway backing map via getNewMap() (reflective for template classes) on
+        // every equals()/hashCode() call.
+        return !map.isCaseInsensitive();
     }
 }

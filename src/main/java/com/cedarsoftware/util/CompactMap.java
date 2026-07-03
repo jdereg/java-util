@@ -1,6 +1,7 @@
 package com.cedarsoftware.util;
 
 import java.lang.ref.WeakReference;
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Modifier;
@@ -273,6 +274,52 @@ public class CompactMap<K, V> implements Map<K, V> {
     private static final ClassValueMap<Boolean> LEGACY_CONSTRUCTED_CACHE = new ClassValueMap<>();
 
     /**
+     * Per-class cache of the iteration sort decision: 0 = no sort needed at iteration
+     * time (all non-legacy classes, and legacy classes with a non-sorted backing map),
+     * 1 = sorted natural order, 2 = sorted reverse order. Computing it for legacy
+     * classes requires instantiating a throwaway map via getNewMap() just to inspect
+     * it — previously paid on every iterator creation. Assumes a legacy subclass's
+     * getNewMap() returns a consistent map type, the same assumption the constructor
+     * validation and state-transition logic already make. Storing 0 for non-legacy
+     * classes lets the iterator-creation hot path decide with a single cache probe.
+     */
+    private static final ClassValueMap<Integer> LEGACY_SORT_INFO_CACHE = new ClassValueMap<>();
+
+    /**
+     * Per-template-class constructor cache: avoids re-scanning declared constructors
+     * on every build() — the json-io factories construct a CompactMap/CompactSet per
+     * deserialized instance, so this sits on a hot path.
+     */
+    private static final ClassValueMap<Constructor<?>> TEMPLATE_CONSTRUCTOR_CACHE = new ClassValueMap<>();
+
+    private int getCachedLegacySortInfo() {
+        Class<?> clazz = getClass();
+        Integer info = LEGACY_SORT_INFO_CACHE.getByClass(clazz);
+        if (info == null) {
+            info = 0;
+            if (getCachedLegacyConstructed()) {
+                Map<K, V> mapInstance = getNewMap();
+                if (mapInstance instanceof SortedMap) {
+                    boolean reverse = REVERSE.equals(getOrdering());
+                    // Fall back to detecting a reverse comparator when legacy subclasses
+                    // did not override getOrdering(): older implementations simply returned
+                    // a TreeMap built with Collections.reverseOrder(), so check the
+                    // comparator's class name for "reverse" for backward compatibility.
+                    if (!reverse) {
+                        Comparator<?> legacyComp = ((SortedMap<?, ?>) mapInstance).comparator();
+                        if (legacyComp != null) {
+                            reverse = legacyComp.getClass().getName().toLowerCase().contains("reverse");
+                        }
+                    }
+                    info = reverse ? 2 : 1;
+                }
+            }
+            LEGACY_SORT_INFO_CACHE.put(clazz, info);
+        }
+        return info;
+    }
+
+    /**
      * Returns whether this instance was created through legacy subclassing (cached per class).
      * This caches the result of the class name check which would otherwise be computed repeatedly.
      */
@@ -298,8 +345,6 @@ public class CompactMap<K, V> implements Map<K, V> {
 
     // The only "state" and why this is a compactMap - one-member variable
     protected Object val = EMPTY_MAP;
-    // Structural modification counter for fail-fast iterator detection
-    int modCount = 0;
 
     /**
      * Constructs an empty CompactMap with the default configuration.
@@ -559,12 +604,10 @@ public class CompactMap<K, V> implements Map<K, V> {
      */
     @Override
     public V put(K key, V value) {
-        int s = size();
-        V result;
         if (val instanceof Object[]) {   // Compact array storage (2 to compactSize)
-            result = putInCompactArray((Object[]) val, key, value);
+            return putInCompactArray((Object[]) val, key, value);
         } else if (val instanceof Map) {   // Backing map storage (&gt; compactSize)
-            result = ((Map<K, V>) val).put(key, value);
+            return ((Map<K, V>) val).put(key, value);
         } else if (val == EMPTY_MAP) {   // Empty map
             if (areKeysEqual(key, getSingleValueKey()) && !(value instanceof Map || value instanceof Object[])) {
                 // Store the value directly for optimized single-entry storage
@@ -574,15 +617,10 @@ public class CompactMap<K, V> implements Map<K, V> {
                 // Create a CompactMapEntry for the first entry
                 val = new CompactMapEntry(key, value);
             }
-            result = null;
-        } else {
-            // Single entry state, handle overwrite, or insertion which transitions the Map to Object[4]
-            result = handleSingleEntryPut(key, value);
+            return null;
         }
-        if (size() != s) {
-            modCount++;
-        }
-        return result;
+        // Single entry state, handle overwrite, or insertion which transitions the Map to Object[4]
+        return handleSingleEntryPut(key, value);
     }
 
     /**
@@ -590,23 +628,15 @@ public class CompactMap<K, V> implements Map<K, V> {
      */
     @Override
     public V remove(Object key) {
-        int s = size();
-        V result;
         if (val instanceof Object[]) {   // 2 to compactSize
-            result = removeFromCompactArray(key);
+            return removeFromCompactArray(key);
         } else if (val instanceof Map) {   // > compactSize
-            Map<K, V> map = (Map<K, V>) val;
-            result = removeFromMap(map, key);
+            return removeFromMap((Map<K, V>) val, key);
         } else if (val == EMPTY_MAP) {   // empty
-            result = null;
-        } else {
-            // size == 1
-            result = handleSingleEntryRemove(key);
+            return null;
         }
-        if (size() != s) {
-            modCount++;
-        }
-        return result;
+        // size == 1
+        return handleSingleEntryRemove(key);
     }
 
     /**
@@ -774,27 +804,11 @@ public class CompactMap<K, V> implements Map<K, V> {
         }
 
         if (getCachedLegacyConstructed()) {
-            Map<K,V> mapInstance = getNewMap();  // Called only once before iteration
-
-            // Only sort if it's a SortedMap
-            if (mapInstance instanceof SortedMap) {
-                String ordering = getOrdering();
-                boolean reverse = REVERSE.equals(ordering);
-
-                // Fall back to detecting a reverse comparator when legacy
-                // subclasses did not override getOrdering().  Older
-                // implementations simply returned a TreeMap constructed with
-                // Collections.reverseOrder(), so check the comparator's class
-                // name for "reverse" to maintain backward compatibility.
-                if (!reverse) {
-                    Comparator<?> legacyComp = ((SortedMap<?, ?>) mapInstance).comparator();
-                    if (legacyComp != null) {
-                        String name = legacyComp.getClass().getName().toLowerCase();
-                        reverse = name.contains("reverse");
-                    }
-                }
-
-                Comparator<Object> comparator = CompactMapComparator.get(isCaseInsensitive(), reverse);
+            // Only sort if the legacy backing map is a SortedMap (cached per class —
+            // computing it requires instantiating a throwaway map via getNewMap())
+            int sortInfo = getCachedLegacySortInfo();
+            if (sortInfo != 0) {
+                Comparator<Object> comparator = CompactMapComparator.get(isCaseInsensitive(), sortInfo == 2);
                 quickSort(array, 0, pairCount - 1, comparator);
             }
             return;
@@ -815,10 +829,8 @@ public class CompactMap<K, V> implements Map<K, V> {
      * Non-legacy CompactMap implementations maintain compact-array ordering during mutations.
      */
     private boolean shouldSortArrayForIteration() {
-        if (!getCachedLegacyConstructed()) {
-            return false;
-        }
-        return getNewMap() instanceof SortedMap;
+        // Single cache probe: non-legacy classes are stored as 0
+        return getCachedLegacySortInfo() != 0;
     }
 
     /**
@@ -1145,8 +1157,7 @@ public class CompactMap<K, V> implements Map<K, V> {
      * as elements are added.
      * </p>
      *
-     * @param map mappings to be stored in this map
-     * @throws NullPointerException if the specified map is null
+     * @param map mappings to be stored in this map; a {@code null} or empty map is a no-op
      */
     public void putAll(Map<? extends K, ? extends V> map) {
         if (map == null || map.isEmpty()) {
@@ -1192,11 +1203,7 @@ public class CompactMap<K, V> implements Map<K, V> {
                 }
                 val = backingMap;
             }
-            int sizeBefore = backingMap.size();
             backingMap.putAll(map);
-            if (backingMap.size() != sizeBefore) {
-                modCount++;
-            }
             return;
         }
 
@@ -1213,9 +1220,6 @@ public class CompactMap<K, V> implements Map<K, V> {
      * </p>
      */
     public void clear() {
-        if (val != EMPTY_MAP) {
-            modCount++;
-        }
         val = EMPTY_MAP;
     }
 
@@ -1957,17 +1961,27 @@ public class CompactMap<K, V> implements Map<K, V> {
      * array, and map). Provides concurrent modification detection and
      * supports element removal. Extended by key, value, and entry iterators.
      * </p>
+     * <p>
+     * Fail-fast detection works without a per-instance modCount field (CompactMap's
+     * design axiom is a single {@code val} field): every structural change in the
+     * array/single/empty states replaces the {@code val} reference, so identity-comparing
+     * a snapshot detects them — including add+remove sequences that leave the size
+     * unchanged. In MAP state {@code val} is stable and detection is inherited from the
+     * backing map's own fail-fast iterator; boundary transitions (MAP&rarr;array/EMPTY)
+     * replace {@code val} and are caught by the snapshot. With concurrent backing maps,
+     * MAP-state iteration is weakly consistent, matching the backing map's own semantics.
+     * </p>
      */
     abstract class CompactIterator {
         Iterator<Map.Entry<K, V>> mapIterator;
         Object current;
         int expectedSize;
-        int expectedModCount;
+        Object expectedVal;
         int index;
 
         CompactIterator() {
             expectedSize = size();
-            expectedModCount = modCount;
+            expectedVal = val;
             current = EMPTY_MAP;
             index = -1;
 
@@ -1997,7 +2011,7 @@ public class CompactMap<K, V> implements Map<K, V> {
         }
 
         final void advance() {
-            if (modCount != expectedModCount) {
+            if (val != expectedVal) {
                 throw new ConcurrentModificationException();
             }
             if (++index >= expectedSize) {
@@ -2018,13 +2032,12 @@ public class CompactMap<K, V> implements Map<K, V> {
             if (current == EMPTY_MAP) {
                 throw new IllegalStateException();
             }
-            if (modCount != expectedModCount) {
+            if (val != expectedVal) {
                 throw new ConcurrentModificationException();
             }
 
             if (mapIterator != null) {
                 mapIterator.remove();
-                modCount++;
                 int newSize = expectedSize - 1;
                 if (newSize == 0) {
                     mapIterator = null;
@@ -2052,7 +2065,7 @@ public class CompactMap<K, V> implements Map<K, V> {
             index--;
             current = EMPTY_MAP;
             expectedSize--;
-            expectedModCount = modCount;
+            expectedVal = val;
         }
     }
 
@@ -2193,8 +2206,14 @@ public class CompactMap<K, V> implements Map<K, V> {
             // Get template class for these options
             Class<?> templateClass = TemplateGenerator.getOrCreateTemplateClass(options);
 
-            // Create new instance
-            CompactMap<K, V> map = (CompactMap<K, V>) templateClass.getDeclaredConstructor().newInstance();
+            // Create new instance (constructor cached — build() runs per deserialized
+            // instance in json-io's CompactMap/CompactSet factories)
+            Constructor<?> ctor = TEMPLATE_CONSTRUCTOR_CACHE.getByClass(templateClass);
+            if (ctor == null) {
+                ctor = templateClass.getDeclaredConstructor();
+                TEMPLATE_CONSTRUCTOR_CACHE.put(templateClass, ctor);
+            }
+            CompactMap<K, V> map = (CompactMap<K, V>) ctor.newInstance();
 
             // Initialize with source map if provided
             Map<K, V> source = (Map<K, V>) options.get(SOURCE_MAP);
@@ -2912,11 +2931,15 @@ public class CompactMap<K, V> implements Map<K, V> {
          */
         private static Class<?> getOrCreateTemplateClass(Map<String, Object> options) {
             String className = generateClassName(options);
-            try {
-                return ClassUtilities.getClassLoader(CompactMap.class).loadClass(className);
-            } catch (ClassNotFoundException e) {
-                return generateTemplateClass(options);
+            // Template classes are defined in templateClassLoader (a child loader) — the
+            // parent/application loader can never see them, so it must not be consulted
+            // here: doing so made every build() miss, construct-and-swallow exceptions,
+            // re-patch the bytecode template, and re-inject the static config fields.
+            Class<?> existing = templateClassLoader.findDefinedTemplateClass(className);
+            if (existing != null) {
+                return existing;
             }
+            return generateTemplateClass(options);
         }
 
         /**
@@ -2947,13 +2970,26 @@ public class CompactMap<K, V> implements Map<K, V> {
             int compactSize = (int) options.getOrDefault(COMPACT_SIZE, DEFAULT_COMPACT_SIZE);
             configBuilder.append("sz:").append(compactSize).append(";");
 
-            // Single key
-            String singleKey = (String) options.getOrDefault(SINGLE_KEY, DEFAULT_SINGLE_KEY);
+            // Single key (String.valueOf: non-String keys must not CCE here; the template's
+            // _singleKey field is a String, so they are represented by their string form)
+            String singleKey = String.valueOf(options.getOrDefault(SINGLE_KEY, DEFAULT_SINGLE_KEY));
             configBuilder.append("sk:").append(singleKey).append(";");
 
             // Ordering
             String ordering = (String) options.getOrDefault(ORDERING, UNORDERED);
             configBuilder.append("or:").append(ordering);
+
+            // Inner map type (present for case-insensitive wrapping). Must participate in
+            // the hash: without it, two CI configs differing only in inner map type shared
+            // one template class, and the second build rewrote the shared class's static
+            // config — retroactively changing getNewMap() for all existing instances.
+            Object innerMapTypeObj = options.get(INNER_MAP_TYPE);
+            if (innerMapTypeObj != null) {
+                String innerMapName = (innerMapTypeObj instanceof Class)
+                    ? ((Class<?>) innerMapTypeObj).getName()
+                    : String.valueOf(innerMapTypeObj);
+                configBuilder.append(";im:").append(innerMapName);
+            }
 
             // Generate SHA-1 hash and take first 16 characters
             String fullHash = EncryptionUtilities.calculateSHA1Hash(configBuilder.toString().getBytes(StandardCharsets.UTF_8));
@@ -2979,10 +3015,9 @@ public class CompactMap<K, V> implements Map<K, V> {
             lock.lock();
             try {
                 // Double-check if class was created while waiting for lock
-                try {
-                    return ClassUtilities.getClassLoader(CompactMap.class).loadClass(className);
-                } catch (ClassNotFoundException ignored) {
-                    // Not found, proceed with generation
+                Class<?> existing = templateClassLoader.findDefinedTemplateClass(className);
+                if (existing != null) {
+                    return existing;
                 }
 
                 // Patch bytecode with the new class name
@@ -3047,8 +3082,8 @@ public class CompactMap<K, V> implements Map<K, V> {
                 // _compactSize
                 fieldMap.get("_compactSize").setInt(null, (int) options.getOrDefault(COMPACT_SIZE, DEFAULT_COMPACT_SIZE));
 
-                // _singleKey
-                fieldMap.get("_singleKey").set(null, options.getOrDefault(SINGLE_KEY, DEFAULT_SINGLE_KEY));
+                // _singleKey (String field in the template — non-String keys use their string form)
+                fieldMap.get("_singleKey").set(null, String.valueOf(options.getOrDefault(SINGLE_KEY, DEFAULT_SINGLE_KEY)));
 
                 // _ordering
                 fieldMap.get("_ordering").set(null, options.getOrDefault(ORDERING, UNORDERED));
@@ -3125,6 +3160,26 @@ public class CompactMap<K, V> implements Map<K, V> {
             return c;
         }
         
+        /**
+         * Returns a previously defined template class, or {@code null} if this loader
+         * has not defined it. Never throws and never consults the parent loader —
+         * this is the exception-free fast path for repeated {@code build()} calls.
+         *
+         * @param name fully qualified template class name
+         * @return the defined Class object, or {@code null} if not yet defined
+         */
+        private Class<?> findDefinedTemplateClass(String name) {
+            WeakReference<Class<?>> cachedRef = definedClasses.get(name);
+            if (cachedRef != null) {
+                Class<?> cached = cachedRef.get();
+                if (cached != null) {
+                    return cached;
+                }
+                definedClasses.remove(name);
+            }
+            return null;
+        }
+
         /**
          * Defines or retrieves a template class in this ClassLoader.
          * <p>

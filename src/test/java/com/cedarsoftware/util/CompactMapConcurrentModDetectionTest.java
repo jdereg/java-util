@@ -9,14 +9,15 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
- * Test for bug: ConcurrentModificationException detection uses size, not modCount.
+ * Test for bug: ConcurrentModificationException detection missed add+remove sequences
+ * that leave the size unchanged (the original iterator compared expectedSize to size()).
  *
- * Bug: The iterator checks expectedSize != size() to detect concurrent modification.
- * If one entry is added and another removed during iteration (net size unchanged),
- * the modification goes undetected — unlike standard Java collections which use modCount.
- *
- * Fix: Add a modCount field that increments on every structural modification
- * (add/remove). The iterator tracks expectedModCount and checks it instead of size.
+ * Detection works without a per-instance modCount field (CompactMap's design axiom is
+ * a single 'val' field): every structural change in the array/single/empty states
+ * replaces the val reference, so the iterator identity-compares a snapshot of it.
+ * In MAP state, val is stable and detection is inherited from the backing map's own
+ * fail-fast iterator; boundary transitions (MAP-to-array/EMPTY) replace val and are
+ * caught by the snapshot.
  */
 class CompactMapConcurrentModDetectionTest {
 

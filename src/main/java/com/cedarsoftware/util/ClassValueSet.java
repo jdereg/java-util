@@ -324,11 +324,16 @@ public class ClassValueSet extends AbstractSet<Class<?>> {
             modified = true;
         }
 
+        // For a ClassValueSet argument, probe its backing set directly: its contains()
+        // would install a negative ClassValue entry (a synchronized write) for every
+        // retained-set miss, polluting the argument's cache as a side effect.
+        Collection<?> lookup = (c instanceof ClassValueSet) ? ((ClassValueSet) c).backingSet : c;
+
         // Single pass over backing set to avoid extra allocations.
         Iterator<Class<?>> iterator = backingSet.iterator();
         while (iterator.hasNext()) {
             Class<?> cls = iterator.next();
-            if (!c.contains(cls)) {
+            if (!lookup.contains(cls)) {
                 iterator.remove();
                 membershipCache.remove(cls);
                 modified = true;
@@ -365,11 +370,14 @@ public class ClassValueSet extends AbstractSet<Class<?>> {
         }
 
         if (c instanceof ClassValueSet) {
-            ClassValueSet other = (ClassValueSet) c;
+            // Probe the other set's backing set directly: routing through its contains()
+            // would install a negative ClassValue entry (a synchronized write) for every
+            // miss, polluting the argument's cache as a side effect of this bulk read.
+            Set<Class<?>> otherBacking = ((ClassValueSet) c).backingSet;
             Iterator<Class<?>> iterator = backingSet.iterator();
             while (iterator.hasNext()) {
                 Class<?> cls = iterator.next();
-                if (other.contains(cls)) {
+                if (otherBacking.contains(cls)) {
                     iterator.remove();
                     membershipCache.remove(cls);
                     modified = true;

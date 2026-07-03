@@ -148,7 +148,8 @@ public class Executor {
      * Execute a command with environment variables.
      *
      * @param command command line to run
-     * @param envp    environment variables, may be {@code null}
+     * @param envp    environment variables in {@code name=value} form, merged into (not replacing)
+     *                the inherited environment; may be {@code null}
      * @return result of the execution
      * @throws SecurityException if command execution is disabled
      */
@@ -160,7 +161,8 @@ public class Executor {
      * Execute a command array with environment variables.
      *
      * @param cmdarray command and arguments
-     * @param envp     environment variables, may be {@code null}
+     * @param envp     environment variables in {@code name=value} form, merged into (not replacing)
+     *                 the inherited environment; may be {@code null}
      * @return result of the execution
      * @throws SecurityException if command execution is disabled
      */
@@ -172,7 +174,8 @@ public class Executor {
      * Execute a command with optional environment and working directory.
      *
      * @param command command line to run
-     * @param envp    environment variables or {@code null}
+     * @param envp    environment variables in {@code name=value} form, merged into (not replacing)
+     *                the inherited environment, or {@code null}
      * @param dir     working directory, may be {@code null}
      * @return result of the execution
      * @throws SecurityException if command execution is disabled
@@ -196,7 +199,8 @@ public class Executor {
      * Execute a command array with optional environment and working directory.
      *
      * @param cmdarray command and arguments
-     * @param envp     environment variables or {@code null}
+     * @param envp     environment variables in {@code name=value} form, merged into (not replacing)
+     *                 the inherited environment, or {@code null}
      * @param dir      working directory, may be {@code null}
      * @return result of the execution
      * @throws SecurityException if command execution is disabled
@@ -273,7 +277,10 @@ public class Executor {
      *
      * @param command the command to execute
      * @param envp array of strings, each element of which has environment variable settings in format name=value,
-     *             or null if the subprocess should inherit the environment of the current process
+     *             or null to inherit the environment of the current process unchanged. Note: unlike
+     *             {@code Runtime.exec}, non-null entries are ADDED to the inherited environment
+     *             (merge semantics), they do not replace it — do not rely on envp to isolate the
+     *             child from the parent's environment variables
      * @return the exit value of the process (0 typically indicates success),
      *         or -1 if an error occurred starting the process
      * @throws SecurityException if command execution is disabled
@@ -288,7 +295,10 @@ public class Executor {
      *
      * @param cmdarray array containing the command and its arguments
      * @param envp array of strings, each element of which has environment variable settings in format name=value,
-     *             or null if the subprocess should inherit the environment of the current process
+     *             or null to inherit the environment of the current process unchanged. Note: unlike
+     *             {@code Runtime.exec}, non-null entries are ADDED to the inherited environment
+     *             (merge semantics), they do not replace it — do not rely on envp to isolate the
+     *             child from the parent's environment variables
      * @return the exit value of the process (0 typically indicates success),
      *         or -1 if an error occurred starting the process
      * @throws SecurityException if command execution is disabled
@@ -303,7 +313,10 @@ public class Executor {
      *
      * @param command the command to execute
      * @param envp array of strings, each element of which has environment variable settings in format name=value,
-     *             or null if the subprocess should inherit the environment of the current process
+     *             or null to inherit the environment of the current process unchanged. Note: unlike
+     *             {@code Runtime.exec}, non-null entries are ADDED to the inherited environment
+     *             (merge semantics), they do not replace it — do not rely on envp to isolate the
+     *             child from the parent's environment variables
      * @param dir the working directory of the subprocess, or null if the subprocess should inherit
      *            the working directory of the current process
      * @return the exit value of the process (0 typically indicates success),
@@ -320,7 +333,10 @@ public class Executor {
      *
      * @param cmdarray array containing the command and its arguments
      * @param envp array of strings, each element of which has environment variable settings in format name=value,
-     *             or null if the subprocess should inherit the environment of the current process
+     *             or null to inherit the environment of the current process unchanged. Note: unlike
+     *             {@code Runtime.exec}, non-null entries are ADDED to the inherited environment
+     *             (merge semantics), they do not replace it — do not rely on envp to isolate the
+     *             child from the parent's environment variables
      * @param dir the working directory of the subprocess, or null if the subprocess should inherit
      *            the working directory of the current process
      * @return the exit value of the process (0 typically indicates success),

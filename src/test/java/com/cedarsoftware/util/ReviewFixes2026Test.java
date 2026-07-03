@@ -119,4 +119,26 @@ class ReviewFixes2026Test {
             assertEquals(50, total);
         }
     }
+
+    // --- ExceptionUtilities: null callable must throw per doc, not be swallowed ---
+
+    @Test
+    void testSafelyIgnoreExceptionNullCallableThrows() {
+        // Previously the NPE from invoking a null callable was caught by the
+        // catch-all and defaultValue was silently returned
+        assertThrows(IllegalArgumentException.class,
+                () -> ExceptionUtilities.safelyIgnoreException(null, "default"));
+    }
+
+    // --- FastByteArrayOutputStream: invalid offset must throw even when len == 0 ---
+
+    @Test
+    void testWriteInvalidOffsetWithZeroLenThrows() {
+        FastByteArrayOutputStream out = new FastByteArrayOutputStream();
+        byte[] data = new byte[4];
+        assertThrows(IndexOutOfBoundsException.class, () -> out.write(data, -1, 0));
+        assertThrows(IndexOutOfBoundsException.class, () -> out.write(data, 5, 0));
+        out.write(data, 4, 0);   // off == b.length with len 0 is legal per the contract
+        assertEquals(0, out.size());
+    }
 }

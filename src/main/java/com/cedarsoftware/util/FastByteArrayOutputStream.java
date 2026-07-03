@@ -101,11 +101,13 @@ public class FastByteArrayOutputStream extends OutputStream {
         if (b == null) {
             throw new NullPointerException("Input byte array cannot be null");
         }
-        if (len == 0) {
-            return;
-        }
+        // Bounds check before the len == 0 fast return: per the OutputStream contract,
+        // an invalid offset must throw even when no bytes would be written
         if ((off < 0) || (len < 0) || (off > b.length) || (off + len > b.length) || (off + len < 0)) {
             throw new IndexOutOfBoundsException();
+        }
+        if (len == 0) {
+            return;
         }
         int minCapacity = count + len;
         // Detect integer overflow (count + len wrapped negative)

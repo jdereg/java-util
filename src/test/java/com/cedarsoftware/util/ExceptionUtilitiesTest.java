@@ -98,4 +98,12 @@ public class ExceptionUtilitiesTest
         assertThatExceptionOfType(java.io.IOException.class)
                 .isThrownBy(() -> ExceptionUtilities.uncheckedThrow(new java.io.IOException("fail")));
     }
+
+    @Test
+    void testSafelyIgnoreExceptionNullCallableThrows() {
+        // Previously the documented IllegalArgumentException was swallowed by the
+        // catch(Throwable) and defaultValue was silently returned
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> ExceptionUtilities.safelyIgnoreException(null, "default"));
+    }
 }

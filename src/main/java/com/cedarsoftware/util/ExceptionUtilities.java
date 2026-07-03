@@ -80,6 +80,10 @@ public final class ExceptionUtilities {
      * @see Callable
      */
     public static <T> T safelyIgnoreException(Callable<T> callable, T defaultValue) {
+        // Checked outside the try: a null callable is a caller bug, not a "safely
+        // ignorable" runtime failure (the documented IllegalArgumentException was
+        // previously swallowed by the catch below, silently returning defaultValue)
+        Convention.throwIfNull(callable, "callable cannot be null");
         try {
             return callable.call();
         } catch (Throwable e) {

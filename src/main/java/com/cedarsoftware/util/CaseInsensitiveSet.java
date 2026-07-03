@@ -143,8 +143,8 @@ public class CaseInsensitiveSet<E> extends AbstractSet<E> implements Set<E>, Ser
      * </ul>
      * </p>
      *
-     * @param collection the collection whose elements are to be placed into this set
-     * @throws NullPointerException if the specified collection is {@code null}
+     * @param collection the collection whose elements are to be placed into this set;
+     *                   may be {@code null}, in which case an empty set is created
      */
     public CaseInsensitiveSet(Collection<? extends E> collection) {
         this.backingMap = determineBackingMap(collection);
@@ -162,9 +162,10 @@ public class CaseInsensitiveSet<E> extends AbstractSet<E> implements Set<E>, Ser
      * for the set.
      * </p>
      *
-     * @param source      the collection whose elements are to be placed into this set
+     * @param source      the collection whose elements are to be placed into this set;
+     *                    may be {@code null}, in which case only the backing map is used
      * @param backingMap  the map to be used as the backing implementation
-     * @throws NullPointerException if the specified collection or map is {@code null}
+     * @throws NullPointerException if the specified map is {@code null}
      */
     @SuppressWarnings({"unchecked", "rawtypes"})
     public CaseInsensitiveSet(Collection<? extends E> source, Map backingMap) {
@@ -407,12 +408,25 @@ public class CaseInsensitiveSet<E> extends AbstractSet<E> implements Set<E>, Ser
      * to the set.
      * </p>
      *
+     * <p>
+     * When the source is another {@code CaseInsensitiveSet}, its already-normalized keys are
+     * bulk-copied into the backing map, skipping per-element re-wrapping and hash recomputation.
+     * </p>
+     *
      * @param c the collection containing elements to be added to this set
      * @return {@code true} if this set changed as a result of the call
      * @throws NullPointerException if the specified collection is {@code null} or contains {@code null} elements
      */
     @Override
+    @SuppressWarnings("unchecked")
     public boolean addAll(Collection<? extends E> c) {
+        if (c instanceof CaseInsensitiveSet) {
+            // Values are all Boolean.TRUE, so the set only changes when the size grows;
+            // CaseInsensitiveMap.putAll bulk-copies normalized keys (with MultiKeyMap guards)
+            int before = backingMap.size();
+            backingMap.putAll(((CaseInsensitiveSet<? extends E>) c).backingMap);
+            return backingMap.size() != before;
+        }
         return delegate.addAll(c);
     }
 
@@ -655,9 +669,9 @@ public class CaseInsensitiveSet<E> extends AbstractSet<E> implements Set<E>, Ser
         } else if (source instanceof SortedSet) {
             return new CaseInsensitiveMap<>(Collections.emptyMap(), new TreeMap<>());
         } else {
-            // For all other collection types, use LinkedHashMap
-            int size = source.isEmpty() ? 16 : source.size();
-            return new CaseInsensitiveMap<>(size);
+            // For all other collection types, use LinkedHashMap presized with load-factor
+            // headroom so populating from the source never rehashes
+            return new CaseInsensitiveMap<>(Math.max(16, (int) (source.size() / 0.75f) + 1));
         }
     }
 

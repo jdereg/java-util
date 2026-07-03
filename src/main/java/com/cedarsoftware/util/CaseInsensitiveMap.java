@@ -167,7 +167,9 @@ import java.util.function.Function;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V> {
+public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V>, Serializable {
+    private static final long serialVersionUID = 1L;
+
     final Map<K, V> map;
     final boolean isMultiKeyMapBacking;
     final boolean isConcurrentBackingMap;

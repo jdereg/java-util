@@ -162,8 +162,13 @@ public final class ByteUtilities {
         }
     }
 
-    private static boolean isSecurityEnabled() {
-        return getSecurityConfig().securityEnabled;
+    /**
+     * Fast path for the default (security disabled) case: one property read instead
+     * of the full three-property config snapshot. Still reads per call so runtime
+     * toggling of the master switch is honored immediately.
+     */
+    private static boolean isSecurityDisabled() {
+        return !Boolean.parseBoolean(System.getProperty(PROP_SECURITY_ENABLED, "false"));
     }
 
     private static int getMaxHexStringLength() {
@@ -242,7 +247,7 @@ public final class ByteUtilities {
         }
         final int len = s.length();
         
-        if (enforceSecurityLimit) {
+        if (enforceSecurityLimit && !isSecurityDisabled()) {
             // Security check: validate hex string length
             int maxHexLength = getMaxHexStringLength();
             if (maxHexLength > 0 && len > maxHexLength) {
@@ -284,9 +289,11 @@ public final class ByteUtilities {
         }
         
         // Security check: validate byte array size
-        int maxArraySize = getMaxArraySize();
-        if (maxArraySize > 0 && bytes.length > maxArraySize) {
-            throw new SecurityException("Byte array size exceeds maximum allowed: " + maxArraySize);
+        if (!isSecurityDisabled()) {
+            int maxArraySize = getMaxArraySize();
+            if (maxArraySize > 0 && bytes.length > maxArraySize) {
+                throw new SecurityException("Byte array size exceeds maximum allowed: " + maxArraySize);
+            }
         }
 
         // Check for integer overflow: bytes.length * 2 must not overflow

@@ -175,4 +175,79 @@ class CaseInsensitiveSetBugFixTest {
         assertTrue(changed);
         assertEquals(0, set.size());
     }
+
+    // --- Bug: declared Serializable but backing CaseInsensitiveMap was not ---
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void testSerializationRoundTrip() throws Exception {
+        CaseInsensitiveSet<String> set = new CaseInsensitiveSet<>();
+        set.add("Hello");
+        set.add("World");
+
+        java.io.ByteArrayOutputStream bos = new java.io.ByteArrayOutputStream();
+        try (java.io.ObjectOutputStream oos = new java.io.ObjectOutputStream(bos)) {
+            oos.writeObject(set);
+        }
+
+        CaseInsensitiveSet<String> copy;
+        try (java.io.ObjectInputStream ois =
+                     new java.io.ObjectInputStream(new java.io.ByteArrayInputStream(bos.toByteArray()))) {
+            copy = (CaseInsensitiveSet<String>) ois.readObject();
+        }
+
+        assertEquals(2, copy.size());
+        assertTrue(copy.contains("HELLO"), "Case-insensitive lookup must survive round trip");
+        assertTrue(copy.contains("world"));
+        copy.add("hello");   // no effect — still same case-insensitive element
+        assertEquals(2, copy.size());
+        assertEquals(set, copy);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void testCaseInsensitiveMapSerializationRoundTrip() throws Exception {
+        CaseInsensitiveMap<String, Integer> map = new CaseInsensitiveMap<>();
+        map.put("Alpha", 1);
+        map.put("Beta", 2);
+
+        java.io.ByteArrayOutputStream bos = new java.io.ByteArrayOutputStream();
+        try (java.io.ObjectOutputStream oos = new java.io.ObjectOutputStream(bos)) {
+            oos.writeObject(map);
+        }
+
+        CaseInsensitiveMap<String, Integer> copy;
+        try (java.io.ObjectInputStream ois =
+                     new java.io.ObjectInputStream(new java.io.ByteArrayInputStream(bos.toByteArray()))) {
+            copy = (CaseInsensitiveMap<String, Integer>) ois.readObject();
+        }
+
+        assertEquals(2, copy.size());
+        assertEquals(1, copy.get("ALPHA"));
+        assertEquals(2, copy.get("beta"));
+        assertEquals("Alpha", copy.keySet().iterator().next(), "Original key case must be preserved");
+    }
+
+    // --- addAll fast path for CaseInsensitiveSet sources ---
+
+    @Test
+    void testAddAllFromCaseInsensitiveSet() {
+        CaseInsensitiveSet<String> source = new CaseInsensitiveSet<>();
+        source.add("Alpha");
+        source.add("Beta");
+
+        CaseInsensitiveSet<String> target = new CaseInsensitiveSet<>();
+        target.add("ALPHA");   // case-insensitive duplicate of source element
+        target.add("Gamma");
+
+        assertTrue(target.addAll(source), "Beta is new, so the set changed");
+        assertEquals(3, target.size());
+        assertTrue(target.contains("beta"));
+        assertTrue(target.contains("alpha"));
+        assertTrue(target.contains("gamma"));
+
+        // Second addAll adds nothing — must report unchanged
+        assertFalse(target.addAll(source));
+        assertEquals(3, target.size());
+    }
 }

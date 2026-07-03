@@ -1,8 +1,10 @@
 package com.cedarsoftware.util;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Comparator;
 
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -34,6 +36,39 @@ class ConcurrentNavigableMapNullSafeBugFixTest {
         assertEquals(2, map.size());
         assertEquals("one", map.get(key1));
         assertEquals("two", map.get(key2));
+    }
+
+    @Test
+    void testIdentityHashCollisionKeysDoNotOverwrite() {
+        // Find two distinct Objects whose identity hash codes collide. With 31-bit
+        // identity hashes, the birthday bound makes a collision near-certain within
+        // 400K allocations (p(miss) ~ e^-37); typically one appears around 50-80K.
+        Map<Integer, Object> byHash = new HashMap<>(1 << 20);
+        Object k1 = null;
+        Object k2 = null;
+        for (int i = 0; i < 400_000; i++) {
+            Object candidate = new Object();
+            Object prior = byHash.putIfAbsent(System.identityHashCode(candidate), candidate);
+            if (prior != null) {
+                k1 = prior;
+                k2 = candidate;
+                break;
+            }
+        }
+        Assumptions.assumeTrue(k2 != null, "No identity hash collision found in 400K allocations");
+
+        ConcurrentNavigableMapNullSafe<Object, String> map = new ConcurrentNavigableMapNullSafe<>();
+        map.put(k1, "one");
+        map.put(k2, "two");
+
+        assertEquals(2, map.size(), "Colliding identity hashes must not merge distinct keys");
+        assertEquals("one", map.get(k1));
+        assertEquals("two", map.get(k2));
+
+        map.remove(k1);
+        assertEquals(1, map.size());
+        assertNull(map.get(k1));
+        assertEquals("two", map.get(k2));
     }
 
     // --- Bug: wrapEntry getValue() should return snapshot, not live value ---

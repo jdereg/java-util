@@ -123,7 +123,9 @@ public final class ConcurrentHashMapNullSafe<K, V> extends AbstractConcurrentNul
      * @throws NullPointerException if the specified map is {@code null}
      */
     public ConcurrentHashMapNullSafe(Map<? extends K, ? extends V> m) {
-        super(new ConcurrentHashMap<>(Math.max(16, (int) (m.size() / 0.75f) + 1)));
+        // ConcurrentHashMap(int) already reserves load-factor headroom for that many
+        // elements; pre-dividing by 0.75 would double-compensate and can allocate a 2x table.
+        super(new ConcurrentHashMap<>(Math.max(16, m.size())));
         putAll(m);
     }
 

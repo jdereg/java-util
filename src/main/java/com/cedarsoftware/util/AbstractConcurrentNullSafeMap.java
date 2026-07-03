@@ -248,8 +248,10 @@ public abstract class AbstractConcurrentNullSafeMap<K, V> implements ConcurrentM
             // Key is absent (existing == null) or mapped to null (existing == NULL_VALUE)
             // Per Map.computeIfAbsent: "If the specified key is not already associated
             // with a value (or is mapped to null), compute..." — so we must call the function.
+            // When the function returns null, nothing is entered and an existing
+            // null mapping is retained (JDK semantics), not removed.
             V value = mappingFunction.apply(key);
-            return value == null ? null : maskNullValue(value);
+            return value == null ? existing : maskNullValue(value);
         });
 
         return unmaskNullValue(result);
@@ -280,6 +282,7 @@ public abstract class AbstractConcurrentNullSafeMap<K, V> implements ConcurrentM
 
     @Override
     public V compute(K key, BiFunction<? super K, ? super V, ? extends V> remappingFunction) {
+        Objects.requireNonNull(remappingFunction);
         Object maskedKey = maskNullKey(key);
         Object result = internalMap.compute(maskedKey, (k, v) -> {
             V oldValue = unmaskNullValue(v);
@@ -528,12 +531,18 @@ public abstract class AbstractConcurrentNullSafeMap<K, V> implements ConcurrentM
         if (this.size() != other.size()) return false;
         // Iterate internalMap directly to avoid entrySet() wrapper overhead
         // (each wrapper Entry.getValue() would do a hash lookup)
-        for (Entry<Object, Object> entry : internalMap.entrySet()) {
-            K key = unmaskNullKey(entry.getKey());
-            V value = unmaskNullValue(entry.getValue());
-            Object otherValue = other.get(key);
-            if (otherValue == null && !other.containsKey(key)) return false;
-            if (!Objects.equals(value, otherValue)) return false;
+        try {
+            for (Entry<Object, Object> entry : internalMap.entrySet()) {
+                K key = unmaskNullKey(entry.getKey());
+                V value = unmaskNullValue(entry.getValue());
+                Object otherValue = other.get(key);
+                if (otherValue == null && !other.containsKey(key)) return false;
+                if (!Objects.equals(value, otherValue)) return false;
+            }
+        } catch (ClassCastException | NullPointerException ignored) {
+            // Per Map.equals (and AbstractMap precedent): a map that cannot hold
+            // our keys (e.g., rejects null) is simply not equal, never an exception.
+            return false;
         }
         return true;
     }

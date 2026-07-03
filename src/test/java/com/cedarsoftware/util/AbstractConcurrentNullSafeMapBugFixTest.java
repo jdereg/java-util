@@ -127,4 +127,65 @@ class AbstractConcurrentNullSafeMapBugFixTest {
         int h2 = map.hashCode();
         assertEquals(h1, h2, "hashCode must be consistent across calls");
     }
+
+    // --- Bug: equals() threw NPE when the other map rejects null keys ---
+
+    @Test
+    void testEqualsAgainstNullHostileMap_returnsFalseNotNPE() {
+        ConcurrentHashMapNullSafe<String, Integer> safe = new ConcurrentHashMapNullSafe<>();
+        safe.put(null, 1);
+
+        Map<String, Integer> hostile = new java.util.concurrent.ConcurrentHashMap<>();
+        hostile.put("a", 1);
+
+        // Same size, but hostile.get(null) throws NPE — equals must return false, not throw
+        assertFalse(safe.equals(hostile));
+    }
+
+    @Test
+    void testEqualsAgainstHashtable_returnsFalseNotNPE() {
+        ConcurrentHashMapNullSafe<String, Integer> safe = new ConcurrentHashMapNullSafe<>();
+        safe.put(null, 1);
+        safe.put("a", 2);
+
+        Map<String, Integer> hostile = new java.util.Hashtable<>();
+        hostile.put("a", 2);
+        hostile.put("b", 1);
+
+        assertFalse(safe.equals(hostile));
+    }
+
+    // --- Bug: computeIfAbsent removed an existing null mapping when the function returned null ---
+
+    @Test
+    void testComputeIfAbsentNullFunctionResult_retainsExistingNullMapping() {
+        ConcurrentHashMapNullSafe<String, String> map = new ConcurrentHashMapNullSafe<>();
+        map.put("key", null);
+
+        String result = map.computeIfAbsent("key", k -> null);
+
+        assertNull(result);
+        assertTrue(map.containsKey("key"), "Existing null mapping must be retained (JDK semantics)");
+        assertEquals(1, map.size());
+    }
+
+    @Test
+    void testComputeIfAbsentNullFunctionResult_absentKeyStaysAbsent() {
+        ConcurrentHashMapNullSafe<String, String> map = new ConcurrentHashMapNullSafe<>();
+
+        String result = map.computeIfAbsent("key", k -> null);
+
+        assertNull(result);
+        assertFalse(map.containsKey("key"));
+        assertEquals(0, map.size());
+    }
+
+    // --- compute() must fail fast on a null remapping function ---
+
+    @Test
+    void testComputeNullFunction_throwsNPE() {
+        ConcurrentHashMapNullSafe<String, String> map = new ConcurrentHashMapNullSafe<>();
+        org.junit.jupiter.api.Assertions.assertThrows(NullPointerException.class,
+                () -> map.compute("key", null));
+    }
 }

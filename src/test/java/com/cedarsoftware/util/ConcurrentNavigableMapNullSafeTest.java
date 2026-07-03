@@ -287,10 +287,12 @@ class ConcurrentNavigableMapNullSafeTest {
         assertEquals(20, map.computeIfAbsent("existingNonNull", k -> 30)); // Should return existing value
         assertEquals(20, map.get("existingNonNull")); // Value should remain unchanged
 
-        // Test computing null for existing null value (should remove the entry)
-        map.put("removeMe", null);
-        assertNull(map.computeIfAbsent("removeMe", k -> null));
-        assertFalse(map.containsKey("removeMe"));
+        // Computing null for an existing null mapping retains it (JDK semantics:
+        // HashMap and the Map default method leave the entry in place)
+        map.put("keepMe", null);
+        assertNull(map.computeIfAbsent("keepMe", k -> null));
+        assertTrue(map.containsKey("keepMe"));
+        assertNull(map.get("keepMe"));
     }
 
     @Test

@@ -5,11 +5,14 @@ import java.util.AbstractSet;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Iterator;
+import java.util.Map;
 import java.util.NavigableSet;
 import java.util.Set;
 import java.util.SortedSet;
+import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentNavigableMap;
 import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * ConcurrentNavigableMapNullSafe is a thread-safe implementation of {@link ConcurrentNavigableMap}
@@ -51,6 +54,20 @@ public class ConcurrentNavigableMapNullSafe<K, V> extends AbstractConcurrentNull
      * overhead of generating a random value.
      */
     private static final Object NULL_KEY_SENTINEL = new Object();
+
+    /**
+     * Tie-breakers for same-class non-Comparable keys whose identity hash codes
+     * collide. Without this, colliding distinct keys compare equal and silently
+     * overwrite each other. Keys are held weakly so map keys stay GC-able, and the
+     * registry is only populated when a collision actually occurs (vanishingly rare),
+     * so the common comparison paths never touch it.
+     */
+    private static final Map<Object, Long> TIE_BREAKERS = Collections.synchronizedMap(new WeakHashMap<>());
+    private static final AtomicLong TIE_BREAKER_SEQ = new AtomicLong();
+
+    private static long tieBreakerFor(Object o) {
+        return TIE_BREAKERS.computeIfAbsent(o, k -> TIE_BREAKER_SEQ.getAndIncrement());
+    }
 
     /**
      * Constructs a new, empty ConcurrentNavigableMapNullSafe with natural ordering of its keys.
@@ -137,7 +154,18 @@ public class ConcurrentNavigableMapNullSafe<K, V> extends AbstractConcurrentNull
             // Same-class, non-Comparable keys must still have a strict ordering to avoid
             // treating distinct keys as equal and overwriting entries.
             if (class1 == class2) {
-                return Integer.compare(System.identityHashCode(o1), System.identityHashCode(o2));
+                int idCmp = Integer.compare(System.identityHashCode(o1), System.identityHashCode(o2));
+                if (idCmp != 0) {
+                    return idCmp;
+                }
+                if (o1 == o2) {
+                    return 0;
+                }
+                // Distinct objects with colliding identity hashes: assign stable
+                // sequence numbers so they remain distinct keys instead of one
+                // silently overwriting the other. (equals-equal keys share a
+                // registry entry and thus compare equal, as a Map requires.)
+                return Long.compare(tieBreakerFor(o1), tieBreakerFor(o2));
             }
 
             // Compare class names to provide ordering between different types

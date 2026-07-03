@@ -185,9 +185,9 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
         tempList.add(new AbstractMap.SimpleEntry<>(ConcurrentSkipListMap.class, size -> new ConcurrentSkipListMap<>()));
         tempList.add(new AbstractMap.SimpleEntry<>(ConcurrentNavigableMapNullSafe.class, size -> new ConcurrentNavigableMapNullSafe<>()));
         tempList.add(new AbstractMap.SimpleEntry<>(ConcurrentHashMapNullSafe.class, size -> new ConcurrentHashMapNullSafe<>(size)));
-        tempList.add(new AbstractMap.SimpleEntry<>(WeakHashMap.class, size -> new WeakHashMap<>(size)));
-        tempList.add(new AbstractMap.SimpleEntry<>(LinkedHashMap.class, size -> new LinkedHashMap<>(size)));
-        tempList.add(new AbstractMap.SimpleEntry<>(HashMap.class, size -> new HashMap<>(size)));
+        tempList.add(new AbstractMap.SimpleEntry<>(WeakHashMap.class, size -> new WeakHashMap<>(capacityFor(size))));
+        tempList.add(new AbstractMap.SimpleEntry<>(LinkedHashMap.class, size -> new LinkedHashMap<>(capacityFor(size))));
+        tempList.add(new AbstractMap.SimpleEntry<>(HashMap.class, size -> new HashMap<>(capacityFor(size))));
         tempList.add(new AbstractMap.SimpleEntry<>(ConcurrentNavigableMap.class, size -> new ConcurrentSkipListMap<>()));
         tempList.add(new AbstractMap.SimpleEntry<>(ConcurrentMap.class, size -> new ConcurrentHashMap<>(size)));
         tempList.add(new AbstractMap.SimpleEntry<>(NavigableMap.class, size -> new TreeMap<>()));
@@ -197,6 +197,15 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
 
         // Initialize the atomic reference with the immutable list
         mapRegistry = new AtomicReference<>(Collections.unmodifiableList(new ArrayList<>(tempList)));
+    }
+
+    /**
+     * Table capacity that holds {@code size} elements at the default 0.75 load factor
+     * without rehashing (for HashMap-family constructors whose int argument is a raw
+     * initial capacity, not an expected element count).
+     */
+    private static int capacityFor(int size) {
+        return Math.max(16, (int) (size / 0.75f) + 1);
     }
 
     /**
@@ -365,7 +374,7 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
         }
 
         // If no match found, default to LinkedHashMap
-        return copy(source, new LinkedHashMap<>(size));
+        return copy(source, new LinkedHashMap<>(capacityFor(size)));
     }
 
     /**
@@ -469,7 +478,10 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
         boolean multiKeyMapDest = dest instanceof MultiKeyMap;
 
         // OPTIMIZATION: If source is also CaseInsensitiveMap, keys are already normalized.
-        if (source instanceof CaseInsensitiveMap<?, ?> && !multiKeyMapDest) {
+        // A MultiKeyMap-backed source is excluded: its wrapped map exposes internal key
+        // representations (e.g. Object[] multi-keys) that must not leak into a regular map.
+        if (source instanceof CaseInsensitiveMap<?, ?> && !multiKeyMapDest
+                && !((CaseInsensitiveMap<?, ?>) source).isMultiKeyMapBacking) {
             // Directly copy from the wrapped map which has normalized keys
             @SuppressWarnings("unchecked")
             CaseInsensitiveMap<K, V> ciSource = (CaseInsensitiveMap<K, V>) source;
@@ -606,42 +618,63 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
         return map.isEmpty();
     }
 
-    // ===== PRIVATE HELPER METHODS =====
+    /**
+     * {@inheritDoc}
+     * <p>Delegates directly to the backing map, bypassing the {@code AbstractMap.clear()}
+     * implementation which removes entries one at a time through the entrySet iterator.</p>
+     */
+    @Override
+    public void clear() {
+        map.clear();
+    }
 
     /**
-     * Handles array and collection keys for MultiKeyMap operations.
-     * Converts String keys to case-insensitive equivalents and handles different array types appropriately.
-     * 
-     * @param key the key to process (can be array, collection, or single object)
-     * @param operation a function that takes the processed key and returns the result
-     * @return the result of the operation, or null if not a MultiKeyMap or not an array/collection
+     * {@inheritDoc}
+     * <p>Values are stored unchanged, so this delegates directly to the backing map,
+     * bypassing the {@code AbstractMap} implementation which allocates an entry wrapper
+     * per element while scanning. MultiKeyMap backing routes through the entrySet-based
+     * implementation, which handles MultiKeyMap's entry view semantics.</p>
      */
-
-    // ===== MULTI-KEY APIs =====
+    @Override
+    public boolean containsValue(Object value) {
+        if (isMultiKeyMapBacking) {
+            return super.containsValue(value);
+        }
+        return map.containsValue(value);
+    }
 
     /**
-     * Stores a value with multiple keys, applying case-insensitive handling to String keys.
-     * This method is only supported when the backing map is a MultiKeyMap.
-     *
-     * <p>Examples:</p>
-     * <pre>{@code
-     * CaseInsensitiveMap<String, String> map = new CaseInsensitiveMap<>(Collections.emptyMap(), new MultiKeyMap<>());
-     * 
-     * // Multi-key operations with case-insensitive String handling
-     * map.putMultiKey("Value1", "DEPT", "Engineering");        // String keys converted to case-insensitive
-     * map.putMultiKey("Value2", "dept", "Marketing", "West");  // Mixed case handled automatically
-     * map.putMultiKey("Value3", 123, "project", "Alpha");      // Mixed String and non-String keys
-     * 
-     * // Retrieval with case-insensitive matching
-     * String val1 = map.getMultiKey("dept", "ENGINEERING");    // Returns "Value1"
-     * String val2 = map.getMultiKey("DEPT", "marketing", "west"); // Returns "Value2"
-     * }</pre>
-     *
-     * @param value the value to store
-     * @param keys the key components (unlimited number, String keys are handled case-insensitively)
-     * @return the previous value associated with the key, or null if there was no mapping
-     * @throws IllegalStateException if the backing map is not a MultiKeyMap instance
+     * {@inheritDoc}
+     * <p>Values are stored unchanged, so the backing map's values view is returned directly,
+     * bypassing the {@code AbstractMap} implementation whose iterator allocates an entry
+     * wrapper per element. MultiKeyMap backing routes through the entrySet-based
+     * implementation, which handles MultiKeyMap's entry view semantics.</p>
      */
+    @Override
+    public Collection<V> values() {
+        if (isMultiKeyMapBacking) {
+            return super.values();
+        }
+        return map.values();
+    }
+
+    /**
+     * {@inheritDoc}
+     * <p>String keys are stored case-insensitively. When the source is another
+     * {@code CaseInsensitiveMap} (and neither side is MultiKeyMap-backed), its keys are
+     * already normalized and are bulk-copied without per-key re-wrapping.</p>
+     */
+    @Override
+    public void putAll(Map<? extends K, ? extends V> m) {
+        if (m instanceof CaseInsensitiveMap && !isMultiKeyMapBacking
+                && !((CaseInsensitiveMap<?, ?>) m).isMultiKeyMapBacking) {
+            @SuppressWarnings("unchecked")
+            Map<? extends K, ? extends V> normalized = ((CaseInsensitiveMap<? extends K, ? extends V>) m).map;
+            map.putAll(normalized);
+            return;
+        }
+        super.putAll(m);
+    }
 
     /**
      * {@inheritDoc}
@@ -655,7 +688,7 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
         Map<?, ?> that = (Map<?, ?>) other;
         if (that.size() != size()) { return false; }
 
-        Map<Object, Object> normalizedEntries = new HashMap<>(that.size());
+        Map<Object, Object> normalizedEntries = new HashMap<>(capacityFor(that.size()));
         for (Entry<?, ?> entry : that.entrySet()) {
             Object normalizedKey = normalizeKeyForEquality(entry.getKey());
             if (normalizedEntries.containsKey(normalizedKey)) {
@@ -1820,29 +1853,6 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
             return new EqualityArrayKey((Object[]) normalizedKey);
         }
         return normalizedKey;
-    }
-
-    /**
-     * Converts an array of keys by applying case-insensitive handling to String keys.
-     *
-     * @param keys the keys to convert
-     * @return the converted keys array
-     */
-    private Object[] convertKeys(Object[] keys) {
-        if (keys == null || keys.length == 0) {
-            return keys;
-        }
-
-        int len = keys.length;
-        Object[] convertedKeys = new Object[len];
-        for (int i = 0; i < len; i++) {
-            if (keys[i] instanceof String) {
-                convertedKeys[i] = new CaseInsensitiveString((String) keys[i]);
-            } else {
-                convertedKeys[i] = keys[i];
-            }
-        }
-        return convertedKeys;
     }
 
     /**

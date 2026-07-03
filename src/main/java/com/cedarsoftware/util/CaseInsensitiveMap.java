@@ -437,6 +437,14 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
         if (!mapInstance.isEmpty()) {
             throw new IllegalArgumentException("mapInstance must be empty");
         }
+        // A CaseInsensitiveMap must never be backed by another CaseInsensitiveMap. Doing so double-folds
+        // String keys (each layer wraps them in a CaseInsensitiveString), which the read-path lookup-key
+        // optimization does not survive: the outer layer probes with a lightweight LookupKey that the inner
+        // layer stores/iterates as a CaseInsensitiveString, so containsKey works but remove and key iteration
+        // (hence Set.removeAll) silently fail. Unwrap to the underlying (empty) map so a single fold applies.
+        while (mapInstance instanceof CaseInsensitiveMap) {
+            mapInstance = ((CaseInsensitiveMap<K, V>) mapInstance).getWrappedMap();
+        }
         boolean multiKeyMapBacking = mapInstance instanceof MultiKeyMap;
         map = copy(source, mapInstance);
         isMultiKeyMapBacking = multiKeyMapBacking;

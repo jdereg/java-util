@@ -575,4 +575,29 @@ public class CaseInsensitiveSetTest
         set.add("Three");
         return set;
     }
+    /**
+     * Regression: a CaseInsensitiveSet built on a CaseInsensitiveMap backing (i.e. the two-arg
+     * constructor handed a CaseInsensitiveMap instead of a plain map) must behave correctly. The map
+     * constructor now unwraps a CaseInsensitiveMap backing so keys are folded once; before the fix the
+     * double fold let containsKey succeed while remove / removeAll / key iteration silently failed.
+     */
+    @Test
+    void testCaseInsensitiveMapBackingIsUnwrapped()
+    {
+        Set<String> a = new CaseInsensitiveSet<>(Collections.emptySet(),
+                new CaseInsensitiveMap<>(Collections.emptyMap(), new LinkedHashMap<>()));
+        a.add("State");
+        Set<String> b = new CaseInsensitiveSet<>(Collections.emptySet(),
+                new CaseInsensitiveMap<>(Collections.emptyMap(), new LinkedHashMap<>()));
+        b.add("state");
+
+        assertTrue(a.contains("STATE"));
+        assertEquals("state", a.iterator().next().toLowerCase());   // iteration yields a real String
+        assertTrue(a.remove("state"));                              // remove works
+        assertTrue(a.isEmpty());
+
+        Set<String> copy = new CaseInsensitiveSet<>(b);
+        assertTrue(copy.removeAll(b));                              // removeAll across such sets works
+        assertTrue(copy.isEmpty());
+    }
 }

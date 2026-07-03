@@ -232,4 +232,32 @@ class ConcurrentListBugFixTest {
         assertEquals(6, list.size());
         assertTrue(list.containsAll(Arrays.asList(1, 2, 3, 11, 12, 13)));
     }
+
+    // --- Bug: remove(int)/add(int, E) exception contract on out-of-bounds indexes ---
+
+    @Test
+    void testRemoveIndexOnEmptyListThrowsIndexOutOfBounds() {
+        ConcurrentList<Integer> list = new ConcurrentList<>();
+        // Previously surfaced as NoSuchElementException via removeFirst()
+        assertThrows(IndexOutOfBoundsException.class, () -> list.remove(0));
+    }
+
+    @Test
+    void testRemoveIndexOutOfBoundsThrows() {
+        ConcurrentList<Integer> list = new ConcurrentList<>();
+        list.add(1);
+        list.add(2);
+        assertThrows(IndexOutOfBoundsException.class, () -> list.remove(2));
+        assertThrows(IndexOutOfBoundsException.class, () -> list.remove(-1));
+        assertEquals(2, list.size(), "Failed remove must not modify the list");
+    }
+
+    @Test
+    void testAddIndexOutOfBoundsThrows() {
+        ConcurrentList<Integer> list = new ConcurrentList<>();
+        list.add(1);
+        assertThrows(IndexOutOfBoundsException.class, () -> list.add(3, 99));
+        assertThrows(IndexOutOfBoundsException.class, () -> list.add(-1, 99));
+        assertEquals(1, list.size(), "Failed add must not modify the list");
+    }
 }

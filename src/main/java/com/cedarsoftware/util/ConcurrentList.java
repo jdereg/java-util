@@ -20,14 +20,17 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Consumer;
 
 /**
- * A high-performance thread-safe implementation of {@link List}, {@link Deque}, and {@link RandomAccess} interfaces,
- * specifically designed for highly concurrent environments with exceptional performance characteristics.
- * 
- * <p>This implementation uses a revolutionary bucket-based architecture with chunked {@link AtomicReferenceArray} 
- * storage and atomic head/tail counters, delivering lock-free performance for the most common operations.</p>
+ * A thread-safe implementation of the {@link List}, {@link Deque}, and {@link RandomAccess} interfaces,
+ * designed for concurrent environments.
+ *
+ * <p>This implementation uses a bucket-based architecture with chunked {@link AtomicReferenceArray}
+ * storage and atomic head/tail counters, guarded by a single {@link ReentrantReadWriteLock}: reads
+ * take the shared read lock (parallel among readers), and all mutations take the exclusive write
+ * lock. Head/tail mutations are O(1) under the brief write lock; only middle insertion/removal
+ * pays an O(n) rebuild.</p>
  *
  * <h2>Architecture Overview</h2>
- * <p>The list is structured as a series of fixed-size buckets (1024 elements each), managed through a 
+ * <p>The list is structured as a series of fixed-size buckets (1024 elements each), managed through a
  * {@link ConcurrentHashMap}. Each bucket is an {@link AtomicReferenceArray} that never moves once allocated,
  * ensuring stable memory layout and eliminating costly array copying operations.</p>
  *
@@ -35,48 +38,51 @@ import java.util.function.Consumer;
  * <table border="1">
  * <caption>Operation Performance Comparison</caption>
  * <tr><th>Operation</th><th>ArrayList + External Sync</th><th>CopyOnWriteArrayList</th><th>Vector</th><th>This Implementation</th></tr>
- * <tr><td>{@code get(index)}</td><td>🔴 O(1) but serialized</td><td>🟡 O(1) no locks</td><td>🔴 O(1) but synchronized</td><td>🟢 O(1) lock-free</td></tr>
- * <tr><td>{@code set(index, val)}</td><td>🔴 O(1) but serialized</td><td>🔴 O(n) copy array</td><td>🔴 O(1) but synchronized</td><td>🟢 O(1) lock-free</td></tr>
- * <tr><td>{@code add(element)}</td><td>🔴 O(1)* but serialized</td><td>🔴 O(n) copy array</td><td>🔴 O(1)* but synchronized</td><td>🟢 O(1) lock-free</td></tr>
- * <tr><td>{@code addFirst(element)}</td><td>🔴 O(n) + serialized</td><td>🔴 O(n) copy array</td><td>🔴 O(n) + synchronized</td><td>🟢 O(1) lock-free</td></tr>
- * <tr><td>{@code addLast(element)}</td><td>🔴 O(1)* but serialized</td><td>🔴 O(n) copy array</td><td>🔴 O(1)* but synchronized</td><td>🟢 O(1) lock-free</td></tr>
- * <tr><td>{@code removeFirst()}</td><td>🔴 O(n) + serialized</td><td>🔴 O(n) copy array</td><td>🔴 O(n) + synchronized</td><td>🟢 O(1) lock-free</td></tr>
- * <tr><td>{@code removeLast()}</td><td>🔴 O(1) but serialized</td><td>🔴 O(n) copy array</td><td>🔴 O(1) but synchronized</td><td>🟢 O(1) lock-free</td></tr>
+ * <tr><td>{@code get(index)}</td><td>🔴 O(1) but serialized</td><td>🟢 O(1) no locks</td><td>🔴 O(1) but synchronized</td><td>🟢 O(1) shared read lock</td></tr>
+ * <tr><td>{@code set(index, val)}</td><td>🔴 O(1) but serialized</td><td>🔴 O(n) copy array</td><td>🔴 O(1) but synchronized</td><td>🟢 O(1) shared read lock</td></tr>
+ * <tr><td>{@code add(element)}</td><td>🔴 O(1)* but serialized</td><td>🔴 O(n) copy array</td><td>🔴 O(1)* but synchronized</td><td>🟡 O(1) write lock</td></tr>
+ * <tr><td>{@code addFirst(element)}</td><td>🔴 O(n) + serialized</td><td>🔴 O(n) copy array</td><td>🔴 O(n) + synchronized</td><td>🟡 O(1) write lock</td></tr>
+ * <tr><td>{@code addLast(element)}</td><td>🔴 O(1)* but serialized</td><td>🔴 O(n) copy array</td><td>🔴 O(1)* but synchronized</td><td>🟡 O(1) write lock</td></tr>
+ * <tr><td>{@code removeFirst()}</td><td>🔴 O(n) + serialized</td><td>🔴 O(n) copy array</td><td>🔴 O(n) + synchronized</td><td>🟡 O(1) write lock</td></tr>
+ * <tr><td>{@code removeLast()}</td><td>🔴 O(1) but serialized</td><td>🔴 O(n) copy array</td><td>🔴 O(1) but synchronized</td><td>🟡 O(1) write lock</td></tr>
  * <tr><td>{@code add(middle, element)}</td><td>🔴 O(n) + serialized</td><td>🔴 O(n) copy array</td><td>🔴 O(n) + synchronized</td><td>🟡 O(n) + write lock</td></tr>
  * <tr><td>{@code remove(middle)}</td><td>🔴 O(n) + serialized</td><td>🔴 O(n) copy array</td><td>🔴 O(n) + synchronized</td><td>🟡 O(n) + write lock</td></tr>
- * <tr><td>Concurrent reads</td><td>❌ Serialized</td><td>🟢 Fully parallel</td><td>❌ Serialized</td><td>🟢 Fully parallel</td></tr>
- * <tr><td>Concurrent writes</td><td>❌ Serialized</td><td>❌ Serialized (copy)</td><td>❌ Serialized</td><td>🟢 Parallel head/tail ops</td></tr>
+ * <tr><td>Concurrent reads</td><td>❌ Serialized</td><td>🟢 Fully parallel</td><td>❌ Serialized</td><td>🟢 Parallel (shared read lock)</td></tr>
+ * <tr><td>Concurrent writes</td><td>❌ Serialized</td><td>❌ Serialized (copy)</td><td>❌ Serialized</td><td>🔴 Serialized (write lock)</td></tr>
  * <tr><td>Memory efficiency</td><td>🟡 Resizing overhead</td><td>🔴 Constant copying</td><td>🟡 Resizing overhead</td><td>🟢 Granular allocation</td></tr>
  * </table>
  * <p><i>* O(1) amortized, may trigger O(n) array resize</i></p>
  *
  * <h2>Key Advantages</h2>
  * <ul>
- *   <li><strong>Lock-free deque operations:</strong> {@code addFirst}, {@code addLast}, {@code removeFirst}, {@code removeLast} use atomic CAS operations</li>
- *   <li><strong>Lock-free random access:</strong> {@code get()} and {@code set()} operations require no synchronization</li>
+ *   <li><strong>O(1) deque operations:</strong> {@code addFirst}, {@code addLast}, {@code removeFirst},
+ *       {@code removeLast} update atomic head/tail counters under a brief write lock — no array shifting or copying</li>
+ *   <li><strong>Parallel reads:</strong> {@code get()}, {@code set()}, {@code contains()}, iteration, and
+ *       {@code toArray()} share the read lock and run concurrently with each other</li>
+ *   <li><strong>No copy-on-write:</strong> Unlike {@link java.util.concurrent.CopyOnWriteArrayList}, mutations
+ *       never copy the whole backing storage (except middle insertion/removal, which rebuilds)</li>
+ *   <li><strong>Stable memory layout:</strong> Buckets never move, reducing GC pressure</li>
  *   <li><strong>Optimal memory usage:</strong> No wasted capacity from exponential growth strategies</li>
- *   <li><strong>Stable memory layout:</strong> Buckets never move, reducing GC pressure and improving cache locality</li>
- *   <li><strong>Scalable concurrency:</strong> Read operations scale linearly with CPU cores</li>
- *   <li><strong>Minimal contention:</strong> Only middle insertion/removal requires write locking</li>
  * </ul>
  *
  * <h2>Use Case Recommendations</h2>
  * <ul>
- *   <li><strong>🟢 Excellent for:</strong> Queue/stack patterns, append-heavy workloads, high-concurrency read access, 
- *       producer-consumer scenarios, work-stealing algorithms</li>
+ *   <li><strong>🟢 Excellent for:</strong> Queue/stack patterns, append-heavy workloads, read-heavy access,
+ *       producer-consumer scenarios</li>
  *   <li><strong>🟢 Very good for:</strong> Random access patterns, bulk operations, frequent size queries</li>
- *   <li><strong>🟡 Acceptable for:</strong> Moderate middle insertion/deletion (rebuilds structure but still better than alternatives)</li>
- *   <li><strong>❌ Consider alternatives for:</strong> Frequent middle insertion/deletion with single-threaded access</li>
+ *   <li><strong>🟡 Acceptable for:</strong> Moderate middle insertion/deletion (rebuilds structure)</li>
+ *   <li><strong>❌ Consider alternatives for:</strong> Frequent middle insertion/deletion, or extreme
+ *       write contention where a lock-free queue (e.g. {@link java.util.concurrent.ConcurrentLinkedDeque}) fits the access pattern</li>
  * </ul>
  *
  * <h2>Thread Safety</h2>
- * <p>This implementation provides exceptional thread safety with minimal performance overhead:</p>
  * <ul>
- *   <li><strong>Lock-free reads:</strong> All get operations and iterations are completely lock-free</li>
- *   <li><strong>Lock-free head/tail operations:</strong> Deque operations use atomic CAS for maximum throughput</li>
- *   <li><strong>Minimal locking:</strong> Only middle insertion/removal requires a write lock</li>
- *   <li><strong>Consistent iteration:</strong> Iterators provide a consistent snapshot view</li>
- *   <li><strong>ABA-safe:</strong> Atomic operations prevent ABA problems in concurrent scenarios</li>
+ *   <li><strong>Reads:</strong> {@code get}, {@code set}, {@code size}, iteration, and scans take the shared
+ *       read lock ({@code size()}/{@code isEmpty()} are lock-free via a dedicated counter)</li>
+ *   <li><strong>Writes:</strong> All structural mutations take the exclusive write lock; head/tail operations
+ *       hold it only for an O(1) update</li>
+ *   <li><strong>Consistent iteration:</strong> Iterators operate over a point-in-time snapshot and never throw
+ *       {@link java.util.ConcurrentModificationException}</li>
  * </ul>
  *
  * <h2>Implementation Details</h2>
@@ -84,28 +90,28 @@ import java.util.function.Consumer;
  *   <li><strong>Bucket size:</strong> 1024 elements per bucket for optimal cache line usage</li>
  *   <li><strong>Storage:</strong> {@link ConcurrentHashMap} of {@link AtomicReferenceArray} buckets</li>
  *   <li><strong>Indexing:</strong> Atomic head/tail counters with negative indexing support</li>
- *   <li><strong>Memory management:</strong> Lazy bucket allocation, automatic garbage collection of unused buckets</li>
+ *   <li><strong>Memory management:</strong> Lazy bucket allocation, automatic cleanup of vacated buckets</li>
  * </ul>
  *
  * <h2>Usage Examples</h2>
  * <pre>{@code
- * // High-performance concurrent queue
+ * // Concurrent queue
  * ConcurrentList<Task> taskQueue = new ConcurrentList<>();
- * 
+ *
  * // Producer threads
- * taskQueue.addLast(new Task());     // O(1) lock-free
- * 
- * // Consumer threads  
- * Task task = taskQueue.pollFirst(); // O(1) lock-free
- * 
+ * taskQueue.addLast(new Task());     // O(1)
+ *
+ * // Consumer threads
+ * Task task = taskQueue.pollFirst(); // O(1)
+ *
  * // Stack operations
  * ConcurrentList<String> stack = new ConcurrentList<>();
- * stack.addFirst("item");            // O(1) lock-free push
- * String item = stack.removeFirst(); // O(1) lock-free pop
- * 
+ * stack.addFirst("item");            // O(1) push
+ * String item = stack.removeFirst(); // O(1) pop
+ *
  * // Random access
- * String value = stack.get(index);   // O(1) lock-free
- * stack.set(index, "new value");     // O(1) lock-free
+ * String value = stack.get(index);   // O(1), parallel with other reads
+ * stack.set(index, "new value");     // O(1), parallel with other reads
  * }</pre>
  *
  * @param <E> the type of elements held in this list
@@ -324,15 +330,14 @@ public final class ConcurrentList<E> implements List<E>, Deque<E>, RandomAccess,
     public boolean remove(Object o) {
         lock.writeLock().lock();
         try {
-            int sz = size();
-            for (int i = 0; i < sz; i++) {
-                E element = get(i);
-                if (Objects.equals(o, element)) {
-                    remove(i);
-                    return true;
-                }
+            // Single direct scan instead of get(i) per index (each of which
+            // re-acquired the read lock and redid the bucket math)
+            int i = indexOf(o);
+            if (i < 0) {
+                return false;
             }
-            return false;
+            remove(i);
+            return true;
         } finally {
             lock.writeLock().unlock();
         }
@@ -518,11 +523,15 @@ public final class ConcurrentList<E> implements List<E>, Deque<E>, RandomAccess,
     public void add(int index, E element) {
         lock.writeLock().lock();
         try {
+            int sz = size();
+            if (index < 0 || index > sz) {
+                throw new IndexOutOfBoundsException("Index: " + index + ", Size: " + sz);
+            }
             if (index == 0) {
                 addFirst(element);
                 return;
             }
-            if (index == size()) {
+            if (index == sz) {
                 addLast(element);
                 return;
             }
@@ -538,10 +547,16 @@ public final class ConcurrentList<E> implements List<E>, Deque<E>, RandomAccess,
     public E remove(int index) {
         lock.writeLock().lock();
         try {
+            int sz = size();
+            // Bounds-check up front: List contract requires IndexOutOfBoundsException
+            // (remove(0) on an empty list previously surfaced as NoSuchElementException)
+            if (index < 0 || index >= sz) {
+                throw new IndexOutOfBoundsException("Index: " + index + ", Size: " + sz);
+            }
             if (index == 0) {
                 return removeFirst();
             }
-            if (index == size() - 1) {
+            if (index == sz - 1) {
                 return removeLast();
             }
             List<E> list = new ArrayList<>(this);
@@ -906,14 +921,13 @@ public final class ConcurrentList<E> implements List<E>, Deque<E>, RandomAccess,
     public boolean removeLastOccurrence(Object o) {
         lock.writeLock().lock();
         try {
-            for (int i = size() - 1; i >= 0; i--) {
-                E element = get(i);
-                if (Objects.equals(o, element)) {
-                    remove(i);
-                    return true;
-                }
+            // Single direct scan instead of get(i) per index
+            int i = lastIndexOf(o);
+            if (i < 0) {
+                return false;
             }
-            return false;
+            remove(i);
+            return true;
         } finally {
             lock.writeLock().unlock();
         }
@@ -1000,30 +1014,21 @@ public final class ConcurrentList<E> implements List<E>, Deque<E>, RandomAccess,
             return false;
         }
         List<?> other = (List<?>) obj;
-        // Iterate directly under read lock to avoid O(n) snapshot allocation.
-        lock.readLock().lock();
-        try {
-            int sz = size();
-            if (sz != other.size()) {
+        // Snapshot this list, then compare WITHOUT holding our lock. Iterating a foreign
+        // collection (its iterator/equals are arbitrary code) while holding our read lock
+        // can deadlock: two ConcurrentLists comparing against each other while writers are
+        // queued on both blocks each reader behind the other's queued writer, forming a cycle.
+        Object[] mine = toArray();
+        Iterator<?> it2 = other.iterator();
+        for (Object e1 : mine) {
+            if (!it2.hasNext()) {
                 return false;
             }
-            long h = head.get();
-            Iterator<?> it2 = other.iterator();
-            for (int i = 0; i < sz; i++) {
-                if (!it2.hasNext()) {
-                    return false;
-                }
-                long pos = h + i;
-                Object e1 = getBucket(bucketIndex(pos)).get(bucketOffset(pos));
-                Object e2 = it2.next();
-                if (!Objects.equals(e1, e2)) {
-                    return false;
-                }
+            if (!Objects.equals(e1, it2.next())) {
+                return false;
             }
-            return !it2.hasNext();
-        } finally {
-            lock.readLock().unlock();
         }
+        return !it2.hasNext();
     }
 
     @Override

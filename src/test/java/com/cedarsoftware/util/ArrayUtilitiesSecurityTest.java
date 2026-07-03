@@ -90,9 +90,31 @@ public class ArrayUtilitiesSecurityTest {
         Exception exception = assertThrows(SecurityException.class, () -> {
             ArrayUtilities.nullToEmpty(ProcessBuilder.class, null);
         });
-        
+
         assertTrue(exception.getMessage().contains("Array creation denied"),
                   "Should block ProcessBuilder class array creation");
+    }
+
+    @Test
+    public void testNullToEmpty_nestedDangerousArrayClass_throwsException() {
+        // Runtime[] as component type creates Runtime[][] — the leaf type must be
+        // validated, otherwise "[Ljava.lang.Runtime;" bypasses the pattern check
+        Exception exception = assertThrows(SecurityException.class, () -> {
+            ArrayUtilities.nullToEmpty(Runtime[].class, null);
+        });
+
+        assertTrue(exception.getMessage().contains("Array creation denied"),
+                  "Should block nested dangerous class array creation");
+    }
+
+    @Test
+    public void testNullToEmpty_deeplyNestedDangerousArrayClass_throwsException() {
+        Exception exception = assertThrows(SecurityException.class, () -> {
+            ArrayUtilities.nullToEmpty(ProcessBuilder[][].class, null);
+        });
+
+        assertTrue(exception.getMessage().contains("Array creation denied"),
+                  "Should block deeply nested dangerous class array creation");
     }
     
     @Test

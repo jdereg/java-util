@@ -516,6 +516,19 @@ public class ArrayUtilitiesTest
     }
 
     @Test
+    void testSetBooleanArrayNonBooleanThrows()
+    {
+        // Non-Boolean elements must throw, not be silently stored as false
+        boolean[] booleans = {true};
+
+        assertThrows(IllegalArgumentException.class,
+                () -> ArrayUtilities.setPrimitiveElement(booleans, 0, "true"));
+        assertThrows(IllegalArgumentException.class,
+                () -> ArrayUtilities.setPrimitiveElement(booleans, 0, 1));
+        assertTrue(booleans[0], "Failed set must not modify the array");
+    }
+
+    @Test
     void testSetByteArray()
     {
         // Test byte[] array

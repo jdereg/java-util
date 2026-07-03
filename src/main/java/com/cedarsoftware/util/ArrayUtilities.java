@@ -196,29 +196,14 @@ public final class ArrayUtilities {
     }
     
     // Security configuration methods
-    
-    private static boolean isSecurityEnabled() {
-        return getSecurityConfig().securityEnabled;
-    }
-    
-    private static boolean isComponentTypeValidationEnabled() {
-        return getSecurityConfig().componentTypeValidationEnabled;
-    }
-    
-    private static boolean isDangerousClassValidationEnabled() {
-        return getSecurityConfig().dangerousClassValidationEnabled;
-    }
-    
-    private static long getMaxArraySize() {
-        SecurityConfig config = getSecurityConfig();
-        if (config.maxArraySizeValid) {
-            return config.maxArraySize;
-        }
-        return config.securityEnabled ? DEFAULT_MAX_ARRAY_SIZE : Long.MAX_VALUE;
-    }
-    
-    private static String[] getDangerousClassPatterns() {
-        return getSecurityConfig().dangerousClassPatterns;
+
+    /**
+     * Fast path for the default (security disabled) case: one property read instead
+     * of the full five-property config snapshot. Still reads per call so runtime
+     * toggling of the master switch is honored immediately.
+     */
+    private static boolean isSecurityDisabled() {
+        return !Boolean.parseBoolean(System.getProperty("arrayutilities.security.enabled", "false"));
     }
 
     private static SecurityConfig getSecurityConfig() {
@@ -284,15 +269,27 @@ public final class ArrayUtilities {
         if (componentType == null) {
             return; // Allow null check to be handled elsewhere
         }
-        
-        // Only validate if security features are enabled
-        if (!isSecurityEnabled() || !isComponentTypeValidationEnabled() || !isDangerousClassValidationEnabled()) {
+
+        if (isSecurityDisabled()) {
             return;
         }
-        
+
+        // Only validate if security features are enabled (single config snapshot —
+        // the individual accessors would each re-read all five properties)
+        SecurityConfig config = getSecurityConfig();
+        if (!config.securityEnabled || !config.componentTypeValidationEnabled || !config.dangerousClassValidationEnabled) {
+            return;
+        }
+
+        // Unwrap nested array types so Runtime[][] etc. cannot bypass the check:
+        // the name "[Ljava.lang.Runtime;" matches neither exact nor prefix patterns.
+        while (componentType.isArray()) {
+            componentType = componentType.getComponentType();
+        }
+
         String className = componentType.getName();
-        String[] dangerousPatterns = getDangerousClassPatterns();
-        
+        String[] dangerousPatterns = config.dangerousClassPatterns;
+
         // Check if class name matches any dangerous patterns
         for (String pattern : dangerousPatterns) {
             if (pattern.endsWith(".")) {
@@ -317,15 +314,20 @@ public final class ArrayUtilities {
      */
     static void validateArraySize(long size) {
         // Only validate if security features are enabled
-        if (!isSecurityEnabled()) {
+        if (isSecurityDisabled()) {
             return;
         }
-        
+
+        SecurityConfig config = getSecurityConfig();
+        if (!config.securityEnabled) {
+            return;
+        }
+
         if (size < 0) {
             throw new SecurityException("Array size cannot be negative");
         }
-        
-        long maxSize = getMaxArraySize();
+
+        long maxSize = config.maxArraySizeValid ? config.maxArraySize : DEFAULT_MAX_ARRAY_SIZE;
         if (size > maxSize) {
             throw new SecurityException("Array size too large: " + size + " > " + maxSize);
         }
@@ -568,10 +570,14 @@ public final class ArrayUtilities {
             return shallowCopy(array1);
         }
         
-        // Security: Check for integer overflow when combining arrays
+        // Check for integer overflow when combining arrays (independent of the
+        // security switch — the (int) cast below must never truncate)
         long combinedLength = (long) array1.length + (long) array2.length;
+        if (combinedLength > DEFAULT_MAX_ARRAY_SIZE) {
+            throw new IllegalArgumentException("Combined array length too large: " + combinedLength);
+        }
         validateArraySize(combinedLength);
-        
+
         Class<?> componentType = array1.getClass().getComponentType();
         // Security: Validate component type before array creation
         validateComponentType(componentType);
@@ -644,10 +650,13 @@ public final class ArrayUtilities {
             return result;
         }
         
-        // Security: Check for integer overflow when adding item
+        // Check for integer overflow when adding item (independent of the security switch)
         long newLength = (long) array.length + 1;
+        if (newLength > DEFAULT_MAX_ARRAY_SIZE) {
+            throw new IllegalArgumentException("Array length too large: " + newLength);
+        }
         validateArraySize(newLength);
-        
+
         T[] newArray = Arrays.copyOf(array, (int) newLength);
         newArray[array.length] = item;
         return newArray;
@@ -724,8 +733,8 @@ public final class ArrayUtilities {
      * @param end   the final index of the range, exclusive
      * @param <T>   the component type of the array
      * @return a new array containing the specified range from the original array
-     * @throws ArrayIndexOutOfBoundsException if {@code start} is negative, {@code end} is greater than the array length,
-     *         or {@code start} is greater than {@code end}
+     * @throws ArrayIndexOutOfBoundsException if {@code start} is negative or greater than the array length
+     * @throws IllegalArgumentException if {@code start} is greater than {@code end}
      * @throws NullPointerException if the input array is null
      * @see Arrays#copyOfRange(Object[], int, int)
      */
@@ -1046,7 +1055,9 @@ public final class ArrayUtilities {
                 ((double[])array)[index] = element == null ? 0.0 : ((Number)element).doubleValue();
                 return;
             } else if (componentType == boolean.class) {
-                ((boolean[])array)[index] = element != null && (element instanceof Boolean) && (Boolean)element;
+                // Non-Boolean elements fall to the error path via CCE (previously they
+                // were silently stored as false), matching the other primitive branches
+                ((boolean[])array)[index] = element != null && (Boolean) element;
                 return;
             } else if (componentType == byte.class) {
                 ((byte[])array)[index] = element == null ? 0 : ((Number)element).byteValue();

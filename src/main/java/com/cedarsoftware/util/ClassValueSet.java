@@ -69,6 +69,11 @@ import java.util.concurrent.atomic.AtomicBoolean;
  *   <li>Higher memory usage (maintains both a backing set and ClassValue cache)</li>
  *   <li>Write operations (add/remove) aren't faster and may be slightly slower</li>
  *   <li>Only Class objects benefit from the optimized lookups</li>
+ *   <li>Elements are strongly referenced: a long-lived (e.g. static) set pins its member
+ *       {@code Class} objects and their {@code ClassLoader}s until they are removed or the
+ *       set is cleared. Do not use a long-lived set to accumulate dynamically-loaded classes
+ *       (the {@link ClassValue}-side cache entries live inside each {@code Class} and do not
+ *       pin anything; only the backing set's strong references do)</li>
  * </ul>
  *
  * <h2>Thread Safety</h2>

@@ -15,6 +15,7 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
@@ -151,14 +152,20 @@ public class ThreadedLRUCacheStrategy<K, V> implements Map<K, V>, Closeable {
         }
 
         /**
-         * Updates the timestamp with probabilistic sampling to reduce overhead.
-         * Uses low bits of current timestamp for randomness - no extra atomic operations.
-         * Only updates ~12.5% of the time to maintain approximate LRU behavior.
+         * Refreshes the recency timestamp on ~1/8 of accesses, cheaply.
+         * <p>
+         * The gate MUST use a per-access random draw, not this node's own stored
+         * {@code timestamp}. Gating on {@code (this.timestamp & 0x7) == 0} froze recency: once a
+         * node's timestamp landed on a value that is not a multiple of 8 — which happens 7/8 of
+         * the time, immediately on creation or the first refresh — the condition was false forever
+         * and the node's timestamp never advanced again, no matter how often it was accessed. That
+         * pinned every node near its INSERTION time, degrading the cache from LRU to FIFO: a
+         * hot-but-old entry would be evicted while a cold-but-recently-inserted one survived.
+         * {@link ThreadLocalRandom} is contention-free, so this keeps the ~12.5% sampling that
+         * avoids an atomic increment on every access while actually tracking access recency.
          */
         void updateTimestamp() {
-            // Use low bits of current timestamp for probabilistic check
-            // This avoids any atomic/ThreadLocal operations on most accesses
-            if ((this.timestamp & 0x7) == 0) {
+            if (ThreadLocalRandom.current().nextInt(8) == 0) {
                 this.timestamp = LOGICAL_CLOCK.incrementAndGet();
             }
         }

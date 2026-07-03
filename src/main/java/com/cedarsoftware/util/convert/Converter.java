@@ -1683,9 +1683,16 @@ public final class Converter {
 
         for (Map.Entry<ConversionPair, Convert<?>> entry : overrides.entrySet()) {
             ConversionPair pair = entry.getKey();
-            // USER_DB is now an instance-scoped ClassPairMap keyed only by (source, target).
-            // No instanceId is needed in the key because USER_DB is already per-instance.
-            USER_DB.put(pair.getSource(), pair.getTarget(), entry.getValue());
+            // USER_DB is an instance-scoped ClassPairMap keyed only by (source, target).
+            // Register under all primitive/wrapper variations of the pair — the same expansion
+            // addConversion() performs — so an override keyed with int.class also fires for
+            // Integer.class lookups (and vice versa) instead of silently falling through to the
+            // built-in conversion for the unregistered variant.
+            for (Class<?> srcType : getTypeVariations(pair.getSource())) {
+                for (Class<?> tgtType : getTypeVariations(pair.getTarget())) {
+                    USER_DB.put(srcType, tgtType, entry.getValue());
+                }
+            }
 
             // Add identity conversions for non-standard types to enable O(1) hasConverterOverrideFor lookup
             addIdentityConversionIfNeeded(pair.getSource());
@@ -1837,34 +1844,34 @@ public final class Converter {
             throw new IllegalArgumentException("toType cannot be null");
         }
 
-        Class<?> sourceType;
-        if (from == null) {
-            // For null inputs, use Void.class so that e.g. convert(null, int.class) returns 0.
-            sourceType = Void.class;
-            // Also check the cache for (Void.class, toType) to avoid redundant lookups.
-            Convert<?> cached = getCachedConverter(sourceType, toType);
-            if (isValidConversion(cached)) {
-                return (T) cached.convert(null, this, toType);
-            }
-        } else {
-            sourceType = from.getClass();
-            Convert<?> cached = getCachedConverter(sourceType, toType);
-            if (isValidConversion(cached)) {
-                return (T) cached.convert(from, this, toType);
-            }
-            // Try container conversion first (Arrays, Collections, Maps).
-            T result = attemptContainerConversion(from, sourceType, toType);
-            if (result != null) {
-                return result;
+        // For null inputs, use Void.class so that e.g. convert(null, int.class) returns 0.
+        Class<?> sourceType = (from == null) ? Void.class : from.getClass();
+
+        // Instance-specific user conversions are checked FIRST (documented precedence: instance
+        // conversions, then factory conversions, then inheritance). This must happen before the
+        // shared FULL_CONVERSION_CACHE read: that cache is static and holds only CONVERSION_DB-derived
+        // resolutions written by instances WITHOUT user conversions — so an entry populated by any
+        // plain instance (e.g. json-io's default converter) would otherwise silently mask this
+        // instance's override for the same (source, target) pair. Guarded by hasUserConversions so
+        // the common no-override path pays only a volatile boolean read.
+        if (hasUserConversions) {
+            Convert<?> user = USER_DB.get(sourceType, toType);
+            if (isValidConversion(user)) {
+                return (T) user.convert(from, this, toType);
             }
         }
 
-        // Check user-added conversions (skip when no user conversions — saves ConversionPair + map lookup)
-        if (hasUserConversions) {
-            Convert<?> conversionMethod = USER_DB.get(sourceType, toType);
-            if (isValidConversion(conversionMethod)) {
-                cacheConverter(sourceType, toType, conversionMethod);
-                return (T) conversionMethod.convert(from, this, toType);
+        // Shared resolution cache (built-in-derived entries only; see cacheConverter).
+        Convert<?> cached = getCachedConverter(sourceType, toType);
+        if (isValidConversion(cached)) {
+            return (T) cached.convert(from, this, toType);
+        }
+
+        // Try container conversion (Arrays, Collections, Maps).
+        if (from != null) {
+            T result = attemptContainerConversion(from, sourceType, toType);
+            if (result != null) {
+                return result;
             }
         }
 
@@ -1919,14 +1926,17 @@ public final class Converter {
     }
 
     private void cacheConverter(Class<?> source, Class<?> target, Convert<?> converter) {
-        // Cache at the shared level (0L) only when this instance has no user conversions,
-        // guaranteeing the resolved converter came from CONVERSION_DB (same for all instances).
-        // Never cache UNSUPPORTED at 0L — another instance with user conversions may support
-        // the same type pair.
-        // Previously, caching with this.instanceId caused unbounded static cache growth:
-        // each short-lived Converter (e.g., one per JsonIo.toJava() call) left entries
-        // keyed by its unique instanceId that were never looked up again after GC.
-        if (!hasUserConversions && converter != UNSUPPORTED) {
+        // Cache at the shared level only when this instance has no user conversions,
+        // guaranteeing the resolved entry is derived purely from CONVERSION_DB (identical for
+        // all instances). That includes UNSUPPORTED negatives: they make repeated
+        // isConversionSupportedFor()/isSimpleTypeConversionSupported() misses O(1) instead of
+        // re-walking the inheritance pair list every call (json-io's Resolver probes these
+        // per value). Negatives cannot mask instance overrides — convert() and
+        // isConversionSupportedFor() consult USER_DB before trusting the cache, and
+        // addConversion() purges affected entries for inheritance-level additions.
+        // (Caching keyed by instanceId was abandoned earlier: each short-lived Converter left
+        // entries never looked up again after GC — unbounded static cache growth.)
+        if (!hasUserConversions) {
             FULL_CONVERSION_CACHE.put(source, target, converter);
         }
     }
@@ -2044,15 +2054,18 @@ public final class Converter {
         InheritancePair[] pairs = getSortedInheritancePairs(sourceType, toType);
 
         // Iterate over sorted pairs and check the converter databases.
+        final boolean checkUserDb = hasUserConversions;   // skip guaranteed-empty USER_DB probes
         for (InheritancePair inheritancePair : pairs) {
             final Class<?> source = inheritancePair.source;
             final Class<?> target = inheritancePair.target;
 
-            Convert<?> tempConverter = USER_DB.get(source, target);
-            if (tempConverter != null) {
-                return tempConverter;
+            if (checkUserDb) {
+                Convert<?> userConverter = USER_DB.get(source, target);
+                if (userConverter != null) {
+                    return userConverter;
+                }
             }
-            tempConverter = CONVERSION_DB.get(source, target);
+            Convert<?> tempConverter = CONVERSION_DB.get(source, target);
             if (tempConverter != null) {
                 return tempConverter;
             }
@@ -2501,10 +2514,28 @@ public final class Converter {
      * false otherwise
      */
     public boolean isConversionSupportedFor(Class<?> source, Class<?> target) {
-        // First, check the FULL_CONVERSION_CACHE.
+        // Instance-specific user conversions take precedence and must be consulted before the
+        // shared cache — same masking hazard as convert(): a shared entry written by a plain
+        // instance must not answer for an instance that carries its own overrides.
+        if (hasUserConversions) {
+            Convert<?> user = USER_DB.get(ClassUtilities.toPrimitiveWrapperClass(source),
+                    ClassUtilities.toPrimitiveWrapperClass(target));
+            if (isValidConversion(user)) {
+                return true;
+            }
+        }
+
+        // Shared cache: positive resolutions and (built-in-derived) UNSUPPORTED negatives.
         Convert<?> cached = getCachedConverter(source, target);
         if (cached != null) {
-            return cached != UNSUPPORTED;
+            if (cached != UNSUPPORTED) {
+                return true;
+            }
+            if (!hasUserConversions) {
+                return false;   // trusted negative — nothing instance-specific can change it
+            }
+            // Fall through: this instance may still support the pair via inheritance-level
+            // user conversions the shared negative cannot account for.
         }
 
         // Check direct conversion support in the primary databases.

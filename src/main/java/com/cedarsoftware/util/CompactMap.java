@@ -1108,8 +1108,13 @@ public class CompactMap<K, V> implements Map<K, V> {
      * @return the value associated with the removed key, or null if key not found
      */
     private V removeFromMap(Map<K, V> map, Object key) {
+        // Presence must be judged by size delta: checking containsKey AFTER remove() can never
+        // distinguish "was absent" from "was present mapped to null" — the old check made
+        // null-valued removals skip the MAP->array/EMPTY downsize transitions below, leaving
+        // the map stuck in MAP state (never compacting again).
+        int sizeBefore = map.size();
         V save = map.remove(key);
-        if (save == null && !map.containsKey(key)) {
+        if (map.size() == sizeBefore) {   // key was not present
             return null;
         }
 
@@ -1235,7 +1240,17 @@ public class CompactMap<K, V> implements Map<K, V> {
             }
             return h;
         } else if (val instanceof Map) {
-            return val.hashCode();
+            // Hash entries with the same key/value hashing as the array and single-entry states.
+            // Delegating to val.hashCode() made the result depend on the internal state: a
+            // CI-sorted backing (raw TreeMap + CI comparator) hashes keys case-sensitively
+            // (equal maps could disagree on hashCode), and a self-referential value recursed
+            // into this.hashCode() (StackOverflowError) where the states below return 17.
+            // For case-sensitive maps the sum below is identical to the backing map's hashCode.
+            int h = 0;
+            for (Entry<K, V> entry : ((Map<K, V>) val).entrySet()) {
+                h += computeKeyHashCode(entry.getKey()) ^ computeValueHashCode(entry.getValue());
+            }
+            return h;
         } else if (val == EMPTY_MAP) {
             return 0;
         }
@@ -1274,6 +1289,23 @@ public class CompactMap<K, V> implements Map<K, V> {
             return equalsArrayState(other, entries);
         } else if (val instanceof Map) {   // > compactSize
             Map<K, V> map = (Map<K, V>) val;
+            if (isCaseInsensitive() && !(map instanceof CaseInsensitiveMap)) {
+                // CI-sorted backing (raw TreeMap + CI comparator): map.equals(other) would look
+                // OUR keys up in 'other' case-sensitively, diverging from the array state's
+                // semantics (where a case-variant 'other' compares equal). Normalize 'other'
+                // exactly like the array state does. CaseInsensitiveMap backings already
+                // normalize inside their own equals().
+                CaseInsensitiveMap<Object, Object> normalized = normalizedCICopy(other);
+                if (normalized == null || normalized.size() != map.size()) {
+                    return false;
+                }
+                for (Entry<K, V> entry : map.entrySet()) {
+                    if (!entryMatches(normalized, entry.getKey(), entry.getValue())) {
+                        return false;
+                    }
+                }
+                return true;
+            }
             return map.equals(other);
         } else if (val == EMPTY_MAP) {   // empty
             return other.isEmpty();
@@ -1285,20 +1317,38 @@ public class CompactMap<K, V> implements Map<K, V> {
 
     private boolean equalsArrayState(Map<?, ?> other, Object[] entries) {
         if (isCaseInsensitive()) {
-            CaseInsensitiveMap<Object, Object> normalized = new CaseInsensitiveMap<>();
-            for (Entry<?, ?> entry : other.entrySet()) {
-                Object key = entry.getKey();
-                if (normalized.containsKey(key)) {
-                    return false;
-                }
-                normalized.put(key, entry.getValue());
-            }
-            if (normalized.size() != (entries.length >> 1)) {
+            CaseInsensitiveMap<Object, Object> normalized = normalizedCICopy(other);
+            if (normalized == null || normalized.size() != (entries.length >> 1)) {
                 return false;
             }
             return entriesEqual(normalized, entries);
         }
         return entriesEqual(other, entries);
+    }
+
+    /**
+     * Copies {@code other} into a CaseInsensitiveMap for CI-semantics comparison.
+     * Returns {@code null} when {@code other} contains keys that collide case-insensitively —
+     * such a map can never equal a case-insensitive map of the same size.
+     */
+    private CaseInsensitiveMap<Object, Object> normalizedCICopy(Map<?, ?> other) {
+        CaseInsensitiveMap<Object, Object> normalized = new CaseInsensitiveMap<>();
+        for (Entry<?, ?> entry : other.entrySet()) {
+            Object key = entry.getKey();
+            if (normalized.containsKey(key)) {
+                return null;
+            }
+            normalized.put(key, entry.getValue());
+        }
+        return normalized;
+    }
+
+    private static boolean entryMatches(Map<?, ?> other, Object key, Object value) {
+        Object thatValue = other.get(key);
+        if (value == null) {
+            return thatValue == null && other.containsKey(key);
+        }
+        return value.equals(thatValue);
     }
 
     private boolean entriesEqual(Map<?, ?> other, Object[] entries) {
@@ -1388,7 +1438,9 @@ public class CompactMap<K, V> implements Map<K, V> {
                 Map<K, V> other = isCaseInsensitive() ? new CaseInsensitiveMap<>() : getNewMap();
 
                 for (Object o : c) {
-                    other.put((K) o, null);
+                    // Non-null sentinel: only containsKey() is consulted below, and getNewMap()
+                    // may return a null-value-rejecting map (e.g. ConcurrentHashMap).
+                    other.put((K) o, (V) Boolean.TRUE);
                 }
 
                 final int size = size();
@@ -1816,11 +1868,8 @@ public class CompactMap<K, V> implements Map<K, V> {
      * This is useful for creating a new CompactMap with the same configuration
      * as another compactMap.
      *
-     * <p><b>JDK Requirement:</b> this method ultimately calls
-     * {@link Builder#build()} which generates a specialized subclass using the
-     * JDK compiler. It will throw an {@link IllegalStateException} when executed
-     * in a runtime that lacks these compiler tools (such as a JRE-only
-     * container).
+     * <p>This method ultimately calls {@link Builder#build()}, which specializes
+     * a pre-compiled bytecode template — it works on both JDK and JRE runtimes.
      *
      * @param config a map containing configuration options to change
      * @return a new CompactMap with the specified configuration and the same entries
@@ -2131,24 +2180,12 @@ public class CompactMap<K, V> implements Map<K, V> {
      * @return a new CompactMap instance configured according to options
      * @throws IllegalArgumentException if options are invalid or incompatible
      * @throws IllegalStateException if template generation or instantiation fails
-     *         and the Java compiler tools are not present (for example when only
-     *         a JRE is available)
      *
-     * <p><b>JDK Requirement:</b> this method generates specialized subclasses at
-     * runtime using the JDK compiler. Running in an environment without
-     * {@code javax.tools.JavaCompiler} will result in an
-     * {@link IllegalStateException}.</p>
+     * <p>Works on both JDK and JRE runtimes: specialization patches a pre-compiled
+     * bytecode template and defines it directly — no {@code javax.tools.JavaCompiler}
+     * is required.</p>
      */
     static <K, V> CompactMap<K, V> newMap(Map<String, Object> options) {
-        // Ensure JDK Java Compiler is available before proceeding
-        if (!ReflectionUtils.isJavaCompilerAvailable()) {
-            throw new IllegalStateException(
-                    "CompactMap dynamic subclassing requires the Java Compiler (JDK). " +
-                            "You are running on a JRE or in an environment where javax.tools.JavaCompiler is not available. " +
-                            "Use CompactMap as-is, one of the pre-built subclasses, or provide your own subclass instead."
-            );
-        }
-        
         // Validate and finalize options first (existing code)
         validateAndFinalizeOptions(options);
 
@@ -2360,8 +2397,8 @@ public class CompactMap<K, V> implements Map<K, V> {
      * Returns a builder for creating customized CompactMap instances.
      * <p>
      * For detailed configuration options and examples, see {@link Builder}.
-     * This API generates subclasses at runtime and therefore requires
-     * the JDK compiler tools to be present.
+     * Specialized subclasses are generated by patching a pre-compiled bytecode
+     * template, so this API works on both JDK and JRE runtimes.
      * <p>
      * Note: When method chaining directly from builder(), you may need to provide
      * a type witness to help type inference:
@@ -2661,22 +2698,14 @@ public class CompactMap<K, V> implements Map<K, V> {
          * based on the configuration. The resulting map is optimized for the
          * specified combination of options.
          *
-         * <p><b>JDK Requirement:</b> this method generates a specialized subclass
-         * at runtime using {@code javax.tools.JavaCompiler}. It will throw an
-         * {@link IllegalStateException} when the compiler tools are not present
-         * (for example in a JRE-only environment).
+         * <p>Works on both JDK and JRE runtimes: the specialized subclass is produced
+         * by patching a pre-compiled bytecode template — no {@code javax.tools.JavaCompiler}
+         * is required.</p>
          *
          * @return a new CompactMap instance
-         * @throws IllegalStateException if JavaCompiler is unavailable at runtime (JRE detected)
+         * @throws IllegalStateException if template generation or instantiation fails
          */
         public CompactMap<K, V> build() {
-            if (!ReflectionUtils.isJavaCompilerAvailable()) {
-                throw new IllegalStateException(
-                        "CompactMap builder pattern requires the Java Compiler (JDK). " +
-                                "You are running on a JRE or in an environment where javax.tools.JavaCompiler is not available. " +
-                                "Use CompactMap as-is, one of the pre-built subclasses, or provide your own subclass instead."
-                );
-            }
             return CompactMap.newMap(options);
         }
     }

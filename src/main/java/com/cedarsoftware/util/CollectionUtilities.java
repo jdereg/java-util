@@ -202,15 +202,23 @@ public class CollectionUtilities {
      * but is compatible with JDK 8. If the input array is {@code null} or empty, this method returns
      * an unmodifiable empty set.
      * </p>
+     * <p>
+     * <b>Duplicate handling (deliberate divergence from {@code Set.of}):</b> duplicate elements are
+     * permitted and are silently de-duplicated — the first occurrence wins and iteration follows
+     * first-occurrence insertion order. {@code Set.of} instead throws {@link IllegalArgumentException}
+     * on duplicates. The lenient behavior is intentional: {@code setOf} is frequently called with
+     * runtime-computed values, where a collision is normal set semantics rather than a programming error.
+     * </p>
      *
      * <h2>Usage Example</h2>
      * <pre>{@code
      * Set<String> set = setOf("A", "B", "C"); // Returns an unmodifiable set containing "A", "B", "C"
      * Set<String> emptySet = setOf();         // Returns an unmodifiable empty set
+     * Set<String> deduped = setOf("A", "B", "A"); // Returns ["A", "B"] — no exception
      * }</pre>
      *
      * @param <T> the type of elements in the set
-     * @param items the elements to be included in the set; may be {@code null}
+     * @param items the elements to be included in the set; may be {@code null}; duplicates are de-duplicated (first occurrence wins)
      * @return an unmodifiable set containing the specified elements, or an unmodifiable empty set if the input is {@code null} or empty
      * @throws NullPointerException if any of the elements in the input array are {@code null}
      * @see Collections#unmodifiableSet(Set)
@@ -221,8 +229,8 @@ public class CollectionUtilities {
         if (items == null || items.length == 0) {
             return (Set<T>) unmodifiableEmptySet;
         }
-        // Pre-size the LinkedHashSet to avoid resizing and avoid Collections.addAll() overhead
-        Set<T> set = new LinkedHashSet<>(items.length);
+        // Pre-size the LinkedHashSet (capacity / load factor) so no rehash occurs while adding
+        Set<T> set = new LinkedHashSet<>((int) (items.length / 0.75f) + 1);
         for (T item : items) {
             Objects.requireNonNull(item, "Null elements are not permitted");
             set.add(item);
@@ -657,9 +665,18 @@ public class CollectionUtilities {
         // Track visited objects to handle cycles
         // Pre-size to avoid rehash thrash - we'll typically track every container
         Map<Object, Object> visited = new IdentityHashMap<>(64);
-        
+
         // Queue for iterative processing - only containers go here
         Deque<ContainerPair> workQueue = new ArrayDeque<>();
+
+        // Content-sensitive targets (hashed/sorted/heap-ordered by element CONTENT: Set,
+        // TreeSet, PriorityQueue) must not receive element copies while those copies are
+        // still empty shells — two distinct-but-unfilled containers compare equal and get
+        // silently deduplicated (or mis-ordered / rejected by a comparator that inspects
+        // content). Their elements are buffered here and installed after the whole graph
+        // is copied, children before parents. Discovery order is recorded so cycles can
+        // fall back deepest-first.
+        List<DeferredFill> deferredFills = new ArrayList<>();
         
         // Create the root copy and add to visited immediately
         Object rootCopy = createContainerCopy(source);
@@ -730,14 +747,26 @@ public class CollectionUtilities {
                 // Handle collection contents
                 Collection<?> sourceCollection = (Collection<?>) pair.source;
                 Collection<Object> targetCollection = (Collection<Object>) pair.target;
-                
+
+                // Route elements into the real target only when insertion is position-based
+                // (List, LinkedList-backed Deque/Queue). Content-sensitive targets buffer
+                // instead and are filled after the graph is complete (see deferredFills).
+                Collection<Object> sink;
+                if (isContentSensitiveTarget(targetCollection)) {
+                    List<Object> buffer = new ArrayList<>(sourceCollection.size());
+                    deferredFills.add(new DeferredFill(targetCollection, buffer));
+                    sink = buffer;
+                } else {
+                    sink = targetCollection;
+                }
+
                 for (Object element : sourceCollection) {
                     if (isContainer(element)) {
                         // Check if we've already processed this container
                         Object existingCopy = visited.get(element);
                         if (existingCopy != null) {
                             // Use existing copy (handles cycles)
-                            targetCollection.add(existingCopy);
+                            sink.add(existingCopy);
                         } else {
                             // Special case: primitive arrays are fully copied immediately
                             Class<?> elementClass = element.getClass();
@@ -748,26 +777,83 @@ public class CollectionUtilities {
                                 Object elementCopy = Array.newInstance(componentType, elemLength);
                                 System.arraycopy(element, 0, elementCopy, 0, elemLength);
                                 visited.put(element, elementCopy);
-                                targetCollection.add(elementCopy);
+                                sink.add(elementCopy);
                                 // DO NOT enqueue - it's already fully copied
                             } else {
                                 // Create new container copy
                                 Object elementCopy = createContainerCopy(element);
                                 visited.put(element, elementCopy);
-                                targetCollection.add(elementCopy);
+                                sink.add(elementCopy);
                                 // Queue the new container for processing
                                 workQueue.add(new ContainerPair(element, elementCopy));
                             }
                         }
                     } else {
                         // Berry - use same reference
-                        targetCollection.add(element);
+                        sink.add(element);
                     }
                 }
             }
         }
-        
+
+        fillDeferredTargets(deferredFills);
+
         return (T) rootCopy;
+    }
+
+    /**
+     * A target collection whose membership/order depends on element CONTENT (equals/hashCode
+     * or a comparator) must not be populated with still-empty element copies. EnumSet is
+     * exempt: its elements are enums (berries), which are never copied and always complete.
+     */
+    private static boolean isContentSensitiveTarget(Collection<?> target) {
+        return (target instanceof Set && !(target instanceof EnumSet)) || target instanceof PriorityQueue;
+    }
+
+    /**
+     * Installs buffered elements into content-sensitive targets, children before parents,
+     * so that a parent set/queue hashes, sorts, or heapifies fully-populated element copies.
+     * A target is ready once none of its elements is itself a still-unfilled deferred target
+     * (self-references don't block). Pure cycles can never become ready — when a pass makes
+     * no progress, the most recently discovered pending target (deepest in the graph) is
+     * filled to break the cycle; such structures are inherently unstable in hashed
+     * containers, in the copy exactly as they were in the original.
+     */
+    private static void fillDeferredTargets(List<DeferredFill> deferredFills) {
+        if (deferredFills.isEmpty()) {
+            return;
+        }
+        Set<Object> unfilled = Collections.newSetFromMap(new IdentityHashMap<>(deferredFills.size()));
+        for (DeferredFill fill : deferredFills) {
+            unfilled.add(fill.target);
+        }
+        List<DeferredFill> pending = deferredFills;
+        while (!pending.isEmpty()) {
+            List<DeferredFill> notReady = new ArrayList<>();
+            for (DeferredFill fill : pending) {
+                boolean ready = true;
+                for (Object element : fill.elements) {
+                    if (element != fill.target && unfilled.contains(element)) {
+                        ready = false;
+                        break;
+                    }
+                }
+                if (ready) {
+                    fill.target.addAll(fill.elements);
+                    unfilled.remove(fill.target);
+                } else {
+                    notReady.add(fill);
+                }
+            }
+            if (notReady.size() == pending.size()) {
+                // No progress: everything left participates in a cycle. Break it by filling
+                // the most recently discovered target, then let the loop re-evaluate.
+                DeferredFill fill = notReady.remove(notReady.size() - 1);
+                fill.target.addAll(fill.elements);
+                unfilled.remove(fill.target);
+            }
+            pending = notReady;
+        }
     }
     
     /**
@@ -849,10 +935,24 @@ public class CollectionUtilities {
     private static class ContainerPair {
         final Object source;
         final Object target;
-        
+
         ContainerPair(Object source, Object target) {
             this.source = source;
             this.target = target;
+        }
+    }
+
+    /**
+     * A content-sensitive target collection and the (already-copied) elements awaiting
+     * installation once the element copies are fully populated.
+     */
+    private static final class DeferredFill {
+        final Collection<Object> target;
+        final List<Object> elements;
+
+        DeferredFill(Collection<Object> target, List<Object> elements) {
+            this.target = target;
+            this.elements = elements;
         }
     }
 

@@ -218,6 +218,31 @@ public class ClassUtilities {
         final AtomicInteger negativeEntryCount = new AtomicInteger();
     }
 
+    /**
+     * One-entry memo in front of NAME_CACHE: the (loader → LoaderCache) pair most recently used.
+     * <p>
+     * NAME_CACHE is a synchronized WeakHashMap, so without this memo every {@code forName()} cache
+     * hit acquires a single global lock — under concurrent load (e.g., multi-threaded JSON parsing
+     * resolving type names) that lock does not just cap scaling, it inverts it (measured: 8 threads
+     * ran ~5x slower in aggregate than 1 thread). Nearly all processes resolve classes through one
+     * dominant ClassLoader, so a one-entry identity-checked memo removes the lock from the hot path.
+     * <p>
+     * The memo is held through a {@link WeakReference} so it never pins a ClassLoader: when the
+     * loader is otherwise unreachable, the memo entry is weakly reachable and both collapse together
+     * (the backing WeakHashMap remains the authority). Threads racing on different loaders simply
+     * overwrite the memo — each then falls back to the synchronized map, which stays correct.
+     */
+    private static final class LoaderCacheMemo {
+        final ClassLoader loader;
+        final LoaderCache cache;
+
+        LoaderCacheMemo(ClassLoader loader, LoaderCache cache) {
+            this.loader = loader;
+            this.cache = cache;
+        }
+    }
+    private static volatile WeakReference<LoaderCacheMemo> lastLoaderCache = new WeakReference<>(null);
+
     private ClassUtilities() {
     }
     
@@ -243,10 +268,7 @@ public class ClassUtilities {
 
         // Then check classloader-specific cache using consistent resolution
         final ClassLoader key = resolveLoader(cl);
-        LoaderCache holder = NAME_CACHE.get(key);
-        if (holder == null) {
-            return null;
-        }
+        LoaderCache holder = getLoaderCacheHolder(key);
 
         // Opportunistically drain dead references (lock-free, uses CAS-based removal)
         drainQueue(holder);
@@ -281,16 +303,24 @@ public class ClassUtilities {
         }
     }
     
-    // Helper to get or create loader cache holder with proper synchronization
+    // Helper to get or create loader cache holder. Lock-free for the most recently used loader
+    // (the overwhelmingly common case); falls back to the synchronized backing map otherwise.
     private static LoaderCache getLoaderCacheHolder(ClassLoader key) {
+        LoaderCacheMemo memo = lastLoaderCache.get();
+        if (memo != null && memo.loader == key) {
+            return memo.cache;
+        }
+
+        LoaderCache holder;
         synchronized (NAME_CACHE) {
-            LoaderCache holder = NAME_CACHE.get(key);
+            holder = NAME_CACHE.get(key);
             if (holder == null) {
                 holder = new LoaderCache();
                 NAME_CACHE.put(key, holder);
             }
-            return holder;
         }
+        lastLoaderCache = new WeakReference<>(new LoaderCacheMemo(key, holder));
+        return holder;
     }
     
     private static void toCache(String name, ClassLoader cl, Class<?> c) {
@@ -978,6 +1008,12 @@ public class ClassUtilities {
             throw e;
         } catch (Exception e) {
             return null;
+        } catch (LinkageError e) {
+            // Malformed or incompatible class bytes (ClassFormatError, UnsupportedClassVersionError,
+            // NoClassDefFoundError from a broken dependency, ...). This API is documented to return
+            // null when the class cannot be provided — an Error escaping here lets a bad (possibly
+            // attacker-supplied) type name take down the calling thread instead.
+            return null;
         }
     }
 
@@ -1647,6 +1683,15 @@ public class ClassUtilities {
             return directClassMapping.get();
         }
 
+        // Arrays: return an empty array of the correct type. This must be decided BEFORE the
+        // assignable-interface scan below — every Java array implements Cloneable, so the scan
+        // would otherwise match the Cloneable→ArrayList mapping and hand back an ArrayList for a
+        // Date[]/String[][]/etc. parameter: a type-incompatible default that forces the
+        // constructor invocation to fail and fall through to the allow-nulls pass.
+        if (argType.isArray()) {
+            return Array.newInstance(argType.getComponentType(), 0);
+        }
+
         // Check cache first to avoid repeated O(n) scans of ASSIGNABLE_CLASS_MAPPING
         Optional<Supplier<Object>> cached = ASSIGNABLE_TYPE_CACHE.getByClass(argType);
         if (cached != null) {
@@ -1664,11 +1709,6 @@ public class ClassUtilities {
 
         // No match found - cache the negative result
         ASSIGNABLE_TYPE_CACHE.put(argType, Optional.empty());
-
-        if (argType.isArray()) {
-            return Array.newInstance(argType.getComponentType(), 0);
-        }
-
         return null;
     }
 
@@ -1970,7 +2010,11 @@ public class ClassUtilities {
 
                 Class<?> valueClass = value.getClass();
 
-                if (converter.isSimpleTypeConversionSupported(paramType, valueClass)) {
+                // (source, target): converting FROM the value's class TO the parameter type.
+                // (These were swapped historically — mostly masked because Converter's simple-type
+                // matrix is largely bidirectional, but direction-specific user overrides and any
+                // one-way conversions were judged backwards.)
+                if (converter.isSimpleTypeConversionSupported(valueClass, paramType)) {
                     try {
                         Object converted = converter.convert(value, paramType);
                         result[i] = converted;
@@ -3289,11 +3333,6 @@ public class ClassUtilities {
     private static final ClassValueSet BLOCKED_CLASSES = new ClassValueSet();
     private static final Set<String> BLOCKED_CLASS_NAMES_SET = new HashSet<>(SecurityChecker.SECURITY_BLOCKED_CLASS_NAMES);
 
-    // Cache for classes that have been checked and found to be inheriting from blocked classes
-    private static final ClassValueSet INHERITS_FROM_BLOCKED = new ClassValueSet();
-    // Cache for classes that have been checked and found to be safe
-    private static final ClassValueSet VERIFIED_SAFE_CLASSES = new ClassValueSet();
-
     static {
         // Pre-populate with all blocked classes
         BLOCKED_CLASSES.addAll(SecurityChecker.SECURITY_BLOCKED_CLASSES.toSet());
@@ -3312,27 +3351,22 @@ public class ClassUtilities {
                 return Boolean.TRUE;
             }
 
-            // Check if already verified as inheriting from blocked
-            if (INHERITS_FROM_BLOCKED.containsClass(type)) {
-                return Boolean.TRUE;
-            }
-
-            // Check if already verified as safe
-            if (VERIFIED_SAFE_CLASSES.containsClass(type)) {
-                return Boolean.FALSE;
-            }
-
-            // Need to check inheritance - use ClassHierarchyInfo
+            // Need to check inheritance - use ClassHierarchyInfo. Consult BOTH the blocked-class
+            // set and the blocked-NAME set: entries like javax.script.ScriptEngine[Manager] exist
+            // only by name (their Class may not be loadable at init), and without the name check a
+            // class merely IMPLEMENTING/extending them would pass verifyClass() even though loading
+            // it by name would have been refused.
+            //
+            // Do NOT memoize the verdict in a static set: this ClassValue IS the per-class cache
+            // (computeValue runs at most once per Class lifetime, and a re-loaded class is a new
+            // identity that must be re-verified). A strong-reference memo set can never produce a
+            // hit this cache wouldn't, but it pins every checked class — and its ClassLoader —
+            // for the JVM's lifetime, unreleasable even by clearCaches().
             for (Class<?> superType : getClassHierarchyInfo(type).getAllSupertypes()) {
-                if (BLOCKED_CLASSES.containsClass(superType)) {
-                    // Cache for future checks
-                    INHERITS_FROM_BLOCKED.add(type);
+                if (BLOCKED_CLASSES.containsClass(superType) || BLOCKED_CLASS_NAMES_SET.contains(superType.getName())) {
                     return Boolean.TRUE;
                 }
             }
-
-            // Class is safe
-            VERIFIED_SAFE_CLASSES.add(type);
             return Boolean.FALSE;
         }
     };
@@ -3347,6 +3381,9 @@ public class ClassUtilities {
      */
     public static void clearCaches() {
         NAME_CACHE.clear();
+        // Drop the loader-cache memo too — it fronts NAME_CACHE, and keeping it would hand out
+        // the now-orphaned holder (stale class mappings) after the backing map was cleared.
+        lastLoaderCache = new WeakReference<>(null);
         // Preserve user-added aliases while clearing and re-adding built-in aliases
         GLOBAL_ALIASES.clear();
         GLOBAL_ALIASES.putAll(BUILTIN_ALIASES);
@@ -3355,6 +3392,7 @@ public class ClassUtilities {
         CONSTRUCTOR_PLAN_CACHE.clear();
         NAMED_PARAMETER_MATCHING_VIABLE_CACHE.clear();
         CLASS_HIERARCHY_CACHE.clear();
+        ASSIGNABLE_TYPE_CACHE.clear();
         accessibilityCache.clear();
         osgiClassLoaders.clear();
         // ClassValue-backed caches cannot be fully cleared; rely on GC for unused keys.

@@ -32,7 +32,8 @@ import java.util.concurrent.atomic.AtomicReference;
  * <p>
  * The standard {@link #get(Object)} method must accept an {@code Object} and perform a runtime
  * {@code instanceof Class} guard before routing to the {@link ClassValue} cache (keys that are
- * not {@code Class} instances fall through to the backing {@link ConcurrentHashMap}). When the
+ * not {@code Class} instances return {@code null} immediately — only {@code Class} keys can ever
+ * be stored). When the
  * caller already knows the key is a {@code Class}, {@link #getByClass(Class)} skips that guard
  * entirely and compiles to a near-direct {@link ClassValue#get(Class)} call — a JIT-intrinsified,
  * identity-based per-{@code Class} load.
@@ -315,6 +316,34 @@ public class ClassValueMap<V> extends AbstractMap<Class<?>, V> implements Concur
         return (V) value;
     }
 
+    /**
+     * {@inheritDoc}
+     * <p>
+     * Overridden because the {@link ConcurrentMap} default implementation assumes the map
+     * cannot contain null values (it treats a null return from {@code get()} as "absent").
+     * This map explicitly supports null values, so the default would incorrectly return
+     * {@code defaultValue} for a key that is present but mapped to null. This override
+     * distinguishes "mapped to null" (returns null) from "no mapping" (returns
+     * {@code defaultValue}) in a single ClassValue cache read.
+     */
+    @Override
+    @SuppressWarnings("unchecked")
+    public V getOrDefault(Object key, V defaultValue) {
+        if (key == null) {
+            Object stored = nullKeyStore.get();
+            if (stored == NO_NULL_KEY_MAPPING) {
+                return defaultValue;
+            }
+            return stored == NULL_FOR_NULL_KEY ? null : (V) stored;
+        }
+        // Only Class keys can ever be stored; identity check is faster than instanceof
+        if (key.getClass() != Class.class) {
+            return defaultValue;
+        }
+        Object value = cache.get((Class<?>) key);
+        return value == NO_VALUE ? defaultValue : (V) value;
+    }
+
     @Override
     public V put(Class<?> key, V value) {
         if (key == null) {
@@ -507,6 +536,7 @@ public class ClassValueMap<V> extends AbstractMap<Class<?>, V> implements Concur
      * mapping exists.
      */
     @Override
+    @SuppressWarnings("unchecked")
     public V computeIfAbsent(Class<?> key, java.util.function.Function<? super Class<?>, ? extends V> mappingFunction) {
         java.util.Objects.requireNonNull(mappingFunction);
         if (key == null) {
@@ -530,10 +560,13 @@ public class ClassValueMap<V> extends AbstractMap<Class<?>, V> implements Concur
                 }
             }
         }
-        // Non-null key: fast path via ClassValue cache
-        Object existingRaw = backingMap.get(key);
-        if (existingRaw != null && existingRaw != NULL_VALUE) {
-            return unmaskNull(existingRaw);
+        // Non-null key hit path: read through the ClassValue cache (identity-based) instead
+        // of a backingMap hash probe. After warmup, computeIfAbsent-backed registries hit
+        // this path ~100% of the time. The cache returns the unmasked value: NO_VALUE means
+        // absent, null means "mapped to null" — both fall through to the atomic compute below.
+        Object cached = cache.get(key);
+        if (cached != NO_VALUE && cached != null) {
+            return (V) cached;
         }
         // Delegate to backingMap.compute() for atomicity — holds bucket lock while computing.
         // NULL_VALUE in backingMap means "key maps to null"; per Map.computeIfAbsent spec

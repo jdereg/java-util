@@ -508,6 +508,31 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
     /**
      * {@inheritDoc}
      * <p>String keys are handled case-insensitively.</p>
+     * <p>Overridden because the {@link ConcurrentMap} default implementation assumes the map cannot
+     * contain null values (it treats a null return from {@code get()} as "absent"). When the backing
+     * map permits null values (e.g. the default {@code LinkedHashMap}), a key present but mapped to
+     * null must return null, not {@code defaultValue}. Delegates to the backing map's
+     * {@code getOrDefault} using the same key conversion as {@link #get(Object)}.</p>
+     */
+    @Override
+    public V getOrDefault(Object key, V defaultValue) {
+        if (isMultiKeyMapBacking) {
+            return map.getOrDefault(convertKeyForMultiKeyMap(key), defaultValue);
+        }
+        if (key instanceof String) {
+            if (useLookupKey) {
+                LookupKey lk = LOOKUP_KEY.get();
+                lk.set((String) key);
+                return map.getOrDefault(lk, defaultValue);
+            }
+            return map.getOrDefault(new CaseInsensitiveString((String) key), defaultValue);
+        }
+        return map.getOrDefault(key, defaultValue);
+    }
+
+    /**
+     * {@inheritDoc}
+     * <p>String keys are handled case-insensitively.</p>
      * <p>When backing map is MultiKeyMap, this method supports 1D Collections and Arrays with case-insensitive String handling.</p>
      */
     @Override

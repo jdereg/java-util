@@ -1305,6 +1305,26 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     }
 
     /**
+     * Returns the value to which the specified key is mapped, or {@code defaultValue} if this map
+     * contains no mapping for the key.
+     * <p>Overridden because the {@link ConcurrentMap} default implementation assumes the map cannot
+     * contain null values (it treats a null return from {@code get()} as "absent"). This map permits
+     * null values, so a key present but mapped to null must return null, not {@code defaultValue}.
+     * Single probe: the entry lookup itself distinguishes "mapped to null" from "no mapping".</p>
+     *
+     * @param key the key whose associated value is to be returned. Can be a single object,
+     *            array, or Collection that will be normalized according to the map's settings
+     * @param defaultValue the value to return if no mapping for the key exists
+     * @return the value to which the specified key is mapped (possibly null), or
+     *         {@code defaultValue} if no mapping exists
+     */
+    @Override
+    public V getOrDefault(Object key, V defaultValue) {
+        MultiKey<V> entry = findSimpleOrComplexKey(key);
+        return entry != null ? entry.value : defaultValue;
+    }
+
+    /**
      * Associates the specified value with the specified multidimensional key using var-args syntax.
      * <p>This is a convenience method that allows easy multi-key storage without having to pass
      * arrays or collections. The keys are treated as separate dimensions of a multi-key.</p>

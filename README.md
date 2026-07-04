@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="infographic.svg?v=3" alt="java-util infographic - Essential Java Toolkit" width="100%" />
+  <img src="infographic.svg?v=5" alt="java-util infographic - Essential Java Toolkit" width="100%" />
 </p>
 <div align="center">
   <p>
@@ -12,7 +12,7 @@
     <a href="https://github.com/jdereg/java-util/blob/master/LICENSE">
       <img src="https://img.shields.io/badge/License-Apache%202.0-blue.svg" alt="License" height="20" />
     </a>
-    <img src="https://img.shields.io/badge/JDK-8%20to%2024-orange" alt="JDK 8–24" height="20" />
+    <img src="https://img.shields.io/badge/JDK-8%2B-orange" alt="JDK 8+" height="20" />
   </p>
 
   <p>
@@ -34,7 +34,7 @@ A collection of high-performance Java utilities designed to enhance standard Jav
 
 Available on [Maven Central](https://central.sonatype.com/search?q=java-util&namespace=com.cedarsoftware).
 This library has <b>no dependencies</b> on other libraries for runtime.
-The`.jar`file is `~850K` and works with `JDK 1.8` through `JDK 24`.
+The`.jar`file is `~850K` and works with `JDK 1.8`+.
 The `.jar` file classes are version 52 `(JDK 1.8)`. Built with `-parameters`,
 so reflection-based tools (constructor discovery, dependency injection,
 etc.) see real parameter names.

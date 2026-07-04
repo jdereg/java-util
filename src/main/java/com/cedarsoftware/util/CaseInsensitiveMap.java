@@ -204,9 +204,10 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
     /**
      * Table capacity that holds {@code size} elements at the default 0.75 load factor
      * without rehashing (for HashMap-family constructors whose int argument is a raw
-     * initial capacity, not an expected element count).
+     * initial capacity, not an expected element count). Package-private so
+     * {@link CaseInsensitiveSet} can presize identically.
      */
-    private static int capacityFor(int size) {
+    static int capacityFor(int size) {
         return Math.max(16, (int) (size / 0.75f) + 1);
     }
 
@@ -352,6 +353,10 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
 
     /**
      * Determines the appropriate backing map based on the source map's type.
+     * If the source is itself a {@code CaseInsensitiveMap}, its inner (wrapped) map is used
+     * to select the implementation, so a copy replicates the source's structure — a
+     * concurrent- or tree-backed source stays concurrent/sorted instead of collapsing
+     * to the LinkedHashMap default.
      *
      * @param source the source map to copy from
      * @return a new Map instance with entries copied from the source
@@ -364,19 +369,32 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
                             "IdentityHashMap compares keys by reference (==) which is incompatible.");
         }
 
-        int size = source.size();
+        // Unwrap CaseInsensitiveMap sources so the registry matches the inner map's type
+        Map<?, ?> prototype = source instanceof CaseInsensitiveMap
+                ? ((CaseInsensitiveMap<?, ?>) source).getWrappedMap()
+                : source;
+        Map<K, V> newMap = newBackingInstance(prototype, source.size());
+        return copy(source, newMap);
+    }
 
-        // Iterate through the registry and pick the first matching type
+    /**
+     * Returns a new, empty map whose implementation type mirrors the given prototype per the
+     * registry (most-specific match wins); a presized LinkedHashMap if nothing matches.
+     *
+     * @param prototype the map whose runtime type selects the implementation to create
+     * @param size      expected element count, used to presize hash-based implementations
+     * @param <K1>      key type of the returned map
+     * @param <V1>      value type of the returned map
+     * @return a new empty map of the matched implementation type
+     */
+    @SuppressWarnings("unchecked")
+    static <K1, V1> Map<K1, V1> newBackingInstance(Map<?, ?> prototype, int size) {
         for (Entry<Class<?>, Function<Integer, ? extends Map<?, ?>>> entry : mapRegistry.get()) {
-            if (entry.getKey().isInstance(source)) {
-                @SuppressWarnings("unchecked")
-                Map<K, V> newMap = (Map<K, V>) entry.getValue().apply(size);
-                return copy(source, newMap);
+            if (entry.getKey().isInstance(prototype)) {
+                return (Map<K1, V1>) entry.getValue().apply(size);
             }
         }
-
-        // If no match found, default to LinkedHashMap
-        return copy(source, new LinkedHashMap<>(capacityFor(size)));
+        return new LinkedHashMap<>(capacityFor(size));
     }
 
     /**
@@ -437,11 +455,12 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
         if (!mapInstance.isEmpty()) {
             throw new IllegalArgumentException("mapInstance must be empty");
         }
-        // A CaseInsensitiveMap must never be backed by another CaseInsensitiveMap. Doing so double-folds
-        // String keys (each layer wraps them in a CaseInsensitiveString), which the read-path lookup-key
-        // optimization does not survive: the outer layer probes with a lightweight LookupKey that the inner
-        // layer stores/iterates as a CaseInsensitiveString, so containsKey works but remove and key iteration
-        // (hence Set.removeAll) silently fail. Unwrap to the underlying (empty) map so a single fold applies.
+        // A CaseInsensitiveMap must never be backed by another CaseInsensitiveMap: that folds String keys
+        // twice (each layer wraps them in a CaseInsensitiveString), which the read-path lookup-key
+        // optimization does not survive -- containsKey/get work, but remove and key iteration (hence
+        // Set.removeAll) silently fail. Unwrap to the underlying (empty) map so a single fold applies. This
+        // mirrors the source-side unwrap in determineBackingMap; the while loop handles a mapInstance that is
+        // itself already double-wrapped.
         while (mapInstance instanceof CaseInsensitiveMap) {
             mapInstance = ((CaseInsensitiveMap<K, V>) mapInstance).getWrappedMap();
         }
@@ -458,7 +477,9 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
      * The created map preserves the characteristics of the source map by using a similar implementation type.
      *
      * <p>Concrete or known map types are matched to their corresponding internal maps (e.g. TreeMap to TreeMap).
-     * If no specific match is found, a LinkedHashMap is used by default.</p>
+     * If the source is itself a {@code CaseInsensitiveMap}, the type of its inner map is replicated, so
+     * copying a concurrent- or tree-backed CaseInsensitiveMap preserves its concurrency/ordering
+     * characteristics. If no specific match is found, a LinkedHashMap is used by default.</p>
      *
      * @param source the map whose mappings are to be placed in this map. Must not be null.
      * @throws NullPointerException if the source map is null
@@ -586,7 +607,7 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
         }
         return map.put((K) convertKey(key), value);
     }
-    
+
     /**
      * {@inheritDoc}
      * <p>String keys are handled case-insensitively.</p>
@@ -718,7 +739,7 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
         }
         return true;
     }
-    
+
     /**
      * Returns the underlying wrapped map instance. This map contains the keys in their
      * case-insensitive form (i.e., {@link CaseInsensitiveString} for String keys).
@@ -1120,7 +1141,7 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
         cachedEntrySet = es;
         return es;
     }
-    
+
     /**
      * Entry implementation that returns a String key rather than a CaseInsensitiveString
      * when {@link #getKey()} is called.
@@ -1441,7 +1462,7 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
      *
      * <p>This wrapper ensures users' Function implementations receive the same key type they originally
      * put into the map, maintaining the map's encapsulation of its case-insensitive implementation.</p>
-     * 
+     *
      * <p>Thread-safe: uses immutable CaseInsensitiveString objects and thread-safe unwrapping.</p>
      *
      * @param func the original function to be wrapped
@@ -1451,7 +1472,7 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
     private <R> Function<? super K, ? extends R> wrapFunctionForKey(Function<? super K, ? extends R> func) {
         return k -> func.apply(unwrapKey(k));
     }
-    
+
     /**
      * Wraps a BiFunction to maintain the map's case-insensitive transparency. When the wrapped
      * BiFunction is called, if the key is internally stored as a CaseInsensitiveString, this wrapper
@@ -1460,7 +1481,7 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
      *
      * <p>This wrapper ensures users' BiFunction implementations receive the same key type they originally
      * put into the map, maintaining the map's encapsulation of its case-insensitive implementation.</p>
-     * 
+     *
      * <p>Thread-safe: uses immutable CaseInsensitiveString objects and thread-safe unwrapping.</p>
      *
      * @param func the original bi-function to be wrapped
@@ -1613,10 +1634,10 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
      * Returns the number of mappings. This method should be used instead of {@link #size()} because
      * a ConcurrentHashMap may contain more mappings than can be represented as an int. The value
      * returned is an estimate; the actual count may differ if there are concurrent insertions or removals.
-     * 
+     *
      * <p>This method delegates to {@link ConcurrentHashMap#mappingCount()} when the backing map
      * is a ConcurrentHashMap, otherwise returns {@link #size()}.</p>
-     * 
+     *
      * @return the number of mappings
      * @since 3.7.0
      */
@@ -1645,8 +1666,8 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
     public void forEach(long parallelismThreshold, BiConsumer<? super K, ? super V> action) {
         Objects.requireNonNull(action, "Action cannot be null");
         if (map instanceof ConcurrentHashMap) {
-            ((ConcurrentHashMap<K, V>) map).forEach(parallelismThreshold, (k, v) -> 
-                action.accept(unwrapKey(k), v));
+            ((ConcurrentHashMap<K, V>) map).forEach(parallelismThreshold, (k, v) ->
+                    action.accept(unwrapKey(k), v));
         } else {
             forEach(action);
         }
@@ -1668,8 +1689,8 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
     public void forEachKey(long parallelismThreshold, Consumer<? super K> action) {
         Objects.requireNonNull(action, "Action cannot be null");
         if (map instanceof ConcurrentHashMap) {
-            ((ConcurrentHashMap<K, V>) map).forEachKey(parallelismThreshold, k -> 
-                action.accept(unwrapKey(k)));
+            ((ConcurrentHashMap<K, V>) map).forEachKey(parallelismThreshold, k ->
+                    action.accept(unwrapKey(k)));
         } else {
             keySet().forEach(action);
         }
@@ -1713,8 +1734,8 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
     public <U> U searchKeys(long parallelismThreshold, Function<? super K, ? extends U> searchFunction) {
         Objects.requireNonNull(searchFunction, "Search function cannot be null");
         if (map instanceof ConcurrentHashMap) {
-            return ((ConcurrentHashMap<K, V>) map).searchKeys(parallelismThreshold, k -> 
-                searchFunction.apply(unwrapKey(k)));
+            return ((ConcurrentHashMap<K, V>) map).searchKeys(parallelismThreshold, k ->
+                    searchFunction.apply(unwrapKey(k)));
         } else {
             // Fallback for non-concurrent maps - sequential search
             for (K key : keySet()) {
@@ -1771,13 +1792,13 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
      * @throws NullPointerException if the transformer or reducer is null
      * @since 3.7.0
      */
-    public <U> U reduceKeys(long parallelismThreshold, Function<? super K, ? extends U> transformer, 
-                           BiFunction<? super U, ? super U, ? extends U> reducer) {
+    public <U> U reduceKeys(long parallelismThreshold, Function<? super K, ? extends U> transformer,
+                            BiFunction<? super U, ? super U, ? extends U> reducer) {
         Objects.requireNonNull(transformer, "Transformer cannot be null");
         Objects.requireNonNull(reducer, "Reducer cannot be null");
         if (map instanceof ConcurrentHashMap) {
-            return ((ConcurrentHashMap<K, V>) map).reduceKeys(parallelismThreshold, 
-                k -> transformer.apply(unwrapKey(k)), reducer);
+            return ((ConcurrentHashMap<K, V>) map).reduceKeys(parallelismThreshold,
+                    k -> transformer.apply(unwrapKey(k)), reducer);
         } else {
             // Fallback for non-concurrent maps - sequential reduce
             U result = null;
@@ -1805,7 +1826,7 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
      * @since 3.7.0
      */
     public <U> U reduceValues(long parallelismThreshold, Function<? super V, ? extends U> transformer,
-                             BiFunction<? super U, ? super U, ? extends U> reducer) {
+                              BiFunction<? super U, ? super U, ? extends U> reducer) {
         Objects.requireNonNull(transformer, "Transformer cannot be null");
         Objects.requireNonNull(reducer, "Reducer cannot be null");
         if (map instanceof ConcurrentHashMap) {
@@ -1826,16 +1847,16 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
     /**
      * Thread-safe helper method to unwrap CaseInsensitiveString back to original String.
      * This method is used by function wrappers to ensure users receive the original key type.
-     * 
+     *
      * @param key the key to unwrap (may be CaseInsensitiveString or any other type)
      * @return the original key if it was a CaseInsensitiveString, otherwise the key itself
      */
     @SuppressWarnings("unchecked")
     private K unwrapKey(K key) {
         // Thread-safe: instanceof check and field access on immutable CaseInsensitiveString
-        return (key instanceof CaseInsensitiveString) 
-            ? (K) ((CaseInsensitiveString) key).original 
-            : key;
+        return (key instanceof CaseInsensitiveString)
+                ? (K) ((CaseInsensitiveString) key).original
+                : key;
     }
 
     @SuppressWarnings("unchecked")
@@ -1880,13 +1901,13 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
         }
 
         boolean shouldFlatten = multiKeyMapFlattenDimensions;
-        
+
         // When flattenDimensions=false, still need to convert String elements to CaseInsensitiveString
         // for case-insensitive comparison, but preserve the array/collection structure
         if (!shouldFlatten && (key.getClass().isArray() || key instanceof Collection)) {
             return convertElementsRecursively(key);
         }
-        
+
         // Handle 1D arrays - convert to Object[] with case-insensitive strings
         if (key.getClass().isArray()) {
             int length = ArrayUtilities.getLength(key);
@@ -1897,7 +1918,7 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
             }
             return result;
         }
-        
+
         // Handle Collections - convert to Object[] with case-insensitive strings
         if (key instanceof Collection) {
             Collection<?> collection = (Collection<?>) key;
@@ -1908,11 +1929,11 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
             }
             return result;
         }
-        
+
         // For non-arrays/collections, use standard conversion
         return convertKey(key);
     }
-    
+
     /**
      * Recursively converts String elements in arrays/collections to CaseInsensitiveString
      * while preserving the original structure
@@ -1921,7 +1942,7 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
         if (obj == null) {
             return null;
         }
-        
+
         // Handle arrays by creating Object[] with converted elements
         if (obj.getClass().isArray()) {
             int length = ArrayUtilities.getLength(obj);
@@ -1929,7 +1950,7 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
             for (int i = 0; i < length; i++) {
                 Object element = ArrayUtilities.getElement(obj, i);
                 if (element instanceof String || element instanceof Collection ||
-                    (element != null && element.getClass().isArray())) {
+                        (element != null && element.getClass().isArray())) {
                     result[i] = convertElementsRecursively(element);
                 } else {
                     result[i] = element;
@@ -1937,14 +1958,14 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
             }
             return result;
         }
-        
+
         // Handle collections by creating a new collection with converted elements
         if (obj instanceof Collection) {
             Collection<?> collection = (Collection<?>) obj;
             Collection<Object> result = createConvertedCollection(collection);
             for (Object element : collection) {
                 if (element instanceof String || element instanceof Collection ||
-                    (element != null && element.getClass().isArray())) {
+                        (element != null && element.getClass().isArray())) {
                     result.add(convertElementsRecursively(element));
                 } else {
                     result.add(element);
@@ -1952,7 +1973,7 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
             }
             return result;
         }
-        
+
         // For non-arrays/collections, use standard conversion
         return convertKey(obj);
     }
@@ -1977,7 +1998,7 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
         @Override
         public boolean equals(Object other) {
             return other instanceof EqualityArrayKey &&
-                   Arrays.deepEquals(values, ((EqualityArrayKey) other).values);
+                    Arrays.deepEquals(values, ((EqualityArrayKey) other).values);
         }
 
         @Override
@@ -2023,7 +2044,7 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
          * Returns true if this iterator is backed by a concurrent collection and therefore
          * inherits concurrent properties such as weak consistency and never throwing
          * ConcurrentModificationException.
-         * 
+         *
          * @return true if backed by a concurrent collection
          */
         public boolean isConcurrentBacking() {
@@ -2085,7 +2106,7 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
          * Returns true if this iterator is backed by a concurrent collection and therefore
          * inherits concurrent properties such as weak consistency and never throwing
          * ConcurrentModificationException.
-         * 
+         *
          * @return true if backed by a concurrent collection
          */
         public boolean isConcurrentBacking() {

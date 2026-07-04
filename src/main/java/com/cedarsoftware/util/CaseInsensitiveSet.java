@@ -4,7 +4,11 @@ import java.io.Serializable;
 import java.util.AbstractSet;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.SortedSet;
@@ -13,6 +17,7 @@ import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.ConcurrentSkipListSet;
+import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -71,13 +76,13 @@ import java.util.function.Predicate;
  * <ul>
  *   <li><b>Thread-Safe:</b> When backed by concurrent maps ({@link ConcurrentHashMap}, {@link ConcurrentSkipListMap},
  *       {@link ConcurrentHashMapNullSafe}, {@link ConcurrentNavigableMapNullSafe}), all operations are thread-safe.</li>
- *   <li><b>Not Thread-Safe:</b> When backed by non-concurrent maps ({@link java.util.LinkedHashMap}, 
+ *   <li><b>Not Thread-Safe:</b> When backed by non-concurrent maps ({@link java.util.LinkedHashMap},
  *       {@link java.util.HashMap}, {@link TreeMap}), external synchronization is required for thread safety.</li>
  * </ul>
  *
  * <h2>Implementation Note</h2>
  * <p>
- * This implementation uses {@link Collections#newSetFromMap(Map)} internally to create a Set view over 
+ * This implementation uses {@link Collections#newSetFromMap(Map)} internally to create a Set view over
  * a {@link CaseInsensitiveMap}. This provides a clean, efficient implementation that leverages the
  * proven JDK Collections framework while maintaining case-insensitive semantics for String elements.
  * </p>
@@ -95,7 +100,7 @@ import java.util.function.Predicate;
  * @see java.util.Set
  * @see CaseInsensitiveMap
  * @see Collections#newSetFromMap(Map)
- * 
+ *
  * @author John DeRegnaucourt (jdereg@gmail.com)
  *         <br>
  *         Copyright (c) Cedar Software LLC
@@ -133,18 +138,36 @@ public class CaseInsensitiveSet<E> extends AbstractSet<E> implements Set<E>, Ser
     /**
      * Constructs a {@code CaseInsensitiveSet} containing the elements of the specified collection.
      * <p>
-     * The backing map is chosen based on the type of the input collection:
+     * The inner map is chosen based on the type of the input collection, mirroring the source's
+     * concurrency and ordering characteristics (most-specific match first):
      * <ul>
-     *   <li>If the input collection is a {@code ConcurrentNavigableSetNullSafe}, the backing map is a {@code ConcurrentNavigableMapNullSafe}.</li>
-     *   <li>If the input collection is a {@code ConcurrentSkipListSet}, the backing map is a {@code ConcurrentSkipListMap}.</li>
-     *   <li>If the input collection is a {@code ConcurrentSet}, the backing map is a {@code ConcurrentHashMapNullSafe}.</li>
-     *   <li>If the input collection is a {@code SortedSet}, the backing map is a {@code TreeMap}.</li>
-     *   <li>For all other collection types, the backing map is a {@code LinkedHashMap} with an initial capacity based on the size of the input collection.</li>
+     *   <li>If the input collection is a {@code CaseInsensitiveSet}, the type of its inner map is
+     *       replicated, so a copy of a concurrent- or tree-backed set stays concurrent/sorted.</li>
+     *   <li>If the input collection is a {@code ConcurrentNavigableSetNullSafe}, the inner map is a {@code ConcurrentNavigableMapNullSafe}.</li>
+     *   <li>If the input collection is a {@code ConcurrentSkipListSet}, the inner map is a {@code ConcurrentSkipListMap}.</li>
+     *   <li>If the input collection is a {@code ConcurrentSet}, the inner map is a {@code ConcurrentHashMapNullSafe}.</li>
+     *   <li>If the input collection is a {@code ConcurrentHashMap.KeySetView} (from
+     *       {@code ConcurrentHashMap.newKeySet()}), the inner map is a {@code ConcurrentHashMap}.</li>
+     *   <li>If the input collection is a {@code CopyOnWriteArraySet}, the inner map is a
+     *       {@code ConcurrentHashMapNullSafe} (the null-tolerant concurrent analog).</li>
+     *   <li>If the input collection is a {@code SortedSet}, the inner map is a {@code TreeMap}.
+     *       The set is ordered by the natural, case-insensitive element order; a custom source
+     *       comparator is <b>not</b> carried over, because comparator-based equality would break
+     *       case-insensitive uniqueness.</li>
+     *   <li>If the input collection is a {@code HashSet} (and not a {@code LinkedHashSet}), the
+     *       inner map is a {@code HashMap} — a {@code HashSet} source has no iteration order to
+     *       preserve.</li>
+     *   <li>For all other collection types (including {@code LinkedHashSet} and {@code List}s),
+     *       the inner map is a {@code LinkedHashMap} pre-sized to the source's size, preserving
+     *       encounter order.</li>
      * </ul>
      * </p>
      *
      * @param collection the collection whose elements are to be placed into this set;
      *                   may be {@code null}, in which case an empty set is created
+     * @throws IllegalArgumentException if the collection is an {@link IdentitySet}, whose
+     *                                  reference-equality (==) semantics are incompatible with
+     *                                  case-insensitive equality
      */
     public CaseInsensitiveSet(Collection<? extends E> collection) {
         this.backingMap = determineBackingMap(collection);
@@ -385,13 +408,13 @@ public class CaseInsensitiveSet<E> extends AbstractSet<E> implements Set<E>, Ser
     /**
      * {@inheritDoc}
      * <p>
-     * Returns {@code true} if this set contains all of the elements in the specified collection. For
+     * Returns {@code true} if this set contains all the elements in the specified collection. For
      * {@link String} elements, the comparison is case-insensitive, meaning that strings differing only by
      * case (e.g., "Hello" and "hello") are treated as equal.
      * </p>
      *
      * @param c the collection to be checked for containment in this set
-     * @return {@code true} if this set contains all of the elements in the specified collection
+     * @return {@code true} if this set contains all the elements in the specified collection
      * @throws NullPointerException if the specified collection is {@code null}
      */
     @Override
@@ -418,7 +441,6 @@ public class CaseInsensitiveSet<E> extends AbstractSet<E> implements Set<E>, Ser
      * @throws NullPointerException if the specified collection is {@code null} or contains {@code null} elements
      */
     @Override
-    @SuppressWarnings("unchecked")
     public boolean addAll(Collection<? extends E> c) {
         if (c instanceof CaseInsensitiveSet) {
             // Values are all Boolean.TRUE, so the set only changes when the size grows;
@@ -508,7 +530,7 @@ public class CaseInsensitiveSet<E> extends AbstractSet<E> implements Set<E>, Ser
     }
 
     /**
-     * Removes all of the elements of this collection that satisfy the given predicate.
+     * Removes all the elements of this collection that satisfy the given predicate.
      * <p>
      * Errors or runtime exceptions thrown during iteration or by the predicate are relayed
      * to the caller. For {@link String} elements, the removal is case-insensitive.
@@ -552,7 +574,7 @@ public class CaseInsensitiveSet<E> extends AbstractSet<E> implements Set<E>, Ser
      * When the backing map is not a ConcurrentHashMap, this method delegates to {@link #size()}.
      * The estimate may not reflect recent additions or removals due to concurrent modifications.
      * </p>
-     * 
+     *
      * @return the estimated number of elements in this set
      * @since 3.6.0
      */
@@ -561,16 +583,16 @@ public class CaseInsensitiveSet<E> extends AbstractSet<E> implements Set<E>, Ser
     }
 
     /**
-     * Performs the given action for each element in this set, with operations potentially 
-     * performed in parallel when the parallelism threshold is met and the set is backed 
+     * Performs the given action for each element in this set, with operations potentially
+     * performed in parallel when the parallelism threshold is met and the set is backed
      * by a ConcurrentHashMap.
      * <p>
-     * This method provides high-performance parallel iteration over set elements when using 
-     * concurrent backing maps. The parallelism threshold determines the minimum set size 
+     * This method provides high-performance parallel iteration over set elements when using
+     * concurrent backing maps. The parallelism threshold determines the minimum set size
      * required to enable parallel processing.
      * </p>
-     * 
-     * @param parallelismThreshold the threshold for parallel execution (typically use 1 for parallel, 
+     *
+     * @param parallelismThreshold the threshold for parallel execution (typically use 1 for parallel,
      *                           Long.MAX_VALUE for sequential)
      * @param action the action to be performed for each element
      * @throws NullPointerException if the specified action is null
@@ -581,14 +603,14 @@ public class CaseInsensitiveSet<E> extends AbstractSet<E> implements Set<E>, Ser
     }
 
     /**
-     * Returns a non-null result from applying the given search function to each element 
-     * in this set, or null if none are found. The search may be performed in parallel 
+     * Returns a non-null result from applying the given search function to each element
+     * in this set, or null if none are found. The search may be performed in parallel
      * when the parallelism threshold is met and the set is backed by a ConcurrentHashMap.
      * <p>
-     * This method provides high-performance parallel search over set elements when using 
+     * This method provides high-performance parallel search over set elements when using
      * concurrent backing maps. The search terminates early upon finding the first non-null result.
      * </p>
-     * 
+     *
      * @param <U> the type of the search result
      * @param parallelismThreshold the threshold for parallel execution (typically use 1 for parallel,
      *                           Long.MAX_VALUE for sequential)
@@ -602,14 +624,14 @@ public class CaseInsensitiveSet<E> extends AbstractSet<E> implements Set<E>, Ser
     }
 
     /**
-     * Returns the result of accumulating all elements in this set using the given reducer 
-     * and transformer functions. The reduction may be performed in parallel when the 
+     * Returns the result of accumulating all elements in this set using the given reducer
+     * and transformer functions. The reduction may be performed in parallel when the
      * parallelism threshold is met and the set is backed by a ConcurrentHashMap.
      * <p>
-     * This method provides high-performance parallel reduction over set elements when using 
+     * This method provides high-performance parallel reduction over set elements when using
      * concurrent backing maps. The transformer is applied to each element before reduction.
      * </p>
-     * 
+     *
      * @param <U> the type of the transformed elements and the result
      * @param parallelismThreshold the threshold for parallel execution (typically use 1 for parallel,
      *                           Long.MAX_VALUE for sequential)
@@ -619,9 +641,9 @@ public class CaseInsensitiveSet<E> extends AbstractSet<E> implements Set<E>, Ser
      * @throws NullPointerException if the specified transformer or reducer is null
      * @since 3.6.0
      */
-    public <U> U reduceElements(long parallelismThreshold, 
-                               Function<? super E, ? extends U> transformer,
-                               BiFunction<? super U, ? super U, ? extends U> reducer) {
+    public <U> U reduceElements(long parallelismThreshold,
+                                Function<? super E, ? extends U> transformer,
+                                BiFunction<? super U, ? super U, ? extends U> reducer) {
         return backingMap.reduceKeys(parallelismThreshold, transformer, reducer);
     }
 
@@ -636,7 +658,7 @@ public class CaseInsensitiveSet<E> extends AbstractSet<E> implements Set<E>, Ser
      * <strong>Warning:</strong> Modifying the returned map directly may affect this set's state.
      * Use with caution and prefer the set's public methods when possible.
      * </p>
-     * 
+     *
      * @return the backing map implementation
      * @since 3.6.0
      */
@@ -649,30 +671,57 @@ public class CaseInsensitiveSet<E> extends AbstractSet<E> implements Set<E>, Ser
     /**
      * Determines the appropriate backing map based on the source collection's type.
      * This method creates a CaseInsensitiveMap with the appropriate underlying map implementation
-     * to preserve the characteristics of the source collection.
+     * to preserve the characteristics (concurrency, ordering) of the source collection.
      *
      * @param source the source collection to copy from
      * @return a new CaseInsensitiveMap instance with appropriate backing map
+     * @throws IllegalArgumentException if the source collection is an IdentitySet
      */
     private CaseInsensitiveMap<E, Boolean> determineBackingMap(Collection<? extends E> source) {
         if (source == null) {
             return new CaseInsensitiveMap<>();
         }
-        
-        // Create the appropriate backing map based on source type
-        if (source instanceof ConcurrentNavigableSetNullSafe) {
-            return new CaseInsensitiveMap<>(Collections.emptyMap(), new ConcurrentNavigableMapNullSafe<>());
-        } else if (source instanceof ConcurrentSkipListSet) {
-            return new CaseInsensitiveMap<>(Collections.emptyMap(), new ConcurrentSkipListMap<>());
-        } else if (source instanceof ConcurrentSet) {
-            return new CaseInsensitiveMap<>(Collections.emptyMap(), new ConcurrentHashMapNullSafe<>());
-        } else if (source instanceof SortedSet) {
-            return new CaseInsensitiveMap<>(Collections.emptyMap(), new TreeMap<>());
-        } else {
-            // For all other collection types, use LinkedHashMap presized with load-factor
-            // headroom so populating from the source never rehashes
-            return new CaseInsensitiveMap<>(Math.max(16, (int) (source.size() / 0.75f) + 1));
+        if (source instanceof IdentitySet) {
+            throw new IllegalArgumentException(
+                    "Cannot create a CaseInsensitiveSet from an IdentitySet. " +
+                            "IdentitySet compares elements by reference (==) which is incompatible.");
         }
+
+        // Create the appropriate backing map based on source type (most-specific first)
+        int size = source.size();
+        Map<E, Boolean> inner;
+        if (source instanceof CaseInsensitiveSet) {
+            // Replicate the source set's inner map type so a copy preserves its
+            // concurrency/ordering characteristics (mirrors CaseInsensitiveMap's registry)
+            Map<?, ?> prototype = ((CaseInsensitiveSet<?>) source).backingMap.getWrappedMap();
+            inner = CaseInsensitiveMap.newBackingInstance(prototype, size);
+        } else if (source instanceof ConcurrentNavigableSetNullSafe) {
+            inner = new ConcurrentNavigableMapNullSafe<>();
+        } else if (source instanceof ConcurrentSkipListSet) {
+            inner = new ConcurrentSkipListMap<>();
+        } else if (source instanceof ConcurrentSet) {
+            inner = new ConcurrentHashMapNullSafe<>(size);
+        } else if (source instanceof ConcurrentHashMap.KeySetView) {
+            inner = new ConcurrentHashMap<>(size);
+        } else if (source instanceof CopyOnWriteArraySet) {
+            // CopyOnWriteArraySet permits null elements, so use the null-safe concurrent analog
+            inner = new ConcurrentHashMapNullSafe<>(size);
+        } else if (source instanceof SortedSet) {
+            // Natural (case-insensitive) element order. A custom source comparator cannot be
+            // carried over: TreeMap equality is comparator equality, which would break
+            // case-insensitive uniqueness.
+            inner = new TreeMap<>();
+        } else if (source instanceof LinkedHashSet) {
+            inner = new LinkedHashMap<>(CaseInsensitiveMap.capacityFor(size));
+        } else if (source instanceof HashSet) {
+            // Mirror the Map side (HashMap -> HashMap): a HashSet source has no order to keep
+            inner = new HashMap<>(CaseInsensitiveMap.capacityFor(size));
+        } else {
+            // All other collection types: LinkedHashMap pre-sized with load-factor
+            // headroom so populating from the source never rehashes
+            inner = new LinkedHashMap<>(CaseInsensitiveMap.capacityFor(size));
+        }
+        return new CaseInsensitiveMap<>(Collections.emptyMap(), inner);
     }
 
     /* ----------------------------------------------------------------- */

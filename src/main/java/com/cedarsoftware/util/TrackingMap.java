@@ -116,11 +116,13 @@ public class TrackingMap<K, V> implements Map<K, V> {
         asNavigable = (map instanceof NavigableMap) ? (NavigableMap<K, V>) map : null;
         asSorted = (map instanceof SortedMap) ? (SortedMap<K, V>) map : null;
 
-        // Use concurrent tracking set if wrapping a concurrent map for thread safety
-        // Pre-size HashSet based on map size to reduce rehashing
+        // Use concurrent tracking set if wrapping a concurrent map for thread safety.
+        // Pre-size the HashSet with load-factor headroom (capacity = size/0.75 + 1) so
+        // tracking every key of a fully-read map never rehashes — new HashSet<>(size)
+        // under-sizes the table and rehashes at 0.75*size.
         readKeys = (asConcurrent != null)
             ? ConcurrentHashMap.newKeySet()
-            : new HashSet<>(Math.max(16, map.size()));
+            : new HashSet<>(Math.max(16, (int) (map.size() / 0.75f) + 1));
         unmodifiableReadKeys = Collections.unmodifiableSet(readKeys);
     }
 

@@ -269,7 +269,7 @@ public class Traverser {
      * with the new {@code traverse} method.
      * </p>
      *
-     * @deprecated Use {@link #traverse(Object, Set, Consumer)} instead.
+     * @deprecated Use {@link #traverse(Object, Consumer, Set)} instead.
      */
     @Deprecated
     @FunctionalInterface
@@ -336,7 +336,7 @@ public class Traverser {
     }
 
     /**
-     * @deprecated Use {@link #traverse(Object, Set, Consumer)} instead.
+     * @deprecated Use {@link #traverse(Object, Consumer, Set)} instead.
      */
     @Deprecated
     public static void traverse(Object root, Visitor visitor) {
@@ -347,7 +347,7 @@ public class Traverser {
     }
 
     /**
-     * @deprecated Use {@link #traverse(Object, Set, Consumer)} instead.
+     * @deprecated Use {@link #traverse(Object, Consumer, Set)} instead.
      */
     @Deprecated
     public static void traverse(Object root, Class<?>[] skip, Visitor visitor) {

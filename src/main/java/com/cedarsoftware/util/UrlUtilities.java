@@ -96,7 +96,17 @@ import java.util.regex.Pattern;
  *         WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
+ *
+ * @deprecated Scheduled for <b>removal in java-util 5.0</b>. This class wraps the legacy
+ *             {@link java.net.HttpURLConnection} stack (manual cookie stores, naive
+ *             all-trusting {@code TrustManager}/{@code HostnameVerifier}, global mutable
+ *             user-agent/referrer state) and is no longer used anywhere in the Cedar Software
+ *             ecosystem. For new code prefer {@link java.net.http.HttpClient} (JDK 11+) for
+ *             HTTP, and {@link IOUtilities} for stream transfer, compression, and
+ *             {@code URLConnection} input handling. No replacement is planned for the
+ *             cookie/naive-SSL helpers, which are unsafe for production use.
  */
+@Deprecated
 public final class UrlUtilities {
     private static final AtomicReference<String> globalUserAgent = new AtomicReference<>();
     private static final AtomicReference<String> globalReferrer = new AtomicReference<>();

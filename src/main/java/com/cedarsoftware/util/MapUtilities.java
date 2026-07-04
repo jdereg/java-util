@@ -160,7 +160,6 @@ public class MapUtilities {
      * @param keyValues an even number of key-value pairs
      * @return an immutable map containing the specified key-value pairs
      * @throws IllegalArgumentException if the number of arguments is odd or exceeds 10 entries
-     * @throws NullPointerException if any key or value in the map is {@code null}
      */
     @SafeVarargs
     public static <K, V> Map<K, V> mapOf(Object... keyValues) {
@@ -176,7 +175,8 @@ public class MapUtilities {
             throw new IllegalArgumentException("Too many entries; maximum is " + MAX_ENTRIES);
         }
 
-        Map<K, V> map = new LinkedHashMap<>(keyValues.length / 2);
+        // Unlike Map.of(), null keys and values are permitted (LinkedHashMap semantics)
+        Map<K, V> map = new LinkedHashMap<>(keyValues.length);
         for (int i = 0; i < keyValues.length; i += 2) {
             @SuppressWarnings("unchecked")
             K key = (K) keyValues[i];
@@ -199,7 +199,8 @@ public class MapUtilities {
      * @param <V> the type of values in the map
      * @param entries the entries to be included in the map
      * @return an immutable map containing the specified entries
-     * @throws NullPointerException if any entry, key, or value is {@code null}
+     * @throws NullPointerException if any entry is {@code null} (null keys and values within
+     *         an entry are permitted — LinkedHashMap semantics)
      */
     @SafeVarargs
     public static <K, V> Map<K, V> mapOfEntries(Map.Entry<K, V>... entries) {
@@ -207,7 +208,8 @@ public class MapUtilities {
             return Collections.unmodifiableMap(new LinkedHashMap<>());
         }
 
-        Map<K, V> map = new LinkedHashMap<>(entries.length);
+        // Presized with load-factor headroom so population never rehashes
+        Map<K, V> map = new LinkedHashMap<>(Math.max(16, (int) (entries.length / 0.75f) + 1));
         for (Map.Entry<K, V> entry : entries) {
             if (entry == null) {
                 throw new NullPointerException("Entries must not be null.");

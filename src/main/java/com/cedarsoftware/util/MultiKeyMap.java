@@ -2362,7 +2362,9 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                                 List<Object> otherCandidates = bucket.getValue();
                                 for (Iterator<Object> it = otherCandidates.iterator(); it.hasNext();) {
                                     Object candidate = it.next();
-                                    if (elementEquals(elem1, candidate, valueBasedEquality, caseSensitive)) {
+                                    // setElem1 (the set element being matched), NOT elem1 — elem1 is
+                                    // the SET_OPEN sentinel here and would never match anything
+                                    if (elementEquals(setElem1, candidate, valueBasedEquality, caseSensitive)) {
                                         it.remove();
                                         if (otherCandidates.isEmpty()) {
                                             bucketIter.remove();
@@ -3356,14 +3358,17 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             AtomicReferenceArray<MultiKey<V>[]> oldBuckets = buckets;
             AtomicReferenceArray<MultiKey<V>[]> newBuckets = new AtomicReferenceArray<>(oldBuckets.length() * 2);
             int newMax = 0;
-            atomicSize.set(0);
 
+            // NOTE: atomicSize is deliberately NOT touched here. The entry count is invariant
+            // during a resize, and size()/isEmpty()/longSize() are lock-free — zeroing and
+            // re-incrementing the counter per entry would let concurrent readers observe the
+            // size transiently collapse toward 0 (isEmpty() == true on a million-entry map),
+            // and would add n atomic RMWs while all stripes are held.
             for (int i = 0; i < oldBuckets.length(); i++) {
                 MultiKey<V>[] chain = oldBuckets.get(i);
                 if (chain != null) {
                     for (MultiKey<V> e : chain) {
                         int len = rehashEntry(e, newBuckets);
-                        atomicSize.incrementAndGet();
                         newMax = Math.max(newMax, len);
                     }
                 }
@@ -3501,7 +3506,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      * @return a snapshot set view of the keys contained in this map
      */
     public Set<Object> keySet() {
-        Set<Object> set = new HashSet<>();
+        Set<Object> set = new HashSet<>(Math.max(16, (int) (size() / 0.75f) + 1));
         final AtomicReferenceArray<MultiKey<V>[]> snapshot = buckets;
         final int len = snapshot.length();
         for (int bucketIdx = 0; bucketIdx < len; bucketIdx++) {
@@ -3542,7 +3547,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      * @return a snapshot collection view of the values contained in this map
      */
     public Collection<V> values() {
-        List<V> vals = new ArrayList<>();
+        List<V> vals = new ArrayList<>(size());
         final AtomicReferenceArray<MultiKey<V>[]> snapshot = buckets;
         final int len = snapshot.length();
         for (int bucketIdx = 0; bucketIdx < len; bucketIdx++) {
@@ -3574,7 +3579,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      * @return a snapshot set view of the mappings contained in this map
      */
     public Set<Map.Entry<Object, V>> entrySet() {
-        Set<Map.Entry<Object, V>> set = new HashSet<>();
+        Set<Map.Entry<Object, V>> set = new HashSet<>(Math.max(16, (int) (size() / 0.75f) + 1));
         // Iterate buckets directly instead of using deprecated entries()
         final AtomicReferenceArray<MultiKey<V>[]> snapshot = buckets;
         final int len = snapshot.length();

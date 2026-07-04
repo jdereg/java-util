@@ -155,8 +155,12 @@ public final class LoggingConfig {
               .append(' ')
               .append('[').append(thread).append(']')
               .append(' ')
-              .append(String.format("%-5s", level))
-              .append(' ')
+              .append(level);
+            // Pad level to 5 chars ("%-5s") without String.format's per-record parse/allocation cost
+            for (int i = level.length(); i < 5; i++) {
+                sb.append(' ');
+            }
+            sb.append(' ')
               .append(logger)
               .append(" - ")
               .append(msg);

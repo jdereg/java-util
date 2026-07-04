@@ -113,7 +113,9 @@ import java.util.logging.Logger;
  */
 public final class SystemUtilities {
     private static final String osNameRaw = System.getProperty("os.name");
-    public static final String OS_NAME = osNameRaw != null ? osNameRaw.toLowerCase() : "unknown";
+    // Locale.ROOT: on a Turkish-locale JVM, default-locale lowercasing turns "Windows"
+    // into "wındows" (dotless ı), breaking any consumer's OS_NAME.contains("windows") check
+    public static final String OS_NAME = osNameRaw != null ? osNameRaw.toLowerCase(Locale.ROOT) : "unknown";
     public static final String JAVA_VERSION = System.getProperty("java.version", "unknown");
     public static final String USER_HOME = System.getProperty("user.home", "");
     public static final String TEMP_DIR = System.getProperty("java.io.tmpdir", "");

@@ -111,7 +111,10 @@ public class SafeSimpleDateFormat extends DateFormat {
             });
 
     // Immutable snapshot of relevant config.
-    private static final class State {
+    // Serializable: DateFormat is Serializable and this class declares a serialVersionUID —
+    // without State (and NFSig) being Serializable, writeObject threw NotSerializableException.
+    private static final class State implements java.io.Serializable {
+        private static final long serialVersionUID = 1L;
         final String pattern;
         final Locale locale;                // stored explicitly (Java 8 compatible)
         final TimeZone tz;                  // cloned
@@ -183,7 +186,8 @@ public class SafeSimpleDateFormat extends DateFormat {
     }
 
     // Compact signature for NumberFormat equality/hash.
-    private static final class NFSig {
+    private static final class NFSig implements java.io.Serializable {
+        private static final long serialVersionUID = 1L;
         final Class<?> type;
         final boolean grouping;
         final boolean parseIntegerOnly;
@@ -243,8 +247,9 @@ public class SafeSimpleDateFormat extends DateFormat {
         return nf;
     }
 
-    // Instance state (copy-on-write).
-    private final AtomicReference<State> stateRef;
+    // Instance state (copy-on-write). Non-final only so clone() can detach the copy —
+    // assigned in the constructor and in clone(), never reassigned afterward.
+    private AtomicReference<State> stateRef;
 
     public SafeSimpleDateFormat(String format) {
         Locale locale = Locale.getDefault();
@@ -337,6 +342,19 @@ public class SafeSimpleDateFormat extends DateFormat {
         final long epochMs = date.getTime();
         update(s -> new State(s.pattern, s.locale, s.tz,
                 s.lenient, s.nf, s.symbols, epochMs));
+    }
+
+    /**
+     * Returns a copy of this formatter whose configuration is fully detached from this
+     * instance. Without this override, {@code DateFormat.clone()}'s shallow copy would share
+     * the {@code AtomicReference} holding the configuration state — mutating the clone
+     * (e.g. {@code setTimeZone}) would silently reconfigure the original, and vice versa.
+     */
+    @Override
+    public Object clone() {
+        SafeSimpleDateFormat copy = (SafeSimpleDateFormat) super.clone();
+        copy.stateRef = new AtomicReference<>(stateRef.get());
+        return copy;
     }
 
     @Override

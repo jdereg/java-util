@@ -132,7 +132,7 @@ public final class RegexUtilities {
         try {
             future = REGEX_EXECUTOR.submit(operation);
         } catch (RejectedExecutionException e) {
-            throw new SecurityException("Regex operation rejected due timeout executor saturation", e);
+            throw new SecurityException("Regex operation rejected due to timeout executor saturation", e);
         }
 
         try {
@@ -333,7 +333,10 @@ public final class RegexUtilities {
         }
 
         long timeout = getRegexTimeoutMilliseconds();
-        return executeWithTimeout(() -> pattern.matcher(input).matches(), timeout);
+        // InterruptibleCharSequence lets Future.cancel(true) actually stop a runaway match —
+        // java.util.regex never checks interrupts, so without it a timed-out (ReDoS) match
+        // burns a pool thread until backtracking completes, saturating the bounded executor
+        return executeWithTimeout(() -> pattern.matcher(new InterruptibleCharSequence(input)).matches(), timeout);
     }
 
     /**
@@ -362,7 +365,7 @@ public final class RegexUtilities {
 
         long timeout = getRegexTimeoutMilliseconds();
         return executeWithTimeout(() -> {
-            Matcher matcher = pattern.matcher(input);
+            Matcher matcher = pattern.matcher(new InterruptibleCharSequence(input));
             if (matcher.find()) {
                 return new SafeMatchResult(matcher, input);
             } else {
@@ -395,7 +398,7 @@ public final class RegexUtilities {
 
         long timeout = getRegexTimeoutMilliseconds();
         final String finalReplacement = replacement;
-        return executeWithTimeout(() -> pattern.matcher(input).replaceFirst(finalReplacement), timeout);
+        return executeWithTimeout(() -> pattern.matcher(new InterruptibleCharSequence(input)).replaceFirst(finalReplacement), timeout);
     }
 
     /**
@@ -422,7 +425,7 @@ public final class RegexUtilities {
 
         long timeout = getRegexTimeoutMilliseconds();
         final String finalReplacement = replacement;
-        return executeWithTimeout(() -> pattern.matcher(input).replaceAll(finalReplacement), timeout);
+        return executeWithTimeout(() -> pattern.matcher(new InterruptibleCharSequence(input)).replaceAll(finalReplacement), timeout);
     }
 
     /**
@@ -444,10 +447,51 @@ public final class RegexUtilities {
         }
 
         long timeout = getRegexTimeoutMilliseconds();
-        return executeWithTimeout(() -> pattern.split(input), timeout);
+        return executeWithTimeout(() -> pattern.split(new InterruptibleCharSequence(input)), timeout);
     }
 
     // ========== Inner Classes ==========
+
+    /**
+     * CharSequence wrapper whose {@code charAt} checks the thread's interrupt flag, so a
+     * Matcher operating on it aborts promptly when {@code Future.cancel(true)} interrupts
+     * the regex thread. {@code java.util.regex} never checks interrupts on its own, so
+     * without this a timed-out (possibly ReDoS) match keeps burning a pool thread's CPU
+     * until the backtracking completes — with this class's bounded executor, a handful of
+     * such matches would permanently saturate the pool and reject all subsequent operations.
+     * Post-match reads (group(), toMatchResult()) bypass charAt via toString().
+     * (Same mechanism as DateUtilities' ReDoS protection.)
+     */
+    private static final class InterruptibleCharSequence implements CharSequence {
+        private final String delegate;
+
+        InterruptibleCharSequence(String delegate) {
+            this.delegate = delegate;
+        }
+
+        @Override
+        public int length() {
+            return delegate.length();
+        }
+
+        @Override
+        public char charAt(int index) {
+            if (Thread.currentThread().isInterrupted()) {
+                throw new java.util.concurrent.CancellationException("Regex match cancelled after timeout");
+            }
+            return delegate.charAt(index);
+        }
+
+        @Override
+        public CharSequence subSequence(int start, int end) {
+            return delegate.subSequence(start, end);
+        }
+
+        @Override
+        public String toString() {
+            return delegate;
+        }
+    }
 
     /**
      * Immutable container for regex match results.

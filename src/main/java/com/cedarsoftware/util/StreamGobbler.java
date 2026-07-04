@@ -31,7 +31,9 @@ public class StreamGobbler implements Runnable
 {
     private final InputStream _inputStream;
     private final Charset _charset;
-    private String _result;
+    // volatile: written by the gobbler thread, read by the launching thread. Executor joins
+    // with a deadline — a timed-out join reads this field without a happens-before edge.
+    private volatile String _result;
 
     StreamGobbler(InputStream is)
     {

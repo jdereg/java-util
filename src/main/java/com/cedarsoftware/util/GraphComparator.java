@@ -385,21 +385,28 @@ public class GraphComparator
 
             private static int getResizeValue(Delta delta)
             {
-                boolean rightType = delta.optionalKey instanceof Integer ||
-                        delta.optionalKey instanceof Long ||
-                        delta.optionalKey instanceof Short ||
-                        delta.optionalKey instanceof Byte ||
-                        delta.optionalKey instanceof BigInteger;
+                Object key = delta.optionalKey;
+                boolean rightType = key instanceof Integer ||
+                        key instanceof Long ||
+                        key instanceof Short ||
+                        key instanceof Byte ||
+                        key instanceof BigInteger;
 
-                if (rightType && ((Number)delta.optionalKey).intValue() >= 0)
+                if (rightType)
                 {
-                    return ((Number)delta.optionalKey).intValue();
+                    // intValue() alone truncates: a Long/BigInteger like 2^32 would silently
+                    // become 0. Require the value to be exactly representable as an int.
+                    Number n = (Number) key;
+                    boolean exact = key instanceof BigInteger
+                            ? ((BigInteger) key).bitLength() < 32
+                            : n.longValue() == n.intValue();
+                    if (exact && n.intValue() >= 0)
+                    {
+                        return n.intValue();
+                    }
                 }
-                else
-                {
-                    throw new IllegalArgumentException(delta.cmd + " failed, the optionalKey must be a integer value 0 or greater, field: " + delta.fieldName +
-                            ", obj id: " + delta.id + ", optionalKey: " + getStringValue(delta.optionalKey));
-                }
+                throw new IllegalArgumentException(delta.cmd + " failed, the optionalKey must be a integer value 0 or greater, field: " + delta.fieldName +
+                        ", obj id: " + delta.id + ", optionalKey: " + getStringValue(delta.optionalKey));
             }
 
             private static String getStringValue(Object foo)
@@ -815,8 +822,9 @@ public class GraphComparator
         Set<?> srcSet = (Set<?>) delta.srcValue;
         Set<?> targetSet = (Set<?>) delta.targetValue;
 
-        // Create ID to Object map for target Set
-        Map<Object, Object> targetIdToValue = new HashMap<>(targetSet.size());
+        // Create ID to Object map for target Set (presized with load-factor headroom
+        // so population never rehashes — the int argument is a raw capacity, not a count)
+        Map<Object, Object> targetIdToValue = new HashMap<>(Math.max(16, (int) (targetSet.size() / 0.75f) + 1));
         for (Object targetValue : targetSet)
         {
             Object targetId = resolveId(targetValue, idFetcher, idCache);
@@ -826,7 +834,7 @@ public class GraphComparator
             }
         }
 
-        Map<Object, Object> srcIdToValue = new HashMap<>(srcSet.size());
+        Map<Object, Object> srcIdToValue = new HashMap<>(Math.max(16, (int) (srcSet.size() / 0.75f) + 1));
         String sysId = "(" + System.identityHashCode(srcSet) + ").remove(";
         for (Object srcValue : srcSet)
         {

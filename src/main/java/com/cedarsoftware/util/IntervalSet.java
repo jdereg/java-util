@@ -391,30 +391,48 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
     }
 
     /**
-     * Add an interval with merging logic (original behavior).
+     * Add an interval with merging logic.
+     * <p>
+     * Mutation order matters for the lock-free readers: the merged interval is always
+     * written (put) <i>before</i> any absorbed interval is removed, so at every instant
+     * the union of stored entries is a superset of the pre-existing coverage. Without
+     * this ordering, a concurrent {@link #contains} could transiently report a value
+     * uncovered even though it is covered both before and after the merge.
+     * </p>
      */
     private void addWithMerge(T start, T end) {
         T newStart = start;
         T newEnd = end;
 
-        // 1) absorb potential lower neighbor that overlaps or touches
+        // 1) absorb potential lower neighbor that overlaps or touches — extend it in
+        //    place (no removal) rather than remove-then-re-put
         Map.Entry<T, T> lower = intervals.lowerEntry(start);
         if (lower != null && lower.getValue().compareTo(start) >= 0) {
             newStart = lower.getKey();
             newEnd = greaterOf(lower.getValue(), end);
-            intervals.remove(lower.getKey());
+        } else {
+            // Fold in an interval that starts exactly at 'start' so the put below
+            // never shrinks it
+            T existingEnd = intervals.get(start);
+            if (existingEnd != null) {
+                newEnd = greaterOf(existingEnd, newEnd);
+            }
         }
+        intervals.put(newStart, newEnd);
 
-        // 2) absorb all following intervals that intersect or touch the new one
-        for (Iterator<Map.Entry<T, T>> it = intervals.tailMap(start, true).entrySet().iterator(); it.hasNext(); ) {
+        // 2) absorb all following intervals that intersect or touch the new one.
+        //    Extend the base entry over each absorbed interval BEFORE removing it.
+        for (Iterator<Map.Entry<T, T>> it = intervals.tailMap(newStart, false).entrySet().iterator(); it.hasNext(); ) {
             Map.Entry<T, T> e = it.next();
             if (e.getKey().compareTo(newEnd) > 0) {
                 break;           // gap → stop
             }
-            newEnd = greaterOf(newEnd, e.getValue());
+            if (e.getValue().compareTo(newEnd) > 0) {
+                newEnd = e.getValue();
+                intervals.put(newStart, newEnd);
+            }
             it.remove();                                           // consumed
         }
-        intervals.put(newStart, newEnd);
     }
 
     /**
@@ -507,22 +525,28 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
     }
 
     /**
-     * Remove range with interval splitting (original behavior for merged intervals).
+     * Remove range with interval splitting.
+     * <p>
+     * Mutation order matters for the lock-free readers: any retained fragment (coverage
+     * outside [start, end)) is written <i>before</i> the interval it came from is removed
+     * or trimmed, so retained coverage is never transiently invisible. The range being
+     * removed may appear covered until the operation completes — the removal simply
+     * linearizes at its end, which is the correct semantic for a lock-guarded write.
+     * </p>
      */
     private void removeRangeWithSplitting(T start, T end) {
         Map.Entry<T, T> lower = intervals.lowerEntry(start);
         if (lower != null && lower.getValue().compareTo(start) > 0) {
-            T lowerKey = lower.getKey();
+            T lowerKey = lower.getKey();     // strictly < start, per lowerEntry contract
             T lowerValue = lower.getValue();
-            intervals.remove(lowerKey);
 
-            if (lowerKey.compareTo(start) < 0) {
-                intervals.put(lowerKey, start);
-            }
-
+            // Right-hand fragment first (new key — cannot collide: lower spans 'end',
+            // so no other interval can start there), then trim the left-hand interval
+            // in place. No removal needed.
             if (lowerValue.compareTo(end) > 0) {
                 intervals.put(end, lowerValue);
             }
+            intervals.put(lowerKey, start);
         }
 
         for (Iterator<Map.Entry<T, T>> it = intervals.tailMap(start, true).entrySet().iterator();
@@ -532,11 +556,12 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
                 break;
             }
             T entryValue = e.getValue();
-            it.remove();
 
+            // Retained fragment first, then remove the absorbed entry
             if (entryValue.compareTo(end) > 0) {
                 intervals.put(end, entryValue);
             }
+            it.remove();
         }
     }
 

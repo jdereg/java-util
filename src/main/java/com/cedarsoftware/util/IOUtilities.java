@@ -18,6 +18,7 @@ import java.net.HttpURLConnection;
 import java.net.URLConnection;
 import java.nio.file.Files;
 import java.util.Arrays;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -333,7 +334,9 @@ public final class IOUtilities {
         if (!Objects.equals(allowedProtocolsProperty, cachedAllowedProtocolsProperty)) {
             synchronized (CONFIG_CACHE_LOCK) {
                 if (!Objects.equals(allowedProtocolsProperty, cachedAllowedProtocolsProperty)) {
-                    String[] allowedProtocols = allowedProtocolsProperty.toLowerCase().split(",");
+                    // Locale.ROOT: on a Turkish-locale JVM, default-locale lowercasing turns "FILE"
+                    // into "fıle" (dotless ı), which would never match a URL's "file" protocol
+                    String[] allowedProtocols = allowedProtocolsProperty.toLowerCase(Locale.ROOT).split(",");
 
                     // Trim whitespace from protocols
                     for (int i = 0; i < allowedProtocols.length; i++) {
@@ -427,7 +430,9 @@ public final class IOUtilities {
             // Detect symbolic link attacks by comparing canonical and absolute paths
             if (!canonicalPath.equals(absolutePath)) {
                 // On Windows, case differences might be normal, so normalize case for comparison
-                if (System.getProperty("os.name", "").toLowerCase().contains("windows")) {
+                // Locale.ROOT: "WINDOWS".toLowerCase() under a Turkish default locale yields
+                // "wındows" (dotless ı), silently disabling every Windows security check below
+                if (System.getProperty("os.name", "").toLowerCase(Locale.ROOT).contains("windows")) {
                     if (!canonicalPath.equalsIgnoreCase(absolutePath)) {
                         debug("Potential symlink or case manipulation detected in file access", null);
                     }
@@ -435,18 +440,18 @@ public final class IOUtilities {
                     debug("Potential symlink detected in file access", null);
                 }
             }
-            
+
             // Check for attempts to access system directories (Unix/Linux specific)
-            String lowerCanonical = canonicalPath.toLowerCase();
-            if (lowerCanonical.startsWith("/proc/") || lowerCanonical.startsWith("/sys/") || 
+            String lowerCanonical = canonicalPath.toLowerCase(Locale.ROOT);
+            if (lowerCanonical.startsWith("/proc/") || lowerCanonical.startsWith("/sys/") ||
                 lowerCanonical.startsWith("/dev/") || lowerCanonical.equals("/etc/passwd") ||
                 lowerCanonical.equals("/etc/shadow") || lowerCanonical.startsWith("/etc/ssh/")) {
                 throw new SecurityException("Access to system directory/file denied: " + sanitizePathForLogging(canonicalPath));
             }
-            
+
             // Check for Windows system file access attempts
-            if (System.getProperty("os.name", "").toLowerCase().contains("windows")) {
-                String lowerPath = canonicalPath.toLowerCase();
+            if (System.getProperty("os.name", "").toLowerCase(Locale.ROOT).contains("windows")) {
+                String lowerPath = canonicalPath.toLowerCase(Locale.ROOT);
                 if (lowerPath.contains("\\windows\\system32\\") || lowerPath.contains("\\windows\\syswow64\\") ||
                     lowerPath.endsWith("\\sam") || lowerPath.endsWith("\\system") || lowerPath.endsWith("\\security")) {
                     throw new SecurityException("Access to Windows system directory/file denied: " + sanitizePathForLogging(canonicalPath));
@@ -513,8 +518,8 @@ public final class IOUtilities {
         if (protocol == null) {
             throw new SecurityException("URL protocol cannot be null");
         }
-        
-        protocol = protocol.toLowerCase();
+
+        protocol = protocol.toLowerCase(Locale.ROOT);
         
         // Check if protocol validation is disabled (for testing or specific use cases)
         if (Boolean.parseBoolean(System.getProperty("io.url.protocol.validation.disabled", "false"))) {
@@ -667,8 +672,8 @@ public final class IOUtilities {
      */
     private static boolean isSystemPath(String path) {
         if (path == null) return false;
-        
-        String lowerPath = path.toLowerCase();
+
+        String lowerPath = path.toLowerCase(Locale.ROOT);
         
         // Unix/Linux system paths
         if (lowerPath.startsWith("/etc/") || lowerPath.startsWith("/proc/") || 
@@ -759,7 +764,8 @@ public final class IOUtilities {
             if (path.contains("\0")) {
                 return "[path-with-null-byte]";
             }
-            if (path.toLowerCase().contains("system32") || path.toLowerCase().contains("syswow64")) {
+            String lowerPath = path.toLowerCase(Locale.ROOT);
+            if (lowerPath.contains("system32") || lowerPath.contains("syswow64")) {
                 return "[windows-system-path]";
             }
             if (path.startsWith("/proc/") || path.startsWith("/sys/") || path.startsWith("/dev/") || path.startsWith("/etc/")) {
@@ -823,6 +829,12 @@ public final class IOUtilities {
                 try {
                     is = new GZIPInputStream(is, TRANSFER_BUFFER);
                 } catch (IOException e) {
+                    // The GZIP header read failed — close the underlying connection stream
+                    // before rethrowing, or the socket leaks until GC
+                    try {
+                        is.close();
+                    } catch (IOException ignored) {
+                    }
                     ExceptionUtilities.uncheckedThrow(e);
                     return null; // unreachable
                 }
@@ -881,6 +893,8 @@ public final class IOUtilities {
         Convention.throwIfNull(f, "File cannot be null");
         Convention.throwIfNull(c, "URLConnection cannot be null");
         validateFilePath(f);
+        // Validate the destination protocol too: uploads are as SSRF-relevant as downloads
+        validateUrlProtocol(c);
         try (InputStream in = new BufferedInputStream(Files.newInputStream(f.toPath()));
              OutputStream out = new BufferedOutputStream(c.getOutputStream())) {
             return transfer(in, out, cb);
@@ -1269,6 +1283,8 @@ public final class IOUtilities {
     public static int transfer(URLConnection c, byte[] bytes) {
         Convention.throwIfNull(c, "URLConnection cannot be null");
         Convention.throwIfNull(bytes, "byte array cannot be null");
+        // Validate the destination protocol too: uploads are as SSRF-relevant as downloads
+        validateUrlProtocol(c);
         try (OutputStream out = new BufferedOutputStream(c.getOutputStream())) {
             out.write(bytes);
             return bytes.length;
@@ -1328,6 +1344,7 @@ public final class IOUtilities {
      * @throws RuntimeException if compression fails
      */
     public static byte[] compressBytes(byte[] bytes) {
+        Convention.throwIfNull(bytes, "Byte array cannot be null");
         return compressBytes(bytes, 0, bytes.length);
     }
 
@@ -1366,6 +1383,7 @@ public final class IOUtilities {
      * @throws RuntimeException if decompression fails or exceeds size limits
      */
     public static byte[] uncompressBytes(byte[] bytes) {
+        Objects.requireNonNull(bytes, "Byte array cannot be null");
         return uncompressBytes(bytes, 0, bytes.length, getDefaultMaxDecompressionSize());
     }
 
@@ -1405,8 +1423,10 @@ public final class IOUtilities {
             throw new IllegalArgumentException("maxSize must be > 0");
         }
         validateByteArrayRange(bytes, offset, len);
-        
-        if (ByteUtilities.isGzipped(bytes, offset)) {
+
+        // len >= 2: isGzipped reads two bytes at offset — with len < 2 it could read past the
+        // caller's declared range and misclassify a 1-byte slice of a larger gzip array
+        if (len >= 2 && ByteUtilities.isGzipped(bytes, offset)) {
             try (ByteArrayInputStream byteStream = new ByteArrayInputStream(bytes, offset, len);
                  GZIPInputStream gzipStream = new GZIPInputStream(byteStream, TRANSFER_BUFFER)) {
                 return inputStreamToBytes(gzipStream, maxSize);

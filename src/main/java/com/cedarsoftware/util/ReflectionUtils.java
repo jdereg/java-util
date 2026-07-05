@@ -186,8 +186,11 @@ public final class ReflectionUtils {
     // lock-free, restoring near-linear scaling (measured ~10x at 8 threads, ~1.6x single-threaded).
     // Approximate (sampled) LRU eviction is fine here — an evicted entry is simply recomputed. All
     // THREADED instances share ONE daemon cleanup thread, so this adds no per-cache threads.
-    private static final AtomicReference<Map<? super SortedConstructorsCacheKey, Constructor<?>[]>> SORTED_CONSTRUCTORS_CACHE =
-            new AtomicReference<>(ensureThreadSafe(new LRUCache<>(CACHE_SIZE, LRUCache.StrategyType.THREADED)));
+    // Keyed directly by Class (Class has identity equals/hashCode) — the former SortedConstructorsCacheKey
+    // wrapper added no semantics over a raw Class key but was allocated on EVERY probe, which is hot on
+    // the deserialization path (one instantiation per object).
+    private static final AtomicReference<Map<Object, Constructor<?>[]>> SORTED_CONSTRUCTORS_CACHE =
+            new AtomicReference<>(ensureThreadSafe(new LRUCache<Object, Constructor<?>[]>(CACHE_SIZE, LRUCache.StrategyType.THREADED)));
 
     private static final AtomicReference<Map<? super ConstructorCacheKey, Constructor<?>>> CONSTRUCTOR_CACHE =
             new AtomicReference<>(ensureThreadSafe(new LRUCache<>(CACHE_SIZE, LRUCache.StrategyType.THREADED)));
@@ -732,32 +735,6 @@ public final class ReflectionUtils {
     }
 
     // Add this class definition with the other cache keys
-    private static final class SortedConstructorsCacheKey {
-        // Use object identity instead of string names to prevent cache poisoning
-        private final Class<?> clazz;
-        private final int hash;
-
-        SortedConstructorsCacheKey(Class<?> clazz) {
-            this.clazz = Objects.requireNonNull(clazz, "clazz cannot be null");
-            // Use System.identityHashCode to prevent hash manipulation
-            this.hash = System.identityHashCode(clazz);
-        }
-
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (!(o instanceof SortedConstructorsCacheKey)) return false;
-            SortedConstructorsCacheKey that = (SortedConstructorsCacheKey) o;
-            // Use reference equality to prevent spoofing
-            return this.clazz == that.clazz;
-        }
-
-        @Override
-        public int hashCode() {
-            return hash;
-        }
-    }
-
     private static final class FieldNameCacheKey {
         // Use object identity instead of string names to prevent cache poisoning
         private final Class<?> clazz;
@@ -2006,12 +1983,14 @@ public final class ReflectionUtils {
             throw new SecurityException("Access denied: Constructor enumeration not permitted for security-sensitive class");
         }
 
-        // Create proper cache key with classloader information
-        SortedConstructorsCacheKey key = new SortedConstructorsCacheKey(clazz);
-
-        // Use the cache to avoid repeated sorting
-        return getOrCompute(SORTED_CONSTRUCTORS_CACHE.get(), key,
-                k -> getAllConstructorsInternal(clazz));
+        // Probe the cache with the Class itself (identity-keyed) — no per-call key allocation. get()
+        // first so the (capturing) compute lambda is allocated only on a genuine miss, not every hit.
+        Map<Object, Constructor<?>[]> cache = SORTED_CONSTRUCTORS_CACHE.get();
+        Constructor<?>[] cached = cache.get(clazz);
+        if (cached != null) {
+            return cached;
+        }
+        return getOrCompute(cache, clazz, k -> getAllConstructorsInternal(clazz));
     }
 
     /**

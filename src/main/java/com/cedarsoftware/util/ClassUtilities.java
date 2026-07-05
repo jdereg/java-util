@@ -2871,11 +2871,18 @@ public class ClassUtilities {
         return targetType.isAssignableFrom(sourceType);
     }
 
-    // Cache for tracking which AccessibleObjects we've already tried to make accessible
-    // Uses WeakHashMap to allow GC of classes/methods when no longer referenced
-    // Uses Collections.synchronizedMap wrapper for thread-safety
-    private static final Map<AccessibleObject, Boolean> accessibilityCache = 
-        Collections.synchronizedMap(new WeakHashMap<>());
+    // Memoizes AccessibleObjects that could NOT be made accessible (trySetAccessible only ever
+    // stores Boolean.FALSE). This is probed on every instantiation and field injection, so under
+    // concurrent deserialization it MUST be lock-free: a Collections.synchronizedMap(WeakHashMap)
+    // here serialized every worker thread on a single monitor (the dominant contention point in
+    // multi-threaded reads). ConcurrentHashMap gives lock-free reads and writes.
+    //
+    // Strong references (no WeakHashMap) are safe here: setAccessible only fails for members whose
+    // declaring module refuses to open — JPMS-sealed platform/JDK internals loaded by the
+    // bootstrap/platform loader, which are never unloaded. Application and dynamically-loaded
+    // classes (e.g. Groovy) live in open/unnamed modules, succeed here, and are therefore never
+    // added — so no application classloader is ever retained by this cache.
+    private static final Map<AccessibleObject, Boolean> accessibilityCache = new ConcurrentHashMap<>();
     
     static void trySetAccessible(AccessibleObject object) {
         // Check cache for known failures only. We only cache FALSE (failures) to avoid

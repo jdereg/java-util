@@ -528,12 +528,14 @@ A high-performance `Set` implementation for `Class` objects that leverages Java'
 
 ### Key Features
 
-- **Ultra-fast membership tests**: 2-10x faster than `HashSet` and 3-15x faster than `ConcurrentHashMap.keySet()` for `contains()` operations
+- **Fast membership tests (in a narrow niche)**: 2-10x faster than `HashSet` for `contains()`, and faster than `ConcurrentHashMap.keySet()` for concurrent reads — **but only for a few, pre-populated, read-mostly instances**. The advantage inverts once many ClassValue-based collections compete on the same classes; see [Critical usage constraints](#classvalueset-critical-usage-constraints) below.
 - **Typed fast path**: `containsClass(Class)` skips the `instanceof Class` guard for hot paths
 - **Thread-safe**: Fully concurrent support for all operations
 - **Complete Set interface**: Implements the full `Set` contract
 - **Null support**: Null elements are properly supported
 - **Optimized for Class elements**: Specially designed for sets of `Class` objects
+
+> **`ClassValueSet` is a specialist, not a general-purpose faster `Set<Class>`.** It wins for a *few, pre-populated, read-mostly* class sets (blocklists, capability flags); outside that a plain `ConcurrentHashMap.newKeySet()` is as fast or faster. Read [Critical usage constraints](#classvalueset-critical-usage-constraints) before adopting.
 
 ### Usage Examples
 
@@ -563,12 +565,20 @@ ClassValueSet fromCollection = ClassValueSet.from(existingCollection);
 
 ### Performance Characteristics
 
-The `ClassValueSet` provides dramatically improved membership testing performance:
+The `ClassValueSet` provides improved membership testing performance *within its niche* (few, pre-populated, read-mostly instances):
 
 - **containsClass(Class)**: Typed fast path — skips the `instanceof` guard that `contains(Object)` must perform; prefer this in hot paths
 - **contains(Object)**: 2-10x faster than standard sets due to JVM-optimized `ClassValue` caching
 - **add() / remove()**: Comparable to ConcurrentHashMap-backed sets (standard performance)
 - **Best for**: Read-heavy workloads where membership tests vastly outnumber modifications
+
+### ClassValueSet: critical usage constraints
+
+Use `ClassValueSet` only when **all** of these hold; otherwise use a plain `ConcurrentHashMap.newKeySet()`:
+
+- **Few instances — the cost is non-local.** ClassValue's speed comes from a per-`Class` fast cache, but the JVM gives every `Class` *one* small, fixed-capacity cache array **shared across all `ClassValue` instances** (open-addressed, probe limit of 3). Each `ClassValueSet` is a distinct `ClassValue`, so many of them keyed on the same classes evict one another and each membership test falls through to a slower backup path. A `ClassValueSet`'s performance therefore depends on how many *other* ClassValue-based collections exist in the JVM — unlike any ordinary `Set`. The advantage holds for a handful and **inverts** once ~10+ compete on the same classes.
+- **Pre-populated, not lazily built.** Build once, then read. `add()`/`remove()` invalidate the set's `ClassValue`, which the JVM implements by dropping *every* cached entry (a version bump), so mutating on a hot path repeatedly re-validates the whole cache. Use a plain `ConcurrentHashMap.newKeySet()` for frequently-mutated sets.
+- **Not a leak-safe class set.** The backing set **strongly references** its `Class` elements, so a long-lived (e.g. `static`) set pins those classes and their `ClassLoader`s until removed or cleared. Don't accumulate dynamically-loaded classes in a long-lived instance.
 
 ### Implementation Notes
 
@@ -1506,12 +1516,14 @@ A high-performance `Map` implementation keyed on `Class` objects that leverages 
 
 ### Key Features
 
-- **Ultra-fast lookups**: 2-10x faster than `HashMap` and 3-15x faster than `ConcurrentHashMap` for `get()` operations
+- **Fast lookups (in a narrow niche)**: 2-10x faster than `HashMap` for `get()`, and faster than `ConcurrentHashMap` for concurrent reads — **but only for a few, pre-populated, read-mostly instances**. The advantage inverts once many ClassValue-based collections compete on the same classes; see [Critical usage constraints](#classvaluemap-critical-usage-constraints) below.
 - **Typed fast path**: `getByClass(Class)` skips the `instanceof Class` guard for hot paths
 - **Thread-safe**: Fully concurrent support for all operations
 - **Drop-in replacement**: Completely implements `ConcurrentMap` interface
 - **Null support**: Both null keys and null values are supported
 - **Optimized for Class keys**: Specially designed for maps where `Class` objects are keys
+
+> **`ClassValueMap` is a specialist, not a general-purpose faster `Map<Class,V>`.** It wins for a *few, pre-populated, read-mostly* class registries; outside that a plain `ConcurrentHashMap` is as fast or faster. Read [Critical usage constraints](#classvaluemap-critical-usage-constraints) before adopting.
 
 ### Usage Examples
 
@@ -1537,12 +1549,20 @@ public void process(Object object) {
 
 ### Performance Characteristics
 
-The `ClassValueMap` provides dramatically improved lookup performance:
+The `ClassValueMap` provides improved lookup performance *within its niche* (few, pre-populated, read-mostly instances):
 
 - **getByClass(Class)**: Typed fast path — skips the `instanceof` guard that `get(Object)` must perform; prefer this in hot paths
 - **get(Object) / containsKey()**: 2-10x faster than standard maps due to JVM-optimized `ClassValue` caching
 - **put() / remove()**: Comparable to `ConcurrentHashMap` (standard performance)
 - **Best for**: Read-heavy workloads where lookups vastly outnumber modifications
+
+### ClassValueMap: critical usage constraints
+
+Use `ClassValueMap` only when **all** of these hold; otherwise use a plain `ConcurrentHashMap`:
+
+- **Few instances — the cost is non-local.** ClassValue's speed comes from a per-`Class` fast cache, but the JVM gives every `Class` *one* small, fixed-capacity cache array **shared across all `ClassValue` instances** (open-addressed, probe limit of 3). Each `ClassValueMap` is a distinct `ClassValue`, so many of them keyed on the same classes evict one another from that array and each lookup falls through to a slower backup path (a `WeakHashMap` re-promote). A `ClassValueMap`'s performance therefore depends on how many *other* ClassValue-based collections exist in the JVM — unlike any ordinary `Map`. The "faster than `ConcurrentHashMap`" advantage holds for a handful and **inverts** once ~10+ compete on the same classes.
+- **Pre-populated, not lazily built.** Build once (e.g. at startup), then read. Avoid the get-miss-then-`put` idiom on a hot path: `put()` invalidates the map's `ClassValue`, which the JVM implements by bumping a version that drops *every* cached entry (not just the changed key), so lazily populating N classes is roughly O(N²) of whole-cache invalidation as it warms up. Use a plain `ConcurrentHashMap` for lazily-built caches.
+- **Not a leak-safe class cache.** The backing `ConcurrentHashMap` **strongly references** its `Class` keys, so a long-lived instance pins those classes (and their `ClassLoader`s) until removed or cleared. A bare `ClassValue` is leak-safe — its values live inside each `Class` — but this map's backing store gives that up. Don't accumulate dynamically-loaded classes in a long-lived instance.
 
 ### Implementation Notes
 

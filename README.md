@@ -444,7 +444,7 @@ System.setProperty("io.debug.detailed.paths", "true");
 </tr>
 <tr>
 <td><a href="userguide.md#classvalueset">ClassValueSet</a></td>
-<td>High-performance Set optimized for fast <code>Class</code> membership testing using JVM-optimized <code>ClassValue</code>.</td>
+<td>Set for fast <code>Class</code> membership testing via <code>ClassValue</code> — a specialist for a <em>few, pre-populated, read-mostly</em> class sets (see usage constraints), not a general-purpose faster <code>Set</code>.</td>
 </tr>
 <tr>
 <td><a href="userguide.md#intervalset">IntervalSet</a></td>
@@ -484,7 +484,7 @@ System.setProperty("io.debug.detailed.paths", "true");
 </tr>
 <tr>
 <td><a href="userguide.md#classvaluemap">ClassValueMap</a></td>
-<td>High-performance Map optimized for fast <code>Class</code> key lookups using JVM-optimized <code>ClassValue</code>.</td>
+<td>Map for fast <code>Class</code> key lookups via <code>ClassValue</code> — a specialist for a <em>few, pre-populated, read-mostly</em> class registries (see usage constraints), not a general-purpose faster <code>Map</code>.</td>
 </tr>
 <tr>
 <td><a href="userguide.md#multikeymap">MultiKeyMap</a></td>

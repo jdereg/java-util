@@ -23,10 +23,16 @@ import java.util.concurrent.atomic.AtomicReference;
  * Map implementations:
  * <ul>
  *   <li>2-10x faster than HashMap for key lookups</li>
- *   <li>3-15x faster than ConcurrentHashMap for concurrent access patterns</li>
- *   <li>The performance advantage increases with contention (multiple threads)</li>
- *   <li>Most significant when looking up the same class keys repeatedly</li>
+ *   <li>Faster than ConcurrentHashMap for concurrent reads — <b>but only for a small number of
+ *       instances.</b> The advantage inverts once many ClassValue-based collections compete on the
+ *       same classes; read <a href="#constraints">Critical usage constraints</a> before adopting</li>
+ *   <li>Most significant when a <b>few</b> instances are pre-populated and then read repeatedly</li>
  * </ul>
+ *
+ * <p><b>Not a general-purpose "faster {@code Map<Class,V>}".</b> This is a specialist for a narrow
+ * niche (few instances, pre-populated, read-mostly). Outside that niche a plain
+ * {@link java.util.concurrent.ConcurrentHashMap} is as fast or faster — see
+ * <a href="#constraints">Critical usage constraints</a>.
  *
  * <h2>Typed fast path: {@link #getByClass(Class)}</h2>
  * <p>
@@ -82,6 +88,33 @@ import java.util.concurrent.atomic.AtomicReference;
  *   <li>Higher memory usage (maintains both a backing map and ClassValue cache)</li>
  *   <li>Write operations (put/remove) aren't faster and may be slightly slower</li>
  *   <li>Only Class keys benefit from the optimized lookups</li>
+ * </ul>
+ *
+ * <h2 id="constraints">Critical usage constraints (read before adopting)</h2>
+ * <p>
+ * Use {@code ClassValueMap} only when <b>all</b> of the following hold; otherwise prefer a plain
+ * {@link java.util.concurrent.ConcurrentHashMap}:
+ * <ul>
+ *   <li><b>Few instances — the cost is non-local.</b> ClassValue's speed comes from a per-{@code
+ *       Class} fast cache, but the JVM gives every {@code Class} <em>one</em> small, fixed-capacity
+ *       cache array <b>shared across all {@link ClassValue} instances</b> (open-addressed, probe
+ *       limit of 3). Every {@code ClassValueMap} is a distinct {@code ClassValue}, so many of them
+ *       keyed on the same classes evict one another from that array and each lookup falls through to
+ *       a slower backup path (a {@code WeakHashMap} re-promote). This map's performance therefore
+ *       depends on how many <em>other</em> ClassValue-based collections exist in the JVM — unlike any
+ *       ordinary {@code Map}. The "faster than {@code ConcurrentHashMap}" advantage holds for a
+ *       handful and <b>inverts</b> once ~10+ compete on the same classes.</li>
+ *   <li><b>Pre-populated, not lazily built.</b> Build it once (e.g. at startup) and then read.
+ *       Avoid the get-miss-then-{@link #put} idiom on a hot path: {@code put} invalidates this map's
+ *       {@code ClassValue}, which the JVM implements by bumping a version that drops <em>every</em>
+ *       cached entry, not just the changed key. Lazily populating N classes is therefore ~O(N&sup2;)
+ *       of whole-cache invalidation as it warms up. Use a plain {@code ConcurrentHashMap} for
+ *       lazily-built caches.</li>
+ *   <li><b>Not a leak-safe class cache.</b> The backing {@code ConcurrentHashMap} <b>strongly
+ *       references</b> its {@code Class} keys, so a long-lived instance pins those classes (and their
+ *       {@code ClassLoader}s) until removed or cleared. (A bare {@code ClassValue} is leak-safe — its
+ *       values live inside each {@code Class} and pin nothing — but this map's backing store gives
+ *       that up.) Do not accumulate dynamically-loaded classes in a long-lived instance.</li>
  * </ul>
  *
  * <h2>Thread Safety</h2>

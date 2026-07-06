@@ -21,10 +21,17 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * Set implementations:
  * <ul>
  *   <li>2-10x faster than HashSet for membership checks</li>
- *   <li>3-15x faster than ConcurrentHashMap.keySet() for concurrent access patterns</li>
- *   <li>The performance advantage increases with contention (multiple threads)</li>
- *   <li>Most significant when checking the same classes repeatedly</li>
+ *   <li>Faster than {@code ConcurrentHashMap.keySet()} for concurrent reads — <b>but only for a
+ *       small number of instances.</b> The advantage inverts once many ClassValue-based collections
+ *       compete on the same classes; read <a href="#constraints">Critical usage constraints</a>
+ *       before adopting</li>
+ *   <li>Most significant when a <b>few</b> instances are pre-populated and then checked repeatedly</li>
  * </ul>
+ *
+ * <p><b>Not a general-purpose "faster {@code Set<Class>}".</b> This is a specialist for a narrow
+ * niche (few instances, pre-populated, read-mostly). Outside it a plain
+ * {@link java.util.concurrent.ConcurrentHashMap#newKeySet() ConcurrentHashMap.newKeySet()} is as
+ * fast or faster — see <a href="#constraints">Critical usage constraints</a>.
  *
  * <h2>Typed fast path: {@link #containsClass(Class)}</h2>
  * <p>
@@ -74,6 +81,28 @@ import java.util.concurrent.atomic.AtomicBoolean;
  *       set is cleared. Do not use a long-lived set to accumulate dynamically-loaded classes
  *       (the {@link ClassValue}-side cache entries live inside each {@code Class} and do not
  *       pin anything; only the backing set's strong references do)</li>
+ * </ul>
+ *
+ * <h2 id="constraints">Critical usage constraints (read before adopting)</h2>
+ * <p>
+ * Use {@code ClassValueSet} only when <b>all</b> of the following hold; otherwise prefer a plain
+ * {@link java.util.concurrent.ConcurrentHashMap#newKeySet() ConcurrentHashMap.newKeySet()}:
+ * <ul>
+ *   <li><b>Few instances — the cost is non-local.</b> ClassValue's speed comes from a per-{@code
+ *       Class} fast cache, but the JVM gives every {@code Class} <em>one</em> small, fixed-capacity
+ *       cache array <b>shared across all {@link ClassValue} instances</b> (open-addressed, probe
+ *       limit of 3). Every {@code ClassValueSet} is a distinct {@code ClassValue}, so many of them
+ *       keyed on the same classes evict one another from that array and each membership test falls
+ *       through to a slower backup path. This set's performance therefore depends on how many
+ *       <em>other</em> ClassValue-based collections exist in the JVM — unlike any ordinary {@code
+ *       Set}. The advantage holds for a handful and <b>inverts</b> once ~10+ compete on the same
+ *       classes.</li>
+ *   <li><b>Pre-populated, not lazily built.</b> Build it once and then read. {@link #add}/{@link
+ *       #remove} invalidate this set's {@code ClassValue}, which the JVM implements by bumping a
+ *       version that drops <em>every</em> cached entry, so mutating on a hot path repeatedly
+ *       re-validates the whole cache. Use a plain {@code ConcurrentHashMap.newKeySet()} for
+ *       frequently-mutated sets.</li>
+ *   <li><b>Not a leak-safe class set</b> — see the strong-reference note under Trade-offs above.</li>
  * </ul>
  *
  * <h2>Thread Safety</h2>

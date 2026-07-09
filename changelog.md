@@ -1,6 +1,7 @@
 ### Revision History
 
-#### 4.108.0
+#### 4.108.0 - 2026-07-09
+* **TESTING**: Added `FastReader` buffer-boundary regression coverage — differential sweeps that exercise the internal 8192-char buffer refill boundary (and 16384) for `readUntil`, `readLine` (including a `\r\n` line ending straddling the boundary), bulk `read(char[])`, and the borrowed `readUntil` + fallback pattern. They reconstruct the stream and compare against the original, confirming `FastReader` handles delimiters and line endings correctly across a refill. **No behavioral change.** Released in lock-step with `json-io` 4.108.0 (which fixes a slow-path escape bug that was in json-io's `CharStreamTokenizer`, not here). The `json-io` test-scope dependency remains `4.107.0` — it always trails java-util by one release to avoid the java-util↔json-io dependency cycle.
 
 #### 4.107.0 - 2026-07-06
 * **DOCUMENTATION**: `ClassValueMap` and `ClassValueSet` Javadoc, `userguide.md`, and `README.md` now document the critical usage constraints uncovered by profiling. These are **specialists**, not general-purpose faster `Map<Class,V>`/`Set<Class>`: they win only for a *few, pre-populated, read-mostly* class registries. The docs now spell out (1) the **non-local cost** — every `Class` has one small, `PROBE_LIMIT`-bounded ClassValue cache array shared across *all* `ClassValue` instances, so many instances keyed on the same classes thrash each other and the "faster than `ConcurrentHashMap`" advantage inverts past ~10; (2) that **lazy get-then-`put` population is an anti-pattern** because `put()` invalidates the whole ClassValue (≈O(N²) as classes warm up); and (3) that the **strong-referencing backing store forfeits `ClassValue`'s leak-safety**. No behavioral change.

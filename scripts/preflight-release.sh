@@ -19,9 +19,31 @@ echo "=== ${PROJECT_NAME} pre-release preflight ==="
 echo
 
 # 1. Off corporate zscaler / network reaches Sonatype Central Portal
+#
+# Two distinct things to prove, because reachability alone is NOT enough. curl
+# validates against the macOS system truststore, which holds the corporate root
+# CA, so an intercepted connection returns a perfectly healthy 200 and a
+# reachability-only check passes straight through zscaler -- the exact false
+# green that lets a deploy start and then silently hang at upload. So also
+# inspect who issued the certificate: on a clean connection it is a public CA,
+# under TLS inspection it is the corporate/zscaler CA.
 echo "[1/7] Network connectivity to Sonatype Central Portal..."
 if curl -sS -o /dev/null -m 8 -w "%{http_code}" "https://central.sonatype.com/" 2>/dev/null | grep -qE "^(200|301|302)$"; then
-    green "      ✓ central.sonatype.com reachable"
+    CERT_INFO=$(echo | openssl s_client -connect central.sonatype.com:443 \
+                    -servername central.sonatype.com 2>/dev/null \
+                | grep -E "^(subject|issuer)=" || true)
+
+    if [ -z "$CERT_INFO" ]; then
+        yellow "      ! central.sonatype.com reachable, but could not read its TLS certificate"
+        yellow "        (openssl unavailable?) - verify manually that zscaler is off"
+    elif echo "$CERT_INFO" | grep -qiE "zscaler|gaig\.com"; then
+        red "      ✗ TLS interception detected - zscaler is ON"
+        red "        $(echo "$CERT_INFO" | grep -i issuer= | head -1)"
+        red "        The upload will hang or fail. Turn zscaler off and re-run."
+        FAIL=$((FAIL + 1))
+    else
+        green "      ✓ central.sonatype.com reachable, TLS not intercepted"
+    fi
 else
     red "      ✗ central.sonatype.com NOT reachable (zscaler enabled? VPN?)"
     FAIL=$((FAIL + 1))

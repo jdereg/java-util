@@ -2170,6 +2170,12 @@ public class ClassUtilities {
         Convention.throwIfNull(c, "Class cannot be null");
         Convention.throwIfNull(converter, "Converter cannot be null");
 
+        // Security check FIRST, at the single public chokepoint, and OUTSIDE every try block below.
+        // The named-parameter branch and the positional branch each construct independently, so
+        // checking inside either one leaves the other open — and a SecurityException thrown deeper
+        // down would be swallowed by the fallback handlers that retry on Exception.
+        SecurityChecker.verifyClass(c);
+
         // Normalize arguments to Collection format for existing code
         Collection<?> normalizedArgs = null;
         Map<String, Object> namedParameters = null;
@@ -2325,6 +2331,11 @@ public class ClassUtilities {
     }
 
     private static Object newInstanceWithNamedParameters(Converter converter, Class<?> c, Map<String, Object> namedParams) {
+        // Defense in depth. The public entry point already verified c, but this method reflectively
+        // invokes constructors with caller-supplied values and must never be reachable without the
+        // gate — the ClassValue-backed check is a cached lookup, so re-asserting it is nearly free.
+        SecurityChecker.verifyClass(c);
+
         // Get all constructors using ReflectionUtils for caching
         Constructor<?>[] sortedConstructors = ReflectionUtils.getAllConstructors(c);
 
@@ -2676,9 +2687,15 @@ public class ClassUtilities {
             }
             visitedClasses.add(c);
 
+            // For inner classes, try to get the enclosing instance
+            Class<?> enclosingClass = c.getEnclosingClass();
+
+            // The enclosing class gets constructed too, so it needs its own verdict — being the outer
+            // class of a permitted inner class is not a reason to skip the gate. Verified OUTSIDE the
+            // try below, whose catch-all would otherwise downgrade this into a silent fall-through.
+            SecurityChecker.verifyClass(enclosingClass);
+
             try {
-                // For inner classes, try to get the enclosing instance
-                Class<?> enclosingClass = c.getEnclosingClass();
                 if (!visitedClasses.contains(enclosingClass)) {
                     // Try to create enclosing instance with proper constructor initialization
                     Object enclosingInstance;
@@ -3336,33 +3353,80 @@ public class ClassUtilities {
         return !findLowestCommonSupertypes(a, b).isEmpty();
     }
 
-    // Static fields for the SecurityChecker class
+    // ---------------------------------------------------------------------------------------------
+    // SecurityChecker backing state.
+    //
+    // Rules come from two tiers, deliberately separated for performance:
+    //
+    //   1. Built-ins plus anything supplied via the classutilities.security.* system properties are
+    //      fixed at class-initialization time. A verdict derived only from them is immutable for a
+    //      given Class, so it is memoized in SECURITY_CHECK_CACHE — a ClassValue, whose computeValue()
+    //      runs at most once per Class lifetime.
+    //   2. Rules added programmatically (addBlockedClass/addBlockedPackage/allowClass) are consulted
+    //      BEFORE that cache. That ordering is what lets them take effect immediately with no
+    //      cache-invalidation machinery at all. The overwhelmingly common case — no programmatic
+    //      rules — costs one volatile boolean read on top of the pre-existing ClassValue lookup.
+    // ---------------------------------------------------------------------------------------------
     private static final ClassValueSet BLOCKED_CLASSES = new ClassValueSet();
-    private static final Set<String> BLOCKED_CLASS_NAMES_SET = new HashSet<>(SecurityChecker.SECURITY_BLOCKED_CLASS_NAMES);
+    private static final Set<String> BLOCKED_CLASS_NAMES_SET;
+    private static final String[] BLOCKED_PACKAGES;
+    private static final Set<String> UNBLOCKED_CLASS_NAMES;
+
+    // Tier 2: programmatic overrides. hasRuntimeSecurityRules gates all three lookups so the
+    // default configuration pays a single volatile read rather than three set probes.
+    private static volatile boolean hasRuntimeSecurityRules;
+    private static final Set<String> runtimeBlockedNames = ConcurrentHashMap.newKeySet();
+    private static final Set<String> runtimeBlockedPackages = ConcurrentHashMap.newKeySet();
+    private static final Set<String> runtimeUnblockedNames = ConcurrentHashMap.newKeySet();
 
     static {
         // Pre-populate with all blocked classes
         BLOCKED_CLASSES.addAll(SecurityChecker.SECURITY_BLOCKED_CLASSES.toSet());
+
+        Set<String> names = new HashSet<>(SecurityChecker.SECURITY_BLOCKED_CLASS_NAMES);
+        names.addAll(parseCsvProperty("classutilities.security.blocked.classes"));
+        BLOCKED_CLASS_NAMES_SET = Collections.unmodifiableSet(names);
+
+        Set<String> packages = new LinkedHashSet<>(SecurityChecker.SECURITY_BLOCKED_PACKAGES);
+        packages.addAll(parseCsvProperty("classutilities.security.blocked.packages"));
+        BLOCKED_PACKAGES = packages.toArray(new String[0]);
+
+        UNBLOCKED_CLASS_NAMES = Collections.unmodifiableSet(
+                new HashSet<>(parseCsvProperty("classutilities.security.unblocked")));
+    }
+
+    private static Set<String> parseCsvProperty(String key) {
+        String value = System.getProperty(key);
+        if (value == null || value.trim().isEmpty()) {
+            return Collections.emptySet();
+        }
+        Set<String> tokens = new LinkedHashSet<>();
+        for (String token : value.split(",")) {
+            String trimmed = token.trim();
+            if (!trimmed.isEmpty()) {
+                tokens.add(trimmed);
+            }
+        }
+        return tokens;
     }
 
     private static final ClassValue<Boolean> SECURITY_CHECK_CACHE = new ClassValue<Boolean>() {
         @Override
         protected Boolean computeValue(Class<?> type) {
             // Direct blocked class check (ultra-fast with ClassValueSet)
-            if (BLOCKED_CLASSES.containsClass(type)) {
+            if (!isUnblockedName(type.getName())
+                    && (BLOCKED_CLASSES.containsClass(type) || isBlockedName(type.getName()))) {
                 return Boolean.TRUE;
             }
 
-            // Fast name-based check
-            if (BLOCKED_CLASS_NAMES_SET.contains(type.getName())) {
-                return Boolean.TRUE;
-            }
-
-            // Need to check inheritance - use ClassHierarchyInfo. Consult BOTH the blocked-class
-            // set and the blocked-NAME set: entries like javax.script.ScriptEngine[Manager] exist
-            // only by name (their Class may not be loadable at init), and without the name check a
-            // class merely IMPLEMENTING/extending them would pass verifyClass() even though loading
-            // it by name would have been refused.
+            // Need to check inheritance - use ClassHierarchyInfo. Consult the blocked-class set, the
+            // blocked-NAME set, AND the blocked package prefixes: entries like
+            // javax.script.ScriptEngine[Manager] and every third-party gadget family exist only by
+            // name (their Class may not be loadable at init), and without the name check a class
+            // merely IMPLEMENTING/extending them would pass verifyClass() even though loading it by
+            // name would have been refused. Matching supertypes by name is also what lets a single
+            // entry cover a whole family — org.springframework.context.ApplicationContext blocks
+            // every *ApplicationContext implementation without java-util depending on Spring.
             //
             // Do NOT memoize the verdict in a static set: this ClassValue IS the per-class cache
             // (computeValue runs at most once per Class lifetime, and a re-loaded class is a new
@@ -3370,13 +3434,74 @@ public class ClassUtilities {
             // hit this cache wouldn't, but it pins every checked class — and its ClassLoader —
             // for the JVM's lifetime, unreleasable even by clearCaches().
             for (Class<?> superType : getClassHierarchyInfo(type).getAllSupertypes()) {
-                if (BLOCKED_CLASSES.containsClass(superType) || BLOCKED_CLASS_NAMES_SET.contains(superType.getName())) {
+                String superName = superType.getName();
+                if (isUnblockedName(superName)) {
+                    // An explicit unblock defeats the rule that would have matched here, so a
+                    // subclass of an unblocked type is not blocked by virtue of that supertype.
+                    continue;
+                }
+                if (BLOCKED_CLASSES.containsClass(superType) || isBlockedName(superName)) {
                     return Boolean.TRUE;
                 }
             }
             return Boolean.FALSE;
         }
     };
+
+    /** Exact-name or blocked-package-prefix match against the init-time (tier 1) rules. */
+    private static boolean isBlockedName(String className) {
+        if (BLOCKED_CLASS_NAMES_SET.contains(className)) {
+            return true;
+        }
+        for (String prefix : BLOCKED_PACKAGES) {
+            if (className.startsWith(prefix)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean isUnblockedName(String className) {
+        return !UNBLOCKED_CLASS_NAMES.isEmpty() && UNBLOCKED_CLASS_NAMES.contains(className);
+    }
+
+    /** Exact-name or blocked-package-prefix match against the programmatic (tier 2) rules. */
+    private static boolean isRuntimeBlockedName(String className) {
+        if (runtimeBlockedNames.contains(className)) {
+            return true;
+        }
+        for (String prefix : runtimeBlockedPackages) {
+            if (className.startsWith(prefix)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Applies the programmatic overrides to {@code type} and its supertypes.
+     *
+     * @return TRUE if a runtime rule blocks it, FALSE if a runtime unblock clears it, or
+     *         {@code null} when no runtime rule applies and the tier-1 verdict should stand.
+     */
+    private static Boolean runtimeVerdict(Class<?> type) {
+        if (runtimeUnblockedNames.contains(type.getName())) {
+            return Boolean.FALSE;
+        }
+        if (isRuntimeBlockedName(type.getName())) {
+            return Boolean.TRUE;
+        }
+        for (Class<?> superType : getClassHierarchyInfo(type).getAllSupertypes()) {
+            String superName = superType.getName();
+            if (runtimeUnblockedNames.contains(superName)) {
+                return Boolean.FALSE;
+            }
+            if (isRuntimeBlockedName(superName)) {
+                return Boolean.TRUE;
+            }
+        }
+        return null;
+    }
 
     /**
      * Clears internal caches. For tests and hot-reload scenarios only.
@@ -3405,6 +3530,38 @@ public class ClassUtilities {
         // ClassValue-backed caches cannot be fully cleared; rely on GC for unused keys.
     }
 
+    /**
+     * The instantiation and class-resolution gate for {@link ClassUtilities}.
+     * <p>
+     * Every path that resolves a class by name or reflectively constructs one passes through
+     * {@link #verifyClass(Class)} / {@link #isSecurityBlockedName(String)} first. This matters most
+     * for deserialization: a library that reads a type name out of untrusted input (a JSON
+     * {@code @type}, an XML attribute) and hands the sibling fields to that type's constructor is
+     * only as safe as this gate.
+     * <p>
+     * A class is blocked when it — or <em>any</em> of its supertypes — matches a blocked class
+     * identity, a blocked class name, or a blocked package prefix. Matching supertypes by name is
+     * what lets one entry cover a whole family: {@code org.springframework.context.ApplicationContext}
+     * blocks every {@code *ApplicationContext} implementation without java-util depending on Spring.
+     * <p>
+     * <b>Precedence</b>, highest first:
+     * <ol>
+     *     <li>An explicit unblock ({@link #allowClass(String)} or the
+     *         {@code classutilities.security.unblocked} property) matching the class or a supertype.</li>
+     *     <li>Any blocking rule — built-in, system property, or programmatic — matching the class or
+     *         a supertype.</li>
+     *     <li>Otherwise allowed.</li>
+     * </ol>
+     * <b>Configuration.</b> Rules may be added programmatically via {@link #addBlockedClass(String)}
+     * and {@link #addBlockedPackage(String)}, or at JVM startup via comma-separated system properties:
+     * <ul>
+     *     <li>{@code classutilities.security.blocked.classes} — additional exact class names</li>
+     *     <li>{@code classutilities.security.blocked.packages} — additional blocked package prefixes</li>
+     *     <li>{@code classutilities.security.unblocked} — class names to exempt from blocking</li>
+     * </ul>
+     *
+     * @see #allowClass(String) for the caveats on unblocking
+     */
     public static class SecurityChecker {
         // Combine all security-sensitive classes in one place
         static final ClassValueSet SECURITY_BLOCKED_CLASSES = ClassValueSet.of(
@@ -3418,46 +3575,113 @@ public class ClassUtilities {
                 System.class
         );
 
-        // Add specific class names that might be loaded dynamically
+        // Blocked by NAME rather than by Class literal, for two reasons: the class may not be loadable
+        // when this list initializes (third-party gadgets are not on java-util's classpath), and the
+        // supertype walk in SECURITY_CHECK_CACHE matches these names against every ancestor, so one
+        // entry covers an entire implementation family.
         static final Set<String> SECURITY_BLOCKED_CLASS_NAMES = new HashSet<>(CollectionUtilities.listOf(
+                // --- Process execution ---
                 "java.lang.ProcessImpl",
-                "java.lang.Runtime", 
+                "java.lang.Runtime",
                 "java.lang.ProcessBuilder",
                 "java.lang.System",
+
+                // --- Scripting engines: eval() of attacker-supplied source ---
                 "javax.script.ScriptEngineManager",
                 "javax.script.ScriptEngine",
-                "java.lang.invoke.MethodHandles$Lookup"  // Can open modules reflectively
-                // Add any other specific class names as needed
+                "groovy.lang.GroovyShell",
+                "groovy.util.Eval",
+
+                // --- Module / member access. Deliberately Lookup ONLY: it is the object that grants
+                // reflective module-opening power, whereas MethodHandle is abstract and MethodHandles
+                // has no public constructor, so neither is instantiable. Blocking those two names
+                // would only break legitimate resolution of an ordinary MethodHandle-typed field.
+                "java.lang.invoke.MethodHandles$Lookup",
+                "sun.misc.Unsafe",
+                "jdk.internal.misc.Unsafe",
+
+                // --- Indirect loaders: the constructor fetches and INTERPRETS an attacker-named
+                // resource, instantiating further classes beyond this gate's reach. Listed as the
+                // root interface so every context/factory implementation is caught.
+                "org.springframework.context.ApplicationContext",
+                "org.springframework.beans.factory.BeanFactory",
+
+                // --- JNDI: lookup() against an attacker URL is the classic remote-codebase gadget ---
+                "javax.naming.Context",
+                "com.sun.rowset.JdbcRowSetImpl",
+
+                // --- XSLT: Templates carries compiled bytecode that newTransformer() defines and runs ---
+                "javax.xml.transform.Templates",
+
+                // --- Java serialization: hands the payload the entire ObjectInputStream gadget surface ---
+                "java.io.ObjectInputStream",
+
+                // --- Constructors that perform network I/O: SSRF, port scanning, egress from the victim ---
+                "java.net.Socket",
+                "java.net.ServerSocket",
+                "java.net.DatagramSocket",
+                "java.net.URLConnection",
+
+                // --- Constructors that create or truncate an attacker-named file: integrity / DoS ---
+                "java.io.FileOutputStream",
+                "java.io.FileWriter",
+                "java.io.RandomAccessFile"
+        ));
+
+        // Blocked package prefixes. Applied to the class being checked AND to every supertype, on both
+        // the class-loading path and the instantiation path.
+        static final Set<String> SECURITY_BLOCKED_PACKAGES = new LinkedHashSet<>(CollectionUtilities.listOf(
+                "javax.script.",             // Script engines
+                "jdk.nashorn.",              // Nashorn JavaScript engine
+                "org.mozilla.javascript.",   // Rhino
+                "bsh.",                      // BeanShell
+                "org.python.",               // Jython
+                "javax.naming.",             // JNDI
+                "com.sun.jndi.",
+                "com.sun.org.apache.xalan.", // TemplatesImpl and friends
+                "java.rmi.",
+                "javax.management.remote.",
+                "jdk.internal."
         ));
 
         /**
-         * Checks if a class is blocked for security reasons.
+         * Checks if a class is blocked for security reasons. A class is blocked when it or any of its
+         * supertypes matches a blocked identity, name, or package prefix — see the class javadoc for
+         * full precedence rules.
          *
          * @param clazz The class to check
          * @return true if the class is blocked, false otherwise
          */
         public static boolean isSecurityBlocked(Class<?> clazz) {
+            if (hasRuntimeSecurityRules) {
+                Boolean verdict = runtimeVerdict(clazz);
+                if (verdict != null) {
+                    return verdict;
+                }
+            }
             return SECURITY_CHECK_CACHE.get(clazz);
         }
 
         /**
          * Checks if a class name is directly in the blocked list or belongs to a blocked package.
-         * Used before class loading.
+         * Used before class loading, when there is no {@code Class} to walk the supertypes of.
          *
          * @param className The class name to check
          * @return true if the class name is blocked, false otherwise
          */
         public static boolean isSecurityBlockedName(String className) {
-            // Check exact class name match
-            if (BLOCKED_CLASS_NAMES_SET.contains(className)) {
-                return true;
+            if (hasRuntimeSecurityRules) {
+                if (runtimeUnblockedNames.contains(className)) {
+                    return false;
+                }
+                if (isRuntimeBlockedName(className)) {
+                    return true;
+                }
             }
-            // Check package-level blocking
-            if (className.startsWith("javax.script.") ||  // Script engines
-                className.startsWith("jdk.nashorn.")) {     // Nashorn JavaScript engine
-                return true;
+            if (isUnblockedName(className)) {
+                return false;
             }
-            return false;
+            return isBlockedName(className);
         }
 
         /**
@@ -3471,6 +3695,72 @@ public class ClassUtilities {
                 throw new SecurityException(
                         "For security reasons, access to this class is not allowed: " + clazz.getName());
             }
+        }
+
+        /**
+         * Blocks an additional class by exact name. Subclasses are blocked too, via the supertype walk.
+         * Takes effect immediately, including for classes already checked.
+         *
+         * @param className fully-qualified class name to block; must not be null or blank
+         * @throws IllegalArgumentException if {@code className} is null or blank
+         */
+        public static void addBlockedClass(String className) {
+            runtimeBlockedNames.add(requireConfigValue(className, "className"));
+            hasRuntimeSecurityRules = true;
+        }
+
+        /**
+         * Blocks an additional package by prefix. Any class whose name — or the name of any of its
+         * supertypes — starts with {@code packagePrefix} is blocked. Takes effect immediately.
+         * <p>
+         * The value is used as a raw string prefix, so it should normally end with {@code '.'}
+         * ({@code "com.acme.unsafe."} rather than {@code "com.acme.unsafe"}, which would also match
+         * {@code com.acme.unsafeButFine}).
+         *
+         * @param packagePrefix package name prefix to block; must not be null or blank
+         * @throws IllegalArgumentException if {@code packagePrefix} is null or blank
+         */
+        public static void addBlockedPackage(String packagePrefix) {
+            runtimeBlockedPackages.add(requireConfigValue(packagePrefix, "packagePrefix"));
+            hasRuntimeSecurityRules = true;
+        }
+
+        /**
+         * Exempts a class from blocking, overriding every blocking rule — built-in included. Provided
+         * for the consumer who legitimately constructs one of the blocked types and accepts the
+         * consequences of re-enabling it.
+         * <p>
+         * <b>Use with care.</b> The built-in list exists because these types let attacker-controlled
+         * constructor arguments reach a process, a socket, a file, a class loader, or a script engine.
+         * Unblocking one on a code path that instantiates types named in untrusted input reopens
+         * exactly the hole the list closes. Unblocking a type also exempts its subclasses from the
+         * rule that would have matched through it.
+         *
+         * @param className fully-qualified class name to exempt; must not be null or blank
+         * @throws IllegalArgumentException if {@code className} is null or blank
+         */
+        public static void allowClass(String className) {
+            runtimeUnblockedNames.add(requireConfigValue(className, "className"));
+            hasRuntimeSecurityRules = true;
+        }
+
+        /**
+         * Discards every rule added through {@link #addBlockedClass}, {@link #addBlockedPackage}, and
+         * {@link #allowClass}, restoring the built-in and system-property configuration. Intended for
+         * tests; note that it also discards any unblocks, so it never loosens the default posture.
+         */
+        public static void clearSecurityOverrides() {
+            runtimeBlockedNames.clear();
+            runtimeBlockedPackages.clear();
+            runtimeUnblockedNames.clear();
+            hasRuntimeSecurityRules = false;
+        }
+
+        private static String requireConfigValue(String value, String argName) {
+            if (value == null || value.trim().isEmpty()) {
+                throw new IllegalArgumentException(argName + " cannot be null or blank");
+            }
+            return value.trim();
         }
     }
 

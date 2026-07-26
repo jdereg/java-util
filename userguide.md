@@ -8103,6 +8103,75 @@ classutilities.max.reflection.operations=1000
 classutilities.max.resource.name.length=1000
 ```
 
+**Blocked-Class Properties (always active, independent of the master switch):**
+```properties
+# Additional exact class names to block (comma-separated)
+classutilities.security.blocked.classes=com.acme.Danger,com.acme.OtherDanger
+
+# Additional package prefixes to block (comma-separated)
+classutilities.security.blocked.packages=com.acme.unsafe.,com.acme.eval.
+
+# Class names to EXEMPT from blocking (comma-separated) - see the warning below
+classutilities.security.unblocked=java.io.FileOutputStream
+```
+
+### Blocked Classes
+
+`ClassUtilities.SecurityChecker` gates every path that resolves a class by name or reflectively
+constructs one. This matters most for **deserialization**: a library that reads a type name out of
+untrusted input (a JSON `@type`, an XML attribute) and hands the sibling fields to that type's
+constructor is only as safe as this gate.
+
+A class is blocked when it — or **any of its supertypes** — matches a blocked class identity, class
+name, or package prefix. Matching supertypes by name is what lets one entry cover a whole family:
+`org.springframework.context.ApplicationContext` blocks every `*ApplicationContext` implementation
+without java-util depending on Spring.
+
+The built-in list covers types whose *constructors* hand attacker-controlled values to a dangerous
+capability:
+
+| Category | Examples |
+|---|---|
+| Process execution | `Runtime`, `ProcessBuilder`, `Process`, `java.lang.ProcessImpl`, `System` |
+| Class loading / member access | `ClassLoader`, `Method`, `Field`, `Constructor`, `MethodHandles$Lookup`, `sun.misc.Unsafe` |
+| Scripting engines | `javax.script.*`, `jdk.nashorn.*`, Rhino, BeanShell, Jython, `groovy.lang.GroovyShell` |
+| Indirect loaders (fetch + interpret a remote resource) | `org.springframework.context.ApplicationContext`, `org.springframework.beans.factory.BeanFactory` |
+| JNDI | `javax.naming.*`, `com.sun.jndi.*`, `com.sun.rowset.JdbcRowSetImpl` |
+| XSLT / bytecode carriers | `javax.xml.transform.Templates`, `com.sun.org.apache.xalan.*` |
+| Java serialization | `java.io.ObjectInputStream` |
+| Network I/O in a constructor | `Socket`, `ServerSocket`, `DatagramSocket`, `URLConnection` |
+| File create/truncate in a constructor | `FileOutputStream`, `FileWriter`, `RandomAccessFile` |
+| RMI / remote JMX | `java.rmi.*`, `javax.management.remote.*` |
+
+Read-side file I/O (`FileInputStream`, `FileReader`) is deliberately **not** blocked: opening a read
+handle is not a side effect on the order of spawning a process or truncating a file.
+
+**Precedence**, highest first:
+1. An explicit unblock matching the class or a supertype.
+2. Any blocking rule — built-in, system property, or programmatic — matching the class or a supertype.
+3. Otherwise allowed.
+
+Rules can also be added programmatically, taking effect immediately even for classes already checked:
+
+```java
+// Tighten
+ClassUtilities.SecurityChecker.addBlockedClass("com.acme.Danger");
+ClassUtilities.SecurityChecker.addBlockedPackage("com.acme.unsafe.");
+
+// Loosen - see the warning
+ClassUtilities.SecurityChecker.allowClass("java.io.FileOutputStream");
+
+// Discard every programmatic rule (restores built-ins + system properties)
+ClassUtilities.SecurityChecker.clearSecurityOverrides();
+```
+
+> **⚠️ Warning on `allowClass` / `classutilities.security.unblocked`.** These exist for the consumer
+> who legitimately constructs one of the blocked types and accepts the consequences. The built-in list
+> exists because these types let attacker-controlled constructor arguments reach a process, a socket, a
+> file, a class loader, or a script engine. Unblocking one on a code path that instantiates types named
+> in untrusted input reopens exactly the hole the list closes. Unblocking a type also exempts its
+> subclasses from the rule that would have matched through it.
+
 ### Security Features
 
 **Core Security Features (Always Enabled):**

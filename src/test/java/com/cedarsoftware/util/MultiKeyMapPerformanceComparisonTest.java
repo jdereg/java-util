@@ -1,282 +1,154 @@
 package com.cedarsoftware.util;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
 import java.util.Random;
-import java.util.logging.Logger;
 
 import org.apache.commons.collections4.keyvalue.MultiKey;
 import org.apache.commons.collections4.map.MultiKeyMap;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 
+import static org.junit.jupiter.api.Assertions.fail;
+
 /**
- * Performance comparison between Cedar's MultiKeyMap and Apache Commons Collections' MultiKeyMap.
- * Tests various key counts (1-8) and data sizes (100-250,000).
+ * Tracks Cedar's {@link com.cedarsoftware.util.MultiKeyMap} against Apache Commons Collections'
+ * {@code MultiKeyMap} for key counts 1-6, recording each result as a ratio in {@link PerfRatchet}.
  * <p>
- * This test ensures fair comparison by:
- * 1. Warming up the JIT compiler
- * 2. Running tests in randomized order
- * 3. Using identical key sets for both implementations
- * 4. Measuring both put and get operations
- * 5. Running multiple iterations and averaging results
+ * Apache is the right yardstick here — it is the library Cedar's implementation exists to beat — and
+ * expressing the result as a ratio makes it portable: a CI runner half the speed of a dev laptop slows
+ * both sides equally, so the recorded number still means "Cedar costs Nx what Apache costs".
+ *
+ * <h2>What this replaces</h2>
+ * The previous version ran a 6&times;7 matrix of key counts and data sizes up to 250,000 entries, ten
+ * iterations each, for both implementations: roughly <b>105 million map operations</b>, plus a
+ * {@code Thread.sleep(100)} and an explicit {@code System.gc()} per configuration (4.2 seconds of pure
+ * sleeping and 42 forced collections). It took 25 seconds and contained <b>no assertions</b> — it
+ * printed a 42-row table that a human had to compare against remembered numbers.
+ * <p>
+ * Two of the seven data sizes (100,000 and 250,000) accounted for 80% of that work while telling us
+ * nothing the smaller sizes did not. The matrix collapses to one representative size per key count,
+ * because key-count cost is what actually differs between the implementations; data size mostly
+ * re-measures the backing table's growth policy.
  */
 class MultiKeyMapPerformanceComparisonTest {
-    
-    private static final Logger LOG = Logger.getLogger(MultiKeyMapPerformanceComparisonTest.class.getName());
-    
-    private static final int WARMUP_ITERATIONS = 50;
-    private static final int TEST_ITERATIONS = 10;
-    private static final Random random = new Random(42); // Fixed seed for reproducibility
-    
-    // Test configurations
+
+    /** Entries per trial. Large enough that a trial outlasts timer noise and reaches C2. */
+    private static final int ENTRIES = 20000;
+
     private static final int[] KEY_COUNTS = {1, 2, 3, 4, 5, 6};
-    private static final int[] DATA_SIZES = {100, 1000, 10000, 25000, 50000, 100000, 250000};
-    
-    private static class TestConfig {
-        final int keyCount;
-        final int dataSize;
-        final String name;
-        
-        TestConfig(int keyCount, int dataSize) {
-            this.keyCount = keyCount;
-            this.dataSize = dataSize;
-            this.name = keyCount + " keys, " + String.format("%,d", dataSize) + " entries";
+
+    /** Untimed passes over every key count before the first measurement. See {@link PerfRatchet#warmAll}. */
+    private static final int WARM_ROUNDS = 3;
+
+    @EnabledIfSystemProperty(named = "performRelease", matches = "true")
+    @Test
+    void perfPutRatioVsApache() {
+        int n = KEY_COUNTS.length;
+        Runnable[] cedar = new Runnable[n];
+        Runnable[] apache = new Runnable[n];
+
+        for (int k = 0; k < n; k++) {
+            final int kc = KEY_COUNTS[k];
+            final Object[][] keys = generateKeys(ENTRIES, kc);
+            final String[] values = generateValues(ENTRIES);
+
+            cedar[k] = () -> {
+                com.cedarsoftware.util.MultiKeyMap<String> map =
+                        com.cedarsoftware.util.MultiKeyMap.<String>builder()
+                                .simpleKeysMode(true)
+                                .capacity((int) (ENTRIES / 0.75) + 1)
+                                .build();
+                for (int i = 0; i < keys.length; i++) {
+                    if (kc == 1) {
+                        map.put(keys[i][0], values[i]);
+                    } else {
+                        map.putMultiKey(values[i], keys[i]);
+                    }
+                }
+                PerfRatchet.sink = map;
+            };
+            apache[k] = () -> {
+                MultiKeyMap<Object, String> map = new MultiKeyMap<>();
+                for (int i = 0; i < keys.length; i++) {
+                    if (kc == 1) {
+                        map.put(new MultiKey<>(new Object[]{keys[i][0]}), values[i]);
+                    } else {
+                        map.put(new MultiKey<>(keys[i]), values[i]);
+                    }
+                }
+                PerfRatchet.sink = map;
+            };
         }
-    }
-    
-    private static class TestResult {
-        final String implementation;
-        final long putNanos;
-        final long getNanos;
-        final int operations;
-        
-        TestResult(String implementation, long putNanos, long getNanos, int operations) {
-            this.implementation = implementation;
-            this.putNanos = putNanos;
-            this.getNanos = getNanos;
-            this.operations = operations;
-        }
-        
-        double putOpsPerMs() {
-            return (operations * 1000000.0) / putNanos;
-        }
-        
-        double getOpsPerMs() {
-            return (operations * 1000000.0) / getNanos;
-        }
-        
-        double avgPutNanos() {
-            return (double) putNanos / operations;
-        }
-        
-        double avgGetNanos() {
-            return (double) getNanos / operations;
+
+        // Warm EVERY key count before measuring any, so keys1 does not absorb the JIT cost for all.
+        PerfRatchet.warmAll(WARM_ROUNDS, cedar);
+        PerfRatchet.warmAll(WARM_ROUNDS, apache);
+
+        for (int k = 0; k < n; k++) {
+            failIfStrictRegression(PerfRatchet.compare("multikeymap.put.keys" + KEY_COUNTS[k], ENTRIES,
+                    "Cedar.putMultiKey", cedar[k], "Apache.put", apache[k]));
         }
     }
 
     @EnabledIfSystemProperty(named = "performRelease", matches = "true")
     @Test
-    void comparePerformance() {
-        LOG.info("=== Cedar vs Apache MultiKeyMap Performance Comparison ===");
-        LOG.info("Warming up JIT compiler...");
-        
-        // Warm up JIT
-        warmupJIT();
-        
-        LOG.info("JIT warmup complete. Starting performance tests...\n");
-        
-        // Create all test configurations
-        List<TestConfig> configs = new ArrayList<>();
-        for (int keyCount : KEY_COUNTS) {
-            for (int dataSize : DATA_SIZES) {
-                configs.add(new TestConfig(keyCount, dataSize));
-            }
-        }
-        
-        // Shuffle to avoid order bias
-        Collections.shuffle(configs, random);
-        
-        // Run tests and collect results
-        LOG.info("Running " + configs.size() + " test configurations...\n");
-        LOG.info(String.format("%-30s | %-12s | %15s | %15s | %15s | %15s | %10s",
-                "Configuration", "Implementation", "Put (ops/ms)", "Get (ops/ms)", 
-                "Avg Put (ns)", "Avg Get (ns)", "Winner"));
-        StringBuilder separator = new StringBuilder();
-        for (int i = 0; i < 145; i++) separator.append("-");
-        LOG.info(separator.toString());
-        
-        for (TestConfig config : configs) {
-            runComparison(config);
-        }
-    }
-    
-    private void warmupJIT() {
-        // Warm up both implementations with various key counts
-        for (int i = 0; i < WARMUP_ITERATIONS; i++) {
-            for (int keyCount : KEY_COUNTS) {
-                // Cedar warmup - no defensive copies for maximum performance
-                com.cedarsoftware.util.MultiKeyMap<String> cedarMap = com.cedarsoftware.util.MultiKeyMap.<String>builder()
-                    .simpleKeysMode(true)
-                    .build();
-                Object[][] keys = generateKeys(1000, keyCount);
-                for (Object[] key : keys) {
-                    if (keyCount == 1) {
-                        cedarMap.put(key[0], "value");
-                        cedarMap.get(key[0]);
-                    } else {
-                        cedarMap.putMultiKey("value", key);
-                        cedarMap.getMultiKey(key);
-                    }
-                }
-                
-                // Apache warmup
-                MultiKeyMap<Object, String> apacheMap = new MultiKeyMap<>();
-                for (Object[] key : keys) {
-                    if (keyCount == 1) {
-                        // For single key, create a MultiKey with one element array
-                        apacheMap.put(new MultiKey<>(new Object[]{key[0]}), "value");
-                        apacheMap.get(new MultiKey<>(new Object[]{key[0]}));
-                    } else {
-                        apacheMap.put(new MultiKey<>(key), "value");
-                        apacheMap.get(new MultiKey<>(key));
-                    }
-                }
-            }
-        }
-    }
-    
-    private void runComparison(TestConfig config) {
-        // Generate test data once for both implementations
-        Object[][] keys = generateKeys(config.dataSize, config.keyCount);
-        String[] values = generateValues(config.dataSize);
-        
-        // Randomize test order
-        boolean runCedarFirst = random.nextBoolean();
-        
-        TestResult cedarResult;
-        TestResult apacheResult;
-        
-        if (runCedarFirst) {
-            cedarResult = testCedar(keys, values, config);
-            // Small pause to let GC settle
-            System.gc();
-            try { Thread.sleep(100); } catch (InterruptedException e) {}
-            apacheResult = testApache(keys, values, config);
-        } else {
-            apacheResult = testApache(keys, values, config);
-            // Small pause to let GC settle
-            System.gc();
-            try { Thread.sleep(100); } catch (InterruptedException e) {}
-            cedarResult = testCedar(keys, values, config);
-        }
-        
-        // Print results
-        printResults(config, cedarResult);
-        printResults(config, apacheResult);
-        
-        // Determine winner
-        String winner = determineWinner(cedarResult, apacheResult);
-        LOG.info(String.format("%-30s | %-12s | %15s | %15s | %15s | %15s | %10s",
-                "", "", "", "", "", "", winner));
-        StringBuilder separator = new StringBuilder();
-        for (int i = 0; i < 145; i++) separator.append("-");
-        LOG.info(separator.toString());
-    }
-    
-    private TestResult testCedar(Object[][] keys, String[] values, TestConfig config) {
-        long totalPutNanos = 0;
-        long totalGetNanos = 0;
-        
-        for (int iter = 0; iter < TEST_ITERATIONS; iter++) {
-            // MultiKeyMap doesn't do defensive copying for maximum performance
-            // Pre-size accounting for load factor (0.75 default) to avoid resize during test
-            com.cedarsoftware.util.MultiKeyMap<String> map = com.cedarsoftware.util.MultiKeyMap.<String>builder()
-                .simpleKeysMode(true)
-                .capacity((int) (config.dataSize / 0.75) + 1)
-                .build();
-            
-            // Test PUT operations
-            long putStart = System.nanoTime();
+    void perfGetRatioVsApache() {
+        int n = KEY_COUNTS.length;
+        Runnable[] cedarGet = new Runnable[n];
+        Runnable[] apacheGet = new Runnable[n];
+
+        for (int k = 0; k < n; k++) {
+            final int kc = KEY_COUNTS[k];
+            final Object[][] keys = generateKeys(ENTRIES, kc);
+            final String[] values = generateValues(ENTRIES);
+
+            // Population happens outside the timed workload so this measures lookup, not insertion.
+            final com.cedarsoftware.util.MultiKeyMap<String> cedar =
+                    com.cedarsoftware.util.MultiKeyMap.<String>builder()
+                            .simpleKeysMode(true)
+                            .capacity((int) (ENTRIES / 0.75) + 1)
+                            .build();
+            final MultiKeyMap<Object, String> apache = new MultiKeyMap<>();
             for (int i = 0; i < keys.length; i++) {
-                if (config.keyCount == 1) {
-                    map.put(keys[i][0], values[i]);
+                if (kc == 1) {
+                    cedar.put(keys[i][0], values[i]);
+                    apache.put(new MultiKey<>(new Object[]{keys[i][0]}), values[i]);
                 } else {
-                    map.putMultiKey(values[i], keys[i]);
+                    cedar.putMultiKey(values[i], keys[i]);
+                    apache.put(new MultiKey<>(keys[i]), values[i]);
                 }
             }
-            long putEnd = System.nanoTime();
-            totalPutNanos += (putEnd - putStart);
-            
-            // Test GET operations
-            long getStart = System.nanoTime();
-            for (Object[] key : keys) {
-                if (config.keyCount == 1) {
-                    map.get(key[0]);
-                } else {
-                    map.getMultiKey(key);
-                }
-            }
-            long getEnd = System.nanoTime();
-            totalGetNanos += (getEnd - getStart);
-        }
-        
-        return new TestResult("Cedar", 
-                totalPutNanos / TEST_ITERATIONS, 
-                totalGetNanos / TEST_ITERATIONS, 
-                config.dataSize);
-    }
-    
-    private TestResult testApache(Object[][] keys, String[] values, TestConfig config) {
-        long totalPutNanos = 0;
-        long totalGetNanos = 0;
-        
-        for (int iter = 0; iter < TEST_ITERATIONS; iter++) {
-            MultiKeyMap<Object, String> map = new MultiKeyMap<>();
-            
-            // Test PUT operations
-            long putStart = System.nanoTime();
-            if (config.keyCount == 1) {
-                // Apache MultiKeyMap with single key
-                for (int i = 0; i < keys.length; i++) {
-                    map.put(new MultiKey<>(new Object[]{keys[i][0]}), values[i]);
-                }
-            } else {
-                // Apache MultiKeyMap with multiple keys
-                for (int i = 0; i < keys.length; i++) {
-                    map.put(new MultiKey<>(keys[i]), values[i]);
-                }
-            }
-            long putEnd = System.nanoTime();
-            totalPutNanos += (putEnd - putStart);
-            
-            // Test GET operations
-            long getStart = System.nanoTime();
-            if (config.keyCount == 1) {
+
+            cedarGet[k] = () -> {
                 for (Object[] key : keys) {
-                    map.get(new MultiKey<>(new Object[]{key[0]}));
+                    PerfRatchet.sink = kc == 1 ? cedar.get(key[0]) : cedar.getMultiKey(key);
                 }
-            } else {
+            };
+            apacheGet[k] = () -> {
                 for (Object[] key : keys) {
-                    map.get(new MultiKey<>(key));
+                    PerfRatchet.sink = kc == 1
+                            ? apache.get(new MultiKey<>(new Object[]{key[0]}))
+                            : apache.get(new MultiKey<>(key));
                 }
-            }
-            long getEnd = System.nanoTime();
-            totalGetNanos += (getEnd - getStart);
+            };
         }
-        
-        return new TestResult("Apache", 
-                totalPutNanos / TEST_ITERATIONS, 
-                totalGetNanos / TEST_ITERATIONS, 
-                config.dataSize);
+
+        PerfRatchet.warmAll(WARM_ROUNDS, cedarGet);
+        PerfRatchet.warmAll(WARM_ROUNDS, apacheGet);
+
+        for (int k = 0; k < n; k++) {
+            failIfStrictRegression(PerfRatchet.compare("multikeymap.get.keys" + KEY_COUNTS[k], ENTRIES,
+                    "Cedar.getMultiKey", cedarGet[k], "Apache.get", apacheGet[k]));
+        }
     }
-    
-    private Object[][] generateKeys(int count, int keyCount) {
+
+    /**
+     * Fixed seed, so a recorded ratio reflects a code change rather than a different key distribution.
+     * Mixes String/Integer/Long/Double to exercise the hashing paths a single key type would not.
+     */
+    private static Object[][] generateKeys(int count, int keyCount) {
         Object[][] keys = new Object[count][keyCount];
         for (int i = 0; i < count; i++) {
             for (int j = 0; j < keyCount; j++) {
-                // Mix of different key types for realistic testing
                 switch (j % 4) {
                     case 0:
                         keys[i][j] = "key" + i + "_" + j;
@@ -287,7 +159,7 @@ class MultiKeyMapPerformanceComparisonTest {
                     case 2:
                         keys[i][j] = i * 1000000L + j;
                         break;
-                    case 3:
+                    default:
                         keys[i][j] = i + j / 10.0;
                         break;
                 }
@@ -295,36 +167,19 @@ class MultiKeyMapPerformanceComparisonTest {
         }
         return keys;
     }
-    
-    private String[] generateValues(int count) {
+
+    private static String[] generateValues(int count) {
         String[] values = new String[count];
         for (int i = 0; i < count; i++) {
             values[i] = "value_" + i;
         }
         return values;
     }
-    
-    private void printResults(TestConfig config, TestResult result) {
-        LOG.info(String.format("%-30s | %-12s | %,15.1f | %,15.1f | %,15.1f | %,15.1f |",
-                config.name,
-                result.implementation,
-                result.putOpsPerMs(),
-                result.getOpsPerMs(),
-                result.avgPutNanos(),
-                result.avgGetNanos()));
-    }
-    
-    private String determineWinner(TestResult cedar, TestResult apache) {
-        // Compare based on average of put and get performance
-        double cedarAvg = (cedar.putOpsPerMs() + cedar.getOpsPerMs()) / 2;
-        double apacheAvg = (apache.putOpsPerMs() + apache.getOpsPerMs()) / 2;
-        
-        if (cedarAvg > apacheAvg * 1.1) {
-            return "Cedar++";
-        } else if (apacheAvg > cedarAvg * 1.1) {
-            return "Apache++";
-        } else {
-            return "Tie";
+
+    /** Reported, not asserted — see {@link PerfRatchet}. Only -Dperf.strict=true fails a regression. */
+    private static void failIfStrictRegression(PerfRatchet.Metric m) {
+        if (PerfRatchet.isStrict() && m.getVerdict() == PerfRatchet.Verdict.REGRESSED) {
+            fail("Performance regression (perf.strict enabled): ratio " + m.getRatio());
         }
     }
 }

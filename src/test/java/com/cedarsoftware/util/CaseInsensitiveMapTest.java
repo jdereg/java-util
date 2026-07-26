@@ -23,6 +23,7 @@ import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Supplier;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.logging.Logger;
@@ -1724,66 +1725,107 @@ class CaseInsensitiveMapTest
         assert ciMap.get("KEY4") == "qux";
     }
 
+    /**
+     * Cost of populating a CaseInsensitiveMap, as a ratio against the LinkedHashMap it wraps.
+     * <p>
+     * Replaces the former {@code testPerformance}/{@code testPerformance2} pair, which timed the two
+     * implementations in separate tests, printed four raw millisecond figures, and asserted nothing —
+     * so a regression was invisible unless a human remembered last release's numbers. The two halves
+     * were already a matched comparison; they simply never divided one by the other.
+     */
     @EnabledIfSystemProperty(named = "performRelease", matches = "true")
     @Test
-    void testPerformance()
+    void perfPutRatioVsLinkedHashMap()
     {
-        Map<String, String> map = new CaseInsensitiveMap<>();
-        Random random = new Random();
+        // Fixed seed: identical keys for both sides, and stable across runs so the recorded ratio
+        // reflects code changes rather than a different random key distribution.
+        final String[] keys = randomStrings(new Random(42), PERF_ENTRIES);
+        final String[] values = randomStrings(new Random(43), PERF_ENTRIES);
 
-        long start = System.nanoTime();
+        PerfRatchet.Metric m = PerfRatchet.compare("caseinsensitivemap.put", PERF_ENTRIES,
+                "CaseInsensitiveMap.put", () -> {
+                    Map<String, String> map = new CaseInsensitiveMap<>();
+                    for (int i = 0; i < keys.length; i++) {
+                        map.put(keys[i], values[i]);
+                    }
+                    PerfRatchet.sink = map;
+                },
+                "LinkedHashMap.put", () -> {
+                    Map<String, String> map = new LinkedHashMap<>();
+                    for (int i = 0; i < keys.length; i++) {
+                        map.put(keys[i], values[i]);
+                    }
+                    PerfRatchet.sink = map;
+                });
 
-        for (int i=0; i < 10000; i++)
-        {
-            String key = StringUtilities.getRandomString(random, 1, 10);
-            String value = StringUtilities.getRandomString(random, 1, 10);
-            map.put(key, value);
-        }
-
-        long stop = System.nanoTime();
-        LOG.info("load CI map with 10,000: " + (stop - start) / 1000000);
-
-        start = System.nanoTime();
-
-        for (int i=0; i < 100000; i++)
-        {
-            Map<String, String> copy = new CaseInsensitiveMap<>(map);
-        }
-
-        stop = System.nanoTime();
-
-        LOG.info("dupe CI map 100,000 times: " + (stop - start) / 1000000);
+        failIfStrictRegression(m);
     }
 
+    /**
+     * Cost of the copy constructor, as a ratio against LinkedHashMap's.
+     * <p>
+     * This is the path {@code testNotRecreatingCaseInsensitiveStrings} guards functionally — copying a
+     * CaseInsensitiveMap reuses the existing {@code CaseInsensitiveString} keys instead of rebuilding
+     * them. This metric is what would catch that optimization silently regressing.
+     * <p>
+     * The old version copied a 10,000-entry map 100,000 times — a billion entry copies per test, two
+     * billion across the pair — to produce one log line. Copies are measured per-entry here, so a
+     * far smaller product gives the same ratio.
+     */
     @EnabledIfSystemProperty(named = "performRelease", matches = "true")
     @Test
-    void testPerformance2()
+    void perfCopyRatioVsLinkedHashMap()
     {
-        Map<String, String> map = new LinkedHashMap<>();
-        Random random = new Random();
+        final String[] keys = randomStrings(new Random(42), PERF_ENTRIES);
+        final String[] values = randomStrings(new Random(43), PERF_ENTRIES);
 
-        long start = System.nanoTime();
-
-        for (int i=0; i < 10000; i++)
-        {
-            String key = StringUtilities.getRandomString(random, 1, 10);
-            String value = StringUtilities.getRandomString(random, 1, 10);
-            map.put(key, value);
+        final Map<String, String> ciSource = new CaseInsensitiveMap<>();
+        final Map<String, String> lhmSource = new LinkedHashMap<>();
+        for (int i = 0; i < keys.length; i++) {
+            ciSource.put(keys[i], values[i]);
+            lhmSource.put(keys[i], values[i]);
         }
 
-        long stop = System.nanoTime();
-        LOG.info("load linked map with 10,000: " + (stop - start) / 1000000);
+        final int copies = 20;
+        PerfRatchet.Metric m = PerfRatchet.compare("caseinsensitivemap.copy", PERF_ENTRIES * copies,
+                "new CaseInsensitiveMap(map)", () -> {
+                    for (int i = 0; i < copies; i++) {
+                        PerfRatchet.sink = new CaseInsensitiveMap<>(ciSource);
+                    }
+                },
+                "new LinkedHashMap(map)", () -> {
+                    for (int i = 0; i < copies; i++) {
+                        PerfRatchet.sink = new LinkedHashMap<>(lhmSource);
+                    }
+                });
 
-        start = System.nanoTime();
+        failIfStrictRegression(m);
+    }
 
-        for (int i=0; i < 100000; i++)
+    /** Entry count for the perf metrics: large enough to amortize setup, small enough to stay quick. */
+    private static final int PERF_ENTRIES = 10000;
+
+    private static String[] randomStrings(Random random, int count)
+    {
+        String[] out = new String[count];
+        for (int i = 0; i < count; i++)
         {
-            Map<String, String> copy = new LinkedHashMap<>(map);
+            out[i] = StringUtilities.getRandomString(random, 1, 10);
         }
+        return out;
+    }
 
-        stop = System.nanoTime();
-
-        LOG.info("dupe linked map 100,000 times: " + (stop - start) / 1000000);
+    /**
+     * Perf verdicts are reported, not asserted — absolute speed varies too much across machines for a
+     * threshold to mean anything in a pipeline. Only {@code -Dperf.strict=true} promotes a regression
+     * to a failure, for a machine whose numbers you trust.
+     */
+    private static void failIfStrictRegression(PerfRatchet.Metric m)
+    {
+        if (PerfRatchet.isStrict() && m.getVerdict() == PerfRatchet.Verdict.REGRESSED)
+        {
+            fail("Performance regression (perf.strict enabled): ratio " + m.getRatio());
+        }
     }
 
     @Test
@@ -2607,155 +2649,82 @@ class CaseInsensitiveMapTest
         assertArrayEquals(expected, cis.codePoints().toArray());
     }
 
+    /**
+     * Mixed put/case-insensitive-get/containsKey cost for each backing map, as a ratio against
+     * {@code TreeMap(String.CASE_INSENSITIVE_ORDER)} — the JDK's answer to the same problem, and so the
+     * honest yardstick.
+     * <p>
+     * The previous version burned 24 seconds and reported nothing durable. Each of its three
+     * comparisons ran every workload <b>twice</b>: {@code timeMapOperations} for a fixed 2000&nbsp;ms,
+     * then {@code countOps} — a byte-for-byte copy of it plus a counter — for another 2000&nbsp;ms.
+     * Because the loop budget <i>was</i> 2000&nbsp;ms, the "time" it measured was always ≈2000 by
+     * construction, which is why every line of its output read "operations in 2,000 ms". Half the
+     * runtime computed a constant, and the speedup ratio it did compute was compared to nothing.
+     * <p>
+     * Now a fixed operation count (deterministic, no wall-clock budget) feeds the same ratio into
+     * {@link PerfRatchet}, where it is checked against the recorded baseline.
+     */
     @EnabledIfSystemProperty(named = "performRelease", matches = "true")
     @Test
-    void testCaseInsensitiveMapPerformanceComparison() {
-        LOG.info("Performance Test: CaseInsensitiveMap vs TreeMap with String.CASE_INSENSITIVE_ORDER");
-        LOG.info("================================================================");
-        
-        Random random = new Random(42); // Fixed seed for reproducible results
-        
-        // Test 1: CaseInsensitiveMap backed by HashMap
-        LOG.info("Test 1: CaseInsensitiveMap(HashMap) vs TreeMap(String.CASE_INSENSITIVE_ORDER)");
-        testMapPerformance(new CaseInsensitiveMap<>(new HashMap<>()), 
-                          new TreeMap<>(String.CASE_INSENSITIVE_ORDER), 
-                          "CaseInsensitiveMap(HashMap)", 
-                          "TreeMap(CASE_INSENSITIVE_ORDER)",
-                          random);
-        
-        // Test 2: CaseInsensitiveMap backed by LinkedHashMap  
-        LOG.info("Test 2: CaseInsensitiveMap(LinkedHashMap) vs TreeMap(String.CASE_INSENSITIVE_ORDER)");
-        testMapPerformance(new CaseInsensitiveMap<>(new LinkedHashMap<>()), 
-                          new TreeMap<>(String.CASE_INSENSITIVE_ORDER), 
-                          "CaseInsensitiveMap(LinkedHashMap)", 
-                          "TreeMap(CASE_INSENSITIVE_ORDER)",
-                          random);
-        
-        // Test 3: CaseInsensitiveMap backed by TreeMap() vs TreeMap(String.CASE_INSENSITIVE_ORDER)
-        LOG.info("Test 3: CaseInsensitiveMap(TreeMap) vs TreeMap(String.CASE_INSENSITIVE_ORDER)");
-        testMapPerformance(new CaseInsensitiveMap<>(new TreeMap<>()), 
-                          new TreeMap<>(String.CASE_INSENSITIVE_ORDER), 
-                          "CaseInsensitiveMap(TreeMap)", 
-                          "TreeMap(CASE_INSENSITIVE_ORDER)",
-                          random);
-        
-        LOG.info("================================================================");
-        LOG.info("Performance test completed");
-    }
-    
-    private void testMapPerformance(Map<String, String> map1, Map<String, String> map2,
-                                   String map1Name, String map2Name, Random random) {
+    void perfMixedOpsRatioVsCaseInsensitiveTreeMap() {
+        final String[] metrics = {
+                "caseinsensitivemap.mixed.hashmap",
+                "caseinsensitivemap.mixed.linkedhashmap",
+                "caseinsensitivemap.mixed.treemap"};
+        final String[] labels = {
+                "CaseInsensitiveMap(HashMap)",
+                "CaseInsensitiveMap(LinkedHashMap)",
+                "CaseInsensitiveMap(TreeMap)"};
+        @SuppressWarnings("unchecked")
+        final Supplier<Map<String, String>>[] factories = new Supplier[]{
+                (Supplier<Map<String, String>>) () -> new CaseInsensitiveMap<>(new HashMap<>()),
+                (Supplier<Map<String, String>>) () -> new CaseInsensitiveMap<>(new LinkedHashMap<>()),
+                (Supplier<Map<String, String>>) () -> new CaseInsensitiveMap<>(new TreeMap<>())};
 
-        // Generate test data - pre-compute lowercase/uppercase to avoid String allocation during timing
-        String[] keys = new String[10000];
-        String[] lowerKeys = new String[10000];
-        String[] upperKeys = new String[10000];
-        String[] values = new String[10000];
-        for (int i = 0; i < keys.length; i++) {
+        // Fixed seed so a recorded ratio tracks code changes, not a new key distribution.
+        Random random = new Random(42);
+        final int count = 4000;
+        final String[] keys = new String[count];
+        final String[] lowerKeys = new String[count];
+        final String[] upperKeys = new String[count];
+        final String[] values = new String[count];
+        for (int i = 0; i < count; i++) {
             keys[i] = StringUtilities.getRandomString(random, 5, 15);
             lowerKeys[i] = keys[i].toLowerCase();
             upperKeys[i] = keys[i].toUpperCase();
             values[i] = StringUtilities.getRandomString(random, 10, 20);
         }
 
-        // JIT warmup - run both maps several times to ensure fair comparison
-        warmupMaps(map1, map2, keys, lowerKeys, upperKeys, values, 3);
+        Runnable[] subjects = new Runnable[factories.length];
+        for (int i = 0; i < factories.length; i++) {
+            final Supplier<Map<String, String>> factory = factories[i];
+            subjects[i] = () -> mixedOps(factory.get(), keys, lowerKeys, upperKeys, values);
+        }
+        Runnable yardstick =
+                () -> mixedOps(new TreeMap<>(String.CASE_INSENSITIVE_ORDER), keys, lowerKeys, upperKeys, values);
 
-        // Test map1 performance
-        long map1Time = timeMapOperations(map1, keys, lowerKeys, upperKeys, values, 2000);
+        // All three backing maps share one mixedOps() call site, so warm every one before measuring any:
+        // otherwise whichever runs first absorbs the JIT cost for all three and records an unstable,
+        // pessimistic baseline (it measured 63% interquartile noise against ~10% for its siblings).
+        PerfRatchet.warmAll(3, subjects);
+        PerfRatchet.warmAll(3, yardstick);
 
-        // Clear and test map2 performance
-        long map2Time = timeMapOperations(map2, keys, lowerKeys, upperKeys, values, 2000);
-
-        // Calculate speedup
-
-        int map1Ops = countOps(map1, keys, lowerKeys, upperKeys, values, 2000);
-        int map2Ops = countOps(map2, keys, lowerKeys, upperKeys, values, 2000);
-
-        LOG.info(String.format("%-35s: %,d operations in %,d ms%n", map1Name, map1Ops, map1Time));
-        LOG.info(String.format("%-35s: %,d operations in %,d ms%n", map2Name, map2Ops, map2Time));
-
-        double opsSpeedup = (double) map1Ops / map2Ops;
-        LOG.info(String.format("Operations speedup: %.2fx (%s performed %.2fx more operations)%n",
-                         opsSpeedup,
-                         opsSpeedup > 1.0 ? map1Name : map2Name,
-                         opsSpeedup > 1.0 ? opsSpeedup : 1.0 / opsSpeedup));
-    }
-    
-    private void warmupMaps(Map<String, String> map1, Map<String, String> map2,
-                           String[] keys, String[] lowerKeys, String[] upperKeys, String[] values, int iterations) {
-        // Warmup both maps alternately to ensure fair JIT compilation
-        for (int i = 0; i < iterations; i++) {
-            performMapOperations(map1, keys, lowerKeys, upperKeys, values, 100);
-            map1.clear();
-            performMapOperations(map2, keys, lowerKeys, upperKeys, values, 100);
-            map2.clear();
+        // 4 operations per key: put, two case-varied gets, containsKey.
+        for (int i = 0; i < subjects.length; i++) {
+            failIfStrictRegression(PerfRatchet.compare(metrics[i], count * 4,
+                    labels[i], subjects[i], "TreeMap(CASE_INSENSITIVE_ORDER)", yardstick));
         }
     }
-    
-    private long timeMapOperations(Map<String, String> map, String[] keys, String[] lowerKeys, String[] upperKeys, String[] values, long durationMs) {
-        map.clear();
-        long startTime = System.currentTimeMillis();
-        long endTime = startTime + durationMs;
 
-        int i = 0;
-        while (System.currentTimeMillis() < endTime) {
-            int idx = i % keys.length;
-            String key = keys[idx];
-            String value = values[idx];
-
-            map.put(key, value);
-            map.get(lowerKeys[idx]); // Test case insensitive lookup (pre-computed)
-            map.get(upperKeys[idx]); // Test case insensitive lookup (pre-computed)
-            map.containsKey(key);
-
-            i++;
-            if (i % 1000 == 0) {
-                map.clear(); // Periodically clear to test fresh insertions
-            }
+    private static void mixedOps(Map<String, String> map, String[] keys, String[] lowerKeys,
+                                 String[] upperKeys, String[] values) {
+        for (int i = 0; i < keys.length; i++) {
+            map.put(keys[i], values[i]);
+            PerfRatchet.sink = map.get(lowerKeys[i]);
+            PerfRatchet.sink = map.get(upperKeys[i]);
+            PerfRatchet.sink = map.containsKey(keys[i]);
         }
-
-        return System.currentTimeMillis() - startTime;
-    }
-    
-    private int countOps(Map<String, String> map, String[] keys, String[] lowerKeys, String[] upperKeys, String[] values, long durationMs) {
-        map.clear();
-        long startTime = System.currentTimeMillis();
-        long endTime = startTime + durationMs;
-
-        int operations = 0;
-        int i = 0;
-        while (System.currentTimeMillis() < endTime) {
-            int idx = i % keys.length;
-            String key = keys[idx];
-            String value = values[idx];
-
-            map.put(key, value);
-            map.get(lowerKeys[idx]);
-            map.get(upperKeys[idx]);
-            map.containsKey(key);
-
-            operations += 4; // 4 operations per loop
-            i++;
-            if (i % 1000 == 0) {
-                map.clear();
-            }
-        }
-
-        return operations;
-    }
-    
-    private void performMapOperations(Map<String, String> map, String[] keys, String[] lowerKeys, String[] upperKeys, String[] values, int count) {
-        for (int i = 0; i < count; i++) {
-            int idx = i % keys.length;
-            String key = keys[idx];
-            String value = values[idx];
-
-            map.put(key, value);
-            map.get(lowerKeys[idx]);
-            map.get(upperKeys[idx]);
-            map.containsKey(key);
-        }
+        PerfRatchet.sink = map;
     }
 
     // ---------------------------------------------------

@@ -49,7 +49,7 @@ public class TTLCacheTest {
     @EnabledIfSystemProperty(named = "performRelease", matches = "true")
     @Test
     void testEntryExpiration() throws InterruptedException {
-        ttlCache = new TTLCache<>(200, -1, 100); // TTL of 1 second, no LRU
+        ttlCache = new TTLCache<>(200, -1, 100); // TTL of 200ms, purge every 100ms, no LRU
         ttlCache.put(1, "A");
         ttlCache.put(2, "B");
         ttlCache.put(3, "C");
@@ -516,40 +516,73 @@ public class TTLCacheTest {
         assertEquals(cache1.hashCode(), cache2.hashCode());
     }
 
+    /**
+     * Put cost against {@link java.util.HashMap} — the floor a cache builds on, so the ratio reads as
+     * "what TTL bookkeeping costs over a plain hash map".
+     * <p>
+     * Was 1,000,000 puts timed into one logged millisecond figure with <b>no assertion</b>: unable to
+     * fail, unable to detect a regression, and not comparable between machines.
+     */
     @EnabledIfSystemProperty(named = "performRelease", matches = "true")
     @Test
-    void testSpeed() {
-        long startTime = System.currentTimeMillis();
-        TTLCache<Integer, Boolean> cache = new TTLCache<>(100000, 1000000);
-        for (int i = 0; i < 1000000; i++) {
+    void perfGetRatioVsLinkedHashMap() {
+        final int entries = 20000;
+
+        // Populated once, outside the timed region: measuring get keeps the benchmark allocation-free
+        // and therefore steady, and reads are a cache's hot path. A long TTL so nothing expires mid-run.
+        final TTLCache<Integer, Boolean> cache = new TTLCache<>(600_000, entries);
+        final Map<Integer, Boolean> yardstickMap = new LinkedHashMap<>((int) (entries / 0.75f) + 1);
+        for (int i = 0; i < entries; i++) {
             cache.put(i, true);
+            yardstickMap.put(i, true);
         }
-        long endTime = System.currentTimeMillis();
-        LOG.info("TTLCache speed: " + (endTime - startTime) + "ms");
+
+        final Runnable subject = () -> {
+            for (int i = 0; i < entries; i++) {
+                PerfRatchet.sink = cache.get(i);
+            }
+        };
+        final Runnable yardstick = () -> {
+            for (int i = 0; i < entries; i++) {
+                PerfRatchet.sink = yardstickMap.get(i);
+            }
+        };
+
+        try {
+            PerfRatchet.warmAll(3, subject, yardstick);
+            PerfRatchet.Metric m = PerfRatchet.compare("ttlcache.get", entries,
+                    "TTLCache.get", subject, "LinkedHashMap.get", yardstick);
+
+            if (PerfRatchet.isStrict() && m.getVerdict() == PerfRatchet.Verdict.REGRESSED) {
+                org.junit.jupiter.api.Assertions.fail("Performance regression (perf.strict): ratio " + m.getRatio());
+            }
+        } finally {
+            cache.close();
+        }
     }
 
     @EnabledIfSystemProperty(named = "performRelease", matches = "true")
     @Test
     void testTTLWithoutLRU() throws InterruptedException {
-        ttlCache = new TTLCache<>(2000, -1); // TTL of 2 seconds, no LRU
+        ttlCache = new TTLCache<>(200, -1, 100); // TTL of 200ms, no LRU
         ttlCache.put(1, "A");
 
         // Immediately check that the entry exists
         assertEquals("A", ttlCache.get(1));
 
         // Wait for less than TTL
-        Thread.sleep(1000);
+        Thread.sleep(100);
         assertEquals("A", ttlCache.get(1));
 
         // Wait for TTL to expire
-        Thread.sleep(1500);
+        Thread.sleep(250);
         assertNull(ttlCache.get(1), "Entry should have expired after TTL");
     }
 
     @EnabledIfSystemProperty(named = "performRelease", matches = "true")
     @Test
     void testTTLWithLRU() throws InterruptedException {
-        ttlCache = new TTLCache<>(2000, 2); // TTL of 2 seconds, max size of 2
+        ttlCache = new TTLCache<>(200, 2, 100); // TTL of 200ms, max size of 2
         ttlCache.put(1, "A");
         ttlCache.put(2, "B");
         ttlCache.put(3, "C"); // This should evict key 1 (least recently used)
@@ -559,7 +592,7 @@ public class TTLCacheTest {
         assertEquals("C", ttlCache.get(3));
 
         // Wait for TTL to expire
-        Thread.sleep(2500);
+        Thread.sleep(250);
         assertNull(ttlCache.get(2), "Entry for key 2 should have expired due to TTL");
         assertNull(ttlCache.get(3), "Entry for key 3 should have expired due to TTL");
     }
@@ -607,12 +640,12 @@ public class TTLCacheTest {
     @EnabledIfSystemProperty(named = "performRelease", matches = "true")
     @Test
     void testExpirationDuringIteration() throws InterruptedException {
-        ttlCache = new TTLCache<>(1000, -1, 100);
+        ttlCache = new TTLCache<>(150, -1, 100);
         ttlCache.put(1, "A");
         ttlCache.put(2, "B");
 
         // Wait for TTL to expire
-        Thread.sleep(1500);
+        Thread.sleep(250);
 
         int count = 0;
         for (Map.Entry<Integer, String> entry : ttlCache.entrySet()) {
@@ -628,20 +661,20 @@ public class TTLCacheTest {
     @Test
     void testTwoIndependentCaches()
     {
-        TTLCache<Integer, String> ttlCache1 = new TTLCache<>(1000, -1, 100);
+        TTLCache<Integer, String> ttlCache1 = new TTLCache<>(150, -1, 50);
         ttlCache1.put(1, "A");
         ttlCache1.put(2, "B");
 
-        TTLCache<Integer, String> ttlCache2 = new TTLCache<>(2000, -1, 200);
+        TTLCache<Integer, String> ttlCache2 = new TTLCache<>(500, -1, 100);
         ttlCache2.put(10, "X");
         ttlCache2.put(20, "Y");
         ttlCache2.put(30, "Z");
 
         try {
-            Thread.sleep(1500);
+            Thread.sleep(250);
             assert ttlCache1.isEmpty();
             assert !ttlCache2.isEmpty();
-            Thread.sleep(1000);
+            Thread.sleep(400);
             assert ttlCache2.isEmpty();
         } catch (InterruptedException e) {
             throw new RuntimeException(e);

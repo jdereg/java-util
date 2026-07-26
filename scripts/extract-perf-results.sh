@@ -6,6 +6,10 @@
 # Usage: scripts/extract-perf-results.sh path/to/deploy.log
 set -e
 
+red()    { printf "\033[0;31m%s\033[0m\n" "$*"; }
+green()  { printf "\033[0;32m%s\033[0m\n" "$*"; }
+yellow() { printf "\033[0;33m%s\033[0m\n" "$*"; }
+
 LOG="${1:-}"
 if [ -z "$LOG" ] || [ ! -f "$LOG" ]; then
     echo "Usage: $0 path/to/deploy.log" >&2
@@ -65,6 +69,38 @@ fi
 
 echo "=== Performance test summary from ${LOG} ==="
 echo
+
+# PerfRatchet's tracked ratio metrics. Read from the TSV rather than scraped from the log: the summary
+# block is printed by a JVM shutdown hook, which fires after surefire has stopped capturing stdout, so
+# it never reaches the log. Each PERF REGRESSION/IMPROVED line does appear inline, and is echoed below.
+RATCHET_TSV="target/perf-report.tsv"
+if [ -f "$RATCHET_TSV" ]; then
+    echo "--- Tracked ratio metrics (${RATCHET_TSV}) ---"
+    echo "    Ratio = subject / yardstick, both timed in the same JVM run, so it is comparable across"
+    echo "    machines. LOWER IS BETTER. NOISE is this run's own trial scatter; a verdict on a noisy"
+    echo "    metric is worth less. Baseline lives in src/test/resources/perf-baseline.properties."
+    echo
+    awk -F'\t' '
+        NR == 1 { next }
+        {
+            printf "  %-42s %9.1f ns %9.1f ns  %6.2fx  base %6.2fx  noise %4.0f%%  %s\n",
+                   $1, $3, $5, $6, $7, $8, $9
+        }
+    ' "$RATCHET_TSV" | sort -k2 -t'x'
+    echo
+    REGRESSED=$(awk -F'\t' 'NR>1 && $9 == "REGRESSED"' "$RATCHET_TSV" | wc -l | tr -d ' ')
+    IMPROVED=$(awk -F'\t' 'NR>1 && $9 == "IMPROVED"' "$RATCHET_TSV" | wc -l | tr -d ' ')
+    if [ "$REGRESSED" != "0" ]; then
+        red "  ** ${REGRESSED} metric(s) REGRESSED -- investigate before publishing **"
+    fi
+    if [ "$IMPROVED" != "0" ]; then
+        green "  ${IMPROVED} metric(s) IMPROVED -- lock in with -Dperf.baseline.update=true"
+    fi
+    echo
+else
+    yellow "--- No ${RATCHET_TSV}; build without -DperformRelease=true, or from another directory ---"
+    echo
+fi
 
 # Heuristic: perf classes are named *Perf*/*Benchmark*/*Performance*. These are
 # the @EnabledIf classes that only run under -DperformRelease=true.

@@ -195,7 +195,11 @@ final class StringConversions {
         } else if ("false".equals(str)) {
             return false;
         }
-        return "true".equalsIgnoreCase(str) || "t".equalsIgnoreCase(str) || "1".equals(str) || "y".equalsIgnoreCase(str) || "\"true\"".equalsIgnoreCase(str);
+        // "yes" belongs here for the same reason "y" already did. Without it the abbreviation was true and the
+        // word was false -- so "y" converted to true while "Yes" converted to FALSE, silently inverting any data
+        // written the long way. Text answers in the wild are written both ways and mean the same thing.
+        return "true".equalsIgnoreCase(str) || "t".equalsIgnoreCase(str) || "1".equals(str)
+                || "y".equalsIgnoreCase(str) || "yes".equalsIgnoreCase(str) || "\"true\"".equalsIgnoreCase(str);
     }
 
     static char toCharacter(Object from, Converter converter) {

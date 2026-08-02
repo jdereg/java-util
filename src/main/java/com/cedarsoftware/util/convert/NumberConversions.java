@@ -93,6 +93,19 @@ final class NumberConversions {
         return ((Number) from).doubleValue();
     }
 
+    /**
+     * Widen a Float to a double through its decimal text rather than its bits.
+     * <p>
+     * {@code Float.doubleValue()} is binary-exact and therefore decimal-wrong: 3.7f becomes
+     * 3.700000047683716, because the float nearest 3.7 is not 3.7 and widening preserves that error instead of the
+     * author's intent. {@code Float.toString()} produces the shortest decimal that uniquely identifies the float --
+     * "3.7" -- so parsing that gives the number the author actually wrote. The same reasoning applies to every
+     * Float source that keeps the fractional value; only the truncating targets are unaffected.
+     */
+    static Double floatToDouble(Object from, Converter converter) {
+        return Double.parseDouble(from.toString());
+    }
+
     static Double toDoubleZero(Object from, Converter converter) {
         return CommonValues.DOUBLE_ZERO;
     }
@@ -123,6 +136,15 @@ final class NumberConversions {
     
     static BigDecimal floatingPointToBigDecimal(Object from, Converter converter) {
         return BigDecimal.valueOf(toDouble(from, converter));
+    }
+
+    /**
+     * A Float to BigDecimal through its decimal text, for the reason given on {@link #floatToDouble}: going via
+     * doubleValue() carried the binary error into a type whose whole purpose is exact decimal representation, so
+     * 3.7f arrived as 3.700000047683716 rather than 3.7.
+     */
+    static BigDecimal floatToBigDecimal(Object from, Converter converter) {
+        return new BigDecimal(from.toString());
     }
 
     static BigInteger floatingPointToBigInteger(Object from, Converter converter) {

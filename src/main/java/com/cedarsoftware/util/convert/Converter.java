@@ -569,7 +569,7 @@ public final class Converter {
         CONVERSION_DB.put(Short.class, Double.class, NumberConversions::toDouble);
         CONVERSION_DB.put(Integer.class, Double.class, NumberConversions::toDouble);
         CONVERSION_DB.put(Long.class, Double.class, NumberConversions::toDouble);
-        CONVERSION_DB.put(Float.class, Double.class, NumberConversions::toDouble);
+        CONVERSION_DB.put(Float.class, Double.class, NumberConversions::floatToDouble);
         CONVERSION_DB.put(Double.class, Double.class, Converter::identity);
         CONVERSION_DB.put(Boolean.class, Double.class, BooleanConversions::toDouble);
         CONVERSION_DB.put(Character.class, Double.class, CharacterConversions::toDouble);
@@ -666,7 +666,7 @@ public final class Converter {
         CONVERSION_DB.put(Short.class, BigDecimal.class, NumberConversions::integerTypeToBigDecimal);
         CONVERSION_DB.put(Integer.class, BigDecimal.class, NumberConversions::integerTypeToBigDecimal);
         CONVERSION_DB.put(Long.class, BigDecimal.class, NumberConversions::integerTypeToBigDecimal);
-        CONVERSION_DB.put(Float.class, BigDecimal.class, NumberConversions::floatingPointToBigDecimal);
+        CONVERSION_DB.put(Float.class, BigDecimal.class, NumberConversions::floatToBigDecimal);
         CONVERSION_DB.put(Double.class, BigDecimal.class, NumberConversions::floatingPointToBigDecimal);
         CONVERSION_DB.put(Boolean.class, BigDecimal.class, BooleanConversions::toBigDecimal);
         CONVERSION_DB.put(Character.class, BigDecimal.class, CharacterConversions::toBigDecimal);

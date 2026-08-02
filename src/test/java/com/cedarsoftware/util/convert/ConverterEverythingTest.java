@@ -3882,6 +3882,19 @@ class ConverterEverythingTest {
                 {"TRUE", true},
                 {"T", true},
                 {"t", true},
+                // The abbreviation was accepted and the word was not, so "y" came back true while "Yes" came back
+                // FALSE -- an inversion, not a rejection, and silent. They mean the same thing and now convert the
+                // same way. "no"/"No"/"NO" were already false, though only because anything unrecognised is.
+                {"y", true},
+                {"Y", true},
+                {"yes", true},
+                {"Yes", true},
+                {"YES", true},
+                {"n", false},
+                {"N", false},
+                {"no", false},
+                {"No", false},
+                {"NO", false},
                 {"Bengals", false},
         });
         TEST_DB.put(pair(boolean.class, UUID.class), new Object[][]{
@@ -3919,13 +3932,21 @@ class ConverterEverythingTest {
                 {9007199254740991L, 9007199254740991.0},
                 {-9007199254740991L, -9007199254740991.0},
         });
+        // Widening goes through the float's DECIMAL text, not its bits, so 3.7f arrives as 3.7 rather than
+        // 3.700000047683716. These expectations used to be written as (double) casts, which asserted whatever the
+        // cast happened to do; they now state the rule. Nothing is lost by it -- Float.toString() produces the
+        // shortest decimal that uniquely identifies the float, so every value here converts back to the identical
+        // float, including the extremes. What changes is only WHICH of the doubles that map back to this float you
+        // land on, and the one that prints as the float prints is the one an author means.
         TEST_DB.put(pair(Float.class, Double.class), new Object[][]{
                 {-1f, -1.0},
                 {0f, 0.0},
                 {1f, 1.0},
-                {Float.MIN_VALUE, (double) Float.MIN_VALUE},
-                {Float.MAX_VALUE, (double) Float.MAX_VALUE},
-                {-Float.MAX_VALUE, (double) -Float.MAX_VALUE},
+                {3.7f, 3.7},                            // the case that motivated it
+                {0.1f, 0.1},
+                {Float.MIN_VALUE, 1.4E-45},             // was 1.401298464324817E-45
+                {Float.MAX_VALUE, 3.4028235E38},        // was 3.4028234663852886E38
+                {-Float.MAX_VALUE, -3.4028235E38},
         });
         TEST_DB.put(pair(Double.class, Double.class), new Object[][]{
                 {-1.0, -1.0},
@@ -8587,10 +8608,17 @@ class ConverterEverythingTest {
                 {0.0, new BigInteger("0")},
                 {-1.0, new BigInteger("-1")},
         });
+        // Via the float's decimal text, so a value that is not exactly representable in binary still lands on the
+        // decimal the author wrote. 3.7f and 0.1f are the point: they used to arrive as 3.700000047683716 and
+        // 0.10000000149011612, which is a poor showing for the one type whose job is exact decimal representation.
+        // The previous cases were all exactly-representable values chosen to dodge that, rather than expose it.
         TEST_DB.put(pair(Float.class, BigDecimal.class), new Object[][]{
                 {42.5f, new BigDecimal("42.5")},
                 {0.0f, new BigDecimal("0.0")},
-                {-1.0f, new BigDecimal("-1.0")},  // Changed to avoid float precision issues
+                {-1.0f, new BigDecimal("-1.0")},
+                {3.7f, new BigDecimal("3.7")},
+                {0.1f, new BigDecimal("0.1")},
+                {-2.25f, new BigDecimal("-2.25")},
         });
         TEST_DB.put(pair(Float.class, BigInteger.class), new Object[][]{
                 {42.0f, new BigInteger("42")},

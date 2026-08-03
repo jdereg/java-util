@@ -118,8 +118,19 @@ final class BigDecimalConversions {
         return ((BigDecimal)from).toBigInteger();
     }
 
+    /**
+     * The BigDecimal's own plain-string form, scale intact.
+     * <p>
+     * This used to call {@code stripTrailingZeros()} first, which normalized 1.50 to "1.5". Scale is information on
+     * a BigDecimal -- it is what separates a money amount written to the cent from the same quantity written to the
+     * tenth -- and discarding it broke round-tripping: BigDecimal -> String -> BigDecimal returned a value that was
+     * not {@code equals()} to the original, because BigDecimal equality includes scale.
+     * <p>
+     * {@code toPlainString()} rather than {@code toString()} so a large or small scale never comes back in
+     * scientific notation, which is the property the previous implementation was really relying on.
+     */
     static String toString(Object from, Converter converter) {
-        return ((BigDecimal) from).stripTrailingZeros().toPlainString();
+        return ((BigDecimal) from).toPlainString();
     }
 
     static UUID toUUID(Object from, Converter converter) {

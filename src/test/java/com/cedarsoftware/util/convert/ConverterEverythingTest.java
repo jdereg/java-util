@@ -3478,13 +3478,20 @@ class ConverterEverythingTest {
                 {Instant.parse("1970-01-02T00:00:00Z"), new BigDecimal("86400"), true},
                 {Instant.parse("1970-01-02T00:00:00.000000001Z"), new BigDecimal("86400.000000001"), true},
         });
+        // BigDecimal -> String keeps the scale, so a string round-trips to the same scaled value and back to the
+        // same text. The scaled entries below ("-1.0", "0.0", "1.0") used to be marked reversible against the
+        // UNSCALED text ("-1", "0", "1"), which only worked because the conversion stripped trailing zeros --
+        // that made BigDecimal -> String -> BigDecimal return something not equals() to what it started with,
+        // since BigDecimal equality includes scale. They are now paired with their own text, which asserts the
+        // scale survives rather than relying on it being discarded.
         TEST_DB.put(pair(String.class, BigDecimal.class), new Object[][]{
                 {"", BigDecimal.ZERO},
                 {"-1", new BigDecimal("-1"), true},
-                {"-1", new BigDecimal("-1.0"), true},
+                {"-1.0", new BigDecimal("-1.0"), true},
                 {"0", BigDecimal.ZERO, true},
-                {"0", new BigDecimal("0.0"), true},
-                {"1", new BigDecimal("1.0"), true},
+                {"0.0", new BigDecimal("0.0"), true},
+                {"1.0", new BigDecimal("1.0"), true},
+                {"1.50", new BigDecimal("1.50"), true},     // the money case: 1.50 is not 1.5
                 {"3.141519265358979323846264338", new BigDecimal("3.141519265358979323846264338"), true},
                 {"1.gf.781", new IllegalArgumentException("not parseable")},
         });

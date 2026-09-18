@@ -3657,6 +3657,50 @@ long tsMillis = converter.convert(timestamp, long.class);                 // mil
 BigInteger tsNanos = converter.convert(timestamp, BigInteger.class);      // nanoseconds
 ```
 
+#### String Conversions: the boolean words, and whitespace
+
+An unrecognised String converts to `false` rather than throwing, so a word the truth set fails to
+recognise is not *rejected* — it is **inverted**, silently. The accepted set is therefore documented
+rather than left to be discovered:
+
+| Convert to `true` | Everything else → `false` |
+|---|---|
+| `true`, `t`, `1`, `y`, `yes`, `on` | `false`, `f`, `0`, `n`, `no`, `off`, and any unrecognised text |
+
+Matching is case-insensitive, so `YES`, `Yes` and `yes` are one value. The `false` column is listed
+for readability — those words are not special-cased, they simply are not in the truth set.
+
+This is a **word list**, not a numeric parser: `"1"` and `"0"` are in it, but other spellings of
+those numbers (`"01"`, `"1.0"`, `"+1"`) are not, and neither is any other number (`"2"`, `"-1"`).
+Converting the *number* `1.0` gives `true` — the usual non-zero rule — while converting the *string*
+`"1.0"` gives `false`. If a value may arrive as either, convert it to a number first.
+
+```java
+converter.convert("Yes", boolean.class);     // true
+converter.convert("ON",  boolean.class);     // true
+converter.convert(" true ", boolean.class);  // true  -- surrounding whitespace is not part of the word
+converter.convert("banana", boolean.class);  // false -- unrecognised, not an error
+```
+
+**Leading and trailing whitespace is ignored** when converting a String to a number
+(`Byte`, `Short`, `Integer`, `Long`, `Float`, `Double`, `BigInteger`, `BigDecimal`) or to a boolean.
+The JDK is split on this — `Double.parseDouble` ignores surrounding whitespace by contract while
+`Integer.parseInt` does not — and one abstraction should give one answer.
+
+Two deliberate limits:
+
+- **Whitespace *inside* a value is never tolerated.** `"-  5"`, `"4 2"`, `"1 000"` and `"tr ue"` are
+  not a number and not a boolean.
+- **`Character` is not trimmed.** A single space is a legitimate `char`, and trimming would silently
+  turn `" "` into NUL.
+
+```java
+converter.convert("  42  ", Integer.class);    // 42
+converter.convert("\t-7\n", Long.class);       // -7
+converter.convert("1 000", Integer.class);     // throws IllegalArgumentException
+converter.convert(" ", Character.class);       // ' ' -- a space, not NUL
+```
+
 #### Round-trip Consistency
 These precision rules ensure round-trip conversions preserve original values within the precision limits of each time class:
 

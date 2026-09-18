@@ -85,8 +85,18 @@ final class StringConversions {
         return from == null ? null : from.toString();
     }
 
+    // NUMERIC WHITESPACE: surrounding whitespace is not part of a number, so every String -> number
+    // conversion below trims before parsing. The JDK is split on this -- Double.parseDouble ignores
+    // leading/trailing whitespace by contract while Integer.parseInt does not -- which left the same
+    // padded value converting cleanly to Double and THROWING for Integer, Long, Short, Byte, BigInteger
+    // and BigDecimal. One abstraction, one answer: " 42 " is 42 for all of them. This can only turn a
+    // throw into a value: a string with no surrounding whitespace is unchanged by trim(), and a blank
+    // one already returned zero through the isEmpty() guard (which is blank-aware, not just length==0).
+    // Whitespace INSIDE the number is untouched and still fails, as it must -- "-  5" is not a number.
+    // Deliberately NOT applied to Character, where a single space is a legitimate value that trimming
+    // would turn into NUL, nor to Boolean, where the input does not throw today (see toBoolean).
     static Byte toByte(Object from, Converter converter) {
-        String str = (String) from;
+        String str = ((String) from).trim();   // NUMERIC WHITESPACE (see note above toByte)
         if (StringUtilities.isEmpty(str)) {
             return (byte)0;
         }
@@ -102,7 +112,7 @@ final class StringConversions {
     }
 
     static Short toShort(Object from, Converter converter) {
-        String str = (String) from;
+        String str = ((String) from).trim();   // NUMERIC WHITESPACE (see note above toByte)
         if (StringUtilities.isEmpty(str)) {
             return (short)0;
         }
@@ -118,7 +128,7 @@ final class StringConversions {
     }
 
     static Integer toInt(Object from, Converter converter) {
-        String str = (String) from;
+        String str = ((String) from).trim();   // NUMERIC WHITESPACE (see note above toByte)
         if (StringUtilities.isEmpty(str)) {
             return 0;
         }
@@ -134,7 +144,7 @@ final class StringConversions {
     }
 
     static Long toLong(Object from, Converter converter) {
-        String str = (String) from;
+        String str = ((String) from).trim();   // NUMERIC WHITESPACE (see note above toByte)
         if (StringUtilities.isEmpty(str)) {
             return 0L;
         }
@@ -164,7 +174,7 @@ final class StringConversions {
     }
 
     static Float toFloat(Object from, Converter converter) {
-        String str = (String) from;
+        String str = ((String) from).trim();   // NUMERIC WHITESPACE (see note above toByte)
         if (StringUtilities.isEmpty(str)) {
             return 0f;
         }
@@ -176,7 +186,7 @@ final class StringConversions {
     }
 
     static Double toDouble(Object from, Converter converter) {
-        String str = (String) from;
+        String str = ((String) from).trim();   // NUMERIC WHITESPACE (see note above toByte)
         if (StringUtilities.isEmpty(str)) {
             return 0.0;
         }
@@ -195,11 +205,24 @@ final class StringConversions {
         } else if ("false".equals(str)) {
             return false;
         }
+        // Surrounding whitespace is not part of the word -- " true " says true and converted to FALSE,
+        // the same silent inversion as the spellings below rather than a rejection, because anything
+        // unrecognised returns false. Trimmed only AFTER the fast path above has missed, so the common
+        // unpadded case pays nothing for it. Whitespace INSIDE the word is not touched: "tr ue" is not
+        // a boolean and stays false.
+        str = str.trim();
         // "yes" belongs here for the same reason "y" already did. Without it the abbreviation was true and the
         // word was false -- so "y" converted to true while "Yes" converted to FALSE, silently inverting any data
         // written the long way. Text answers in the wild are written both ways and mean the same thing.
+        // "on" belongs here for the same reason "yes" did, and it is the last common spelling missing:
+        // it says true and converted to FALSE, because anything unrecognised returns false rather than
+        // throwing. It is not an exotic form -- it is what a checkbox, a feature flag and a properties
+        // file write; PostgreSQL's own boolean input accepts it alongside true/yes/t/y/1; and n-cube's
+        // decision-table equality already treats on/off as a boolean pair. "off" needs no entry: it is
+        // false already, though only by the catch-all, exactly as "no" is.
         return "true".equalsIgnoreCase(str) || "t".equalsIgnoreCase(str) || "1".equals(str)
-                || "y".equalsIgnoreCase(str) || "yes".equalsIgnoreCase(str) || "\"true\"".equalsIgnoreCase(str);
+                || "y".equalsIgnoreCase(str) || "yes".equalsIgnoreCase(str)
+                || "on".equalsIgnoreCase(str) || "\"true\"".equalsIgnoreCase(str);
     }
 
     static char toCharacter(Object from, Converter converter) {
@@ -240,7 +263,7 @@ final class StringConversions {
     }
 
     static BigInteger toBigInteger(Object from, Converter converter) {
-        String str = (String) from;
+        String str = ((String) from).trim();   // NUMERIC WHITESPACE (see note above toByte)
         if (StringUtilities.isEmpty(str)) {
             return BigInteger.ZERO;
         }
@@ -253,7 +276,7 @@ final class StringConversions {
     }
 
     static BigDecimal toBigDecimal(Object from, Converter converter) {
-        String str = (String) from;
+        String str = ((String) from).trim();   // NUMERIC WHITESPACE (see note above toByte)
         if (StringUtilities.isEmpty(str)) {
             return BigDecimal.ZERO;
         }

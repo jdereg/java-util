@@ -3897,6 +3897,15 @@ class ConverterEverythingTest {
                 {"yes", true},
                 {"Yes", true},
                 {"YES", true},
+                // Same inversion, one spelling later: "on" said true and came back FALSE. It is what a
+                // checkbox, a feature flag and a properties file write, and what PostgreSQL's boolean
+                // input accepts. "off" is false already, by the same catch-all that made "no" false.
+                {"on", true},
+                {"On", true},
+                {"ON", true},
+                {"off", false},
+                {"Off", false},
+                {"OFF", false},
                 {"n", false},
                 {"N", false},
                 {"no", false},

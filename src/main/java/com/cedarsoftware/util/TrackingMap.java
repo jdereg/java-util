@@ -232,7 +232,7 @@ public class TrackingMap<K, V> implements Map<K, V> {
      * @return a string representation of this map
      */
     public String toString() {
-        return internalMap.toString();
+        return CycleSafeToString.map(this, internalMap);
     }
 
     /**

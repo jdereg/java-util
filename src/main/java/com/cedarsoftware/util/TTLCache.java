@@ -845,18 +845,7 @@ public class TTLCache<K, V> implements Map<K, V>, AutoCloseable {
     public String toString() {
         lock.lock();
         try {
-            StringBuilder sb = new StringBuilder();
-            sb.append('{');
-            Iterator<Entry<K, V>> it = entrySet().iterator();
-            while (it.hasNext()) {
-                Entry<K, V> entry = it.next();
-                sb.append(entry.getKey()).append('=').append(entry.getValue());
-                if (it.hasNext()) {
-                    sb.append(", ");
-                }
-            }
-            sb.append('}');
-            return sb.toString();
+            return MapUtilities.mapToString(this);
         } finally {
             lock.unlock();
         }

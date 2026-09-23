@@ -115,17 +115,7 @@ public class ConcurrentSet<T> implements Set<T>, Serializable {
 
     @Override
     public String toString() {
-        Iterator<T> it = iterator();
-        if (!it.hasNext()) return "[]";
-
-        StringBuilder sb = new StringBuilder();
-        sb.append('[');
-        for (;;) {
-            T e = it.next();
-            sb.append(e == this ? "(this Set)" : e);
-            if (!it.hasNext()) return sb.append(']').toString();
-            sb.append(',').append(' ');
-        }
+        return CycleSafeToString.collection(this, this::iterator, "(this Set)");
     }
 
     @Override

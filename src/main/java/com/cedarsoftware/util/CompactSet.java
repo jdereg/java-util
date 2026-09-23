@@ -254,7 +254,7 @@ public class CompactSet<E> implements Set<E> {
 
     @Override
     public String toString() {
-        return map.keySet().toString();
+        return CycleSafeToString.collection(this, this::iterator, CycleSafeToString.THIS_COLLECTION);
     }
 
     /**

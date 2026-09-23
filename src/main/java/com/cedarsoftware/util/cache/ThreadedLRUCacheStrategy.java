@@ -2,11 +2,11 @@ package com.cedarsoftware.util.cache;
 
 import java.io.Closeable;
 import java.lang.ref.WeakReference;
-import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -550,11 +550,14 @@ public class ThreadedLRUCacheStrategy<K, V> implements Map<K, V>, Closeable {
 
     @Override
     public Set<Map.Entry<K, V>> entrySet() {
-        Set<Map.Entry<K, V>> entrySet = new ConcurrentSet<>();
+        // Snapshot keyed by KEY. A hash set of entries would hash every VALUE to store it -- work nobody asked
+        // for, and unbounded recursion when a value's graph leads back to this cache (which then took toString()
+        // down with it, since toString() walks entrySet()).
+        Map<K, V> snapshot = new LinkedHashMap<>();
         for (Node<K, V> node : cache.values()) {
-            entrySet.add(new AbstractMap.SimpleEntry<>(node.key, node.value));
+            snapshot.put(node.key, node.value);
         }
-        return Collections.unmodifiableSet(entrySet);
+        return Collections.unmodifiableSet(snapshot.entrySet());
     }
 
     @Override

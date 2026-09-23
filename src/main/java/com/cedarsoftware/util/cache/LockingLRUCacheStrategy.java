@@ -10,6 +10,7 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 import com.cedarsoftware.util.ConcurrentHashMapNullSafe;
+import com.cedarsoftware.util.MapUtilities;
 
 /**
  * This class provides a thread-safe Least Recently Used (LRU) cache API that evicts the least recently used items
@@ -484,38 +485,8 @@ public class LockingLRUCacheStrategy<K, V> implements Map<K, V> {
      */
     @Override
     public String toString() {
-        lock.lock();
-        try {
-            StringBuilder sb = new StringBuilder();
-            sb.append("{");
-            for (Node<K, V> node = head.next; node != tail; node = node.next) {
-                sb.append(formatElement(node.key))
-                        .append("=")
-                        .append(formatElement(node.value))
-                        .append(", ");
-            }
-
-            if (sb.length() > 1) {
-                sb.setLength(sb.length() - 2); // Remove trailing comma and space
-            }
-            sb.append("}");
-            return sb.toString();
-        } finally {
-            lock.unlock();
-        }
-    }
-
-    /**
-     * Helper method to format an element, replacing self-references with a placeholder.
-     *
-     * @param element The element to format.
-     * @return The string representation of the element, or a placeholder if it's a self-reference.
-     */
-    private String formatElement(Object element) {
-        if (element == this) {
-            return "(this Collection)";
-        }
-        return String.valueOf(element);
+        // entrySet() snapshots under the lock, so the values' own toString() runs after the lock is released.
+        return MapUtilities.mapToString(this);
     }
 
     /**

@@ -814,6 +814,6 @@ public class CaseInsensitiveSet<E> extends AbstractSet<E> implements Set<E>, Ser
      */
     @Override
     public String toString() {
-        return delegate.toString();
+        return CycleSafeToString.collection(this, this::iterator, CycleSafeToString.THIS_COLLECTION);
     }
 }

@@ -2,7 +2,6 @@ package com.cedarsoftware.util;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -10,6 +9,7 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -1817,12 +1817,14 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         Iterator<?> iter = coll.iterator();
         while (iter.hasNext()) {
             Object e = iter.next();
-            // Compute hash for all elements
-            h = h * 31 + computeElementHash(e, caseSensitive);
+            // Check dimension first, as process1DObjectArray and flattenCollectionN do. A nested element is
+            // re-hashed structurally by expandWithHash, which tracks the containers it has visited, so hashing
+            // it here is wasted -- and for a collection that contains itself, its own hashCode() never returns.
             if (e instanceof Collection || (e != null && e.getClass().isArray())) {
                 is1D = false;
                 break;
             }
+            h = h * 31 + computeElementHash(e, caseSensitive);
         }
         
         if (is1D) {
@@ -3579,7 +3581,11 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      * @return a snapshot set view of the mappings contained in this map
      */
     public Set<Map.Entry<Object, V>> entrySet() {
-        Set<Map.Entry<Object, V>> set = new HashSet<>(Math.max(16, (int) (size() / 0.75f) + 1));
+        // Snapshot keyed by KEY. A HashSet of entries hashes every VALUE to store it (Map.Entry.hashCode() is
+        // key ^ value) -- work nobody asked for, and unbounded recursion when a value's graph leads back here.
+        // Keys are distinct under this map's own equivalence, which is looser than equals(), so no two entries
+        // can collide in the snapshot.
+        Map<Object, V> entries = new LinkedHashMap<>(Math.max(16, (int) (size() / 0.75f) + 1));
         // Iterate buckets directly instead of using deprecated entries()
         final AtomicReferenceArray<MultiKey<V>[]> snapshot = buckets;
         final int len = snapshot.length();
@@ -3609,11 +3615,11 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                         // Single key
                         k = keys;
                     }
-                    set.add(new AbstractMap.SimpleEntry<>(k, e.value));
+                    entries.put(k, e.value);
                 }
             }
         }
-        return set;
+        return entries.entrySet();
     }
 
     /**
@@ -4072,6 +4078,12 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      */
     public String toString() {
         if (isEmpty()) return "{}";
+        // On the render path shared by every java-util container, so a loop that closes back to this map --
+        // however many steps away, through whatever containers -- renders as (cycle) instead of overflowing.
+        return CycleSafeToString.render(this, path -> renderEntries(path));
+    }
+
+    private String renderEntries(IdentitySet<Object> path) {
         StringBuilder sb = new StringBuilder("{\n");
         boolean first = true;
         // Iterate buckets directly to access raw keys for formatting
@@ -4101,7 +4113,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                     }
                     sb.append(keyStr).append(" → ");
                     sb.append(EMOJI_VALUE);
-                    sb.append(formatValueForToString(e.value, this));
+                    sb.append(formatValueForToString(e.value, this, path));
                 }
             }
         }
@@ -4641,13 +4653,20 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     /**
      * Format a value for toString() display, replacing null with ∅ and handling nested structures
      */
-    private static String formatValueForToString(Object value, MultiKeyMap<?> selfMap) {
+    private static String formatValueForToString(Object value, MultiKeyMap<?> selfMap, IdentitySet<Object> path) {
         if (value == null) return EMOJI_EMPTY;
         if (selfMap != null && value == selfMap) return THIS_MAP;
         
         // For collections and arrays, recursively format with ∅ for nulls
         if (value instanceof Collection || value.getClass().isArray()) {
-            return formatComplexValueForToString(value, selfMap);
+            return formatComplexValueForToString(value, selfMap, path);
+        }
+        if (value instanceof Map) {
+            // Rendered on the shared path -- a plain value.toString() cannot see it, so a map that leads back to
+            // a container already being rendered would recurse until the stack ran out.
+            StringBuilder sb = new StringBuilder();
+            CycleSafeToString.append(sb, value, path);
+            return sb.toString();
         }
         
         return value.toString();
@@ -4656,23 +4675,28 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     /**
      * Format complex values (collections/arrays) with ∅ for nulls while maintaining simple formatting
      */
-    private static String formatComplexValueForToString(Object value, MultiKeyMap<?> selfMap) {
+    private static String formatComplexValueForToString(Object value, MultiKeyMap<?> selfMap, IdentitySet<Object> path) {
         if (value == null) return EMOJI_EMPTY;
         if (selfMap != null && value == selfMap) return THIS_MAP;
-        
-        if (value.getClass().isArray()) {
-            return formatArrayValueForToString(value, selfMap);
-        } else if (value instanceof Collection) {
-            return formatCollectionValueForToString((Collection<?>) value, selfMap);
+        // A collection or array already being rendered further up is a loop -- a list that contains itself, or
+        // one that leads back to a list above it.
+        if (!path.add(value)) return CycleSafeToString.CYCLE;
+        try {
+            if (value.getClass().isArray()) {
+                return formatArrayValueForToString(value, selfMap, path);
+            } else if (value instanceof Collection) {
+                return formatCollectionValueForToString((Collection<?>) value, selfMap, path);
+            }
+            return value.toString();
+        } finally {
+            path.remove(value);
         }
-        
-        return value.toString();
     }
     
     /**
      * Format array values with ∅ for nulls
      */
-    private static String formatArrayValueForToString(Object array, MultiKeyMap<?> selfMap) {
+    private static String formatArrayValueForToString(Object array, MultiKeyMap<?> selfMap, IdentitySet<Object> path) {
         int len = ArrayUtilities.getLength(array);
         if (len == 0) {
             return "[]";
@@ -4685,14 +4709,14 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             Object[] oa = (Object[]) array;
             for (int i = 0; i < len; i++) {
                 if (i > 0) sb.append(", ");
-                sb.append(formatValueForToString(oa[i], selfMap));  // Direct array access
+                sb.append(formatValueForToString(oa[i], selfMap, path));  // Direct array access
             }
         } else {
             // Primitive arrays require reflection for boxing
             for (int i = 0; i < len; i++) {
                 if (i > 0) sb.append(", ");
                 Object element = ArrayUtilities.getElement(array, i);  // Uses optimized primitive retrieval
-                sb.append(formatValueForToString(element, selfMap));
+                sb.append(formatValueForToString(element, selfMap, path));
             }
         }
         
@@ -4703,7 +4727,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     /**
      * Format collection values with ∅ for nulls  
      */
-    private static String formatCollectionValueForToString(Collection<?> collection, MultiKeyMap<?> selfMap) {
+    private static String formatCollectionValueForToString(Collection<?> collection, MultiKeyMap<?> selfMap, IdentitySet<Object> path) {
         if (collection.isEmpty()) return "[]";
         
         StringBuilder sb = new StringBuilder("[");
@@ -4711,7 +4735,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         for (Object element : collection) {
             if (!first) sb.append(", ");
             first = false;
-            sb.append(formatValueForToString(element, selfMap));
+            sb.append(formatValueForToString(element, selfMap, path));
         }
         sb.append("]");
         return sb.toString();

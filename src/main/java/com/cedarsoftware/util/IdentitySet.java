@@ -288,6 +288,16 @@ public class IdentitySet<T> extends AbstractSet<T> {
     }
 
     /**
+     * {@inheritDoc}
+     * <p>A cycle back to a container that is already being rendered prints {@code (cycle)} rather than
+     * overflowing the stack; see {@link MapUtilities#mapToString(java.util.Map)}.</p>
+     */
+    @Override
+    public String toString() {
+        return CycleSafeToString.collection(this, this::iterator, CycleSafeToString.THIS_COLLECTION);
+    }
+
+    /**
      * Returns true if this set contains no elements.
      *
      * @return true if empty, false otherwise

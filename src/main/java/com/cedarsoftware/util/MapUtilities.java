@@ -3,7 +3,6 @@ package com.cedarsoftware.util;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.EnumMap;
-import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -121,6 +120,24 @@ public class MapUtilities {
      * {@code ", "} (comma and space). Each key-value mapping is rendered as the key followed by an equals sign
      * ({@code "="}) followed by the associated value.
      * </p>
+     * <p>
+     * <b>Cycles terminate.</b> A map, collection or java-util map that is already being rendered further up the
+     * current path renders as {@code (cycle)}, however many steps away the loop closes -- {@code a -> b -> a}
+     * gives {@code {b={a=(cycle)}}}. The JDK's own guard, which this method used to share, prints
+     * {@code (this Map)} only when a value IS the map being printed; a two-step cycle walks past it, each
+     * container handing the next to its own {@code toString()}, until {@link StackOverflowError}. Direct
+     * self-containment still prints {@code (this Map)} / {@code (this Collection)}, as the JDK does. A node reached
+     * twice by different routes is not a cycle and renders in full both times.
+     * </p>
+     * <p>
+     * Output for anything acyclic is unchanged. Nested maps and collections whose {@code toString()} is the JDK's
+     * standard one are walked here -- that is what lets the walk see a loop close -- and render identically;
+     * a container with its own {@code toString()} format keeps it, and every other value is rendered by its own
+     * {@code toString()}, arrays included (never expanded). One limit remains: a loop made entirely of containers
+     * rendered by their own {@code toString()} -- synchronized or unmodifiable wrappers, {@code Hashtable},
+     * {@code Vector} -- never re-enters this method, so it behaves exactly as calling {@code toString()} on those
+     * containers directly would.
+     * </p>
      *
      * @param map the map to represent as a string
      * @param <K> the type of keys in the map
@@ -128,25 +145,7 @@ public class MapUtilities {
      * @return a string representation of the provided map
      */
     public static <K, V> String mapToString(Map<K, V> map) {
-        Iterator<Map.Entry<K, V>> i = map.entrySet().iterator();
-        if (!i.hasNext()) {
-            return "{}";
-        }
-
-        StringBuilder sb = new StringBuilder();
-        sb.append('{');
-        for (; ; ) {
-            Map.Entry<K, V> e = i.next();
-            K key = e.getKey();
-            V value = e.getValue();
-            sb.append(key == map ? "(this Map)" : key);
-            sb.append('=');
-            sb.append(value == map ? "(this Map)" : value);
-            if (!i.hasNext()) {
-                return sb.append('}').toString();
-            }
-            sb.append(',').append(' ');
-        }
+        return CycleSafeToString.map(map, map);
     }
 
     /**

@@ -709,6 +709,16 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
 
     /**
      * {@inheritDoc}
+     * <p>A cycle back to a map that is already being rendered prints {@code (cycle)} rather than overflowing the
+     * stack; see {@link MapUtilities#mapToString(Map)}.</p>
+     */
+    @Override
+    public String toString() {
+        return MapUtilities.mapToString(this);
+    }
+
+    /**
+     * {@inheritDoc}
      * <p>Equality is based on case-insensitive comparison for String keys.</p>
      */
     @Override

@@ -325,6 +325,16 @@ public class ConcurrentNavigableSetNullSafe<E> extends AbstractSet<E> implements
         return internalSet.size();
     }
 
+    /**
+     * {@inheritDoc}
+     * <p>A cycle back to a container that is already being rendered prints {@code (cycle)} rather than
+     * overflowing the stack; see {@link MapUtilities#mapToString(java.util.Map)}.</p>
+     */
+    @Override
+    public String toString() {
+        return CycleSafeToString.collection(this, this::iterator, CycleSafeToString.THIS_COLLECTION);
+    }
+
     @Override
     public boolean isEmpty() {
         return internalSet.isEmpty();

@@ -199,9 +199,10 @@ public class GraphComparator
                     "id=" + id +
                     ", fieldName='" + fieldName + '\'' +
                     ", srcPtr=" + srcPtr +
-                    ", srcValue=" + srcValue +
-                    ", targetValue=" + targetValue +
-                    ", optionalKey=" + optionalKey +
+                    // These come from the caller's object graphs, which may be cyclic.
+                    ", srcValue=" + CycleSafeToString.value(srcValue) +
+                    ", targetValue=" + CycleSafeToString.value(targetValue) +
+                    ", optionalKey=" + CycleSafeToString.value(optionalKey) +
                     ", cmd='" + cmd + '\'' +
                     '}';
         }
@@ -1172,11 +1173,20 @@ public class GraphComparator
             catch(Exception e)
             {
                 StringBuilder str = new StringBuilder();
+                // A cause chain can loop (A caused by B caused by A); without a memory of the causes already
+                // written, this appended until the heap ran out. ExceptionUtilities.getDeepestException guards
+                // the same way.
+                IdentitySet<Throwable> seen = new IdentitySet<>();
+                seen.add(e);
                 Throwable t = e;
                 do
                 {
                     str.append(t.getMessage());
                     t = t.getCause();
+                    if (t != null && !seen.add(t))
+                    {
+                        break;
+                    }
                     if (t != null)
                     {
                         str.append(", caused by: ");

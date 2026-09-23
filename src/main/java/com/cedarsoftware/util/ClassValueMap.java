@@ -432,6 +432,16 @@ public class ClassValueMap<V> extends AbstractMap<Class<?>, V> implements Concur
         return backingMap.size() + (hasNullKeyMapping() ? 1 : 0);
     }
 
+    /**
+     * {@inheritDoc}
+     * <p>A cycle back to a map that is already being rendered prints {@code (cycle)} rather than overflowing the
+     * stack; see {@link MapUtilities#mapToString(Map)}.</p>
+     */
+    @Override
+    public String toString() {
+        return MapUtilities.mapToString(this);
+    }
+
     @Override
     public boolean isEmpty() {
         return !hasNullKeyMapping() && backingMap.isEmpty();

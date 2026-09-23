@@ -205,7 +205,7 @@ public class LRUCache<K, V> implements Map<K, V> {
 
     @Override
     public String toString() {
-        return strategy.toString();
+        return CycleSafeToString.map(this, strategy);
     }
 
     @Override

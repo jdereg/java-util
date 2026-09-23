@@ -1056,20 +1056,26 @@ public final class ConcurrentList<E> implements List<E>, Deque<E>, RandomAccess,
         // Iterate directly under read lock to avoid O(n) snapshot allocation.
         lock.readLock().lock();
         try {
-            int sz = size();
-            long h = head.get();
-            StringBuilder sb = new StringBuilder();
-            sb.append('[');
-            for (int i = 0; i < sz; i++) {
-                if (i > 0) {
-                    sb.append(',').append(' ');
+            return CycleSafeToString.render(this, path -> {
+                int sz = size();
+                long h = head.get();
+                StringBuilder sb = new StringBuilder();
+                sb.append('[');
+                for (int i = 0; i < sz; i++) {
+                    if (i > 0) {
+                        sb.append(',').append(' ');
+                    }
+                    long pos = h + i;
+                    Object e = getBucket(bucketIndex(pos)).get(bucketOffset(pos));
+                    if (e == this) {
+                        sb.append(CycleSafeToString.THIS_COLLECTION);
+                    } else {
+                        CycleSafeToString.append(sb, e, path);
+                    }
                 }
-                long pos = h + i;
-                Object e = getBucket(bucketIndex(pos)).get(bucketOffset(pos));
-                sb.append(e == this ? "(this Collection)" : e);
-            }
-            sb.append(']');
-            return sb.toString();
+                sb.append(']');
+                return sb.toString();
+            });
         } finally {
             lock.readLock().unlock();
         }

@@ -1,5 +1,6 @@
 package com.cedarsoftware.util;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -16,7 +17,10 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * {@link MapUtilities#mapToString(Map)} must terminate on ANY cycle, not only on direct self-containment.
@@ -269,6 +273,113 @@ class MapUtilitiesCycleTest {
         map.remove("bad");
         map.put("ok", 1);
         assertEquals("{map={ok=1}}", compact.toString());
+    }
+
+    // ------------------------------------------------------------------------- the loop budget
+
+    @Test
+    void aDenselyCrossLinkedGraphIsBounded() {
+        // A clique: twelve maps, each holding all the others. Every route that does not repeat a map is a distinct
+        // path, and there are about 11! of them -- ten maps already rendered ~100 million characters, and eleven
+        // exhausted the heap. Once the render has closed a loop and spent its budget, it stops expanding.
+        assertTimeoutPreemptively(Duration.ofSeconds(10), () -> {
+            String s = MapUtilities.mapToString(clique(12, LinkedHashMap::new));
+            assertBoundedRender(s);
+            String viaCompactMaps = clique(12, CompactMap::new).toString();
+            assertBoundedRender(viaCompactMaps);
+        });
+    }
+
+    @Test
+    void aDenselyCrossLinkedGraphInsideAMultiKeyMapValueIsBounded() {
+        // MultiKeyMap walks the collections in its values itself, on the same path, so it spends the same budget
+        assertTimeoutPreemptively(Duration.ofSeconds(10), () -> {
+            List<List<Object>> lists = new ArrayList<>();
+            for (int i = 0; i < 12; i++) {
+                lists.add(new ArrayList<>());
+            }
+            for (List<Object> list : lists) {
+                for (List<Object> other : lists) {
+                    if (other != list) {
+                        list.add(other);
+                    }
+                }
+            }
+            MultiKeyMap<Object> mkm = new MultiKeyMap<>();
+            mkm.put("k", lists.get(0));
+            assertBoundedRender(mkm.toString());
+        });
+    }
+
+    @Test
+    void aGraphTheJdkCanPrintIsNeverCut() {
+        // Far past the budget, but no loop has closed -- holding itself is not one, the JDK prints that -- so the
+        // output is the JDK's, all of it.
+        Map<String, Object> big = bigMapHoldingItself();
+        assertEquals(big.toString(), MapUtilities.mapToString(big));
+    }
+
+    @Test
+    void aBudgetSpentByOneRenderDoesNotCarryIntoTheNext() {
+        assertBoundedRender(MapUtilities.mapToString(clique(12, LinkedHashMap::new)));
+        Map<String, Object> big = bigMapHoldingItself();
+        assertEquals(big.toString(), MapUtilities.mapToString(big));
+    }
+
+    private static Map<String, Object> bigMapHoldingItself() {
+        Map<String, Object> big = new LinkedHashMap<>();
+        for (int i = 0; i < 150_000; i++) {
+            big.put("k" + i, Arrays.asList(i, "v"));
+        }
+        big.put("self", big);
+        return big;
+    }
+
+    @Test
+    void aSparseLoopRendersInFull() {
+        // A tree whose nodes point back to their parent is cyclic, but each node is reached by one route only:
+        // 3,000 nodes render in full, every one of them.
+        Map<String, Object> root = node("n0", null);
+        List<Map<String, Object>> all = new ArrayList<>(Collections.singletonList(root));
+        for (int i = 1; i < 3000; i++) {
+            Map<String, Object> parent = all.get((i - 1) / 3);
+            Map<String, Object> child = node("n" + i, parent);
+            ((List<Object>) parent.get("children")).add(child);
+            all.add(child);
+        }
+        String s = MapUtilities.mapToString(root);
+        assertFalse(s.contains("..."));
+        assertEquals(3000, s.split("name=n", -1).length - 1);
+    }
+
+    private static void assertBoundedRender(String s) {
+        assertTrue(s.startsWith("{") && s.endsWith("}"), "still a well-formed render");
+        assertTrue(s.contains("(cycle)"));
+        assertTrue(s.contains("..."), "the budget was reached");
+        assertTrue(s.length() < 5_000_000, "bounded: " + s.length() + " chars");
+    }
+
+    private static Map<String, Object> clique(int n, java.util.function.Supplier<Map<String, Object>> factory) {
+        List<Map<String, Object>> maps = new ArrayList<>();
+        for (int i = 0; i < n; i++) {
+            maps.add(factory.get());
+        }
+        for (int i = 0; i < n; i++) {
+            for (int j = 0; j < n; j++) {
+                if (i != j) {
+                    maps.get(i).put("m" + j, maps.get(j));
+                }
+            }
+        }
+        return maps.get(0);
+    }
+
+    private static Map<String, Object> node(String name, Map<String, Object> parent) {
+        Map<String, Object> node = new LinkedHashMap<>();
+        node.put("name", name);
+        node.put("parent", parent);
+        node.put("children", new ArrayList<>());
+        return node;
     }
 
     // ---------------------------------------------------------------------------- fixtures

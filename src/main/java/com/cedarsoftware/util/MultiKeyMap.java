@@ -4083,7 +4083,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         return CycleSafeToString.render(this, path -> renderEntries(path));
     }
 
-    private String renderEntries(IdentitySet<Object> path) {
+    private String renderEntries(CycleSafeToString.Path path) {
         StringBuilder sb = new StringBuilder("{\n");
         boolean first = true;
         // Iterate buckets directly to access raw keys for formatting
@@ -4653,7 +4653,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     /**
      * Format a value for toString() display, replacing null with ∅ and handling nested structures
      */
-    private static String formatValueForToString(Object value, MultiKeyMap<?> selfMap, IdentitySet<Object> path) {
+    private static String formatValueForToString(Object value, MultiKeyMap<?> selfMap, CycleSafeToString.Path path) {
+        path.countValue();
         if (value == null) return EMOJI_EMPTY;
         if (selfMap != null && value == selfMap) return THIS_MAP;
         
@@ -4675,13 +4676,16 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     /**
      * Format complex values (collections/arrays) with ∅ for nulls while maintaining simple formatting
      */
-    private static String formatComplexValueForToString(Object value, MultiKeyMap<?> selfMap, IdentitySet<Object> path) {
+    private static String formatComplexValueForToString(Object value, MultiKeyMap<?> selfMap, CycleSafeToString.Path path) {
         if (value == null) return EMOJI_EMPTY;
         if (selfMap != null && value == selfMap) return THIS_MAP;
         // A collection or array already being rendered further up is a loop -- a list that contains itself, or
         // one that leads back to a list above it.
         if (!path.add(value)) return CycleSafeToString.CYCLE;
         try {
+            if (path.exhausted()) {
+                return CycleSafeToString.ELIDED;   // a render that has closed a loop has spent its budget
+            }
             if (value.getClass().isArray()) {
                 return formatArrayValueForToString(value, selfMap, path);
             } else if (value instanceof Collection) {
@@ -4696,7 +4700,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     /**
      * Format array values with ∅ for nulls
      */
-    private static String formatArrayValueForToString(Object array, MultiKeyMap<?> selfMap, IdentitySet<Object> path) {
+    private static String formatArrayValueForToString(Object array, MultiKeyMap<?> selfMap, CycleSafeToString.Path path) {
         int len = ArrayUtilities.getLength(array);
         if (len == 0) {
             return "[]";
@@ -4727,7 +4731,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     /**
      * Format collection values with ∅ for nulls  
      */
-    private static String formatCollectionValueForToString(Collection<?> collection, MultiKeyMap<?> selfMap, IdentitySet<Object> path) {
+    private static String formatCollectionValueForToString(Collection<?> collection, MultiKeyMap<?> selfMap, CycleSafeToString.Path path) {
         if (collection.isEmpty()) return "[]";
         
         StringBuilder sb = new StringBuilder("[");

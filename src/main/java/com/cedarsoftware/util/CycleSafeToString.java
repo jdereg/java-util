@@ -34,6 +34,15 @@ import java.util.function.Supplier;
  * them; a container with its own format is handed to that {@code toString()} and keeps it; every other value is
  * rendered by its own {@code toString()}, arrays included (never expanded).
  * <p>
+ * A render that has closed a loop is bounded. A path prints every route through a graph that does not repeat a
+ * container -- exactly what the JDK prints for a DAG -- but in a densely cross-linked graph, such as a clique of maps
+ * that each hold all the others, the number of such routes grows factorially: ten such maps render about 100 million
+ * characters and eleven exhaust the heap, where the JDK would have overflowed the stack at once. So once a render has
+ * printed {@code (cycle)}, which the JDK never prints, and has rendered {@link #LOOP_BUDGET} values, every container
+ * it has not yet expanded prints as {@code ...}. Anything the JDK can print -- acyclic, or holding only itself -- never
+ * meets the budget, and a loop that is not dense, such as a tree whose nodes point back to their parent, renders in
+ * full up to that size.
+ * <p>
  * One limit is inherent: a loop made entirely of containers rendered by their own {@code toString()} --
  * synchronized or unmodifiable wrappers, {@code Hashtable}, {@code Vector} -- never re-enters this class, so it
  * behaves exactly as calling {@code toString()} on those containers directly would.
@@ -59,9 +68,17 @@ final class CycleSafeToString {
     static final String CYCLE = "(cycle)";
     static final String THIS_MAP = "(this Map)";
     static final String THIS_COLLECTION = "(this Collection)";
+    /** Rendered in place of a container once a render that has closed a loop has spent its {@link #LOOP_BUDGET}. */
+    static final String ELIDED = "...";
 
-    // The containers being rendered on this thread, outermost first. Present only while a render is in progress.
-    private static final ThreadLocal<IdentitySet<Object>> PATH = new ThreadLocal<>();
+    /**
+     * Values a render may print once it has closed a loop, before it stops expanding containers: far more than any
+     * readable {@code toString()}, far less than the factorial blow-up of a densely cross-linked graph.
+     */
+    static final int LOOP_BUDGET = 100_000;
+
+    // The containers being rendered on this thread. Present only while a render is in progress.
+    private static final ThreadLocal<Path> PATH = new ThreadLocal<>();
 
     // Whether a container's toString() is the JDK's standard format, so that walking it here renders it
     // byte-for-byte as its own toString() would. Decided once per class, by who DECLARES toString(): a subclass
@@ -132,15 +149,16 @@ final class CycleSafeToString {
     /**
      * Runs {@code body} with {@code self} on this thread's render path, for a container that builds its own
      * format. Returns {@link #CYCLE} instead when {@code self} is already being rendered further up -- that is the
-     * loop closing. Elements should be rendered through {@link #append}, which shares the same path.
+     * loop closing -- and {@link #ELIDED} once a render that has closed a loop has spent its {@link #LOOP_BUDGET}.
+     * Elements should be rendered through {@link #append}, which shares the same path and counts them.
      */
-    static String render(Object self, Function<IdentitySet<Object>, String> body) {
+    static String render(Object self, Function<Path, String> body) {
         return withPath(path -> {
             if (!path.add(self)) {
                 return CYCLE;
             }
             try {
-                return body.apply(path);
+                return path.exhausted() ? ELIDED : body.apply(path);
             } finally {
                 path.remove(self);   // path, not visited: a node reached twice by different routes is not a loop
             }
@@ -151,7 +169,8 @@ final class CycleSafeToString {
      * Appends one value. A standard-format map or collection is walked on {@code path}; anything else is rendered
      * by its own {@code toString()}, and a java-util container re-enters {@link #render} on this same path.
      */
-    static void append(StringBuilder sb, Object value, IdentitySet<Object> path) {
+    static void append(StringBuilder sb, Object value, Path path) {
+        path.countValue();
         if (value instanceof Map && STANDARD_FORMAT.get(value.getClass())) {
             Map<?, ?> map = (Map<?, ?>) value;
             if (!path.add(map)) {
@@ -159,7 +178,11 @@ final class CycleSafeToString {
                 return;
             }
             try {
-                appendEntries(sb, map, map.entrySet().iterator(), path);
+                if (path.exhausted()) {
+                    sb.append(ELIDED);
+                } else {
+                    appendEntries(sb, map, map.entrySet().iterator(), path);
+                }
             } finally {
                 path.remove(map);
             }
@@ -170,7 +193,11 @@ final class CycleSafeToString {
                 return;
             }
             try {
-                appendItems(sb, collection, collection.iterator(), THIS_COLLECTION, path);
+                if (path.exhausted()) {
+                    sb.append(ELIDED);
+                } else {
+                    appendItems(sb, collection, collection.iterator(), THIS_COLLECTION, path);
+                }
             } finally {
                 path.remove(collection);
             }
@@ -180,7 +207,7 @@ final class CycleSafeToString {
     }
 
     private static void appendEntries(StringBuilder sb, Object self, Iterator<? extends Map.Entry<?, ?>> entries,
-                                      IdentitySet<Object> path) {
+                                      Path path) {
         if (!entries.hasNext()) {
             sb.append("{}");
             return;
@@ -200,7 +227,7 @@ final class CycleSafeToString {
     }
 
     private static void appendItems(StringBuilder sb, Object self, Iterator<?> items, String selfMarker,
-                                    IdentitySet<Object> path) {
+                                    Path path) {
         if (!items.hasNext()) {
             sb.append("[]");
             return;
@@ -217,7 +244,7 @@ final class CycleSafeToString {
     }
 
     private static void appendMember(StringBuilder sb, Object member, Object self, String selfMarker,
-                                     IdentitySet<Object> path) {
+                                     Path path) {
         if (member == self) {
             sb.append(selfMarker);
         } else {
@@ -227,17 +254,50 @@ final class CycleSafeToString {
 
     // The outermost call creates the path and removes it on the way out, so nothing is left on the thread --
     // not even when a leaf's toString() throws part-way through.
-    private static String withPath(Function<IdentitySet<Object>, String> body) {
-        IdentitySet<Object> path = PATH.get();
+    private static String withPath(Function<Path, String> body) {
+        Path path = PATH.get();
         if (path != null) {
             return body.apply(path);
         }
-        path = new IdentitySet<>();
+        path = new Path();
         PATH.set(path);
         try {
             return body.apply(path);
         } finally {
             PATH.remove();
+        }
+    }
+
+    /**
+     * The containers being rendered on this thread, by identity, and how far the render has got -- whether it has
+     * closed a loop, and how many values it has rendered -- for the {@link #LOOP_BUDGET}.
+     */
+    static final class Path {
+        private final IdentitySet<Object> containers = new IdentitySet<>();
+        private boolean looped;
+        private int values;
+
+        /** Puts a container on the path. Returns false when it is already there: the loop closing. */
+        boolean add(Object container) {
+            if (containers.add(container)) {
+                return true;
+            }
+            looped = true;
+            return false;
+        }
+
+        void remove(Object container) {
+            containers.remove(container);
+        }
+
+        /** Counts one value rendered. */
+        void countValue() {
+            values++;
+        }
+
+        /** Whether this render has closed a loop and spent its budget, so it must not expand another container. */
+        boolean exhausted() {
+            return looped && values >= LOOP_BUDGET;
         }
     }
 }

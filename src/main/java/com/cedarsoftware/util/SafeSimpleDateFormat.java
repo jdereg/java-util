@@ -82,8 +82,7 @@ public class SafeSimpleDateFormat extends DateFormat {
             SimpleDateFormat fresh = new SimpleDateFormat(pattern, DateFormatSymbols.getInstance(loc));
             fresh.setTimeZone(tz);
             fresh.setLenient(true);
-            NumberFormat nf = defaultNumberFormat();
-            fresh.setNumberFormat((NumberFormat) nf.clone());
+            fresh.setNumberFormat(defaultNumberFormat(loc));
             Calendar cal = Calendar.getInstance(tz, loc);
             cal.clear();
             fresh.setCalendar(cal);
@@ -241,9 +240,18 @@ public class SafeSimpleDateFormat extends DateFormat {
         }
     }
 
-    private static NumberFormat defaultNumberFormat() {
-        NumberFormat nf = NumberFormat.getNumberInstance();
+    /**
+     * The number format {@link SimpleDateFormat} installs for itself: the locale's INTEGER format, without grouping.
+     * It parses each numeric field as an integer and stops at a decimal separator. This used to be the locale's
+     * general number format, which reads "28.144" as one number -- so a field followed by the locale's decimal
+     * separator swallowed what came after it: {@code ss.SSS}, {@code dd.MM.yyyy}, {@code yyyy.MM.dd} and
+     * {@code HH.mm} failed to parse with a '.' locale, {@code ss,SSS} with a ',' locale. Up to 4.0.0 only the
+     * thread that constructed the formatter got that number format; since 4.1.0 every thread did.
+     */
+    private static NumberFormat defaultNumberFormat(Locale locale) {
+        NumberFormat nf = NumberFormat.getIntegerInstance(locale);
         nf.setGroupingUsed(false);
+        nf.setParseIntegerOnly(true);   // getIntegerInstance's contract; stated, because it is the whole point
         return nf;
     }
 
@@ -257,7 +265,7 @@ public class SafeSimpleDateFormat extends DateFormat {
         
         // Initialize parent DateFormat fields to prevent NPEs
         this.calendar = Calendar.getInstance(tz, locale);
-        this.numberFormat = defaultNumberFormat();
+        this.numberFormat = defaultNumberFormat(locale);
         
         this.stateRef = new AtomicReference<>(
                 new State(format,

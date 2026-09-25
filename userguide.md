@@ -8183,9 +8183,24 @@ capability:
 | JNDI | `javax.naming.*`, `com.sun.jndi.*`, `com.sun.rowset.JdbcRowSetImpl` |
 | XSLT / bytecode carriers | `javax.xml.transform.Templates`, `com.sun.org.apache.xalan.*` |
 | Java serialization | `java.io.ObjectInputStream` |
-| Network I/O in a constructor | `Socket`, `ServerSocket`, `DatagramSocket`, `URLConnection` |
-| File create/truncate in a constructor | `FileOutputStream`, `FileWriter`, `RandomAccessFile` |
+| Network I/O in a constructor | `Socket`, `ServerSocket`, `DatagramSocket`, `URLConnection`, `InetSocketAddress` (resolves the host) |
+| File create/truncate in a constructor | `FileOutputStream`, `FileWriter`, `RandomAccessFile`, `PrintStream`, `PrintWriter`, `java.util.Formatter`, `FileImageOutputStream` |
+| File delete in a constructor | `java.util.zip.ZipFile` (its `OPEN_DELETE` mode), and so `JarFile` |
+| Logging | `java.util.logging.Handler` (every handler: `FileHandler` opens a file, `SocketHandler` a socket), `LogManager` |
+| Thread start in a constructor | `java.util.Timer` |
+| Code execution / diagnostics | `jdk.jshell.*`, `jdk.jfr.*`, `jdk.management.jfr.*` |
+| Preferences store | `java.util.prefs.*` |
 | RMI / remote JMX | `java.rmi.*`, `javax.management.remote.*` |
+| JDK / vendor internals | `sun.*`, `com.sun.*`, `com.apple.*`, `apple.*` — see below |
+
+**JDK and vendor internal packages.** Classes in `sun.*`, `com.sun.*`, `com.apple.*` and `apple.*`
+are blocked. On JDK 8 — and on JDK 9-15 under the default `--illegal-access=permit` — every
+constructor in them is reachable, and some take raw native pointers whose finalizers crash the JVM
+when handed an arbitrary number. Unlike the other rules, this one matches the class **itself**, not
+classes that merely extend or implement an internal type (`java.nio.DirectByteBuffer` implements
+`sun.nio.ch.DirectBuffer` and is not blocked). The internal types that ordinary JSON names remain
+resolvable: `sun.util.calendar.ZoneInfo` (a `TimeZone`), `sun.nio.fs.UnixPath` /
+`sun.nio.fs.WindowsPath` (a `Path`), and the `sun.nio.cs.*` `Charset` implementations.
 
 Read-side file I/O (`FileInputStream`, `FileReader`) is deliberately **not** blocked: opening a read
 handle is not a side effect on the order of spawning a process or truncating a file.

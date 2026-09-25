@@ -3413,9 +3413,14 @@ public class ClassUtilities {
     private static final ClassValue<Boolean> SECURITY_CHECK_CACHE = new ClassValue<Boolean>() {
         @Override
         protected Boolean computeValue(Class<?> type) {
-            // Direct blocked class check (ultra-fast with ClassValueSet)
-            if (!isUnblockedName(type.getName())
-                    && (BLOCKED_CLASSES.containsClass(type) || isBlockedName(type.getName()))) {
+            // Direct blocked class check (ultra-fast with ClassValueSet). The internal-package rule
+            // is applied HERE ONLY, to the class itself -- never to its supertypes: the danger is an
+            // internal class's own constructors, while many public JDK classes merely implement an
+            // internal interface (java.nio.DirectByteBuffer implements sun.nio.ch.DirectBuffer).
+            String typeName = type.getName();
+            if (!isUnblockedName(typeName)
+                    && (BLOCKED_CLASSES.containsClass(type) || isBlockedName(typeName)
+                        || isBlockedInternalName(typeName))) {
                 return Boolean.TRUE;
             }
 
@@ -3455,6 +3460,27 @@ public class ClassUtilities {
         }
         for (String prefix : BLOCKED_PACKAGES) {
             if (className.startsWith(prefix)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * JDK/vendor internal package, unless it is one of the few internal types JSON legitimately names.
+     * Matched against the class ITSELF (its name, or the loaded class), not against its supertypes.
+     */
+    private static boolean isBlockedInternalName(String className) {
+        for (String prefix : SecurityChecker.SECURITY_BLOCKED_INTERNAL_PACKAGES) {
+            if (className.startsWith(prefix)) {
+                if (SecurityChecker.INTERNAL_PACKAGE_EXEMPT_CLASS_NAMES.contains(className)) {
+                    return false;
+                }
+                for (String exempt : SecurityChecker.INTERNAL_PACKAGE_EXEMPT_PREFIXES) {
+                    if (className.startsWith(exempt)) {
+                        return false;
+                    }
+                }
                 return true;
             }
         }
@@ -3544,6 +3570,15 @@ public class ClassUtilities {
      * what lets one entry cover a whole family: {@code org.springframework.context.ApplicationContext}
      * blocks every {@code *ApplicationContext} implementation without java-util depending on Spring.
      * <p>
+     * Classes in the JDK and platform-vendor <em>internal</em> packages ({@code sun.}, {@code com.sun.},
+     * {@code com.apple.}, {@code apple.}) are blocked — the class itself, not classes that merely extend or
+     * implement an internal type: on JDK 8 — and on JDK 9-15 under the
+     * default {@code --illegal-access=permit} — every constructor in them is reachable, and some take raw
+     * native pointers whose finalizers crash the JVM when handed an arbitrary number. The few internal
+     * types that ordinary JSON names are exempt from that rule only: {@code sun.util.calendar.ZoneInfo}
+     * (a {@code TimeZone}), {@code sun.nio.fs.UnixPath} / {@code WindowsPath} (a {@code Path}), and the
+     * {@code sun.nio.cs.} {@code Charset} implementations.
+     * <p>
      * <b>Precedence</b>, highest first:
      * <ol>
      *     <li>An explicit unblock ({@link #allowClass(String)} or the
@@ -3621,11 +3656,29 @@ public class ClassUtilities {
                 "java.net.ServerSocket",
                 "java.net.DatagramSocket",
                 "java.net.URLConnection",
+                "java.net.InetSocketAddress",        // (String host, int port) resolves the host name
 
                 // --- Constructors that create or truncate an attacker-named file: integrity / DoS ---
                 "java.io.FileOutputStream",
                 "java.io.FileWriter",
-                "java.io.RandomAccessFile"
+                "java.io.RandomAccessFile",
+                "java.io.PrintStream",               // (String fileName) / (File)
+                "java.io.PrintWriter",               // (String fileName) / (File)
+                "java.util.Formatter",               // (String fileName) / (File)
+                "javax.imageio.stream.FileImageOutputStream",
+
+                // --- Constructors that DELETE an attacker-named file: ZipFile's OPEN_DELETE mode.
+                // Covers java.util.jar.JarFile through the supertype walk.
+                "java.util.zip.ZipFile",
+
+                // --- Logging: a Handler's constructor opens a log file (FileHandler, plus its .lck
+                // file) or a socket (SocketHandler); the root name covers the whole family. The
+                // LogManager constructor registers a JVM shutdown hook.
+                "java.util.logging.Handler",
+                "java.util.logging.LogManager",
+
+                // --- Constructors that start a thread: one payload can start thousands ---
+                "java.util.Timer"
         ));
 
         // Blocked package prefixes. Applied to the class being checked AND to every supertype, on both
@@ -3641,7 +3694,46 @@ public class ClassUtilities {
                 "com.sun.org.apache.xalan.", // TemplatesImpl and friends
                 "java.rmi.",
                 "javax.management.remote.",
-                "jdk.internal."
+                "jdk.internal.",
+                "jdk.jshell.",               // JShell: executes code, launches a debuggee JVM
+                "jdk.jfr.",                  // Flight Recorder: a Recording creates its repository on disk
+                "jdk.management.jfr.",
+                "java.util.prefs."           // writes the preferences store; starts timers, shutdown hooks
+        ));
+
+        // JDK and platform-vendor INTERNAL packages. On JDK 8 -- and on JDK 9-15, whose default
+        // --illegal-access=permit lets setAccessible() reach them -- every constructor in these
+        // packages is callable, and some take raw native pointers or handles that a finalizer later
+        // dereferences: handing one an attacker-chosen number crashes the JVM (SIGSEGV), not merely
+        // the request. From JDK 16 on they are unreachable anyway. Blocked as a family, minus the
+        // few internal types that ordinary JSON legitimately names -- see
+        // INTERNAL_PACKAGE_EXEMPT_CLASS_NAMES / _PREFIXES. The exemptions apply ONLY to this rule:
+        // an exact-name or ordinary package block (com.sun.jndi., sun.misc.Unsafe, ...) still wins.
+        // Unlike the other rules this one matches the class ITSELF, not its supertypes: the danger is
+        // the internal class's own constructors, and many public JDK classes merely implement an
+        // internal interface (java.nio.DirectByteBuffer implements sun.nio.ch.DirectBuffer).
+        static final Set<String> SECURITY_BLOCKED_INTERNAL_PACKAGES = new LinkedHashSet<>(CollectionUtilities.listOf(
+                "sun.",
+                "com.sun.",
+                "com.apple.",
+                "apple."
+        ));
+
+        // Internal types that JSON legitimately names. json-io's config/aliases.txt resolves all three
+        // through forName() while initializing ReadOptionsBuilder -- in every release 4.102.0-4.112.0 --
+        // so blocking any of them would stop json-io from starting at all, not merely refuse one type.
+        //   ZoneInfo  - the runtime class of TimeZone.getDefault() / TimeZone.getTimeZone(id)
+        //   UnixPath / WindowsPath - the runtime class of a java.nio.file.Path
+        static final Set<String> INTERNAL_PACKAGE_EXEMPT_CLASS_NAMES = new HashSet<>(CollectionUtilities.listOf(
+                "sun.util.calendar.ZoneInfo",
+                "sun.nio.fs.UnixPath",
+                "sun.nio.fs.WindowsPath"
+        ));
+
+        // The JDK's Charset implementations (sun.nio.cs.UTF_8, ...); json-io writes their class name
+        // for a Charset held in an Object-typed field. Constructing one has no side effect.
+        static final Set<String> INTERNAL_PACKAGE_EXEMPT_PREFIXES = new LinkedHashSet<>(CollectionUtilities.listOf(
+                "sun.nio.cs."
         ));
 
         /**
@@ -3681,7 +3773,7 @@ public class ClassUtilities {
             if (isUnblockedName(className)) {
                 return false;
             }
-            return isBlockedName(className);
+            return isBlockedName(className) || isBlockedInternalName(className);
         }
 
         /**

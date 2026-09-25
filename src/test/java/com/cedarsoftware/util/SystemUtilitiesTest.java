@@ -148,9 +148,12 @@ class SystemUtilitiesTest
 
     @Test
     void testIsJavaVersionAtLeast() {
-        // Test current JVM version
-        String version = System.getProperty("java.version");
-        int currentMajor = Integer.parseInt(version.split("\\.")[0]);
+        // Test current JVM version. java.specification.version is "1.8" on JDK 8 and "9", "21", ...
+        // after; java.version's first segment is "1" on JDK 8, which is not the major version.
+        String spec = System.getProperty("java.specification.version");
+        int currentMajor = Integer.parseInt(spec.startsWith("1.") ? spec.substring(2) : spec);
+        assertTrue(currentMajor >= 8, "parsed major version " + currentMajor);
+        assertEquals(currentMajor, SystemUtilities.currentJdkMajorVersion());
 
         // Should be true for current version
         assertTrue(SystemUtilities.isJavaVersionAtLeast(currentMajor, 0));

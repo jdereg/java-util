@@ -5214,6 +5214,20 @@ class ConverterEverythingTest {
         converter = new Converter(options);
     }
     
+    /** Consumes both streams (each exactly once) and compares the elements they yield. */
+    private static void assertStreamsYieldSame(Object expected, Object actual, String source, String target) {
+        String msg = "Stream contents differ for " + source + " ==> " + target;
+        if (expected instanceof IntStream) {
+            org.junit.jupiter.api.Assertions.assertArrayEquals(((IntStream) expected).toArray(), ((IntStream) actual).toArray(), msg);
+        } else if (expected instanceof LongStream) {
+            org.junit.jupiter.api.Assertions.assertArrayEquals(((LongStream) expected).toArray(), ((LongStream) actual).toArray(), msg);
+        } else if (expected instanceof DoubleStream) {
+            org.junit.jupiter.api.Assertions.assertArrayEquals(((DoubleStream) expected).toArray(), ((DoubleStream) actual).toArray(), msg);
+        } else {
+            org.junit.jupiter.api.Assertions.assertArrayEquals(((Stream<?>) expected).toArray(), ((Stream<?>) actual).toArray(), msg);
+        }
+    }
+
     private static Object possiblyConvertSupplier(Object possibleSupplier) {
         if (possibleSupplier instanceof Supplier) {
             return ((Supplier<?>) possibleSupplier).get();
@@ -5366,6 +5380,8 @@ class ConverterEverythingTest {
             Map<String, Object> options = new HashMap<>();
             if (restored instanceof Pattern) {
                 assertEquals(restored.toString(), target.toString());
+            } else if (target instanceof java.util.stream.BaseStream) {
+                assertStreamsYieldSame(target, restored, shortNameSource, shortNameTarget);
             } else if (!DeepEquals.deepEquals(restored, target, options)) {
                 LOG.severe("=== CONVERSION TEST FAILURE ===");
                 LOG.severe("Conversion pair: " + shortNameSource + " ==> " + shortNameTarget);
@@ -5420,16 +5436,21 @@ class ConverterEverythingTest {
                 // A test that returns a Throwable, as opposed to throwing it.
                 actual = converter.convert(source, targetClass);
                 Throwable actualExceptionReturnValue = (Throwable) actual;
-                assert actualExceptionReturnValue.getMessage().equals(((Throwable) target).getMessage());
+                assert java.util.Objects.equals(actualExceptionReturnValue.getMessage(), ((Throwable) target).getMessage());
                 assert actualExceptionReturnValue.getClass().equals(target.getClass());
                 updateStat(pair(sourceClass, targetClass), true);
             } catch (Throwable e) {
-                if (!e.getMessage().contains(t.getMessage())) {
+                // JDK 8's exceptions often carry no message (helpful NullPointerException messages arrived
+                // in JDK 14; Currency.getInstance's IllegalArgumentException has none): with no expected
+                // message, the exception type is the whole check.
+                boolean messageMatches = t.getMessage() == null
+                        || (e.getMessage() != null && e.getMessage().contains(t.getMessage()));
+                if (!messageMatches) {
                     LOG.info(e.getMessage());
                     LOG.info(t.getMessage());
                     LOG.info("");
                 }
-                assert e.getMessage().contains(t.getMessage());
+                assert messageMatches;
                 assert e.getClass().equals(t.getClass());
                 updateStat(pair(sourceClass, targetClass), true);
             }
@@ -5517,6 +5538,12 @@ class ConverterEverythingTest {
                     if (((BigDecimal) target).compareTo((BigDecimal) actual) != 0) {
                         assertEquals(target, actual);
                     }
+                    updateStat(pair(sourceClass, targetClass), true);
+                } else if (target instanceof java.util.stream.BaseStream) {
+                    // A stream has no equals(): compare what it yields. DeepEquals compared the pipeline's
+                    // internal fields instead -- which JDK 17+ cannot read, so it passed without comparing
+                    // anything, while JDK 8 can, so it failed on the "consumed" flag.
+                    assertStreamsYieldSame(target, actual, shortNameSource, shortNameTarget);
                     updateStat(pair(sourceClass, targetClass), true);
                 } else if (targetClass.equals(java.sql.Date.class)) {
                     if (actual != null) {
@@ -7032,18 +7059,19 @@ class ConverterEverythingTest {
         // Manual verification confirms all Stream ↔ Array conversions function properly.
         
         // Array → Stream conversions (Stream → Array removed due to single-use limitation)
-        // Note: Stream comparison uses custom equals logic since streams don't implement equals()
+        // Targets are Suppliers: each generated test case gets its own fresh, unconsumed stream, and
+        // testConvert compares what the two streams yield (assertStreamsYieldSame).
         TEST_DB.put(pair(int[].class, IntStream.class), new Object[][]{
-                {new int[]{1, 2, 3}, IntStream.of(1, 2, 3)},
-                {new int[]{}, IntStream.empty()},
+                {new int[]{1, 2, 3}, (Supplier<IntStream>) () -> IntStream.of(1, 2, 3)},
+                {new int[]{}, (Supplier<IntStream>) IntStream::empty},
         });
         TEST_DB.put(pair(long[].class, LongStream.class), new Object[][]{
-                {new long[]{1L, 2L, 3L}, LongStream.of(1L, 2L, 3L)},
-                {new long[]{}, LongStream.empty()},
+                {new long[]{1L, 2L, 3L}, (Supplier<LongStream>) () -> LongStream.of(1L, 2L, 3L)},
+                {new long[]{}, (Supplier<LongStream>) LongStream::empty},
         });
         TEST_DB.put(pair(double[].class, DoubleStream.class), new Object[][]{
-                {new double[]{1.1, 2.2, 3.3}, DoubleStream.of(1.1, 2.2, 3.3)},
-                {new double[]{}, DoubleStream.empty()},
+                {new double[]{1.1, 2.2, 3.3}, (Supplier<DoubleStream>) () -> DoubleStream.of(1.1, 2.2, 3.3)},
+                {new double[]{}, (Supplier<DoubleStream>) DoubleStream::empty},
         });
     }
 

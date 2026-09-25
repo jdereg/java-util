@@ -816,7 +816,9 @@ public class DeepEquals {
                             if (remainingBudget > 0) {
                                 newOptions.put(DEPTH_BUDGET, remainingBudget);
                             } else {
-                                // No budget left, skip recursive call
+                                // No budget left to explain WHY equals() failed: report the objects
+                                // as unequal values (every false return must leave a descriptive node).
+                                stack.addFirst(new ItemsToCompare(key1, key2, itemsToCompare, Difference.VALUE_MISMATCH));
                                 return false;
                             }
                         }
@@ -829,6 +831,13 @@ public class DeepEquals {
                         ItemsToCompare diff = (ItemsToCompare) newOptions.get(DIFF_ITEM);
                         if (diff != null) {
                             stack.addFirst(diff);
+                        } else {
+                            // The class's own equals() says unequal, but no field differs (identity
+                            // equals(), a transient-state comparison, ...). Say exactly that. Without this
+                            // node the false return left no description: the diff came out missing, or
+                            // blamed whatever sibling was still pending on the stack, or -- when that was
+                            // the root, as in 3.x -- threw NPE while building it (issue #362).
+                            stack.addFirst(new ItemsToCompare(key1, key2, itemsToCompare, Difference.CUSTOM_EQUALS_ONLY));
                         }
                         return false;
                     }
@@ -1981,7 +1990,10 @@ public class DeepEquals {
         ARRAY_ELEMENT_MISMATCH("array element mismatch", DiffCategory.VALUE),
 
         // General type mismatch (when classes don't match)
-        TYPE_MISMATCH("type mismatch", DiffCategory.TYPE);
+        TYPE_MISMATCH("type mismatch", DiffCategory.TYPE),
+
+        // The class's own equals() returned false, yet a field-by-field comparison finds no difference
+        CUSTOM_EQUALS_ONLY("custom equals() returned false", DiffCategory.VALUE);
 
         private final String description;
         private final DiffCategory category;
@@ -2093,8 +2105,13 @@ public class DeepEquals {
      */
     private static String getContainingDescription(List<ItemsToCompare> path) {
         ListIterator<ItemsToCompare> it = path.listIterator(path.size());
-        String a = it.previous().difference.getDescription();
-        
+        Difference last = it.previous().difference;
+        // Every false return leaves a node that carries a difference; guard anyway, as the parent is.
+        String a = last == null ? Difference.VALUE_MISMATCH.getDescription() : last.getDescription();
+        if (last == Difference.CUSTOM_EQUALS_ONLY) {
+            return a;   // the specific reason, not the container's generic "field value mismatch"
+        }
+
         if (it.hasPrevious()) {
             Difference diff = it.previous().difference;
             if (diff != null) {
@@ -2161,6 +2178,14 @@ public class DeepEquals {
         if (item.difference == Difference.MAP_MISSING_KEY) {
             result.append(String.format("  Expected: key '%s' present%n  Found: (missing)",
                     formatDifferenceValue(item.mapKey)));
+            return;
+        }
+
+        if (item.difference == Difference.CUSTOM_EQUALS_ONLY) {
+            result.append(String.format("  %s.equals() returned false, but every field is equal%n  Expected: %s%n  Found: %s",
+                    item._key1.getClass().getSimpleName(),
+                    formatDifferenceValue(item._key1),
+                    formatDifferenceValue(item._key2)));
             return;
         }
 

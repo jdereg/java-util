@@ -74,7 +74,9 @@ final class Unsafe {
         Object unsafeObj = null;
         Method allocMethod = null;
         try {
-            Class<?> unsafeClass = ClassUtilities.forName("sun.misc.Unsafe", ClassUtilities.getClassLoader(Unsafe.class));
+            // Class.forName, not ClassUtilities.forName: the latter is the gate for class names read from
+            // untrusted input, and sun.misc.Unsafe is on its block list -- so this fallback never loaded.
+            Class<?> unsafeClass = Class.forName("sun.misc.Unsafe");
             Field f = unsafeClass.getDeclaredField("theUnsafe");
             trySetAccessible(f);
             unsafeObj = f.get(null);

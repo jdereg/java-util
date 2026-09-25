@@ -340,7 +340,7 @@ final class StringConversions {
                 return Duration.ofSeconds(wholeSecs, nanos);
             }
             // Otherwise, try ISO-8601 parsing.
-            return Duration.parse(str);
+            return parseIsoDuration(str);
         } catch (Exception e) {
             throw new IllegalArgumentException(
                     "Unable to parse '" + str + "' as a Duration. Expected either:\n" +
@@ -348,6 +348,37 @@ final class StringConversions {
                             "  - ISO-8601 duration (e.g., 'PT1H2M3.456S')", e);
         }
     }
+
+    // A seconds component strictly between -1 and 0 ("-0.5S", "-0,001s"), at the end of the duration.
+    private static final Pattern NEGATIVE_SUBSECOND_COMPONENT =
+            Pattern.compile("(?<=[TtHhMm])-0[.,](\\d{1,9})[Ss]$");
+
+    /**
+     * {@link Duration#parse} with JDK 8's sign bug worked around. JDK 8 drops the sign of a seconds
+     * component between -1 and 0 (JDK-8054978, fixed in 9): {@code "PT-0.001S"} parses as +1 ms, so JDK 8
+     * cannot even read back its own {@code Duration.ofMillis(-1).toString()}. That component is parsed
+     * here -- the rest of the text still goes through {@code Duration.parse()} -- which gives JDK 9+'s
+     * result on every JDK.
+     */
+    static Duration parseIsoDuration(String text) {
+        Matcher m = NEGATIVE_SUBSECOND_COMPONENT.matcher(text);
+        if (!m.find()) {
+            return Duration.parse(text);
+        }
+        boolean negateAll = text.startsWith("-");
+        String body = (negateAll || text.startsWith("+")) ? text.substring(1) : text;
+        m = NEGATIVE_SUBSECOND_COMPONENT.matcher(body);
+        if (!m.find()) {
+            return Duration.parse(text);
+        }
+        String digits = m.group(1);
+        long fractionNanos = Long.parseLong(digits) * POWERS_OF_TEN[9 - digits.length()];
+        Duration result = Duration.parse(body.substring(0, m.start()) + "0S").minusNanos(fractionNanos);
+        return negateAll ? result.negated() : result;
+    }
+
+    private static final long[] POWERS_OF_TEN = {1L, 10L, 100L, 1_000L, 10_000L, 100_000L, 1_000_000L,
+            10_000_000L, 100_000_000L, 1_000_000_000L};
 
     static Class<?> toClass(Object from, Converter converter) {
         String str = ((String) from).trim();

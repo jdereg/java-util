@@ -461,6 +461,7 @@ public class Traverser {
                                                             int maxObjectsVisited) {
         Map<Field, Object> fieldValues = new HashMap<>();
         Collection<Field> fields = getTraversableFields(object.getClass());
+        boolean leaf = isJdkClass(object.getClass());
 
         for (Field field : fields) {
             boolean isPrimitive = field.getType().isPrimitive();
@@ -472,11 +473,27 @@ public class Traverser {
                 fieldValues.put(field, INACCESSIBLE_FIELD_VALUE);
                 continue;
             }
-            if (!isPrimitive) {
+            if (!isPrimitive && !leaf) {
                 enqueueNode(stack, value, classesToSkip, depth + 1, maxObjectsVisited);
             }
         }
         return fieldValues;
+    }
+
+    // The loader of the JDK's non-bootstrap classes: the platform loader on JDK 9+, the extension loader on 8.
+    private static final ClassLoader JDK_PLATFORM_LOADER = ClassLoader.getSystemClassLoader().getParent();
+
+    /**
+     * A JDK class is traversed as a LEAF: it is visited, and its field values are reported, but those
+     * fields are not walked. From JDK 17 the module system makes them unreadable anyway, so the walk
+     * only ever happened on JDK 8-16, where setAccessible() reaches them -- traversing {@code "test"}
+     * visited the String AND its internal char[] there, but only the String on 17+. Treating them as
+     * leaves gives every JDK the same graph. Identified by class loader rather than package, so a
+     * third-party class in a {@code javax.*} package is still walked.
+     */
+    private static boolean isJdkClass(Class<?> clazz) {
+        ClassLoader loader = clazz.getClassLoader();
+        return loader == null || loader == JDK_PLATFORM_LOADER;
     }
 
     private Collection<Field> getTraversableFields(Class<?> clazz) {
@@ -531,6 +548,9 @@ public class Traverser {
 
     private void processFields(Deque<TraversalNode> stack, Object object,
                                Set<Class<?>> classesToSkip, int depth, int maxObjectsVisited) {
+        if (isJdkClass(object.getClass())) {
+            return;   // a JDK class is a leaf -- see isJdkClass()
+        }
         Collection<Field> fields = getTraversableFields(object.getClass());
 
         for (Field field : fields) {

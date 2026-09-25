@@ -155,6 +155,27 @@ public class TraverserTest
         assertEquals(1, visited[0]);
     }
 
+    /**
+     * A JDK class is a leaf on every JDK. On JDK 8-16 setAccessible() reaches a String's internal
+     * char[]/byte[], and the traversal used to walk into it; on 17+ the module system hides it.
+     */
+    @Test
+    public void testJdkClassesAreLeavesOnEveryJdk()
+    {
+        final java.util.List<Object> seen = new java.util.ArrayList<>();
+        Traverser.traverse(new java.math.BigInteger("123456789012345678901234567890"), visit -> seen.add(visit.getNode()), null);
+        assertEquals(1, seen.size(), "BigInteger's int[] magnitude must not be walked: " + seen);
+
+        seen.clear();
+        Traverser.traverse(new java.util.Date(0), visit -> seen.add(visit.getNode()), null);
+        assertEquals(1, seen.size(), "Date's internals must not be walked: " + seen);
+
+        // An array is still walked, and the JDK objects it holds are visited (as leaves)
+        seen.clear();
+        Traverser.traverse(new Object[] {"a", Long.valueOf(7)}, visit -> seen.add(visit.getNode()), null);
+        assertEquals(3, seen.size(), "array + its two elements: " + seen);
+    }
+
     @Test
     public void testLazyFieldCollection() throws Exception
     {

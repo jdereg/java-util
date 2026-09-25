@@ -15,10 +15,12 @@ import java.net.URI;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -192,9 +194,19 @@ public class StandaloneBytecodeGenerator {
         // Get the classpath from the classloader to find CompactMap
         String classpath = getClasspathFromClassLoader();
 
+        // The template ships inside java-util, which runs on JDK 8, so it must be class-file version 52
+        // and free of JDK 9+ constructs. Without an explicit target, javac emits its OWN version (61 from
+        // JDK 17) and compiles string concatenation to invokedynamic/StringConcatFactory -- which made
+        // every CompactMap.builder() map throw UnsupportedClassVersionError on JDK 8.
+        List<String> options = new ArrayList<>(Arrays.asList("-proc:none", "-classpath", classpath));
+        if (System.getProperty("java.specification.version").startsWith("1.")) {
+            options.addAll(Arrays.asList("-source", "1.8", "-target", "1.8"));
+        } else {
+            options.addAll(Arrays.asList("--release", "8", "-Xlint:-options"));
+        }
         JavaCompiler.CompilationTask task = compiler.getTask(
                 null, fileManager, null,
-                Arrays.asList("-proc:none", "-classpath", classpath),
+                options,
                 null,
                 Collections.singletonList(sourceFile));
 

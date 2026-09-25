@@ -57,7 +57,22 @@ class ClassUtilitiesSideEffectConstructorBlockTest {
                 "java.util.Timer",
                 // blocked packages
                 "java.util.prefs.Preferences",
-                "java.util.prefs.AbstractPreferences");
+                "java.util.prefs.AbstractPreferences",
+                // dynamic proxies and the JDK handler that dispatches to arbitrary methods
+                "java.lang.reflect.Proxy",
+                "java.beans.EventHandler");
+    }
+
+    /** Every proxy class extends java.lang.reflect.Proxy: jdk.proxyN.$ProxyN (16+), com.sun.proxy.$ProxyN (8-15). */
+    @Test
+    void runtimeProxyClassIsBlocked() {
+        Object proxy = java.lang.reflect.Proxy.newProxyInstance(getClass().getClassLoader(),
+                new Class<?>[] {Runnable.class}, (p, m, args) -> null);
+        Class<?> proxyClass = proxy.getClass();
+        assertTrue(ClassUtilities.SecurityChecker.isSecurityBlocked(proxyClass), proxyClass.getName());
+        assertThrows(SecurityException.class, () -> ClassUtilities.SecurityChecker.verifyClass(proxyClass));
+        assertThrows(SecurityException.class, () -> ClassUtilities.forName(proxyClass.getName(), null));
+        assertThrows(SecurityException.class, () -> ClassUtilities.newInstance(proxyClass, null));
     }
 
     @ParameterizedTest

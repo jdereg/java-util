@@ -8183,6 +8183,7 @@ capability:
 | JNDI | `javax.naming.*`, `com.sun.jndi.*`, `com.sun.rowset.JdbcRowSetImpl` |
 | XSLT / bytecode carriers | `javax.xml.transform.Templates`, `com.sun.org.apache.xalan.*` |
 | Java serialization | `java.io.ObjectInputStream` |
+| Dynamic proxies | `java.lang.reflect.Proxy` (every `$Proxy` class, on every JDK), `java.beans.EventHandler` |
 | Network I/O in a constructor | `Socket`, `ServerSocket`, `DatagramSocket`, `URLConnection`, `InetSocketAddress` (resolves the host) |
 | File create/truncate in a constructor | `FileOutputStream`, `FileWriter`, `RandomAccessFile`, `PrintStream`, `PrintWriter`, `java.util.Formatter`, `FileImageOutputStream` |
 | File delete in a constructor | `java.util.zip.ZipFile` (its `OPEN_DELETE` mode), and so `JarFile` |

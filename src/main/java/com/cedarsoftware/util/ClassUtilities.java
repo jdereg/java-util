@@ -3651,6 +3651,14 @@ public class ClassUtilities {
                 // --- Java serialization: hands the payload the entire ObjectInputStream gadget surface ---
                 "java.io.ObjectInputStream",
 
+                // --- Dynamic proxies: a $Proxy class's constructor takes an InvocationHandler, and every
+                // interface call on the instance -- equals(), hashCode(), compareTo() from a HashMap or
+                // TreeSet -- is routed to it. The root name covers every proxy class on every JDK
+                // (com.sun.proxy.$ProxyN through 15, jdk.proxyN.$ProxyN from 16). EventHandler is the
+                // JDK's handler that turns such a call into an arbitrary method call on an arbitrary target.
+                "java.lang.reflect.Proxy",
+                "java.beans.EventHandler",
+
                 // --- Constructors that perform network I/O: SSRF, port scanning, egress from the victim ---
                 "java.net.Socket",
                 "java.net.ServerSocket",

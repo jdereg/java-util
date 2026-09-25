@@ -7,6 +7,7 @@ import java.net.URI;
 import java.net.URL;
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
+import java.nio.charset.Charset;
 import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
@@ -550,6 +551,18 @@ final class StringConversions {
                 return null;
             }
             return zdt.toLocalTime();
+        }
+    }
+
+    static Charset toCharset(Object from, Converter converter) {
+        String name = ((String) from).trim();
+        if (name.isEmpty()) {
+            return null;
+        }
+        try {
+            return Charset.forName(name);
+        } catch (IllegalArgumentException e) {   // IllegalCharsetNameException, UnsupportedCharsetException
+            throw new IllegalArgumentException("Unknown or unsupported Charset: '" + name + "'", e);
         }
     }
 

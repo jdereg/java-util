@@ -7,6 +7,7 @@ import java.net.URI;
 import java.net.URL;
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
+import java.nio.charset.Charset;
 import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
@@ -90,6 +91,7 @@ final class MapConversions {
     static final String DURATION = "duration";
     static final String INSTANT = "instant";
     static final String LOCALE = "locale";
+    static final String CHARSET = "charset";
     static final String MONTH_DAY = "monthDay";
     static final String YEAR_MONTH = "yearMonth";
     static final String PERIOD = "period";
@@ -291,6 +293,12 @@ final class MapConversions {
 
     static Locale toLocale(Object from, Converter converter) {
         return dispatch(from, converter, Locale.class, LOCALE_KEYS);
+    }
+
+    private static final String[] CHARSET_KEYS = {CHARSET, VALUE, V};
+
+    static Charset toCharset(Object from, Converter converter) {
+        return dispatch(from, converter, Charset.class, CHARSET_KEYS);
     }
 
     private static final String[] LOCAL_DATE_KEYS = {LOCAL_DATE, VALUE, V};

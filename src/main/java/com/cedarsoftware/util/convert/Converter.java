@@ -9,6 +9,7 @@ import java.net.URI;
 import java.net.URL;
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
+import java.nio.charset.Charset;
 import java.nio.DoubleBuffer;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
@@ -945,6 +946,12 @@ public final class Converter {
         CONVERSION_DB.put(String.class, Locale.class, StringConversions::toLocale);
         CONVERSION_DB.put(Map.class, Locale.class, MapConversions::toLocale);
 
+        // Charset conversions supported
+        CONVERSION_DB.put(Void.class, Charset.class, VoidConversions::toNull);
+        CONVERSION_DB.put(Charset.class, Charset.class, Converter::identity);
+        CONVERSION_DB.put(String.class, Charset.class, StringConversions::toCharset);
+        CONVERSION_DB.put(Map.class, Charset.class, MapConversions::toCharset);
+
         // String conversions supported
         CONVERSION_DB.put(Void.class, String.class, VoidConversions::toNull);
         CONVERSION_DB.put(Byte.class, String.class, StringConversions::toString);
@@ -996,6 +1003,7 @@ public final class Converter {
         CONVERSION_DB.put(OffsetDateTime.class, String.class, OffsetDateTimeConversions::toString);
         CONVERSION_DB.put(Year.class, String.class, YearConversions::toString);
         CONVERSION_DB.put(Locale.class, String.class, LocaleConversions::toString);
+        CONVERSION_DB.put(Charset.class, String.class, CharsetConversions::toString);
         CONVERSION_DB.put(URI.class, String.class, UniversalConversions::toString);
         CONVERSION_DB.put(URL.class, String.class, UniversalConversions::toString);
         CONVERSION_DB.put(File.class, String.class, FileConversions::toString);
@@ -1247,6 +1255,7 @@ public final class Converter {
         CONVERSION_DB.put(OffsetTime.class, Map.class, OffsetTimeConversions::toMap);
         CONVERSION_DB.put(Year.class, Map.class, YearConversions::toMap);
         CONVERSION_DB.put(Locale.class, Map.class, LocaleConversions::toMap);
+        CONVERSION_DB.put(Charset.class, Map.class, CharsetConversions::toMap);
         CONVERSION_DB.put(URI.class, Map.class, UriConversions::toMap);
         CONVERSION_DB.put(URL.class, Map.class, UrlConversions::toMap);
         CONVERSION_DB.put(Throwable.class, Map.class, ThrowableConversions::toMap);

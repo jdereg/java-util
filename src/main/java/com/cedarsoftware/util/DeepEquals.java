@@ -645,6 +645,16 @@ public class DeepEquals {
                     }
                     continue;
                 }
+                // StringBuilder / StringBuffer: compare the characters. Their equals() is identity, and
+                // only JDK 11+ makes them Comparable -- so on JDK 8 two builders holding the same text
+                // compared unequal.
+                if (key1Class == key2Class && isStringBuilderType(key1)) {
+                    if (!key1.toString().equals(key2.toString())) {
+                        stack.addFirst(new ItemsToCompare(key1, key2, itemsToCompare, Difference.VALUE_MISMATCH));
+                        return false;
+                    }
+                    continue;
+                }
                 if (key1 instanceof Comparable<?> && key2 instanceof Comparable<?>) {
                     try {
                         if (((Comparable)key1).compareTo(key2) != 0) {
@@ -1767,6 +1777,9 @@ public class DeepEquals {
             } else if (obj instanceof Double) {
                 hash += hashDouble((Double) obj);
                 continue;
+            } else if (isStringBuilderType(obj)) {
+                hash += obj.toString().hashCode();
+                continue;
             }
 
             if (hasCustomHashCode(obj.getClass())) {   // A real hashCode() method exists, call it.
@@ -1826,11 +1839,23 @@ public class DeepEquals {
             return hashDouble((Double) element);
         } else if (element instanceof Float) {
             return hashFloat((Float) element);
+        } else if (isStringBuilderType(element)) {
+            return element.toString().hashCode();
         } else if (Converter.isSimpleTypeConversionSupported(element.getClass(), element.getClass())) {
             return element.hashCode();
         } else {
             return deepHashCode(element, visited);
         }
+    }
+
+    /**
+     * StringBuilder and StringBuffer inherit identity {@code equals()}/{@code hashCode()} (JDK 11 added
+     * only {@code compareTo()}), so DeepEquals compares and hashes them by their characters. Without
+     * this, equal builders compared unequal on JDK 8, and on every JDK a list of them had a
+     * deepHashCode() that disagreed with deepEquals().
+     */
+    private static boolean isStringBuilderType(Object o) {
+        return o instanceof StringBuilder || o instanceof StringBuffer;
     }
 
     private static int hashDouble(double value) {

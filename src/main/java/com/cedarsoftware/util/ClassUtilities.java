@@ -14,6 +14,7 @@ import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Parameter;
@@ -2751,6 +2752,13 @@ public class ClassUtilities {
         Constructor<?>[] constructors = ReflectionUtils.getAllConstructors(c);
         List<Exception> exceptions = new ArrayList<>();  // Collect all exceptions for better diagnostics
 
+        // The plan cache is keyed by the argument TYPES, so it may only record outcomes the types decide.
+        // A constructor BODY that throws (InvocationTargetException) has usually rejected a VALUE
+        // ("must not be negative"): once that happens, neither the failure nor a fallback constructor
+        // chosen because of it may be cached -- the next call, with other values of the same types,
+        // must try the constructors again. (Zero supplied arguments carry no values to depend on.)
+        boolean valueDependentOutcome = false;
+
         // Try each constructor in order
         for (Constructor<?> constructor : constructors) {
             try {
@@ -2766,42 +2774,60 @@ public class ClassUtilities {
             Parameter[] parameters = constructor.getParameters();
 
             // Attempt instantiation with this constructor
+            Object[] argsNonNull = null;
             try {
                 // Try with non-null arguments first (more precise matching)
-                Object[] argsNonNull = matchArgumentsToParameters(converter, suppliedArgs, parameters, false);
+                argsNonNull = matchArgumentsToParameters(converter, suppliedArgs, parameters, false);
                 Object instance = constructor.newInstance(argsNonNull);
 
                 // Cache this successful constructor for future use
-                SUCCESSFUL_CONSTRUCTOR_CACHE.put(c, Optional.of(constructor));
-                classPlanCache.put(argumentShapeKey, Optional.of(new ConstructorPlan(constructor, parameters, false)));
+                if (noArgs || !valueDependentOutcome) {
+                    SUCCESSFUL_CONSTRUCTOR_CACHE.put(c, Optional.of(constructor));
+                    classPlanCache.put(argumentShapeKey, Optional.of(new ConstructorPlan(constructor, parameters, false)));
+                }
                 return instance;
             } catch (Exception e1) {
-                exceptions.add(e1);
+                exceptions.add(constructorFailure(e1));
+                valueDependentOutcome |= e1 instanceof InvocationTargetException;
 
                 // If that fails, try with nulls allowed for unmatched parameters
                 try {
                     Object[] argsNull = matchArgumentsToParameters(converter, suppliedArgs, parameters, true);
+                    if (argsNonNull != null && Arrays.equals(argsNonNull, argsNull)) {
+                        // Every parameter was matched, so the "nulls allowed" retry would pass the very
+                        // same arguments -- and fail the same way, at the cost of another exception.
+                        continue;
+                    }
                     Object instance = constructor.newInstance(argsNull);
 
                     // Cache this successful constructor for future use
-                    SUCCESSFUL_CONSTRUCTOR_CACHE.put(c, Optional.of(constructor));
-                    classPlanCache.put(argumentShapeKey, Optional.of(new ConstructorPlan(constructor, parameters, true)));
+                    if (noArgs || !valueDependentOutcome) {
+                        SUCCESSFUL_CONSTRUCTOR_CACHE.put(c, Optional.of(constructor));
+                        classPlanCache.put(argumentShapeKey, Optional.of(new ConstructorPlan(constructor, parameters, true)));
+                    }
                     return instance;
                 } catch (Exception e2) {
-                    exceptions.add(e2);
+                    exceptions.add(constructorFailure(e2));
+                    valueDependentOutcome |= e2 instanceof InvocationTargetException;
                     // Continue to next constructor
                 }
             }
         }
 
+        boolean cacheFailure = noArgs || !valueDependentOutcome;
+
         // Last resort: try unsafe instantiation
         Object instance = tryUnsafeInstantiation(c);
         if (instance != null) {
-            classPlanCache.put(argumentShapeKey, Optional.empty());
+            if (cacheFailure) {
+                classPlanCache.put(argumentShapeKey, Optional.empty());
+            }
             return instance;
         }
 
-        classPlanCache.put(argumentShapeKey, Optional.empty());
+        if (cacheFailure) {
+            classPlanCache.put(argumentShapeKey, Optional.empty());
+        }
 
         // If we get here, we couldn't create the instance
         String msg = "Unable to instantiate: " + c.getName();
@@ -2824,6 +2850,21 @@ public class ClassUtilities {
         }
 
         throw new IllegalArgumentException(msg);
+    }
+
+    /**
+     * The exception to report for a failed constructor attempt: for an InvocationTargetException, the
+     * exception the constructor itself threw -- the wrapper carries no message, so reporting it lost the
+     * constructor's own reason ("Most recent error: null").
+     */
+    private static Exception constructorFailure(Exception e) {
+        if (e instanceof InvocationTargetException) {
+            Throwable target = ((InvocationTargetException) e).getTargetException();
+            if (target instanceof Exception) {
+                return (Exception) target;
+            }
+        }
+        return e;
     }
 
     private static Map<ArgumentShapeKey, Optional<ConstructorPlan>> getConstructorPlanCache(Class<?> c) {

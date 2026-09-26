@@ -478,7 +478,79 @@ public class ClassUtilities {
      */
     private static final ClassValueMap<Optional<Constructor<?>>> SUCCESSFUL_CONSTRUCTOR_CACHE = new ClassValueMap<>();
     private static final Map<Class<?>, Map<ArgumentShapeKey, Optional<ConstructorPlan>>> CONSTRUCTOR_PLAN_CACHE = new ClassValueMap<>();
-    private static final ClassValueMap<Boolean> NAMED_PARAMETER_MATCHING_VIABLE_CACHE = new ClassValueMap<>();
+    /**
+     * Per class, the constructors named-parameter matching may use, each followed by its parameters --
+     * {@code [Constructor, Parameter[], Constructor, Parameter[], ...]} in {@link ReflectionUtils#getAllConstructors}
+     * order -- or {@link #NOT_NAMED_MATCHABLE}. Fixed for the class, so computed once rather than per object built.
+     * <p>
+     * JDK types only, deliberately: a ClassValue's value lives inside its Class, and a java-util type stored in a
+     * JDK class would pin java-util's class loader (a webapp's, say) for the life of the JVM. Replaced, not
+     * cleared, by clearCaches(): a ClassValue cannot be emptied.
+     */
+    private static volatile ClassValue<Object[]> namedConstructors = newNamedConstructorsCache();
+    /** Every parameterized constructor has synthetic ({@code argN}) names: named matching cannot apply. */
+    private static final Object[] NOT_NAMED_MATCHABLE = new Object[0];
+
+    private static ClassValue<Object[]> newNamedConstructorsCache() {
+        return new ClassValue<Object[]>() {
+            @Override
+            protected Object[] computeValue(Class<?> c) {
+                return namedConstructorPlan(c);
+            }
+        };
+    }
+
+    private static Object[] namedConstructorPlan(Class<?> c) {
+        Constructor<?>[] constructors = ReflectionUtils.getAllConstructors(c);
+        Parameter[][] parameters = new Parameter[constructors.length][];
+        boolean[] realNames = new boolean[constructors.length];
+        boolean hasParameterized = false;
+        boolean viable = false;
+        for (int i = 0; i < constructors.length; i++) {
+            parameters[i] = constructors[i].getParameters();
+            realNames[i] = hasRealParameterNames(parameters[i]);
+            if (parameters[i].length > 0) {
+                hasParameterized = true;
+                viable |= realNames[i];
+            }
+        }
+        if (hasParameterized && !viable) {
+            return NOT_NAMED_MATCHABLE;
+        }
+
+        List<Object> plan = new ArrayList<>(constructors.length * 2);
+        for (int i = 0; i < constructors.length; i++) {
+            // A constructor whose names were not compiled in (argN) cannot be matched by name
+            if (realNames[i] && isAccessibleOrMadeSo(constructors[i])) {
+                plan.add(constructors[i]);
+                plan.add(parameters[i]);
+            }
+        }
+        return plan.toArray();
+    }
+
+    private static boolean hasRealParameterNames(Parameter[] parameters) {
+        for (Parameter parameter : parameters) {
+            if (isSyntheticArgName(parameter.getName())) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static boolean isAccessibleOrMadeSo(Constructor<?> constructor) {
+        try {
+            trySetAccessible(constructor);
+            return true;
+        } catch (SecurityException se) {
+            // Can't make this constructor accessible under JPMS; named matching skips it
+            if (LOG.isLoggable(Level.FINER)) {
+                LOG.log(Level.FINER, "Cannot access constructor {0} due to security restrictions: {1}",
+                        new Object[]{constructor, se.getMessage()});
+            }
+            return false;
+        }
+    }
 
     private static final class NullArgType { }
     private static final Class<?> NULL_ARG_TYPE = NullArgType.class;
@@ -2337,168 +2409,34 @@ public class ClassUtilities {
         // gate — the ClassValue-backed check is a cached lookup, so re-asserting it is nearly free.
         SecurityChecker.verifyClass(c);
 
-        // Get all constructors using ReflectionUtils for caching
-        Constructor<?>[] sortedConstructors = ReflectionUtils.getAllConstructors(c);
-
-        boolean isFinal = Modifier.isFinal(c.getModifiers());
-        boolean isException = Throwable.class.isAssignableFrom(c);
-
-        if (LOG.isLoggable(Level.FINER)) {
-            LOG.log(Level.FINER, "Class {0} is {1}{2}",
-                    new Object[]{c.getName(),
-                            isFinal ? "final" : "non-final",
-                            isException ? " (Exception type)" : ""});
-
-            LOG.log(Level.FINER, "Trying {0} constructors for {1}",
-                    new Object[]{sortedConstructors.length, c.getName()});
-        }
-
-        Boolean namedMatchingViable = NAMED_PARAMETER_MATCHING_VIABLE_CACHE.getByClass(c);
-        if (namedMatchingViable == null) {
-            namedMatchingViable = isNamedParameterMatchingViable(sortedConstructors);
-            NAMED_PARAMETER_MATCHING_VIABLE_CACHE.put(c, namedMatchingViable);
-        }
-
-        // If no constructors have real parameter names (and class has parameterized ctors), bail out early.
-        if (!namedMatchingViable) {
+        // Everything about c's constructors that this method needs is fixed for the class: computed
+        // once (see namedConstructors), not per object as it was -- the constructor lookup, a copy of
+        // every Parameter[] and a scan of their names ran on every instance json-io built.
+        Object[] plan = namedConstructors.get(c);
+        if (plan == NOT_NAMED_MATCHABLE) {
             if (LOG.isLoggable(Level.FINE)) {
                 LOG.log(Level.FINE, "No constructors for {0} have real parameter names - cannot use parameter matching", c.getName());
             }
             return null; // This will trigger fallback to positional matching
         }
+        if (LOG.isLoggable(Level.FINER)) {
+            logNamedParameterAttempt(c, plan);
+        }
 
-        for (Constructor<?> constructor : sortedConstructors) {
+        for (int i = 0; i < plan.length; i += 2) {
+            Object[] args = matchNamedArguments(converter, (Parameter[]) plan[i + 1], namedParams);
+            if (args == null) {
+                continue;   // a parameter is missing from the map, or its value would not convert
+            }
             try {
-                trySetAccessible(constructor);
-            } catch (SecurityException se) {
-                // Can't make this constructor accessible under JPMS; try the next one
+                Object instance = ((Constructor<?>) plan[i]).newInstance(args);
+                if (LOG.isLoggable(Level.FINE)) {
+                    LOG.log(Level.FINE, "  Successfully created instance of {0}", c.getName());
+                }
+                return instance;
+            } catch (Exception e) {
                 if (LOG.isLoggable(Level.FINER)) {
-                    LOG.log(Level.FINER, "Cannot access constructor {0} due to security restrictions: {1}", 
-                            new Object[]{constructor, se.getMessage()});
-                }
-                continue;
-            }
-            if (LOG.isLoggable(Level.FINER)) {
-                LOG.log(Level.FINER, "Trying constructor: {0}", constructor);
-            }
-
-            Parameter[] parameters = constructor.getParameters();
-            boolean hasRealNames = true;
-
-            for (int i = 0; i < parameters.length; i++) {
-                String paramName = parameters[i].getName();
-
-                if (LOG.isLoggable(Level.FINEST)) {
-                    LOG.log(Level.FINEST, "  Parameter {0}: name=''{1}'', type={2}",
-                            new Object[]{i, paramName, parameters[i].getType().getSimpleName()});
-                }
-
-                // Check if we have real parameter names or just arg0, arg1, etc.
-                if (isSyntheticArgName(paramName)) {
-                    hasRealNames = false;
-                }
-            }
-
-            if (!hasRealNames && parameters.length > 0) {
-                if (LOG.isLoggable(Level.FINER)) {
-                    LOG.log(Level.FINER, "  Skipping constructor - parameter names not available");
-                }
-                continue; // Skip this constructor for parameter matching
-            }
-
-            // Try to match all parameters
-            Object[] args = new Object[parameters.length];
-            boolean allMatched = true;
-
-            for (int i = 0; i < parameters.length; i++) {
-                if (parameters[i].isVarArgs()) {
-                    // Handle varargs parameter specially
-                    Class<?> arrayType = parameters[i].getType();
-                    Class<?> componentType = arrayType.getComponentType();
-                    String paramName = parameters[i].getName();
-                    boolean hasVarargsValue = namedParams.containsKey(paramName);
-                    Object v = hasVarargsValue ? namedParams.get(paramName) : null;
-                    Object array;
-
-                    if (!hasVarargsValue) {
-                        array = Array.newInstance(componentType, 0);
-                    } else if (v != null && arrayType.isInstance(v)) {
-                        // Already the right array type
-                        array = v;
-                    } else {
-                        // Convert single value or collection to array
-                        Collection<?> src = (v instanceof Collection) ? (Collection<?>) v : Collections.singletonList(v);
-                        array = Array.newInstance(componentType, src.size());
-                        int k = 0;
-                        for (Object item : src) {
-                            try {
-                                ArrayUtilities.setElement(array, k++, converter.convert(item, componentType));
-                            } catch (Exception e) {
-                                // Use default value if conversion fails
-                                ArrayUtilities.setElement(array, k++, getArgForType(converter, componentType));
-                            }
-                        }
-                    }
-                    args[i] = array;
-                    
-                    if (LOG.isLoggable(Level.FINEST)) {
-                        LOG.log(Level.FINEST, "  Matched varargs parameter ''{0}'' with array of length: {1}",
-                                new Object[]{paramName, ArrayUtilities.getLength(array)});
-                    }
-                    continue;
-                }
-                
-                String paramName = parameters[i].getName();
-                if (namedParams.containsKey(paramName)) {
-                    Object value = namedParams.get(paramName);
-
-                    try {
-                        // Handle null values - don't convert null for non-primitive types
-                        if (value == null) {
-                            // If it's a primitive type, we can't use null
-                            if (parameters[i].getType().isPrimitive()) {
-                                // Let converter handle conversion to primitive default values
-                                args[i] = converter.convert(value, parameters[i].getType());
-                            } else {
-                                // For object types, just use null directly
-                                args[i] = null;
-                            }
-                        } else if (parameters[i].getType().isInstance(value)) {
-                            // Value is already the right type
-                            args[i] = value;
-                        } else {
-                            // Convert if necessary
-                            args[i] = converter.convert(value, parameters[i].getType());
-                        }
-
-                        if (LOG.isLoggable(Level.FINEST)) {
-                            LOG.log(Level.FINEST, "  Matched parameter ''{0}'' with value: {1}",
-                                    new Object[]{paramName, value});
-                        }
-                    } catch (Exception conversionException) {
-                        allMatched = false;
-                        break;
-                    }
-                } else {
-                    if (LOG.isLoggable(Level.FINER)) {
-                        LOG.log(Level.FINER, "  Missing parameter: {0}", paramName);
-                    }
-                    allMatched = false;
-                    break;
-                }
-            }
-
-            if (allMatched) {
-                try {
-                    Object instance = constructor.newInstance(args);
-                    if (LOG.isLoggable(Level.FINE)) {
-                        LOG.log(Level.FINE, "  Successfully created instance of {0}", c.getName());
-                    }
-                    return instance;
-                } catch (Exception e) {
-                    if (LOG.isLoggable(Level.FINER)) {
-                        LOG.log(Level.FINER, "  Failed to invoke constructor: {0}", e.getMessage());
-                    }
+                    LOG.log(Level.FINER, "  Failed to invoke constructor: {0}", e.getMessage());
                 }
             }
         }
@@ -2507,33 +2445,94 @@ public class ClassUtilities {
     }
 
     /**
-     * Named parameter matching is viable when either:
-     * 1) There are no parameterized constructors, or
-     * 2) At least one parameterized constructor exposes real (non-synthetic) parameter names.
+     * Arguments for one constructor, taken from the map by parameter name, or {@code null} when a
+     * parameter is missing from the map or its value will not convert.
      */
-    private static boolean isNamedParameterMatchingViable(Constructor<?>[] constructors) {
-        boolean hasParameterizedConstructor = false;
-        for (Constructor<?> constructor : constructors) {
-            Parameter[] parameters = constructor.getParameters();
-            if (parameters.length == 0) {
+    private static Object[] matchNamedArguments(Converter converter, Parameter[] parameters, Map<String, Object> namedParams) {
+        Object[] args = new Object[parameters.length];
+        for (int i = 0; i < parameters.length; i++) {
+            Parameter parameter = parameters[i];
+            if (parameter.isVarArgs()) {
+                args[i] = namedVarargsArray(converter, parameter, namedParams);
                 continue;
             }
 
-            hasParameterizedConstructor = true;
-            boolean allRealNames = true;
-            for (Parameter param : parameters) {
-                if (isSyntheticArgName(param.getName())) {
-                    allRealNames = false;
-                    break;
+            String paramName = parameter.getName();
+            if (!namedParams.containsKey(paramName)) {
+                if (LOG.isLoggable(Level.FINER)) {
+                    LOG.log(Level.FINER, "  Missing parameter: {0}", paramName);
                 }
+                return null;
             }
-            if (allRealNames) {
-                return true;
+            Object value = namedParams.get(paramName);
+            Class<?> type = parameter.getType();
+            try {
+                if (value == null) {
+                    // A primitive cannot take null: let the converter supply its default. For object
+                    // types, use null directly.
+                    args[i] = type.isPrimitive() ? converter.convert(null, type) : null;
+                } else if (type.isInstance(value)) {
+                    args[i] = value;
+                } else {
+                    args[i] = converter.convert(value, type);
+                }
+            } catch (Exception conversionException) {
+                return null;
+            }
+            if (LOG.isLoggable(Level.FINEST)) {
+                LOG.log(Level.FINEST, "  Matched parameter ''{0}'' with value: {1}", new Object[]{paramName, value});
             }
         }
-        return !hasParameterizedConstructor;
+        return args;
     }
-    
+
+    /** The array for a varargs parameter matched by name: its value, converted element by element. */
+    private static Object namedVarargsArray(Converter converter, Parameter parameter, Map<String, Object> namedParams) {
+        Class<?> arrayType = parameter.getType();
+        Class<?> componentType = arrayType.getComponentType();
+        String paramName = parameter.getName();
+        boolean hasVarargsValue = namedParams.containsKey(paramName);
+        Object v = hasVarargsValue ? namedParams.get(paramName) : null;
+        Object array;
+
+        if (!hasVarargsValue) {
+            array = Array.newInstance(componentType, 0);
+        } else if (v != null && arrayType.isInstance(v)) {
+            // Already the right array type
+            array = v;
+        } else {
+            // Convert single value or collection to array
+            Collection<?> src = (v instanceof Collection) ? (Collection<?>) v : Collections.singletonList(v);
+            array = Array.newInstance(componentType, src.size());
+            int k = 0;
+            for (Object item : src) {
+                try {
+                    ArrayUtilities.setElement(array, k++, converter.convert(item, componentType));
+                } catch (Exception e) {
+                    // Use default value if conversion fails
+                    ArrayUtilities.setElement(array, k++, getArgForType(converter, componentType));
+                }
+            }
+        }
+        if (LOG.isLoggable(Level.FINEST)) {
+            LOG.log(Level.FINEST, "  Matched varargs parameter ''{0}'' with array of length: {1}",
+                    new Object[]{paramName, ArrayUtilities.getLength(array)});
+        }
+        return array;
+    }
+
+    private static void logNamedParameterAttempt(Class<?> c, Object[] plan) {
+        LOG.log(Level.FINER, "Class {0} is {1}{2}",
+                new Object[]{c.getName(),
+                        Modifier.isFinal(c.getModifiers()) ? "final" : "non-final",
+                        Throwable.class.isAssignableFrom(c) ? " (Exception type)" : ""});
+        LOG.log(Level.FINER, "Trying {0} constructors with real parameter names for {1}",
+                new Object[]{plan.length / 2, c.getName()});
+        for (int i = 0; i < plan.length; i += 2) {
+            LOG.log(Level.FINER, "Trying constructor: {0}", plan[i]);
+        }
+    }
+
     /**
      * Checks if a parameter name is a synthetic name like "arg0", "arg1", etc.
      * This is more efficient than using ARG_PATTERN.matcher().matches() as it
@@ -3599,7 +3598,7 @@ public class ClassUtilities {
         GLOBAL_ALIASES.putAll(USER_ALIASES);
         SUCCESSFUL_CONSTRUCTOR_CACHE.clear();
         CONSTRUCTOR_PLAN_CACHE.clear();
-        NAMED_PARAMETER_MATCHING_VIABLE_CACHE.clear();
+        namedConstructors = newNamedConstructorsCache();
         CLASS_HIERARCHY_CACHE.clear();
         ASSIGNABLE_TYPE_CACHE.clear();
         accessibilityCache.clear();

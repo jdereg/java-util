@@ -594,16 +594,91 @@ public class ClassUtilities {
     private static final class ConstructorPlan {
         private final Constructor<?> constructor;
         private final Parameter[] parameters;
-        private final Class<?>[] parameterTypes;
-        private final boolean varArgs;
         private final boolean allowNullsFirst;
+        /** The matcher's decisions for this argument shape, or null: match on every call. */
+        private final ArgumentBinding binding;
 
         private ConstructorPlan(Constructor<?> constructor, Parameter[] parameters, boolean allowNullsFirst) {
+            this(constructor, parameters, allowNullsFirst, null);
+        }
+
+        private ConstructorPlan(Constructor<?> constructor, Parameter[] parameters, boolean allowNullsFirst,
+                                ArgumentBinding binding) {
             this.constructor = constructor;
             this.parameters = parameters == null ? EMPTY_PARAMETERS : parameters;
-            this.parameterTypes = extractParameterTypes(this.parameters);
-            this.varArgs = this.parameters.length > 0 && this.parameters[this.parameters.length - 1].isVarArgs();
             this.allowNullsFirst = allowNullsFirst;
+            this.binding = binding == null || binding.conversionFailed ? null : binding;
+        }
+    }
+
+    /**
+     * Which supplied value the matcher put in each parameter, and whether it converted it. The plan cache is
+     * keyed by the argument classes, and matching is decided by those classes -- except that a conversion can
+     * throw for one value and not another, moving the choice on to the next candidate. So a binding recorded
+     * with no failed conversion replays exactly what matching would produce, for as long as the replayed
+     * conversions succeed; one that fails sends that call back to full matching. Replaying skips the matching
+     * that otherwise ran on every object (the positional path json-io takes for classes compiled without
+     * {@code -parameters}).
+     */
+    private static final class ArgumentBinding {
+        /** Per parameter: the index of the supplied value used, or -1 when it was left for a default. */
+        final int[] source;
+        final boolean[] converted;
+        /** A conversion threw while matching: the choices depended on the values, so this cannot replay. */
+        boolean conversionFailed;
+        private boolean[] matched;
+        private boolean complete;
+        private boolean identity;
+
+        ArgumentBinding(int parameterCount) {
+            source = new int[parameterCount];
+            Arrays.fill(source, -1);
+            converted = new boolean[parameterCount];
+        }
+
+        /** Called once matching is done, before the binding is shared through the plan cache. */
+        ArgumentBinding seal(int valueCount) {
+            matched = new boolean[source.length];
+            complete = true;
+            identity = source.length == valueCount;
+            for (int i = 0; i < source.length; i++) {
+                matched[i] = source[i] >= 0;
+                complete &= matched[i];
+                identity &= source[i] == i && !converted[i];
+            }
+            return this;
+        }
+
+        /** Every parameter was matched to a value: allowing nulls for unmatched ones changes nothing. */
+        boolean isComplete() {
+            return complete;
+        }
+
+        /** The arguments matching would produce, or null when a conversion fails (then match in full). */
+        Object[] replay(Converter converter, Object[] values, Parameter[] parameters, boolean allowNulls) {
+            if (identity) {
+                return values;      // each value in its own position, as is (a fresh array per call)
+            }
+            Object[] result = new Object[source.length];
+            for (int i = 0; i < source.length; i++) {
+                int j = source[i];
+                if (j < 0) {
+                    continue;
+                }
+                Object value = values[j];
+                if (converted[i]) {
+                    try {
+                        value = converter.convert(value, parameters[i].getType());
+                    } catch (Exception e) {
+                        return null;
+                    }
+                }
+                result[i] = value;
+            }
+            if (!complete) {
+                fillRemainingParameters(converter, parameters, 0, source.length, matched, result, allowNulls);
+            }
+            return result;
         }
     }
 
@@ -1811,12 +1886,26 @@ public class ClassUtilities {
      */
     private static Object[] matchArgumentsToParameters(Converter converter, Object[] valueArray,
                                                        Parameter[] parameters, boolean allowNulls) {
-        return matchArgumentsToParameters(converter, valueArray, parameters, 0, parameters.length, allowNulls);
+        return matchArgumentsToParameters(converter, valueArray, parameters, 0, parameters.length, allowNulls, null);
+    }
+
+    /** As above, recording its decisions in {@code binding} when that is not null (and not varargs). */
+    private static Object[] matchArgumentsToParameters(Converter converter, Object[] valueArray,
+                                                       Parameter[] parameters, boolean allowNulls,
+                                                       ArgumentBinding binding) {
+        return matchArgumentsToParameters(converter, valueArray, parameters, 0, parameters.length, allowNulls, binding);
     }
 
     private static Object[] matchArgumentsToParameters(Converter converter, Object[] valueArray,
                                                        Parameter[] parameters, int paramOffset,
                                                        int paramCount, boolean allowNulls) {
+        return matchArgumentsToParameters(converter, valueArray, parameters, paramOffset, paramCount, allowNulls, null);
+    }
+
+    private static Object[] matchArgumentsToParameters(Converter converter, Object[] valueArray,
+                                                       Parameter[] parameters, int paramOffset,
+                                                       int paramCount, boolean allowNulls,
+                                                       ArgumentBinding binding) {
         if (parameters == null || paramCount <= 0) {
             return ArrayUtilities.EMPTY_OBJECT_ARRAY; // Reuse a static empty array
         }
@@ -1824,6 +1913,9 @@ public class ClassUtilities {
         // Check if the last parameter is varargs and handle specially
         boolean isVarargs = parameters[paramOffset + paramCount - 1].isVarArgs();
         if (isVarargs) {
+            if (binding != null) {
+                binding.conversionFailed = true;    // varargs packing is not recorded: always match in full
+            }
             return matchArgumentsWithVarargs(converter, valueArray, parameters, paramOffset, paramCount, allowNulls);
         }
 
@@ -1835,13 +1927,13 @@ public class ClassUtilities {
         boolean[] valueUsed = new boolean[valueArray.length];
 
         // PHASE 1: Find exact type matches - highest priority
-        findExactMatches(valueArray, valueUsed, parameters, paramOffset, paramCount, parameterMatched, result, 0, valueArray.length);
+        findExactMatches(valueArray, valueUsed, parameters, paramOffset, paramCount, parameterMatched, result, 0, valueArray.length, binding);
 
         // PHASE 2: Find assignable type matches with inheritance (includes primitive/wrapper via ClassHierarchyInfo)
-        findInheritanceMatches(valueArray, valueUsed, parameters, paramOffset, paramCount, parameterMatched, result, 0, valueArray.length);
+        findInheritanceMatches(valueArray, valueUsed, parameters, paramOffset, paramCount, parameterMatched, result, 0, valueArray.length, binding);
 
         // PHASE 3: Find convertible type matches
-        findConvertibleMatches(converter, valueArray, valueUsed, parameters, paramOffset, paramCount, parameterMatched, result, 0, valueArray.length);
+        findConvertibleMatches(converter, valueArray, valueUsed, parameters, paramOffset, paramCount, parameterMatched, result, 0, valueArray.length, binding);
 
         // PHASE 4: Fill remaining unmatched parameters with defaults or nulls
         fillRemainingParameters(converter, parameters, paramOffset, paramCount, parameterMatched, result, allowNulls);
@@ -1925,9 +2017,9 @@ public class ClassUtilities {
         boolean[] valueUsed = new boolean[values.length];
         boolean[] parameterMatched = new boolean[fixedParamCount];
 
-        findExactMatches(values, valueUsed, parameters, paramOffset, fixedParamCount, parameterMatched, result, valueStartInclusive, valueEndExclusive);
-        findInheritanceMatches(values, valueUsed, parameters, paramOffset, fixedParamCount, parameterMatched, result, valueStartInclusive, valueEndExclusive);
-        findConvertibleMatches(converter, values, valueUsed, parameters, paramOffset, fixedParamCount, parameterMatched, result, valueStartInclusive, valueEndExclusive);
+        findExactMatches(values, valueUsed, parameters, paramOffset, fixedParamCount, parameterMatched, result, valueStartInclusive, valueEndExclusive, null);
+        findInheritanceMatches(values, valueUsed, parameters, paramOffset, fixedParamCount, parameterMatched, result, valueStartInclusive, valueEndExclusive, null);
+        findConvertibleMatches(converter, values, valueUsed, parameters, paramOffset, fixedParamCount, parameterMatched, result, valueStartInclusive, valueEndExclusive, null);
         fillRemainingParameters(converter, parameters, paramOffset, fixedParamCount, parameterMatched, result, allowNulls);
     }
 
@@ -1941,9 +2033,9 @@ public class ClassUtilities {
                                              Object[] result, boolean allowNulls) {
         boolean[] parameterMatched = new boolean[fixedParamCount];
 
-        findExactMatches(values, valueUsed, parameters, paramOffset, fixedParamCount, parameterMatched, result, valueStartInclusive, valueEndExclusive);
-        findInheritanceMatches(values, valueUsed, parameters, paramOffset, fixedParamCount, parameterMatched, result, valueStartInclusive, valueEndExclusive);
-        findConvertibleMatches(converter, values, valueUsed, parameters, paramOffset, fixedParamCount, parameterMatched, result, valueStartInclusive, valueEndExclusive);
+        findExactMatches(values, valueUsed, parameters, paramOffset, fixedParamCount, parameterMatched, result, valueStartInclusive, valueEndExclusive, null);
+        findInheritanceMatches(values, valueUsed, parameters, paramOffset, fixedParamCount, parameterMatched, result, valueStartInclusive, valueEndExclusive, null);
+        findConvertibleMatches(converter, values, valueUsed, parameters, paramOffset, fixedParamCount, parameterMatched, result, valueStartInclusive, valueEndExclusive, null);
         fillRemainingParameters(converter, parameters, paramOffset, fixedParamCount, parameterMatched, result, allowNulls);
     }
 
@@ -1996,7 +2088,8 @@ public class ClassUtilities {
     private static void findExactMatches(Object[] values, boolean[] valueUsed,
                                          Parameter[] parameters, int paramOffset, int paramCount,
                                          boolean[] parameterMatched, Object[] result,
-                                         int valueStartInclusive, int valueEndExclusive) {
+                                         int valueStartInclusive, int valueEndExclusive,
+                                         ArgumentBinding binding) {
         for (int i = 0; i < paramCount; i++) {
             if (parameterMatched[i]) continue;
 
@@ -2010,6 +2103,9 @@ public class ClassUtilities {
                     result[i] = value;
                     parameterMatched[i] = true;
                     valueUsed[j] = true;
+                    if (binding != null) {
+                        binding.source[i] = j;
+                    }
                     break;
                 }
             }
@@ -2022,7 +2118,8 @@ public class ClassUtilities {
     private static void findInheritanceMatches(Object[] values, boolean[] valueUsed,
                                                Parameter[] parameters, int paramOffset, int paramCount,
                                                boolean[] parameterMatched, Object[] result,
-                                               int valueStartInclusive, int valueEndExclusive) {
+                                               int valueStartInclusive, int valueEndExclusive,
+                                               ArgumentBinding binding) {
         // Cache ClassHierarchyInfo lookups when multiple candidate values are available.
         // For single-value cases, direct lookup is cheaper than allocating a map.
         Map<Class<?>, ClassHierarchyInfo> valueClassCache = null;
@@ -2074,6 +2171,9 @@ public class ClassUtilities {
                 result[i] = values[bestValueIndex];
                 parameterMatched[i] = true;
                 valueUsed[bestValueIndex] = true;
+                if (binding != null) {
+                    binding.source[i] = bestValueIndex;
+                }
             }
         }
     }
@@ -2084,7 +2184,8 @@ public class ClassUtilities {
     private static void findConvertibleMatches(Converter converter, Object[] values, boolean[] valueUsed,
                                                Parameter[] parameters, int paramOffset, int paramCount,
                                                boolean[] parameterMatched, Object[] result,
-                                               int valueStartInclusive, int valueEndExclusive) {
+                                               int valueStartInclusive, int valueEndExclusive,
+                                               ArgumentBinding binding) {
         for (int i = 0; i < paramCount; i++) {
             if (parameterMatched[i]) continue;
 
@@ -2108,9 +2209,16 @@ public class ClassUtilities {
                         result[i] = converted;
                         parameterMatched[i] = true;
                         valueUsed[j] = true;
+                        if (binding != null) {
+                            binding.source[i] = j;
+                            binding.converted[i] = true;
+                        }
                         break;
                     } catch (Exception ignored) {
-                        // Conversion failed, continue
+                        // Conversion failed, continue -- a choice that depended on this value
+                        if (binding != null) {
+                            binding.conversionFailed = true;
+                        }
                     }
                 }
             }
@@ -2791,13 +2899,15 @@ public class ClassUtilities {
             Object[] argsNonNull = null;
             try {
                 // Try with non-null arguments first (more precise matching)
-                argsNonNull = matchArgumentsToParameters(converter, suppliedArgs, parameters, false);
+                ArgumentBinding binding = new ArgumentBinding(parameters.length);
+                argsNonNull = matchArgumentsToParameters(converter, suppliedArgs, parameters, false, binding);
                 Object instance = constructor.newInstance(argsNonNull);
 
                 // Cache this successful constructor for future use
                 if (noArgs || !valueDependentOutcome) {
                     SUCCESSFUL_CONSTRUCTOR_CACHE.put(c, Optional.of(constructor));
-                    classPlanCache.put(argumentShapeKey, Optional.of(new ConstructorPlan(constructor, parameters, false)));
+                    classPlanCache.put(argumentShapeKey, Optional.of(new ConstructorPlan(constructor, parameters, false,
+                            binding.seal(suppliedArgs.length))));
                 }
                 return instance;
             } catch (Exception e1) {
@@ -2806,7 +2916,8 @@ public class ClassUtilities {
 
                 // If that fails, try with nulls allowed for unmatched parameters
                 try {
-                    Object[] argsNull = matchArgumentsToParameters(converter, suppliedArgs, parameters, true);
+                    ArgumentBinding binding = new ArgumentBinding(parameters.length);
+                    Object[] argsNull = matchArgumentsToParameters(converter, suppliedArgs, parameters, true, binding);
                     if (argsNonNull != null && Arrays.equals(argsNonNull, argsNull)) {
                         // Every parameter was matched, so the "nulls allowed" retry would pass the very
                         // same arguments -- and fail the same way, at the cost of another exception.
@@ -2817,7 +2928,8 @@ public class ClassUtilities {
                     // Cache this successful constructor for future use
                     if (noArgs || !valueDependentOutcome) {
                         SUCCESSFUL_CONSTRUCTOR_CACHE.put(c, Optional.of(constructor));
-                        classPlanCache.put(argumentShapeKey, Optional.of(new ConstructorPlan(constructor, parameters, true)));
+                        classPlanCache.put(argumentShapeKey, Optional.of(new ConstructorPlan(constructor, parameters, true,
+                                binding.seal(suppliedArgs.length))));
                     }
                     return instance;
                 } catch (Exception e2) {
@@ -2890,57 +3002,32 @@ public class ClassUtilities {
         if (parameters.length == 0) {
             return plan.constructor.newInstance(ArrayUtilities.EMPTY_OBJECT_ARRAY);
         }
-        if (canInvokeDirectly(suppliedArgs, plan)) {
-            return plan.constructor.newInstance(suppliedArgs);
-        }
-        if (plan.allowNullsFirst) {
-            try {
-                Object[] argsNull = matchArgumentsToParameters(converter, suppliedArgs, parameters, true);
-                return plan.constructor.newInstance(argsNull);
-            } catch (Exception ignored) {
-                Object[] argsNonNull = matchArgumentsToParameters(converter, suppliedArgs, parameters, false);
-                return plan.constructor.newInstance(argsNonNull);
-            }
+        boolean nullsFirst = plan.allowNullsFirst;
+        if (plan.binding != null && plan.binding.isComplete()) {
+            // Every parameter takes a value, so the "other null policy" retry would pass the same arguments
+            return plan.constructor.newInstance(planArguments(converter, suppliedArgs, plan, nullsFirst));
         }
         try {
-            Object[] argsNonNull = matchArgumentsToParameters(converter, suppliedArgs, parameters, false);
-            return plan.constructor.newInstance(argsNonNull);
+            return plan.constructor.newInstance(planArguments(converter, suppliedArgs, plan, nullsFirst));
         } catch (Exception ignored) {
-            Object[] argsNull = matchArgumentsToParameters(converter, suppliedArgs, parameters, true);
-            return plan.constructor.newInstance(argsNull);
+            return plan.constructor.newInstance(planArguments(converter, suppliedArgs, plan, !nullsFirst));
         }
     }
 
-    private static Class<?>[] extractParameterTypes(Parameter[] parameters) {
-        if (parameters.length == 0) {
-            return ArrayUtilities.EMPTY_CLASS_ARRAY;
-        }
-        Class<?>[] types = new Class<?>[parameters.length];
-        for (int i = 0; i < parameters.length; i++) {
-            types[i] = parameters[i].getType();
-        }
-        return types;
-    }
-
-    private static boolean canInvokeDirectly(Object[] suppliedArgs, ConstructorPlan plan) {
-        if (plan.varArgs || suppliedArgs.length != plan.parameterTypes.length) {
-            return false;
-        }
-        for (int i = 0; i < suppliedArgs.length; i++) {
-            Object arg = suppliedArgs[i];
-            if (arg == null || !isDirectlyAssignable(arg.getClass(), plan.parameterTypes[i])) {
-                return false;
+    /**
+     * The arguments matching produces for these values: replayed from the plan's binding when it has one and
+     * its conversions succeed, else matched in full. The same either way -- so a cached call passes the same
+     * arguments, in the same order, as the call that created the plan.
+     */
+    private static Object[] planArguments(Converter converter, Object[] suppliedArgs, ConstructorPlan plan,
+                                          boolean allowNulls) {
+        if (plan.binding != null) {
+            Object[] args = plan.binding.replay(converter, suppliedArgs, plan.parameters, allowNulls);
+            if (args != null) {
+                return args;
             }
         }
-        return true;
-    }
-
-    private static boolean isDirectlyAssignable(Class<?> sourceType, Class<?> targetType) {
-        if (targetType.isPrimitive()) {
-            Class<?> sourcePrimitive = WRAPPER_TO_PRIMITIVE.getByClass(sourceType);
-            return sourcePrimitive != null && getPrimitiveWideningDistance(sourcePrimitive, targetType) >= 0;
-        }
-        return targetType.isAssignableFrom(sourceType);
+        return matchArgumentsToParameters(converter, suppliedArgs, plan.parameters, allowNulls);
     }
 
     // Memoizes AccessibleObjects that could NOT be made accessible (trySetAccessible only ever

@@ -86,6 +86,7 @@ import java.util.WeakHashMap;
 import java.util.concurrent.BlockingDeque;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.ConcurrentSkipListSet;
@@ -216,7 +217,9 @@ public class ClassUtilities {
     private static final class LoaderCache {
         final ConcurrentMap<String, WeakReference<Class<?>>> cache = new ConcurrentHashMap<>(2048);
         final ReferenceQueue<Class<?>> queue = new ReferenceQueue<>();
-        final AtomicInteger negativeEntryCount = new AtomicInteger();
+        /** Names cached as not found, oldest first; its length is kept in notFoundCount. */
+        final ConcurrentLinkedQueue<String> notFoundOrder = new ConcurrentLinkedQueue<>();
+        final AtomicInteger notFoundCount = new AtomicInteger();
     }
 
     /**
@@ -258,6 +261,9 @@ public class ClassUtilities {
     // Using a dedicated inner class avoids collisions with any real class (including java.lang.Void).
     private static final class ClassNotFoundSentinel { }
     private static final Class<?> CLASS_NOT_FOUND_SENTINEL = ClassNotFoundSentinel.class;
+    // One shared entry for every "not found" (the sentinel is strongly reachable, so it never clears), which
+    // lets eviction remove a name only while it is still cached as not found: remove(name, NOT_FOUND).
+    private static final WeakReference<Class<?>> NOT_FOUND = new WeakReference<>(CLASS_NOT_FOUND_SENTINEL);
     private static final int MAX_NEGATIVE_CLASS_CACHE_ENTRIES = 4096;
 
     private static Class<?> fromCache(String name, ClassLoader cl) {
@@ -292,15 +298,22 @@ public class ClassUtilities {
         // Opportunistically drain dead references (lock-free, uses CAS-based removal)
         drainQueue(holder);
 
-        // Bound negative-cache growth to prevent memory pressure with many unique missing class names.
-        if (holder.negativeEntryCount.get() >= MAX_NEGATIVE_CLASS_CACHE_ENTRIES) {
-            return;
+        if (holder.cache.putIfAbsent(name, NOT_FOUND) != null) {
+            return;     // already cached, found or not
         }
 
-        // Cache the sentinel to indicate "class not found" - sentinel class is strongly reachable.
-        WeakReference<Class<?>> prior = holder.cache.putIfAbsent(name, new WeakReference<>(CLASS_NOT_FOUND_SENTINEL));
-        if (prior == null) {
-            holder.negativeEntryCount.incrementAndGet();
+        // Bounded, and past the bound the OLDEST miss is forgotten -- not the newest refused. Refusing let any
+        // 4,096 unique names (junk read from untrusted input, say) fill the cache for good, after which every
+        // genuinely missing class cost a full class loader search on every lookup. A forgotten miss is simply
+        // looked up once more. Hits write nothing, so this is not LRU: it keeps the hit path contention-free.
+        holder.notFoundOrder.offer(name);
+        if (holder.notFoundCount.incrementAndGet() > MAX_NEGATIVE_CLASS_CACHE_ENTRIES) {
+            String oldest = holder.notFoundOrder.poll();
+            if (oldest != null) {
+                holder.notFoundCount.decrementAndGet();
+                // Only if still "not found": a class loaded under that name since then stays cached
+                holder.cache.remove(oldest, NOT_FOUND);
+            }
         }
     }
     
@@ -331,11 +344,9 @@ public class ClassUtilities {
         // Opportunistically drain dead references (lock-free, uses CAS-based removal)
         drainQueue(holder);
 
-        // Lock-free cache update using ConcurrentHashMap
-        WeakReference<Class<?>> previous = holder.cache.put(name, new NamedWeakRef(name, c, holder.queue));
-        if (isNotFoundEntry(previous)) {
-            decrementNegativeCount(holder);
-        }
+        // Lock-free cache update using ConcurrentHashMap. A "not found" this replaces leaves its name in
+        // notFoundOrder, where it ages out harmlessly: eviction removes only a NOT_FOUND entry.
+        holder.cache.put(name, new NamedWeakRef(name, c, holder.queue));
     }
     
     /**
@@ -354,25 +365,8 @@ public class ClassUtilities {
         }
     }
 
-    private static boolean isNotFoundEntry(WeakReference<Class<?>> ref) {
-        return ref != null && ref.get() == CLASS_NOT_FOUND_SENTINEL;
-    }
-
-    private static void decrementNegativeCount(LoaderCache holder) {
-        int count;
-        do {
-            count = holder.negativeEntryCount.get();
-            if (count <= 0) {
-                return;
-            }
-        } while (!holder.negativeEntryCount.compareAndSet(count, count - 1));
-    }
-
     private static void removeCacheEntry(LoaderCache holder, String name) {
-        WeakReference<Class<?>> removed = holder.cache.remove(name);
-        if (isNotFoundEntry(removed)) {
-            decrementNegativeCount(holder);
-        }
+        holder.cache.remove(name);
     }
 
     // ClassLoader-scoped cache with weak references to prevent classloader leaks

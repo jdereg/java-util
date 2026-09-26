@@ -1095,14 +1095,15 @@ public class ClassUtilities {
      *
      * @param name        String name of a JVM class.
      * @param classLoader ClassLoader to use when searching for JVM classes.
-     * @return Class instance of the named JVM class
+     * @return Class instance of the named JVM class, or null when the name is cached as not found
      */
     private static Class<?> internalClassForName(String name, ClassLoader classLoader) throws ClassNotFoundException {
         Class<?> c = fromCache(name, classLoader);
         if (c != null) {
-            // Check if this is a cached "class not found" sentinel
+            // A cached "class not found": null, not an exception. The only caller turns every exception into
+            // null anyway, and building one here (message and stack trace) cost more than the lookup it saved.
             if (c == CLASS_NOT_FOUND_SENTINEL) {
-                throw new ClassNotFoundException("Class not found (cached): " + name);
+                return null;
             }
             // Performance: Skip re-verification - classes are verified before being cached
             // Cached classes are immutable, so if verified once, they remain verified

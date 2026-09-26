@@ -1064,6 +1064,12 @@ public class ClassUtilities {
 
     /**
      * Given the passed in String class name, return the named JVM class.
+     * <p>
+     * An array class may be named as the JVM names it ({@code "[I"}, {@code "[Ljava.lang.String;"}), with
+     * {@code '/'} separators ({@code "[Ljava/lang/String;"}), or in Java form ({@code "int[]"},
+     * {@code "java.lang.String[][]"}), up to the JVM's 255 dimensions. Any other array spelling -- text after
+     * a primitive's letter ({@code "[Ixyz"}), the forms mixed ({@code "[I[]"}), or the separators mixed
+     * ({@code "[Ljava/lang.String;"}) -- is malformed and returns null.
      *
      * @param name        String name of a JVM class.
      * @param classLoader ClassLoader to use when searching for JVM classes.
@@ -1167,11 +1173,18 @@ public class ClassUtilities {
     private static Class<?> loadClass(String name, ClassLoader classLoader) throws ClassNotFoundException {
         // Support Java-style array names like "int[][]" or "java.lang.String[]"
         if (name.endsWith("]")) {
+            int end = name.length();
             int dims = 0;
-            String base = name;
-            while (base.endsWith("[]")) {
+            while (end >= 2 && name.charAt(end - 1) == ']' && name.charAt(end - 2) == '[') {
                 dims++;
-                base = base.substring(0, base.length() - 2);
+                end -= 2;
+            }
+            String base = name.substring(0, end);
+            // The element must be a plain Java name: not a descriptor ("[Ljava.lang.String;[]", "[I[]"),
+            // no stray bracket ("String[]]"), no '/' separators
+            if (base.isEmpty() || dims > MAX_ARRAY_DIMENSIONS || base.indexOf('[') >= 0 || base.indexOf(']') >= 0
+                    || base.indexOf(';') >= 0 || base.indexOf('/') >= 0) {
+                throw new ClassNotFoundException("Bad array name: " + name);
             }
             Class<?> element;
             // primitives by simple name
@@ -1188,71 +1201,59 @@ public class ClassUtilities {
                     if (SecurityChecker.isSecurityBlockedName(base)) {
                         throw new SecurityException("Class loading denied for security reasons: " + base);
                     }
-                    if (classLoader != null) {
-                        element = classLoader.loadClass(base);
-                    } else {
-                        element = Class.forName(base, false, getClassLoader(ClassUtilities.class));
-                    }
+                    element = loadArrayElement(base, classLoader);
             }
-            Class<?> arrayClass = element;
-            for (int i = 0; i < dims; i++) {
-                arrayClass = Array.newInstance(arrayClass, 0).getClass();
-            }
-            return arrayClass;
+            return arrayOf(element, dims);
         }
 
-        // Optimized JVM descriptor handling - count brackets once to avoid re-string-bashing
+        // JVM descriptors: "[I", "[[Ljava.lang.String;" -- or with '/' separators, the JVM's internal form
         if (name.startsWith("[")) {
             int dims = 0;
             while (dims < name.length() && name.charAt(dims) == '[') {
                 dims++;
             }
-            
-            if (dims >= name.length()) {
+            if (dims >= name.length() || dims > MAX_ARRAY_DIMENSIONS) {
                 throw new ClassNotFoundException("Bad descriptor: " + name);
             }
-            
+
             Class<?> element;
             char typeChar = name.charAt(dims);
-            
-            // Java 8 compatible switch - handle primitive types
-            switch (typeChar) {
-                case 'B': element = byte.class; break;
-                case 'S': element = short.class; break;
-                case 'I': element = int.class; break;
-                case 'J': element = long.class; break;
-                case 'F': element = float.class; break;
-                case 'D': element = double.class; break;
-                case 'Z': element = boolean.class; break;
-                case 'C': element = char.class; break;
-                case 'L':
-                    // Object type: extract class name from Lcom/example/Class;
-                    if (!name.endsWith(";") || name.length() <= dims + 2) {
-                        throw new ClassNotFoundException("Bad descriptor: " + name);
-                    }
-                    // Convert JVM descriptor format (java/lang/String) to Java format (java.lang.String)
-                    String className = name.substring(dims + 1, name.length() - 1).replace('/', '.');
-                    if (SecurityChecker.isSecurityBlockedName(className)) {
-                        throw new SecurityException("Class loading denied for security reasons: " + className);
-                    }
-                    if (classLoader != null) {
-                        element = classLoader.loadClass(className);
-                    } else {
-                        // Use the standard classloader resolution which handles OSGi/JPMS properly
-                        ClassLoader cl = getClassLoader(ClassUtilities.class);
-                        element = Class.forName(className, false, cl);
-                    }
-                    break;
-                default:
+            if (typeChar == 'L') {
+                // "L" + a class name + ";", and nothing after it
+                int semicolon = name.indexOf(';', dims);
+                if (semicolon != name.length() - 1 || semicolon == dims + 1) {
                     throw new ClassNotFoundException("Bad descriptor: " + name);
+                }
+                String className = name.substring(dims + 1, semicolon);
+                // Not a nested descriptor, and one separator style, not a mix ("java/lang.String")
+                if (className.indexOf('[') >= 0 || (className.indexOf('.') >= 0 && className.indexOf('/') >= 0)) {
+                    throw new ClassNotFoundException("Bad descriptor: " + name);
+                }
+                // Convert JVM descriptor format (java/lang/String) to Java format (java.lang.String)
+                className = className.replace('/', '.');
+                if (SecurityChecker.isSecurityBlockedName(className)) {
+                    throw new SecurityException("Class loading denied for security reasons: " + className);
+                }
+                element = loadArrayElement(className, classLoader);
+            } else {
+                // A primitive is one letter, with nothing after it ("[Ixyz" and "[I;" are not int[])
+                if (name.length() != dims + 1) {
+                    throw new ClassNotFoundException("Bad descriptor: " + name);
+                }
+                switch (typeChar) {
+                    case 'B': element = byte.class; break;
+                    case 'S': element = short.class; break;
+                    case 'I': element = int.class; break;
+                    case 'J': element = long.class; break;
+                    case 'F': element = float.class; break;
+                    case 'D': element = double.class; break;
+                    case 'Z': element = boolean.class; break;
+                    case 'C': element = char.class; break;
+                    default:
+                        throw new ClassNotFoundException("Bad descriptor: " + name);
+                }
             }
-            
-            // Build array class with the right number of dimensions
-            Class<?> arrayClass = element;
-            for (int i = 0; i < dims; i++) {
-                arrayClass = Array.newInstance(arrayClass, 0).getClass();
-            }
-            return arrayClass;
+            return arrayOf(element, dims);
         }
         
         // Regular class name (not an array)
@@ -1266,6 +1267,25 @@ public class ClassUtilities {
             }
             return Class.forName(name, false, cl);
         }
+    }
+
+    /** The JVM's limit on array dimensions. */
+    private static final int MAX_ARRAY_DIMENSIONS = 255;
+
+    private static Class<?> loadArrayElement(String className, ClassLoader classLoader) throws ClassNotFoundException {
+        if (classLoader != null) {
+            return classLoader.loadClass(className);
+        }
+        // Use the standard classloader resolution which handles OSGi/JPMS properly
+        return Class.forName(className, false, getClassLoader(ClassUtilities.class));
+    }
+
+    private static Class<?> arrayOf(Class<?> element, int dims) {
+        Class<?> arrayClass = element;
+        for (int i = 0; i < dims; i++) {
+            arrayClass = Array.newInstance(arrayClass, 0).getClass();
+        }
+        return arrayClass;
     }
 
     /**

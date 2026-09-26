@@ -2218,6 +2218,13 @@ boolean privateConstructors = ClassUtilities.areAllConstructorsPrivate(Math.clas
 // Load class by name
 Class<?> clazz = ClassUtilities.forName("java.util.ArrayList", myClassLoader);
 
+// Array classes: the JVM's name, its '/' form, or the Java form
+Class<?> a = ClassUtilities.forName("[Ljava.lang.String;", null);    // String[]
+Class<?> b = ClassUtilities.forName("[Ljava/lang/String;", null);    // String[]
+Class<?> c = ClassUtilities.forName("java.lang.String[][]", null);   // String[][]
+Class<?> d = ClassUtilities.forName("int[]", null);                  // int[]
+// A malformed array name returns null: "[Ixyz", "[I[]", "[Ljava/lang.String;"
+
 // Create new instance - multiple approaches supported
 
 // 1. Using Map with parameter names (preferred for complex constructors)

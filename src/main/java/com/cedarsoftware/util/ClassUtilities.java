@@ -2942,14 +2942,24 @@ public class ClassUtilities {
     // added — so no application classloader is ever retained by this cache.
     private static final Map<AccessibleObject, Boolean> accessibilityCache = new ConcurrentHashMap<>();
     
+    @SuppressWarnings("deprecation")   // isAccessible(): deprecated since 9, not for removal; JDK 8 has no alternative
     static void trySetAccessible(AccessibleObject object) {
+        // Already accessible: nothing to do. Calling setAccessible(true) again is NOT a cheap no-op
+        // under concurrency: it WRITES the object's override flag, and these Constructor/Field/Method
+        // objects are shared by every thread (ReflectionUtils caches them), so each call invalidated
+        // that cache line on every other core -- 8 threads constructing the same class ran >10x slower
+        // than one. isAccessible() only reads the flag. The check is per INSTANCE, so a second Field
+        // object for the same field (see below) still gets its own setAccessible(true).
+        if (object.isAccessible()) {
+            return;
+        }
+
         // Check cache for known failures only. We only cache FALSE (failures) to avoid
         // expensive repeated exception throwing on JPMS-sealed modules. We do NOT cache
         // TRUE because WeakHashMap uses equals()-based lookup, and Field.equals() matches
         // by declaring class + name + type. Different Field instances for the same logical
         // field (from separate getDeclaredFields() calls) would incorrectly share a TRUE
         // cache entry, causing the second instance to never get setAccessible(true) called.
-        // Calling setAccessible(true) on an already-accessible field is a cheap no-op.
         if (Boolean.FALSE.equals(accessibilityCache.get(object))) {
             return;
         }

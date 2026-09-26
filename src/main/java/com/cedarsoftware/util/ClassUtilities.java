@@ -97,6 +97,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -607,76 +608,77 @@ public class ClassUtilities {
             this.constructor = constructor;
             this.parameters = parameters == null ? EMPTY_PARAMETERS : parameters;
             this.allowNullsFirst = allowNullsFirst;
-            this.binding = binding == null || binding.conversionFailed ? null : binding;
+            this.binding = binding == null || !binding.replayable ? null : binding;
         }
     }
 
     /**
-     * Which supplied value the matcher put in each parameter, and whether it converted it. The plan cache is
-     * keyed by the argument classes, and matching is decided by those classes -- except that a conversion can
-     * throw for one value and not another, moving the choice on to the next candidate. So a binding recorded
-     * with no failed conversion replays exactly what matching would produce, for as long as the replayed
-     * conversions succeed; one that fails sends that call back to full matching. Replaying skips the matching
-     * that otherwise ran on every object (the positional path json-io takes for classes compiled without
-     * {@code -parameters}).
+     * What the class-decided phases of matching chose for one argument shape: which supplied value fills each
+     * parameter by exact type, and which by inheritance. Those choices depend only on the argument classes,
+     * which key the plan cache, so they replay exactly -- and they were most of matching's cost. Conversion
+     * (which depends on the values and on each call's Converter) and defaults (a fresh object per call) run on
+     * every call, as in matching. So a replay produces exactly what matching would, for any values and any
+     * Converter.
      */
     private static final class ArgumentBinding {
-        /** Per parameter: the index of the supplied value used, or -1 when it was left for a default. */
+        /** Per parameter: the index of the value matched by type or inheritance, or -1. */
         final int[] source;
-        final boolean[] converted;
-        /** A conversion threw while matching: the choices depended on the values, so this cannot replay. */
-        boolean conversionFailed;
+        /** False for varargs, whose packing is not recorded: such a plan matches in full on every call. */
+        boolean replayable = true;
         private boolean[] matched;
+        private boolean[] used;
         private boolean complete;
         private boolean identity;
 
         ArgumentBinding(int parameterCount) {
             source = new int[parameterCount];
             Arrays.fill(source, -1);
-            converted = new boolean[parameterCount];
         }
 
         /** Called once matching is done, before the binding is shared through the plan cache. */
         ArgumentBinding seal(int valueCount) {
             matched = new boolean[source.length];
+            used = new boolean[valueCount];
             complete = true;
             identity = source.length == valueCount;
             for (int i = 0; i < source.length; i++) {
-                matched[i] = source[i] >= 0;
-                complete &= matched[i];
-                identity &= source[i] == i && !converted[i];
+                int j = source[i];
+                matched[i] = j >= 0;
+                complete &= j >= 0;
+                identity &= j == i;
+                if (j >= 0) {
+                    used[j] = true;
+                }
             }
             return this;
         }
 
-        /** Every parameter was matched to a value: allowing nulls for unmatched ones changes nothing. */
+        /**
+         * Every parameter is matched by type, whatever the values or the Converter: the arguments do not
+         * depend on the null policy, so a retry under the other policy would pass the very same arguments.
+         */
         boolean isComplete() {
             return complete;
         }
 
-        /** The arguments matching would produce, or null when a conversion fails (then match in full). */
+        /** The arguments matching produces for these values (of the recorded classes). */
         Object[] replay(Converter converter, Object[] values, Parameter[] parameters, boolean allowNulls) {
             if (identity) {
                 return values;      // each value in its own position, as is (a fresh array per call)
             }
-            Object[] result = new Object[source.length];
-            for (int i = 0; i < source.length; i++) {
-                int j = source[i];
-                if (j < 0) {
-                    continue;
+            int n = source.length;
+            Object[] result = new Object[n];
+            for (int i = 0; i < n; i++) {
+                if (source[i] >= 0) {
+                    result[i] = values[source[i]];
                 }
-                Object value = values[j];
-                if (converted[i]) {
-                    try {
-                        value = converter.convert(value, parameters[i].getType());
-                    } catch (Exception e) {
-                        return null;
-                    }
-                }
-                result[i] = value;
             }
             if (!complete) {
-                fillRemainingParameters(converter, parameters, 0, source.length, matched, result, allowNulls);
+                // The rest of matching, as matching does it: conversions, then defaults
+                boolean[] parameterMatched = matched.clone();
+                findConvertibleMatches(converter, values, used.clone(), parameters, 0, n, parameterMatched, result,
+                        0, values.length);
+                fillRemainingParameters(converter, parameters, 0, n, parameterMatched, result, allowNulls);
             }
             return result;
         }
@@ -1914,7 +1916,7 @@ public class ClassUtilities {
         boolean isVarargs = parameters[paramOffset + paramCount - 1].isVarArgs();
         if (isVarargs) {
             if (binding != null) {
-                binding.conversionFailed = true;    // varargs packing is not recorded: always match in full
+                binding.replayable = false;     // varargs packing is not recorded: always match in full
             }
             return matchArgumentsWithVarargs(converter, valueArray, parameters, paramOffset, paramCount, allowNulls);
         }
@@ -1933,7 +1935,7 @@ public class ClassUtilities {
         findInheritanceMatches(valueArray, valueUsed, parameters, paramOffset, paramCount, parameterMatched, result, 0, valueArray.length, binding);
 
         // PHASE 3: Find convertible type matches
-        findConvertibleMatches(converter, valueArray, valueUsed, parameters, paramOffset, paramCount, parameterMatched, result, 0, valueArray.length, binding);
+        findConvertibleMatches(converter, valueArray, valueUsed, parameters, paramOffset, paramCount, parameterMatched, result, 0, valueArray.length);
 
         // PHASE 4: Fill remaining unmatched parameters with defaults or nulls
         fillRemainingParameters(converter, parameters, paramOffset, paramCount, parameterMatched, result, allowNulls);
@@ -2019,7 +2021,7 @@ public class ClassUtilities {
 
         findExactMatches(values, valueUsed, parameters, paramOffset, fixedParamCount, parameterMatched, result, valueStartInclusive, valueEndExclusive, null);
         findInheritanceMatches(values, valueUsed, parameters, paramOffset, fixedParamCount, parameterMatched, result, valueStartInclusive, valueEndExclusive, null);
-        findConvertibleMatches(converter, values, valueUsed, parameters, paramOffset, fixedParamCount, parameterMatched, result, valueStartInclusive, valueEndExclusive, null);
+        findConvertibleMatches(converter, values, valueUsed, parameters, paramOffset, fixedParamCount, parameterMatched, result, valueStartInclusive, valueEndExclusive);
         fillRemainingParameters(converter, parameters, paramOffset, fixedParamCount, parameterMatched, result, allowNulls);
     }
 
@@ -2035,7 +2037,7 @@ public class ClassUtilities {
 
         findExactMatches(values, valueUsed, parameters, paramOffset, fixedParamCount, parameterMatched, result, valueStartInclusive, valueEndExclusive, null);
         findInheritanceMatches(values, valueUsed, parameters, paramOffset, fixedParamCount, parameterMatched, result, valueStartInclusive, valueEndExclusive, null);
-        findConvertibleMatches(converter, values, valueUsed, parameters, paramOffset, fixedParamCount, parameterMatched, result, valueStartInclusive, valueEndExclusive, null);
+        findConvertibleMatches(converter, values, valueUsed, parameters, paramOffset, fixedParamCount, parameterMatched, result, valueStartInclusive, valueEndExclusive);
         fillRemainingParameters(converter, parameters, paramOffset, fixedParamCount, parameterMatched, result, allowNulls);
     }
 
@@ -2184,8 +2186,7 @@ public class ClassUtilities {
     private static void findConvertibleMatches(Converter converter, Object[] values, boolean[] valueUsed,
                                                Parameter[] parameters, int paramOffset, int paramCount,
                                                boolean[] parameterMatched, Object[] result,
-                                               int valueStartInclusive, int valueEndExclusive,
-                                               ArgumentBinding binding) {
+                                               int valueStartInclusive, int valueEndExclusive) {
         for (int i = 0; i < paramCount; i++) {
             if (parameterMatched[i]) continue;
 
@@ -2209,16 +2210,9 @@ public class ClassUtilities {
                         result[i] = converted;
                         parameterMatched[i] = true;
                         valueUsed[j] = true;
-                        if (binding != null) {
-                            binding.source[i] = j;
-                            binding.converted[i] = true;
-                        }
                         break;
                     } catch (Exception ignored) {
-                        // Conversion failed, continue -- a choice that depended on this value
-                        if (binding != null) {
-                            binding.conversionFailed = true;
-                        }
+                        // Conversion failed, continue
                     }
                 }
             }
@@ -2428,7 +2422,7 @@ public class ClassUtilities {
 
         // Lazy normalization for Map fallback path only.
         if (normalizedArgs == null && mapArguments != null) {
-            normalizedArgs = normalizeMapValuesForPositionalFallback(mapArguments);
+            normalizedArgs = normalizeMapValuesForPositionalFallback(c, mapArguments);
         }
 
         // Call existing implementation
@@ -2451,7 +2445,7 @@ public class ClassUtilities {
         }
     }
 
-    private static Collection<?> normalizeMapValuesForPositionalFallback(Map<String, Object> map) {
+    private static Collection<?> normalizeMapValuesForPositionalFallback(Class<?> c, Map<String, Object> map) {
         boolean generatedKeys = hasGeneratedKeys(map);
 
         // Convert map values to collection for fallback
@@ -2517,6 +2511,116 @@ public class ClassUtilities {
         }
 
         // Sort keys alphabetically for deterministic order
+        return valuesInKeyOrder(c, map);
+    }
+
+    /**
+     * Per class, the key order of the last Map sent down the positional path and the sorted order it gave:
+     * {@code [String[] keys as iterated, int[] indexes in sorted key order]}. JDK types only (see
+     * namedConstructors). Every lookup compares the keys, so a memo from another Map is never misapplied.
+     */
+    private static final ClassValue<AtomicReference<Object[]>> POSITIONAL_KEY_ORDER = new ClassValue<AtomicReference<Object[]>>() {
+        @Override
+        protected AtomicReference<Object[]> computeValue(Class<?> type) {
+            return new AtomicReference<>();
+        }
+    };
+
+    /**
+     * The map's values in the alphabetical order of their keys. Sorting on every call -- and then a get()
+     * per key -- was most of the positional path's cost, for any map not already ordered: json-io's
+     * JsonObject is one. The objects of a class nearly always arrive with their keys in the same order, so
+     * the sorted order is remembered per class and reused while the keys match.
+     */
+    private static List<Object> valuesInKeyOrder(Class<?> c, Map<String, Object> map) {
+        int size = map.size();
+        String[] keys = new String[size];
+        Object[] values = new Object[size];
+        int n = 0;
+        for (Map.Entry<String, Object> entry : map.entrySet()) {
+            if (n == size) {
+                return valuesInKeyOrderSorted(map);     // the map grew while we read it
+            }
+            keys[n] = entry.getKey();
+            values[n] = entry.getValue();
+            n++;
+        }
+        if (n != size) {
+            return valuesInKeyOrderSorted(map);
+        }
+
+        AtomicReference<Object[]> slot = POSITIONAL_KEY_ORDER.get(c);
+        Object[] memo = slot.get();
+        int[] order;
+        if (memo != null && Arrays.equals((String[]) memo[0], keys)) {
+            order = (int[]) memo[1];
+        } else {
+            order = sortedIndexes(keys);        // null when a key repeats
+            slot.set(new Object[]{keys, order});
+        }
+        if (order == null) {
+            // A key appears twice (json-io's parser appends fields without looking for duplicates, so a
+            // document that repeats a key does this). Take each value as get() gives it, as before.
+            return valuesInKeyOrderSorted(map);
+        }
+
+        Object[] ordered = new Object[size];
+        for (int i = 0; i < size; i++) {
+            ordered[i] = values[order[i]];
+        }
+        return Arrays.asList(ordered);
+    }
+
+    /**
+     * The indexes of {@code keys} in the order {@code Collections.sort} would put the keys, or null when a key
+     * appears more than once.
+     */
+    private static int[] sortedIndexes(String[] keys) {
+        int n = keys.length;
+        if (n <= 64) {
+            // Binary insertion sort on the indexes: n log n comparisons like a merge sort, but no boxing, for
+            // the sizes objects come in. The search keeps every key left of lo smaller than the new one and
+            // every key from hi on larger, so it can only end without a comparison of 0 if no key equals it:
+            // every repeat is found.
+            int[] order = new int[n];
+            for (int i = 0; i < n; i++) {
+                String key = keys[i];
+                int lo = 0;
+                int hi = i;
+                while (lo < hi) {
+                    int mid = (lo + hi) >>> 1;
+                    int cmp = keys[order[mid]].compareTo(key);
+                    if (cmp == 0) {
+                        return null;
+                    }
+                    if (cmp < 0) {
+                        lo = mid + 1;
+                    } else {
+                        hi = mid;
+                    }
+                }
+                System.arraycopy(order, lo, order, lo + 1, i - lo);
+                order[lo] = i;
+            }
+            return order;
+        }
+        Integer[] boxed = new Integer[n];
+        for (int i = 0; i < n; i++) {
+            boxed[i] = i;
+        }
+        Arrays.sort(boxed, (a, b) -> keys[a].compareTo(keys[b]));
+        int[] order = new int[n];
+        for (int i = 0; i < n; i++) {
+            order[i] = boxed[i];
+            if (i > 0 && keys[order[i]].equals(keys[order[i - 1]])) {
+                return null;
+            }
+        }
+        return order;
+    }
+
+    /** The original approach: for a map with a repeated key, or one that changes size while being read. */
+    private static List<Object> valuesInKeyOrderSorted(Map<String, Object> map) {
         List<String> sortedKeys = new ArrayList<>(map.keySet());
         Collections.sort(sortedKeys);
         List<Object> orderedValues = new ArrayList<>(sortedKeys.size());
@@ -3004,7 +3108,8 @@ public class ClassUtilities {
         }
         boolean nullsFirst = plan.allowNullsFirst;
         if (plan.binding != null && plan.binding.isComplete()) {
-            // Every parameter takes a value, so the "other null policy" retry would pass the same arguments
+            // Matched by type throughout: the other null policy would pass the same arguments, so a retry
+            // would only repeat the constructor's failure (the discovery loop skips it for the same reason)
             return plan.constructor.newInstance(planArguments(converter, suppliedArgs, plan, nullsFirst));
         }
         try {
@@ -3014,18 +3119,11 @@ public class ClassUtilities {
         }
     }
 
-    /**
-     * The arguments matching produces for these values: replayed from the plan's binding when it has one and
-     * its conversions succeed, else matched in full. The same either way -- so a cached call passes the same
-     * arguments, in the same order, as the call that created the plan.
-     */
+    /** The arguments matching produces for these values: replayed from the plan's binding, or matched. */
     private static Object[] planArguments(Converter converter, Object[] suppliedArgs, ConstructorPlan plan,
                                           boolean allowNulls) {
         if (plan.binding != null) {
-            Object[] args = plan.binding.replay(converter, suppliedArgs, plan.parameters, allowNulls);
-            if (args != null) {
-                return args;
-            }
+            return plan.binding.replay(converter, suppliedArgs, plan.parameters, allowNulls);
         }
         return matchArgumentsToParameters(converter, suppliedArgs, plan.parameters, allowNulls);
     }

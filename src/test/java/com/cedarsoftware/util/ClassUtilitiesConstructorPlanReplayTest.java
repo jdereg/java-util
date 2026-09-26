@@ -2,9 +2,11 @@ package com.cedarsoftware.util;
 
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import com.cedarsoftware.util.convert.Converter;
 import com.cedarsoftware.util.convert.DefaultConverterOptions;
@@ -14,6 +16,7 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 /**
  * newInstance() with positional arguments -- json-io's path for classes compiled without {@code -parameters} --
@@ -179,5 +182,69 @@ class ClassUtilitiesConstructorPlanReplayTest {
         Legacy l = (Legacy) ClassUtilities.newInstance(converter, Legacy.class, Collections.emptyList());
         assertNotNull(l);
         assertEquals(0L, l.age);
+    }
+
+    /** Accepts a past date or none, and rejects one within the last day -- "now" is a Date parameter's default. */
+    static class Stamp {
+        static final AtomicInteger calls = new AtomicInteger();
+        final Date when;
+        final String label;
+
+        Stamp(Date when, String label) {
+            calls.incrementAndGet();
+            if (when != null && System.currentTimeMillis() - when.getTime() < 86_400_000L) {
+                throw new IllegalArgumentException("too recent: " + when);
+            }
+            this.when = when;
+            this.label = label;
+        }
+    }
+
+    @Test
+    void whenAConversionFailsOnACachedCallTheNullRetryStillHappens() {
+        Stamp first = (Stamp) make(Stamp.class, "x", "2020-01-01");
+        assertEquals("x", first.label);
+        assertNotNull(first.when);
+
+        // "garbage" will not convert, so the Date gets its default ("now"), which the constructor rejects;
+        // matching then retries with null for it. Two attempts, as on any call -- not a third through
+        // re-discovery, which also dropped the cached plan.
+        Stamp.calls.set(0);
+        Stamp second = (Stamp) make(Stamp.class, "y", "garbage");
+        assertEquals("y", second.label);
+        assertNull(second.when);
+        assertEquals(2, Stamp.calls.get());
+    }
+
+    static class Holder {
+        final Long n;
+        final String s;
+
+        Holder(Long n, String s) {
+            this.n = n;
+            this.s = s;
+        }
+    }
+
+    /**
+     * A plan is cached per class and argument classes, not per Converter, and Converters differ in which
+     * conversions matching may use: an override makes a pair "not a simple conversion". A plan made under one
+     * converter must not carry its conversion choices over to a call with another.
+     */
+    @Test
+    void aCachedPlanFollowsEachCallsConverter() {
+        DefaultConverterOptions options = new DefaultConverterOptions();
+        options.getConverterOverrides().put(Converter.pair(String.class, Long.class),
+                (from, conv) -> Long.valueOf((String) from));
+        Converter overriding = new Converter(options);
+        Converter plain = new Converter(new DefaultConverterOptions());
+
+        Holder viaOverriding = (Holder) ClassUtilities.newInstance(overriding, Holder.class, Arrays.asList("x", "42"));
+        assertNull(viaOverriding.n, "matching leaves an overridden pair alone");
+        assertEquals("x", viaOverriding.s);
+
+        Holder viaPlain = (Holder) ClassUtilities.newInstance(plain, Holder.class, Arrays.asList("x", "42"));
+        assertEquals(Long.valueOf(42), viaPlain.n, "matching with this converter converts \"42\"");
+        assertEquals("x", viaPlain.s);
     }
 }

@@ -98,6 +98,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -388,8 +389,8 @@ public class ClassUtilities {
     // Maps from source primitive to Map<destination primitive, distance>
     private static final Map<Class<?>, Map<Class<?>, Integer>> PRIMITIVE_WIDENING_DISTANCES;
 
-    // Cache for OSGi ClassLoader to avoid repeated reflection calls
-    private static final ClassValueMap<ClassLoader> osgiClassLoaders = new ClassValueMap<>();
+    // Cache for OSGi ClassLoader to avoid repeated reflection calls (set only when one is found)
+    private static volatile ClassValue<AtomicReference<ClassLoader>> osgiClassLoaders = perClass(c -> new AtomicReference<>());
     private static final ClassLoader SYSTEM_LOADER = ClassLoader.getSystemClassLoader();
     // Counter-based ThreadLocal for reentrant unsafe mode support.
     // Each setUseUnsafe(true) increments, each setUseUnsafe(false) decrements.
@@ -452,9 +453,8 @@ public class ClassUtilities {
     }
     private static final ClassValueMap<Supplier<Object>> DIRECT_CLASS_MAPPING = new ClassValueMap<>();
     private static final Map<Class<?>, Supplier<Object>> ASSIGNABLE_CLASS_MAPPING = new LinkedHashMap<>();
-    // Cache for assignable type lookups to avoid repeated O(n) scans of ASSIGNABLE_CLASS_MAPPING.
-    // Uses Optional to distinguish "no match" (Optional.empty()) from "not cached" (null).
-    private static final ClassValueMap<Optional<Supplier<Object>>> ASSIGNABLE_TYPE_CACHE = new ClassValueMap<>();
+    // Per class, the ASSIGNABLE_CLASS_MAPPING supplier for it (Optional.empty() for none), so the O(n) scan runs once
+    private static volatile ClassValue<Optional<Supplier<Object>>> assignableTypes = perClass(ClassUtilities::findAssignableSupplier);
     /**
      * A cache that maps a Class<?> to its associated enum type (if any).
      */
@@ -471,8 +471,29 @@ public class ClassUtilities {
      * - Optional.empty() = no constructor works, go directly to unsafe or fail
      * - null (not in map) = not yet determined
      */
-    private static final ClassValueMap<Optional<Constructor<?>>> SUCCESSFUL_CONSTRUCTOR_CACHE = new ClassValueMap<>();
-    private static final Map<Class<?>, Map<ArgumentShapeKey, Optional<ConstructorPlan>>> CONSTRUCTOR_PLAN_CACHE = new ClassValueMap<>();
+    private static volatile ClassValue<AtomicReference<Optional<Constructor<?>>>> successfulConstructors = perClass(c -> new AtomicReference<>());
+    private static volatile ClassValue<Map<ArgumentShapeKey, Optional<ConstructorPlan>>> constructorPlans = perClass(c -> new ConcurrentHashMap<>());
+
+    /**
+     * A per-class cache: each class's value is computed on first use and kept inside the class itself (a
+     * {@link ClassValue}), so it never keeps the class -- or its ClassLoader, and every class that loader loaded --
+     * alive: a class from a discarded loader (a redeployed webapp, a plugin, recompiled script) can be unloaded.
+     * Computing one class's value never slows another's lookup either. A ClassValueMap is neither: its backing map
+     * holds every class it has seen, and each put() invalidates the cached lookup of every class. clearCaches()
+     * replaces these, since a ClassValue cannot be emptied.
+     */
+    private static <V> ClassValue<V> perClass(Function<Class<?>, V> compute) {
+        return new ClassValue<V>() {
+            @Override
+            protected V computeValue(Class<?> type) {
+                return compute.apply(type);
+            }
+        };
+    }
+
+    private static void rememberConstructor(Class<?> c, Constructor<?> constructor) {
+        successfulConstructors.get(c).set(Optional.of(constructor));
+    }
     /**
      * Per class, the constructors named-parameter matching may use, each followed by its parameters --
      * {@code [Constructor, Parameter[], Constructor, Parameter[], ...]} in {@link ReflectionUtils#getAllConstructors}
@@ -482,18 +503,9 @@ public class ClassUtilities {
      * JDK class would pin java-util's class loader (a webapp's, say) for the life of the JVM. Replaced, not
      * cleared, by clearCaches(): a ClassValue cannot be emptied.
      */
-    private static volatile ClassValue<Object[]> namedConstructors = newNamedConstructorsCache();
+    private static volatile ClassValue<Object[]> namedConstructors = perClass(ClassUtilities::namedConstructorPlan);
     /** Every parameterized constructor has synthetic ({@code argN}) names: named matching cannot apply. */
     private static final Object[] NOT_NAMED_MATCHABLE = new Object[0];
-
-    private static ClassValue<Object[]> newNamedConstructorsCache() {
-        return new ClassValue<Object[]>() {
-            @Override
-            protected Object[] computeValue(Class<?> c) {
-                return namedConstructorPlan(c);
-            }
-        };
-    }
 
     private static Object[] namedConstructorPlan(Class<?> c) {
         Constructor<?>[] constructors = ReflectionUtils.getAllConstructors(c);
@@ -685,9 +697,10 @@ public class ClassUtilities {
     }
 
     /**
-     * Cache for class hierarchy information
+     * Per class, its hierarchy information (see perClass). It was a ClassValueMap, which kept every class ever passed
+     * to forName(), newInstance() or a security check -- and its ClassLoader -- alive for the life of the JVM.
      */
-    private static final Map<Class<?>, ClassHierarchyInfo> CLASS_HIERARCHY_CACHE = new ClassValueMap<>();
+    private static volatile ClassValue<ClassHierarchyInfo> classHierarchies = perClass(ClassUtilities::computeClassHierarchyInfo);
 
     static {
         // DIRECT_CLASS_MAPPING for concrete types
@@ -1600,13 +1613,14 @@ public class ClassUtilities {
      * @return the OSGi Bundle's ClassLoader if in an OSGi environment; otherwise, null
      */
     private static ClassLoader getOSGiClassLoader(final Class<?> classFromBundle) {
-        ClassLoader cl = osgiClassLoaders.getByClass(classFromBundle);
+        AtomicReference<ClassLoader> slot = osgiClassLoaders.get(classFromBundle);
+        ClassLoader cl = slot.get();
         if (cl != null) {
             return cl;
         }
         ClassLoader computed = getOSGiClassLoader0(classFromBundle);
         if (computed != null) {
-            osgiClassLoaders.put(classFromBundle, computed);
+            slot.set(computed);
         }
         return computed;
     }
@@ -1857,24 +1871,17 @@ public class ClassUtilities {
             return Array.newInstance(argType.getComponentType(), 0);
         }
 
-        // Check cache first to avoid repeated O(n) scans of ASSIGNABLE_CLASS_MAPPING
-        Optional<Supplier<Object>> cached = ASSIGNABLE_TYPE_CACHE.getByClass(argType);
-        if (cached != null) {
-            // Cache hit - return cached result (may be empty for "no match")
-            return cached.map(Supplier::get).orElse(null);
-        }
+        return assignableTypes.get(argType).map(Supplier::get).orElse(null);
+    }
 
-        // Cache miss - search ASSIGNABLE_CLASS_MAPPING and cache the result
+    /** The first ASSIGNABLE_CLASS_MAPPING supplier whose type {@code argType} is assignable to, if any. */
+    private static Optional<Supplier<Object>> findAssignableSupplier(Class<?> argType) {
         for (Map.Entry<Class<?>, Supplier<Object>> entry : ASSIGNABLE_CLASS_MAPPING.entrySet()) {
             if (entry.getKey().isAssignableFrom(argType)) {
-                ASSIGNABLE_TYPE_CACHE.put(argType, Optional.of(entry.getValue()));
-                return entry.getValue().get();
+                return Optional.of(entry.getValue());
             }
         }
-
-        // No match found - cache the negative result
-        ASSIGNABLE_TYPE_CACHE.put(argType, Optional.empty());
-        return null;
+        return Optional.empty();
     }
 
     /**
@@ -2866,7 +2873,7 @@ public class ClassUtilities {
                 Constructor<?> noArg = c.getDeclaredConstructor();
                 trySetAccessible(noArg);
                 Object instance = noArg.newInstance(ArrayUtilities.EMPTY_OBJECT_ARRAY);
-                SUCCESSFUL_CONSTRUCTOR_CACHE.put(c, Optional.of(noArg));
+                rememberConstructor(c, noArg);
                 classPlanCache.put(argumentShapeKey, Optional.of(new ConstructorPlan(noArg, EMPTY_PARAMETERS, false)));
                 return instance;
             } catch (NoSuchMethodException ignored) {
@@ -2879,7 +2886,7 @@ public class ClassUtilities {
         }
 
         // Check if we have a previously cached result for this class
-        Optional<Constructor<?>> cachedResult = suppliedArgs.length == 0 ? SUCCESSFUL_CONSTRUCTOR_CACHE.getByClass(c) : null;
+        Optional<Constructor<?>> cachedResult = suppliedArgs.length == 0 ? successfulConstructors.get(c).get() : null;
 
         if (cachedResult != null) {
             if (!cachedResult.isPresent()) {
@@ -2954,7 +2961,7 @@ public class ClassUtilities {
                                 if (params.length == 1) {
                                     // Simple case: only takes enclosing instance
                                     Object instance = constructor.newInstance(enclosingInstance);
-                                    SUCCESSFUL_CONSTRUCTOR_CACHE.put(c, Optional.of(constructor));
+                                    rememberConstructor(c, constructor);
                                     classPlanCache.put(argumentShapeKey, Optional.of(new ConstructorPlan(constructor, params, false)));
                                     return instance;
                                 } else {
@@ -2966,7 +2973,7 @@ public class ClassUtilities {
                                     System.arraycopy(restArgs, 0, allArgs, 1, restArgs.length);
 
                                     Object instance = constructor.newInstance(allArgs);
-                                    SUCCESSFUL_CONSTRUCTOR_CACHE.put(c, Optional.of(constructor));
+                                    rememberConstructor(c, constructor);
                                     classPlanCache.put(argumentShapeKey, Optional.of(new ConstructorPlan(constructor, params, false)));
                                     return instance;
                                 }
@@ -3016,7 +3023,7 @@ public class ClassUtilities {
 
                 // Cache this successful constructor for future use
                 if (noArgs || !valueDependentOutcome) {
-                    SUCCESSFUL_CONSTRUCTOR_CACHE.put(c, Optional.of(constructor));
+                    rememberConstructor(c, constructor);
                     classPlanCache.put(argumentShapeKey, Optional.of(new ConstructorPlan(constructor, parameters, false,
                             binding.seal(suppliedArgs.length))));
                 }
@@ -3038,7 +3045,7 @@ public class ClassUtilities {
 
                     // Cache this successful constructor for future use
                     if (noArgs || !valueDependentOutcome) {
-                        SUCCESSFUL_CONSTRUCTOR_CACHE.put(c, Optional.of(constructor));
+                        rememberConstructor(c, constructor);
                         classPlanCache.put(argumentShapeKey, Optional.of(new ConstructorPlan(constructor, parameters, true,
                                 binding.seal(suppliedArgs.length))));
                     }
@@ -3105,7 +3112,7 @@ public class ClassUtilities {
     }
 
     private static Map<ArgumentShapeKey, Optional<ConstructorPlan>> getConstructorPlanCache(Class<?> c) {
-        return CONSTRUCTOR_PLAN_CACHE.computeIfAbsent(c, key -> new ConcurrentHashMap<>());
+        return constructorPlans.get(c);
     }
 
     private static Object invokeConstructorWithPlan(Converter converter, Object[] suppliedArgs, ConstructorPlan plan) throws Exception {
@@ -3557,52 +3564,54 @@ public class ClassUtilities {
      * @return ClassHierarchyInfo containing all supertypes and distances
      */
     public static ClassHierarchyInfo getClassHierarchyInfo(Class<?> clazz) {
-        return CLASS_HIERARCHY_CACHE.computeIfAbsent(clazz, key -> {
-            // Compute all supertypes and their distances in one pass
-            Set<Class<?>> allSupertypes = new LinkedHashSet<>();
-            Map<Class<?>, Integer> distanceMap = new HashMap<>();
+        return classHierarchies.get(clazz);
+    }
 
-            // BFS to find all supertypes and compute distances in one pass
-            Queue<Class<?>> queue = new ArrayDeque<>();
-            queue.add(key);
-            distanceMap.put(key, 0); // Distance to self is 0
+    private static ClassHierarchyInfo computeClassHierarchyInfo(Class<?> key) {
+        // Compute all supertypes and their distances in one pass
+        Set<Class<?>> allSupertypes = new LinkedHashSet<>();
+        Map<Class<?>, Integer> distanceMap = new HashMap<>();
 
-            while (!queue.isEmpty()) {
-                Class<?> current = queue.poll();
-                int currentDistance = distanceMap.get(current);
+        // BFS to find all supertypes and compute distances in one pass
+        Queue<Class<?>> queue = new ArrayDeque<>();
+        queue.add(key);
+        distanceMap.put(key, 0); // Distance to self is 0
 
-                if (current != null && allSupertypes.add(current)) {
-                    // Add superclass with distance+1
-                    Class<?> superclass = current.getSuperclass();
-                    if (superclass != null && !distanceMap.containsKey(superclass)) {
-                        distanceMap.put(superclass, currentDistance + 1);
-                        queue.add(superclass);
-                    }
+        while (!queue.isEmpty()) {
+            Class<?> current = queue.poll();
+            int currentDistance = distanceMap.get(current);
 
-                    // Add interfaces with distance+1
-                    for (Class<?> iface : current.getInterfaces()) {
-                        if (!distanceMap.containsKey(iface)) {
-                            distanceMap.put(iface, currentDistance + 1);
-                            queue.add(iface);
-                        }
+            if (current != null && allSupertypes.add(current)) {
+                // Add superclass with distance+1
+                Class<?> superclass = current.getSuperclass();
+                if (superclass != null && !distanceMap.containsKey(superclass)) {
+                    distanceMap.put(superclass, currentDistance + 1);
+                    queue.add(superclass);
+                }
+
+                // Add interfaces with distance+1
+                for (Class<?> iface : current.getInterfaces()) {
+                    if (!distanceMap.containsKey(iface)) {
+                        distanceMap.put(iface, currentDistance + 1);
+                        queue.add(iface);
                     }
                 }
             }
+        }
 
-            // Add primitive/wrapper counterpart at distance 1 so that inheritance matching
-            // handles boxing/unboxing (e.g., Integer value → int parameter) without a separate phase.
-            Class<?> counterpart = PRIMITIVE_TO_WRAPPER.getByClass(key);
-            if (counterpart == null) {
-                counterpart = WRAPPER_TO_PRIMITIVE.getByClass(key);
-            }
-            if (counterpart != null && !distanceMap.containsKey(counterpart)) {
-                distanceMap.put(counterpart, 1);
-                allSupertypes.add(counterpart);
-            }
+        // Add primitive/wrapper counterpart at distance 1 so that inheritance matching
+        // handles boxing/unboxing (e.g., Integer value → int parameter) without a separate phase.
+        Class<?> counterpart = PRIMITIVE_TO_WRAPPER.getByClass(key);
+        if (counterpart == null) {
+            counterpart = WRAPPER_TO_PRIMITIVE.getByClass(key);
+        }
+        if (counterpart != null && !distanceMap.containsKey(counterpart)) {
+            distanceMap.put(counterpart, 1);
+            allSupertypes.add(counterpart);
+        }
 
-            return new ClassHierarchyInfo(Collections.unmodifiableSet(allSupertypes),
-                    Collections.unmodifiableMap(distanceMap));
-        });
+        return new ClassHierarchyInfo(Collections.unmodifiableSet(allSupertypes),
+                Collections.unmodifiableMap(distanceMap));
     }
     
     // Convenience boolean method
@@ -3803,14 +3812,15 @@ public class ClassUtilities {
         GLOBAL_ALIASES.clear();
         GLOBAL_ALIASES.putAll(BUILTIN_ALIASES);
         GLOBAL_ALIASES.putAll(USER_ALIASES);
-        SUCCESSFUL_CONSTRUCTOR_CACHE.clear();
-        CONSTRUCTOR_PLAN_CACHE.clear();
-        namedConstructors = newNamedConstructorsCache();
-        CLASS_HIERARCHY_CACHE.clear();
-        ASSIGNABLE_TYPE_CACHE.clear();
+        // The per-class caches are replaced: a ClassValue cannot be emptied (see perClass)
+        successfulConstructors = perClass(c -> new AtomicReference<>());
+        constructorPlans = perClass(c -> new ConcurrentHashMap<>());
+        namedConstructors = perClass(ClassUtilities::namedConstructorPlan);
+        classHierarchies = perClass(ClassUtilities::computeClassHierarchyInfo);
+        assignableTypes = perClass(ClassUtilities::findAssignableSupplier);
+        osgiClassLoaders = perClass(c -> new AtomicReference<>());
         accessibilityCache.clear();
-        osgiClassLoaders.clear();
-        // ClassValue-backed caches cannot be fully cleared; rely on GC for unused keys.
+        // ENUM_CLASS_CACHE, SECURITY_CHECK_CACHE and POSITIONAL_KEY_ORDER are ClassValues too, left as they are.
     }
 
     /**

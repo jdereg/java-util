@@ -46,8 +46,9 @@ class ClassUtilitiesSecurityCacheLeakTest {
         loader.close();
         loader = null;
 
-        // Release the per-user-class static caches that legitimately hold strong Class refs
-        // (CLASS_HIERARCHY_CACHE etc.). After this, nothing in java-util may pin the fixture.
+        // clearCaches() is no longer needed for ClassUtilities' own caches -- they are ClassValues, whose entries
+        // live inside the class (ClassUtilitiesClassLoaderLeakTest proves that without it) -- but it must still
+        // leave nothing behind that pins the fixture.
         ClassUtilities.clearCaches();
 
         assertTrue(gcUntilCleared(loaderRef), "Disposable ClassLoader should be GC-reclaimable after "

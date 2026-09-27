@@ -2700,10 +2700,17 @@ public class ClassUtilities {
                     args[i] = type.isPrimitive() ? converter.convert(null, type) : null;
                 } else if (type.isInstance(value)) {
                     args[i] = value;
+                } else if (!converter.isConversionSupportedFor(value.getClass(), type)) {
+                    // Not a conversion this value's type supports at all -- typically a nested object reaching
+                    // the constructor as a Map. Asking first costs a cached lookup; converting built and threw
+                    // an exception (message and stack trace) on every object.
+                    return null;
                 } else {
                     args[i] = converter.convert(value, type);
                 }
             } catch (Exception conversionException) {
+                // A supported conversion that failed for this value ("abc" to a long), or a type the converter
+                // refuses to reason about (it throws for an EnumSet target rather than answer)
                 return null;
             }
             if (LOG.isLoggable(Level.FINEST)) {

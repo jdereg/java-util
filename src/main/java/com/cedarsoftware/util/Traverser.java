@@ -284,7 +284,8 @@ public class Traverser {
 
     private final IdentitySet<Object> objVisited = new IdentitySet<>();
     private final IdentitySet<Object> objQueued = new IdentitySet<>();
-    private final Map<Class<?>, Boolean> skipClassCache = new ClassValueMap<>();
+    // One traversal, one thread: a plain map (a ClassValueMap would attach a slot to every class visited, per traversal)
+    private final Map<Class<?>, Boolean> skipClassCache = new HashMap<>();
     private final Consumer<NodeVisit> nodeVisitor;
     private final boolean collectFields;
     private int objectsVisited = 0;

@@ -40,11 +40,19 @@ class TypeUtilitiesClassLoaderLeakTest {
         return new URLClassLoader(new URL[]{new File("target/test-classes").toURI().toURL()}, null);
     }
 
+    /**
+     * Both cases, sharing one forced collection (one costs about a second late in a JDK 8 run): a class's own generic
+     * types, and a type mixing classes of two unrelated loaders -- which has no class to be kept on, so it is resolved
+     * and kept nowhere.
+     */
     @Test
-    void resolvingAClassesGenericTypesDoesNotKeepItsLoaderAlive() throws Exception {
+    void resolvingTypesDoesNotKeepTheirLoadersAlive() throws Exception {
         WeakReference<ClassLoader> loader = resolveFixtureTypes();
-        gcUntilCleared(loader);
+        WeakReference<?>[] unrelated = resolveAcrossTwoLoaders();
+        gcUntilCleared(loader, unrelated[0], unrelated[1]);
         assertNull(loader.get(), "resolveType() kept the class loader alive");
+        assertNull(unrelated[0].get(), "a type of unrelated loaders kept the first loader alive");
+        assertNull(unrelated[1].get(), "a type of unrelated loaders kept the second loader alive");
     }
 
     private static WeakReference<ClassLoader> resolveFixtureTypes() throws Exception {
@@ -62,16 +70,6 @@ class TypeUtilitiesClassLoaderLeakTest {
         assertEquals(selves, TypeUtilities.resolveType(selves, selves));
         loader.close();
         return new WeakReference<>(loader);
-    }
-
-    /** A type mixing classes of two unrelated loaders has no class to be kept on: it is resolved, and kept nowhere. */
-    @Test
-    void typesOfUnrelatedLoadersAreResolvedAndNotKept() throws Exception {
-        WeakReference<?>[] loaders = resolveAcrossTwoLoaders();
-        gcUntilCleared(loaders[0]);
-        gcUntilCleared(loaders[1]);
-        assertNull(loaders[0].get(), "the first loader was kept alive");
-        assertNull(loaders[1].get(), "the second loader was kept alive");
     }
 
     private static WeakReference<?>[] resolveAcrossTwoLoaders() throws Exception {
@@ -106,8 +104,8 @@ class TypeUtilitiesClassLoaderLeakTest {
         return new WeakReference<?>[]{new WeakReference<>(first), new WeakReference<>(second)};
     }
 
-    private static void gcUntilCleared(WeakReference<?> ref) throws InterruptedException {
-        for (int i = 0; i < 100 && ref.get() != null; i++) {
+    private static void gcUntilCleared(WeakReference<?>... refs) throws InterruptedException {
+        for (int i = 0; i < 100 && java.util.Arrays.stream(refs).anyMatch(r -> r.get() != null); i++) {
             System.gc();
             byte[][] pressure = new byte[64][];
             for (int j = 0; j < pressure.length; j++) {

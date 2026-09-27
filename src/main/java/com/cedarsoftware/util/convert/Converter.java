@@ -64,6 +64,7 @@ import java.util.stream.LongStream;
 
 import com.cedarsoftware.util.ClassUtilities;
 import com.cedarsoftware.util.ClassValueMap;
+import com.cedarsoftware.util.ConcurrentHashMapNullSafe;
 import com.cedarsoftware.util.IdentitySet;
 import com.cedarsoftware.util.LRUCache;
 import com.cedarsoftware.util.TTLCache;
@@ -283,81 +284,164 @@ public final class Converter {
     }
 
     /**
-     * Internal two-tier nested map keyed by {@code (source class, target class)}.
-     * Replaces {@code Map<ConversionPair, Convert<?>>} for all three internal caches
-     * (CONVERSION_DB, FULL_CONVERSION_CACHE, USER_DB, cacheInheritancePairs).
-     *
-     * <p>Both tiers use {@link ClassValueMap} for identity-based, thread-safe, allocation-free
-     * {@code get()} operations. The outer tier is keyed by source class; the inner tier is keyed
-     * by target class. This eliminates per-lookup {@code ConversionPair} allocation from the hot
-     * path while preserving thread-safety and concurrent-access scaling.</p>
-     *
-     * <p>Iteration is supported via {@link #forEach(TriConsumer)} and {@link #removeIf(BiPredicate)}
+     * A map keyed by (source, target) class pairs: no allocation per lookup, and it never keeps a class -- or its
+     * ClassLoader -- alive. An entry is kept on one of its two classes, through {@link ClassValueMap}s, and on the right
+     * one: an entry refers to both classes (an {@code InheritancePair[]} lists their supertypes), so kept on a class
+     * that outlives the other it would keep that other class alive (a JDK class, say, holding an application's):
+     * <ul>
+     *   <li>Both classes of one ClassLoader (JDK to JDK, the common case): source, then target, two ClassValueMap
+     *       lookups.</li>
+     *   <li>One class's loader an ancestor of the other's (JDK and an application class): kept on the class of the
+     *       deeper loader, in a map keyed by the other class, which lives at least as long.</li>
+     *   <li>Neither loader an ancestor of the other: not kept. A get() misses, and a put() keeps nothing.</li>
+     * </ul>
+     * <p>Iteration is supported via {@link #forEach(TriConsumer)} and {@link #removeIf(java.util.function.BiPredicate)}
      * for the few places that need it (bridge expansion and cache invalidation).</p>
      */
     static final class ClassPairMap<V> {
-        // Outer tier: source class -> inner map (by target class). Inner maps are lazily
-        // allocated on first put() for a source class.
-        private final ClassValueMap<ClassValueMap<V>> outer = new ClassValueMap<>();
+        // Both classes of one loader: source -> (target -> value)
+        private final ClassValueMap<ClassValueMap<V>> sameLoader = new ClassValueMap<>();
+        // Each created on its first write (a Converter builds a ClassPairMap per instance, and most stay empty):
+        // the source's loader is the deeper: source -> (target -> value)
+        private volatile ClassValueMap<Map<Class<?>, V>> onSource;
+        // the target's loader is the deeper: target -> (source -> value)
+        private volatile ClassValueMap<Map<Class<?>, V>> onTarget;
+
+        private static final int SAME = 0;
+        private static final int ON_SOURCE = 1;
+        private static final int ON_TARGET = 2;
+        private static final int NOT_KEPT = 3;
+
+        /** Where the (source, target) entry is kept. A null class (the null key) counts as the same loader. */
+        private static int placement(Class<?> source, Class<?> target) {
+            if (source == null || target == null) {
+                return SAME;
+            }
+            ClassLoader sourceLoader = source.getClassLoader();
+            ClassLoader targetLoader = target.getClassLoader();
+            if (sourceLoader == targetLoader) {
+                return SAME;
+            }
+            if (isAncestor(targetLoader, sourceLoader)) {
+                return ON_SOURCE;
+            }
+            return isAncestor(sourceLoader, targetLoader) ? ON_TARGET : NOT_KEPT;
+        }
+
+        /** True if {@code ancestor} is {@code loader} or one of its parents (null, the bootstrap loader, is everyone's). */
+        private static boolean isAncestor(ClassLoader ancestor, ClassLoader loader) {
+            if (ancestor == null) {
+                return true;
+            }
+            try {
+                for (ClassLoader l = loader; l != null; l = l.getParent()) {
+                    if (l == ancestor) {
+                        return true;
+                    }
+                }
+            } catch (SecurityException e) {
+                // cannot tell: treat as unrelated
+            }
+            return false;
+        }
 
         /**
          * Looks up a value by (source, target). Zero allocation. Returns {@code null} if absent.
          */
         V get(Class<?> source, Class<?> target) {
-            ClassValueMap<V> byTarget = outer.getByClass(source);
-            return byTarget == null ? null : byTarget.getByClass(target);
+            // A pair is always kept in the same place, so a hit here settles it without comparing loaders: the common
+            // case (both classes of one loader) costs two ClassValueMap reads
+            ClassValueMap<V> byTarget = sameLoader.getByClass(source);
+            if (byTarget != null) {
+                V value = byTarget.getByClass(target);
+                if (value != null) {
+                    return value;
+                }
+            }
+            switch (placement(source, target)) {
+                case ON_SOURCE:
+                    return inOwned(onSource, source, target);
+                case ON_TARGET:
+                    return inOwned(onTarget, target, source);
+                default:
+                    return null;
+            }
+        }
+
+        private static <V> V inOwned(ClassValueMap<Map<Class<?>, V>> side, Class<?> owner, Class<?> other) {
+            Map<Class<?>, V> map = side == null ? null : side.getByClass(owner);
+            return map == null ? null : map.get(other);
         }
 
         /**
-         * Stores a value under (source, target). Creates the inner map on first put for the source.
-         * Thread-safe via ClassValueMap.putIfAbsent for the outer slot.
+         * Stores a value under (source, target). Kept nowhere when the two classes' loaders are unrelated.
          */
         V put(Class<?> source, Class<?> target, V value) {
-            ClassValueMap<V> byTarget = innerForWrite(source);
-            return byTarget.put(target, value);
+            switch (placement(source, target)) {
+                case SAME:
+                    return innerForWrite(source).put(target, value);
+                case ON_SOURCE:
+                    return owned(onSource(), source).put(target, value);
+                case ON_TARGET:
+                    return owned(onTarget(), target).put(source, value);
+                default:
+                    return null;
+            }
         }
 
         /**
-         * Atomic putIfAbsent on the (source, target) slot.
+         * Atomic putIfAbsent on the (source, target) slot. Kept nowhere when the two classes' loaders are unrelated.
          */
         V putIfAbsent(Class<?> source, Class<?> target, V value) {
-            ClassValueMap<V> byTarget = innerForWrite(source);
-            return byTarget.putIfAbsent(target, value);
+            switch (placement(source, target)) {
+                case SAME:
+                    return innerForWrite(source).putIfAbsent(target, value);
+                case ON_SOURCE:
+                    return owned(onSource(), source).putIfAbsent(target, value);
+                case ON_TARGET:
+                    return owned(onTarget(), target).putIfAbsent(source, value);
+                default:
+                    return null;
+            }
         }
 
         /**
          * Removes the value at (source, target). Returns the previous value or {@code null}.
          */
         V remove(Class<?> source, Class<?> target) {
-            ClassValueMap<V> byTarget = outer.getByClass(source);
-            return byTarget == null ? null : byTarget.remove(target);
+            switch (placement(source, target)) {
+                case SAME: {
+                    ClassValueMap<V> byTarget = sameLoader.getByClass(source);
+                    return byTarget == null ? null : byTarget.remove(target);
+                }
+                case ON_SOURCE: {
+                    Map<Class<?>, V> byTarget = onSource == null ? null : onSource.getByClass(source);
+                    return byTarget == null ? null : byTarget.remove(target);
+                }
+                case ON_TARGET: {
+                    Map<Class<?>, V> bySource = onTarget == null ? null : onTarget.getByClass(target);
+                    return bySource == null ? null : bySource.remove(source);
+                }
+                default:
+                    return null;
+            }
         }
 
         /**
          * Returns true if there are no mappings.
          */
         boolean isEmpty() {
-            if (outer.isEmpty()) {
-                return true;
-            }
-            for (Map.Entry<Class<?>, ClassValueMap<V>> e : outer.entrySet()) {
-                if (!e.getValue().isEmpty()) {
-                    return false;
-                }
-            }
-            return true;
+            return size() == 0;
         }
 
         /**
-         * Returns the total number of (source, target) entries across all inner maps.
-         * O(n) where n is the number of source classes — not called on the hot path.
+         * Returns the total number of (source, target) entries.
+         * O(n) where n is the number of classes holding entries — not called on the hot path.
          */
         int size() {
-            int total = 0;
-            for (Map.Entry<Class<?>, ClassValueMap<V>> e : outer.entrySet()) {
-                total += e.getValue().size();
-            }
-            return total;
+            int[] total = {0};
+            forEach((source, target, value) -> total[0]++);
+            return total[0];
         }
 
         /**
@@ -365,10 +449,22 @@ public final class Converter {
          * Not concurrent-safe with writes — callers should snapshot if they need to mutate.
          */
         void forEach(TriConsumer<Class<?>, Class<?>, V> action) {
-            for (Map.Entry<Class<?>, ClassValueMap<V>> srcEntry : outer.entrySet()) {
+            for (Map.Entry<Class<?>, ClassValueMap<V>> srcEntry : sameLoader.entrySet()) {
                 Class<?> source = srcEntry.getKey();
                 for (Map.Entry<Class<?>, V> tgtEntry : srcEntry.getValue().entrySet()) {
                     action.accept(source, tgtEntry.getKey(), tgtEntry.getValue());
+                }
+            }
+            for (Map.Entry<Class<?>, Map<Class<?>, V>> srcEntry : entries(onSource)) {
+                Class<?> source = srcEntry.getKey();
+                for (Map.Entry<Class<?>, V> tgtEntry : srcEntry.getValue().entrySet()) {
+                    action.accept(source, tgtEntry.getKey(), tgtEntry.getValue());
+                }
+            }
+            for (Map.Entry<Class<?>, Map<Class<?>, V>> tgtEntry : entries(onTarget)) {
+                Class<?> target = tgtEntry.getKey();
+                for (Map.Entry<Class<?>, V> srcEntry : tgtEntry.getValue().entrySet()) {
+                    action.accept(srcEntry.getKey(), target, srcEntry.getValue());
                 }
             }
         }
@@ -379,29 +475,67 @@ public final class Converter {
          * unrelated entries.
          */
         void removeIf(java.util.function.BiPredicate<Class<?>, Class<?>> predicate) {
-            for (Map.Entry<Class<?>, ClassValueMap<V>> srcEntry : outer.entrySet()) {
+            for (Map.Entry<Class<?>, ClassValueMap<V>> srcEntry : sameLoader.entrySet()) {
                 Class<?> source = srcEntry.getKey();
-                ClassValueMap<V> byTarget = srcEntry.getValue();
-                Iterator<Map.Entry<Class<?>, V>> it = byTarget.entrySet().iterator();
-                while (it.hasNext()) {
-                    Map.Entry<Class<?>, V> tgtEntry = it.next();
-                    if (predicate.test(source, tgtEntry.getKey())) {
-                        it.remove();
-                    }
-                }
+                srcEntry.getValue().keySet().removeIf(target -> predicate.test(source, target));
+            }
+            for (Map.Entry<Class<?>, Map<Class<?>, V>> srcEntry : entries(onSource)) {
+                Class<?> source = srcEntry.getKey();
+                srcEntry.getValue().keySet().removeIf(target -> predicate.test(source, target));
+            }
+            for (Map.Entry<Class<?>, Map<Class<?>, V>> tgtEntry : entries(onTarget)) {
+                Class<?> target = tgtEntry.getKey();
+                tgtEntry.getValue().keySet().removeIf(source -> predicate.test(source, target));
             }
         }
 
         // Internal: obtain (or lazily create) the inner map for a given source class,
         // coordinated via putIfAbsent on the outer ClassValueMap for thread safety.
         private ClassValueMap<V> innerForWrite(Class<?> source) {
-            ClassValueMap<V> byTarget = outer.getByClass(source);
+            ClassValueMap<V> byTarget = sameLoader.getByClass(source);
             if (byTarget == null) {
                 ClassValueMap<V> fresh = new ClassValueMap<>();
-                ClassValueMap<V> existing = outer.putIfAbsent(source, fresh);
+                ClassValueMap<V> existing = sameLoader.putIfAbsent(source, fresh);
                 byTarget = existing == null ? fresh : existing;
             }
             return byTarget;
+        }
+
+        private ClassValueMap<Map<Class<?>, V>> onSource() {
+            if (onSource == null) {
+                synchronized (this) {
+                    if (onSource == null) {
+                        onSource = new ClassValueMap<>();
+                    }
+                }
+            }
+            return onSource;
+        }
+
+        private ClassValueMap<Map<Class<?>, V>> onTarget() {
+            if (onTarget == null) {
+                synchronized (this) {
+                    if (onTarget == null) {
+                        onTarget = new ClassValueMap<>();
+                    }
+                }
+            }
+            return onTarget;
+        }
+
+        private static <K, M> Set<Map.Entry<K, M>> entries(Map<K, M> map) {
+            return map == null ? java.util.Collections.emptySet() : map.entrySet();
+        }
+
+        // The map kept on the owning class (created on first write), keyed by the pair's other class
+        private static <V> Map<Class<?>, V> owned(ClassValueMap<Map<Class<?>, V>> side, Class<?> owner) {
+            Map<Class<?>, V> map = side.getByClass(owner);
+            if (map == null) {
+                Map<Class<?>, V> fresh = new ConcurrentHashMapNullSafe<>();
+                Map<Class<?>, V> existing = side.putIfAbsent(owner, fresh);
+                map = existing == null ? fresh : existing;
+            }
+            return map;
         }
     }
 
@@ -2517,6 +2651,9 @@ public final class Converter {
      * @return {@code true} if custom converter overrides exist for the conversion pair, {@code false} otherwise
      */
     private boolean hasConverterOverrideFor(Class<?> sourceType, Class<?> targetType) {
+        if (!hasUserConversions) {
+            return false;       // USER_DB is empty: skip the probe (json-io builds a Converter per read)
+        }
         // Direct hash lookup in USER_DB using this instance's ID.
         // This finds both overrides from ConverterOptions (stored in constructor)
         // and conversions added dynamically via addConversion().

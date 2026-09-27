@@ -1,5 +1,6 @@
 package com.cedarsoftware.util.convert;
 
+import java.lang.reflect.Modifier;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -22,6 +23,7 @@ import java.util.Vector;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingDeque;
 import java.util.concurrent.BlockingQueue;
+import com.cedarsoftware.util.ClassUtilities;
 import com.cedarsoftware.util.ClassValueMap;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -40,6 +42,7 @@ import com.cedarsoftware.util.CaseInsensitiveSet;
 import com.cedarsoftware.util.CompactSet;
 import com.cedarsoftware.util.ConcurrentNavigableSetNullSafe;
 import com.cedarsoftware.util.ConcurrentSet;
+import com.cedarsoftware.util.ReflectionUtils;
 
 /**
  * Handles creation and conversion of collections while preserving characteristics
@@ -268,15 +271,54 @@ final class CollectionHandling {
         Function<Integer, Collection<?>> factory = FACTORY_CACHE.getByClass(targetType);
         if (factory == null) {
             factory = FACTORY_CACHE.computeIfAbsent(targetType, type -> {
-                for (Map.Entry<Class<?>, Function<Integer, Collection<?>>> entry : BASE_FACTORIES.entrySet()) {
-                    if (entry.getKey().isAssignableFrom(type)) {
-                        return entry.getValue();
-                    }
+                Function<Integer, Collection<?>> base = closestBaseFactory(type);
+                if (!isOwnConcreteType(type)) {
+                    return base;
                 }
-                return ArrayList::new; // Default factory
+                // A concrete class of the caller's own (MyList extends ArrayList, say): make one of it, as the Map
+                // conversions do, rather than the closest known type, which is not an instance of what was asked for.
+                // ClassUtilities.newInstance() applies its security checks; if it cannot make one, the closest known
+                // type it is.
+                return size -> {
+                    try {
+                        Object created = ClassUtilities.newInstance(type, (Object) null);
+                        if (type.isInstance(created)) {
+                            return (Collection<?>) created;
+                        }
+                    } catch (Exception ignored) {
+                        // fall back below
+                    }
+                    return base.apply(size);
+                };
             });
         }
         return factory;
+    }
+
+    private static Function<Integer, Collection<?>> closestBaseFactory(Class<?> type) {
+        for (Map.Entry<Class<?>, Function<Integer, Collection<?>>> entry : BASE_FACTORIES.entrySet()) {
+            if (entry.getKey().isAssignableFrom(type)) {
+                return entry.getValue();
+            }
+        }
+        return ArrayList::new; // Default factory
+    }
+
+    /**
+     * True for a concrete Collection class that is not one of the types with a factory of their own, and that has a
+     * no-argument constructor: one the caller can mean to get exactly. (A JDK class made by a static factory, like
+     * the list Arrays.asList() returns, has no such constructor, and keeps getting the closest known type.)
+     */
+    private static boolean isOwnConcreteType(Class<?> type) {
+        if (type.isInterface() || Modifier.isAbstract(type.getModifiers()) || BASE_FACTORIES.containsKey(type)
+                || !Collection.class.isAssignableFrom(type)) {
+            return false;
+        }
+        try {
+            return ReflectionUtils.getConstructor(type) != null;
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     // Helper methods to create optimal collection types while preserving characteristics

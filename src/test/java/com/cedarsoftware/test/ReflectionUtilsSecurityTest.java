@@ -20,10 +20,10 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * bypass short-circuits the security checks (see ReflectionUtils.isTrustedCaller()).
  *
  * IMPORTANT: Uses custom dangerous-class-patterns with java.util.Currency / Locale /
- * BigInteger rather than Runtime/Process. Why? The FIELDS_CACHE in ReflectionUtils
- * uses computeIfAbsent — once a class's fields are cached, subsequent calls skip
- * validateFieldAccess. Standard classes like Runtime might already be in the cache
- * from other tests. Custom patterns let each test target its own class.
+ * BigInteger rather than Runtime/Process. Why? ReflectionUtils vets a class's fields
+ * when it first works them out, and keeps the result on the class — later calls skip
+ * validateFieldAccess. Standard classes like Runtime might already have been asked
+ * about by other tests. Custom patterns let each test target its own class.
  */
 class ReflectionUtilsSecurityTest {
 

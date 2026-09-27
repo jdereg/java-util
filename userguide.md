@@ -6054,7 +6054,7 @@ This implementation provides a robust set of mathematical utilities with emphasi
 A high-performance reflection utility providing cached access to fields, methods, constructors, and annotations with sophisticated filtering capabilities.
 
 ### Key Features
-- Cached reflection operations
+- Reflection lookups cached on each class (lock-free, never evicted, never pinning a class loader)
 - Field and method access
 - Annotation discovery
 - Constructor handling
@@ -6102,20 +6102,25 @@ public static Object call(Object instance, Method method, Object... args)
 public static Object call(Object instance, String methodName, Object... args)
 ```
 
-### Cache Management
+### Caching
 
-**Custom Cache Configuration (optional - use if you want to use your own cache):**
-```java
-// Configure custom caches
-Map<Object, Method> methodCache = new ConcurrentHashMap<>();
-ReflectionUtils.setMethodCache(methodCache);
+What ReflectionUtils finds out about a class never changes while the class is loaded, so it is kept on the class
+itself, in a `ClassValue`:
 
-Map<Object, Field> fieldCache = new ConcurrentHashMap<>();
-ReflectionUtils.setFieldCache(fieldCache);
+- **Worked out once per class, then read without locks or writes.** Every thread reads the same answer, and a lookup
+  that finds something allocates nothing. (The bounded LRU caches used before 4.113.0 wrote a timestamp or took a
+  lock on every hit and allocated a key object, so threads reading the same entry slowed each other down.)
+- **Bounded by the class, nothing evicted.** A class has a fixed set of members; a name it does not have is simply
+  not found, and stores nothing, however many made-up names are asked for.
+- **Never keeps a class, or its ClassLoader, alive.** The answers go away with the class, so a class from a
+  discarded loader (a redeployed webapp, a plugin, a recompiled script) can be unloaded.
+- **Field filters:** the default filter's lists are always cached. For your own `Predicate<Field>`, the lists of the
+  last 8 filters used on a class are kept (the filter held weakly): reuse one filter instance, such as a
+  `static final` constant, rather than creating a new one on every call.
 
-Map<Object, Constructor<?>> constructorCache = new ConcurrentHashMap<>();
-ReflectionUtils.setConstructorCache(constructorCache);
-```
+The `setXxxCache(Map)` methods still work but are not needed: an installed Map is consulted and filled as before,
+while the answers come from the per-class caches. Pass `null` to install none (the default). The
+`reflection.utils.cache.size` and `reflectionutils.max.cache.size` properties no longer apply.
 
 ### Field Operations
 
@@ -6193,23 +6198,17 @@ Constructor<?> ctor = ReflectionUtils.getConstructor(
 
 **Caching Strategy:**
 ```java
-// All operations use internal caching
-// Cache size can be tuned via the 'reflection.utils.cache.size' system property
-private static final int CACHE_SIZE =
-    Integer.getInteger("reflection.utils.cache.size", 1000);
-private static final Map<MethodCacheKey, Method> METHOD_CACHE =
-    new LRUCache<>(CACHE_SIZE);
-private static final Map<FieldsCacheKey, Collection<Field>> FIELDS_CACHE =
-    new LRUCache<>(CACHE_SIZE);
+// Per-class caches: each value is worked out on first use and kept inside the class. Values are JDK types
+// only (arrays, JDK collections, Field / Method / Constructor / Annotation), so a JDK class never holds a
+// java-util object, which would keep java-util's own class loader alive.
+private static final ClassValue<Map<String, Field>> FIELDS_BY_NAME = perClass(ReflectionUtils::fieldsByName);
+private static final ClassValue<Constructor<?>[]> SORTED_CONSTRUCTORS = perClass(ReflectionUtils::sortedConstructors);
 ```
 
 **Thread Safety:**
 ```java
-// All caches use thread-safe LRUCache with AtomicReference for cache replacement
-private static final AtomicReference<Map<...>> CONSTRUCTOR_CACHE =
-    new AtomicReference<>(new LRUCache<>(CACHE_SIZE));
-private static final AtomicReference<Map<...>> METHOD_CACHE =
-    new AtomicReference<>(new LRUCache<>(CACHE_SIZE));
+// A ClassValue lookup takes no lock and writes nothing; a value is computed at most once per class and every
+// thread sees the same one.
 
 // Record support uses holder class pattern for lock-free thread safety
 private static class RecordSupport {
@@ -6243,11 +6242,10 @@ Object result = ReflectionUtils.call(instance, method, args);
 ```
 
 ### Performance Considerations
-- All reflection operations are cached
-- Thread-safe implementation
-- Optimized for repeated access
-- Minimal object creation
-- Efficient cache key generation
+- All reflection lookups are cached on the class
+- A lookup that finds something takes no lock, writes nothing and allocates nothing
+- Scales with threads: readers of the same class do not slow each other down
+- A lookup that finds nothing stores nothing
 - Smart cache eviction
 
 ### Security Notes
@@ -7711,9 +7709,6 @@ reflectionutils.dangerous.class.validation.enabled=false
 # Sensitive field validation - blocks access to sensitive fields
 reflectionutils.sensitive.field.validation.enabled=false
 
-# Maximum cache size per cache type - prevents memory exhaustion
-reflectionutils.max.cache.size=50000
-
 # Dangerous class patterns - configurable list of blocked classes
 reflectionutils.dangerous.class.patterns=java.lang.Runtime,java.lang.Process,java.lang.ProcessBuilder,sun.misc.Unsafe,jdk.internal.misc.Unsafe,javax.script.ScriptEngine,javax.script.ScriptEngineManager
 
@@ -7735,10 +7730,9 @@ reflectionutils.sensitive.field.patterns=password,passwd,secret,secretkey,apikey
 - Only applies to user classes (not JDK classes)
 - Protects against credential exposure via reflection
 
-**Cache Size Limits:**
-- Configurable limits to prevent memory exhaustion attacks
-- Separate limits for different cache types (methods, fields, constructors)
-- Default limit: 50,000 entries per cache when enabled
+**Bounded Caches:**
+- What is cached is kept on each class and bounded by the class's own members
+- A name a class does not have stores nothing, so made-up names cannot grow the caches
 
 **Trusted Caller Validation:**
 - Allows java-util library internal access while blocking external callers
@@ -7773,7 +7767,6 @@ try {
 // Enable security with custom patterns
 System.setProperty("reflectionutils.security.enabled", "true");
 System.setProperty("reflectionutils.sensitive.field.validation.enabled", "true");
-System.setProperty("reflectionutils.max.cache.size", "10000");
 System.setProperty("reflectionutils.sensitive.field.patterns", "apiKey,secretToken,password");
 
 // Safe operations work normally

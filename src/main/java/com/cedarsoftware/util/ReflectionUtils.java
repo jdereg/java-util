@@ -5,6 +5,7 @@ import java.io.DataInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.annotation.Annotation;
+import java.lang.ref.WeakReference;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
@@ -17,6 +18,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Deque;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
@@ -24,6 +26,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
@@ -45,7 +48,6 @@ import java.util.logging.Logger;
  *   <li><code>reflectionutils.security.enabled=false</code> &mdash; Master switch for all security features</li>
  *   <li><code>reflectionutils.dangerous.class.validation.enabled=false</code> &mdash; Block dangerous class access</li>
  *   <li><code>reflectionutils.sensitive.field.validation.enabled=false</code> &mdash; Block sensitive field access</li>
- *   <li><code>reflectionutils.max.cache.size=50000</code> &mdash; Maximum cache size per cache type</li>
  *   <li><code>reflectionutils.dangerous.class.patterns=java.lang.Runtime,java.lang.Process,...</code> &mdash; Comma-separated dangerous class patterns</li>
  *   <li><code>reflectionutils.sensitive.field.patterns=password,secret,apikey,...</code> &mdash; Comma-separated sensitive field patterns</li>
  * </ul>
@@ -54,9 +56,14 @@ import java.util.logging.Logger;
  * <ul>
  *   <li><b>Dangerous Class Protection:</b> Prevents reflection access to system classes that could enable privilege escalation</li>
  *   <li><b>Sensitive Field Protection:</b> Blocks access to fields containing sensitive information (passwords, tokens, etc.)</li>
- *   <li><b>Cache Size Limits:</b> Configurable limits to prevent memory exhaustion attacks</li>
  *   <li><b>Trusted Caller Validation:</b> Allows java-util library internal access while blocking external callers</li>
  * </ul>
+ *
+ * <h2>Caching</h2>
+ * <p>What ReflectionUtils finds out about a class is kept on that class, in a {@link ClassValue}: worked out
+ * once, then read by every thread without locking or writing. It is bounded by the class itself (its members),
+ * nothing is evicted, and a name the class does not have is simply not found, storing nothing. It never keeps a
+ * class, or its ClassLoader, alive: it goes away with the class.</p>
  *
  * <h3>Usage Example</h3>
  * <pre>{@code
@@ -64,7 +71,6 @@ import java.util.logging.Logger;
  * System.setProperty("reflectionutils.security.enabled", "true");
  * System.setProperty("reflectionutils.dangerous.class.validation.enabled", "true");
  * System.setProperty("reflectionutils.sensitive.field.validation.enabled", "true");
- * System.setProperty("reflectionutils.max.cache.size", "10000");
  *
  * // These will now enforce security controls
  * Method method = ReflectionUtils.getMethod(String.class, "valueOf", int.class);
@@ -88,11 +94,6 @@ import java.util.logging.Logger;
  *         limitations under the License.
  */
 public final class ReflectionUtils {
-    /** System property key controlling the reflection cache size. */
-    private static final String CACHE_SIZE_PROPERTY = "reflection.utils.cache.size";
-    private static final int DEFAULT_CACHE_SIZE = 1500;
-    private static final int DEFAULT_MAX_CACHE_SIZE = 50000; // Default max to prevent memory exhaustion
-    
     private static final Logger LOG = Logger.getLogger(ReflectionUtils.class.getName());
     
     // Default dangerous class patterns (moved to system properties in static initializer)
@@ -119,19 +120,7 @@ public final class ReflectionUtils {
     private static boolean isSensitiveFieldValidationEnabled() {
         return Boolean.parseBoolean(System.getProperty("reflectionutils.sensitive.field.validation.enabled", "false"));
     }
-    
-    private static int getMaxCacheSize() {
-        String maxSizeProp = System.getProperty("reflectionutils.max.cache.size");
-        if (maxSizeProp != null) {
-            try {
-                return Math.max(1, Integer.parseInt(maxSizeProp));
-            } catch (NumberFormatException e) {
-                // Fall through to default
-            }
-        }
-        return isSecurityEnabled() ? DEFAULT_MAX_CACHE_SIZE : Integer.MAX_VALUE;
-    }
-    
+
     // Single volatile reference pairs a property string with its parsed pattern set,
     // ensuring atomic visibility of both values (no TOCTOU race).
     private static volatile Map.Entry<String, Set<String>> cachedDangerousClass = null;
@@ -173,32 +162,103 @@ public final class ReflectionUtils {
         return patterns;
     }
     
-    private static final int CACHE_SIZE = Math.max(1, Math.min(getMaxCacheSize(),
-            Integer.getInteger(CACHE_SIZE_PROPERTY, DEFAULT_CACHE_SIZE)));
+    // ---------------------------------------------------------------------------------------------
+    // What ReflectionUtils finds out about a class never changes while the class is loaded, so it is kept on the class
+    // itself, in a ClassValue: worked out on first use, then read by every thread without locking or writing anything.
+    // (The LRU caches this replaces wrote on every hit -- a timestamp or a lock -- so threads reading the same entry
+    // fought over it: on JDK 21 a call on each of 8 threads took 4-14x as long as on one.) Nothing is evicted, and
+    // nothing needs to be: a class has a fixed set of members, and a name it does not have is simply not found, so
+    // misses store nothing and a caller asking for any number of made-up names adds nothing. A class's entries go away
+    // with the class, so a class from a discarded loader (redeployed webapp, plugin, recompiled script) is never kept
+    // alive.
+    //
+    // Values are JDK types only (arrays, JDK collections and references, Field / Method / Constructor /
+    // Annotation). A ClassValue's value lives inside its Class: a java-util type stored in a JDK class
+    // would keep java-util's own class loader (a webapp's, say) alive for the life of the JVM.
+    // ---------------------------------------------------------------------------------------------
 
-    // All reflection caches use the THREADED LRU strategy (ConcurrentHashMap-backed, background
-    // "elves" eviction) rather than the default LOCKING strategy. These caches are populate-once,
-    // read-almost-always, and hammered concurrently (e.g. multi-threaded JSON (de)serialization
-    // resolving the same class metadata). The LOCKING strategy's get() takes the cache's exclusive
-    // ReentrantLock via tryLock() to reorder its LRU list on EVERY hit; even though the tryLock is
-    // non-blocking, its CAS on the single shared lock word ping-pongs that cache line across cores,
-    // so throughput did not scale with threads (measured: 8 threads ≈ 1 thread). THREADED get() is
-    // lock-free, restoring near-linear scaling (measured ~10x at 8 threads, ~1.6x single-threaded).
-    // Approximate (sampled) LRU eviction is fine here — an evicted entry is simply recomputed. All
-    // THREADED instances share ONE daemon cleanup thread, so this adds no per-cache threads.
-    // Keyed directly by Class (Class has identity equals/hashCode) — the former SortedConstructorsCacheKey
-    // wrapper added no semantics over a raw Class key but was allocated on EVERY probe, which is hot on
-    // the deserialization path (one instantiation per object).
+    private static <V> ClassValue<V> perClass(Function<Class<?>, V> compute) {
+        return new ClassValue<V>() {
+            @Override
+            protected V computeValue(Class<?> type) {
+                return compute.apply(type);
+            }
+        };
+    }
+
+    /** Each class's declared fields, fetched once: every field list below holds these same Field instances. */
+    private static final ClassValue<Field[]> DECLARED_FIELDS = perClass(Class::getDeclaredFields);
+
+    /** getDeclaredFields(c) and getAllDeclaredFields(c): the DEFAULT_FIELD_FILTER lists. */
+    private static final ClassValue<List<Field>> DECLARED_FIELDS_DEFAULT =
+            perClass(c -> filterDeclaredFields(c, ReflectionUtils.DEFAULT_FIELD_FILTER));
+    private static final ClassValue<List<Field>> ALL_FIELDS_DEFAULT =
+            perClass(c -> collectAllDeclaredFields(c, ReflectionUtils.DEFAULT_FIELD_FILTER));
+
+    /** getField(): each name's first field in getAllDeclaredFields(c) order. */
+    private static final ClassValue<Map<String, Field>> FIELDS_BY_NAME = perClass(ReflectionUtils::fieldsByName);
+
+    /**
+     * A caller's own field filter: the lists for the last {@value #FILTER_SLOTS} filters used on the class, newest
+     * first, as {WeakReference(filter), List} pairs. The filter is held weakly, so a class never keeps a caller's
+     * filter -- or its class loader -- alive. A filter created on every call simply misses.
+     */
+    private static final int FILTER_SLOTS = 8;
+    private static final ClassValue<AtomicReference<Object[]>> DECLARED_FIELDS_FILTERED =
+            perClass(c -> new AtomicReference<>(new Object[0]));
+    private static final ClassValue<AtomicReference<Object[]>> ALL_FIELDS_FILTERED =
+            perClass(c -> new AtomicReference<>(new Object[0]));
+
+    /** Each class's declared methods, by name, in declared order; shared by every lookup that walks the class. */
+    private static final ClassValue<Map<String, Method[]>> DECLARED_METHODS =
+            perClass(c -> methodsByName(c.getDeclaredMethods()));
+
+    /** Each class's public methods (Class.getMethods(), inherited ones included), by name. */
+    private static final ClassValue<Map<String, Method[]>> PUBLIC_METHODS =
+            perClass(c -> methodsByName(c.getMethods()));
+
+    /** getMethod(c, name, types) answers found so far: name -> {parameter types, Method} pairs. */
+    private static final ClassValue<ConcurrentHashMap<String, Object[]>> METHODS_FOUND =
+            perClass(c -> new ConcurrentHashMap<>());
+
+    /** getMethod(instance, name, argCount) answers found so far: name -> the Method chosen, by argument count. */
+    private static final ClassValue<ConcurrentHashMap<String, Method[]>> METHODS_BY_ARG_COUNT =
+            perClass(c -> new ConcurrentHashMap<>());
+
+    /** Each class's declared constructors, as {parameter types, Constructor} pairs. */
+    private static final ClassValue<Object[]> DECLARED_CONSTRUCTORS = perClass(ReflectionUtils::constructorTable);
+
+    /** getAllConstructors(): the same Constructor instances, made accessible, in preference order. */
+    private static final ClassValue<Constructor<?>[]> SORTED_CONSTRUCTORS =
+            perClass(ReflectionUtils::sortedConstructors);
+
+    /** getClassAnnotation(): per annotation type, the first found in the class's whole type hierarchy. */
+    private static final ClassValue<Map<Class<?>, Annotation>> HIERARCHY_ANNOTATIONS =
+            perClass(ReflectionUtils::hierarchyAnnotations);
+
+    /** getMethodAnnotation(): per method of the class asked about, the annotations found on it or what it overrides. */
+    private static final ClassValue<ConcurrentHashMap<Method, Map<Class<?>, Annotation>>> METHOD_ANNOTATIONS =
+            perClass(c -> new ConcurrentHashMap<>());
+
+    // A Map installed through one of the setXxxCache() methods is consulted first and filled, keyed as it always
+    // was; the answers themselves come from the per-class caches above. None is installed by default.
     private static final AtomicReference<Map<Object, Constructor<?>[]>> SORTED_CONSTRUCTORS_CACHE =
-            new AtomicReference<>(ensureThreadSafe(new LRUCache<Object, Constructor<?>[]>(CACHE_SIZE, LRUCache.StrategyType.THREADED)));
-
+            new AtomicReference<>();
     private static final AtomicReference<Map<? super ConstructorCacheKey, Constructor<?>>> CONSTRUCTOR_CACHE =
-            new AtomicReference<>(ensureThreadSafe(new LRUCache<>(CACHE_SIZE, LRUCache.StrategyType.THREADED)));
+            new AtomicReference<>();
+    private static final AtomicReference<Map<? super MethodCacheKey, Method>> METHOD_CACHE = new AtomicReference<>();
+    private static final AtomicReference<Map<? super FieldsCacheKey, Collection<Field>>> FIELDS_CACHE =
+            new AtomicReference<>();
+    private static final AtomicReference<Map<? super FieldNameCacheKey, Field>> FIELD_NAME_CACHE =
+            new AtomicReference<>();
+    private static final AtomicReference<Map<? super ClassAnnotationCacheKey, Annotation>> CLASS_ANNOTATION_CACHE =
+            new AtomicReference<>();
+    private static final AtomicReference<Map<? super MethodAnnotationCacheKey, Annotation>> METHOD_ANNOTATION_CACHE =
+            new AtomicReference<>();
 
-    private static final AtomicReference<Map<? super MethodCacheKey, Method>> METHOD_CACHE =
-            new AtomicReference<>(ensureThreadSafe(new LRUCache<>(CACHE_SIZE, LRUCache.StrategyType.THREADED)));
+    private static final Class<?>[] NO_PARAMETERS = new Class<?>[0];
 
-    // Sentinel methods used to cache negative lookups (avoids repeated expensive hierarchy searches)
+    // Sentinels an installed Map holds for a negative answer
     private static final Method NOT_FOUND_METHOD;
     private static final Method OVERLOADED_METHOD;
     private static final Annotation NOT_FOUND_ANNOTATION = new Annotation() {
@@ -226,60 +286,22 @@ public final class ReflectionUtils {
         }
     }
 
-    // FIELDS_CACHE must use the LOCKING strategy, NOT THREADED. Its deep variant
-    // (getAllDeclaredFields) populates the cache from inside its own computeIfAbsent mapping by
-    // calling getDeclaredFields, which does computeIfAbsent on THIS SAME cache. LOCKING uses a
-    // reentrant lock, so that same-thread nesting is fine; THREADED delegates to
-    // ConcurrentHashMap.compute(), whose nested-update-on-the-same-map throws
-    // IllegalStateException("Recursive update") when the two keys collide in a bin. The other
-    // reflection caches are safe on THREADED because their mapping functions never re-enter the
-    // same cache.
-    private static final AtomicReference<Map<? super FieldsCacheKey, Collection<Field>>> FIELDS_CACHE =
-            new AtomicReference<>(ensureThreadSafe(new LRUCache<>(CACHE_SIZE)));
-
-    private static final AtomicReference<Map<? super FieldNameCacheKey, Field>> FIELD_NAME_CACHE =
-            new AtomicReference<>(ensureThreadSafe(new LRUCache<>(CACHE_SIZE * 10, LRUCache.StrategyType.THREADED)));
-
-    private static final AtomicReference<Map<? super ClassAnnotationCacheKey, Annotation>> CLASS_ANNOTATION_CACHE =
-            new AtomicReference<>(ensureThreadSafe(new LRUCache<>(CACHE_SIZE, LRUCache.StrategyType.THREADED)));
-
-    private static final AtomicReference<Map<? super MethodAnnotationCacheKey, Annotation>> METHOD_ANNOTATION_CACHE =
-            new AtomicReference<>(ensureThreadSafe(new LRUCache<>(CACHE_SIZE, LRUCache.StrategyType.THREADED)));
-
     /** Wrap the map if it is not already concurrent. */
     private static <K, V> Map<K, V> ensureThreadSafe(Map<K, V> candidate) {
-        if (candidate instanceof ConcurrentMap || candidate instanceof LRUCache) {
-            return candidate;                     // already thread-safe
+        if (candidate == null || candidate instanceof ConcurrentMap || candidate instanceof LRUCache) {
+            return candidate;                     // none, or already thread-safe
         }
         return new ConcurrentHashMapNullSafe<>(candidate);
     }
 
     private static <T> void swap(AtomicReference<T> ref, T newValue) {
-        Objects.requireNonNull(newValue, "cache must not be null");
-        ref.set(newValue);                        // atomic & happens-before
+        ref.set(newValue);                        // atomic & happens-before; null: none installed
     }
 
     /**
-     * Lock-free fast path over the reflection caches: try a concurrent {@link Map#get}
-     * first, falling back to {@link Map#computeIfAbsent} only on a genuine miss.
-     * <p>
-     * These caches are written once per (class, member) key and read indefinitely
-     * thereafter — the overwhelmingly common case is a hit. The default {@link LRUCache}
-     * LOCKING strategy backs reads with a {@code ConcurrentHashMap} and only uses a
-     * non-blocking {@code tryLock} for LRU reordering in {@code get}, but its
-     * {@code computeIfAbsent} acquires the cache's exclusive {@link java.util.concurrent.locks.ReentrantLock}
-     * unconditionally — even on a hit. Calling {@code computeIfAbsent} directly therefore
-     * serialized all concurrent reflection lookups (e.g. multi-threaded deserialization)
-     * on a single per-cache lock. Reading via {@code get} first keeps the hit path
-     * lock-free; only the rare cold miss takes the lock, where it is needed for atomic
-     * insertion and LRU bookkeeping anyway.
-     * <p>
-     * Negative lookups are cached as sentinels (never {@code null}) and no mapping
-     * function stores {@code null}, so a {@code null} from {@code get} unambiguously
-     * means "absent." The returned value is therefore identical to what a direct
-     * {@code computeIfAbsent} call would yield. The pattern is also valid for any
-     * user-supplied {@code Map} (via the {@code setXxxCache} hooks): {@code get} and
-     * {@code computeIfAbsent} are both standard {@code Map} operations.
+     * Reads an installed cache Map (see the setXxxCache() methods) with {@link Map#get} first, falling back to
+     * {@link Map#computeIfAbsent} only on a miss, so a hit takes no lock in a map whose computeIfAbsent does.
+     * Negative answers are stored as sentinels, never {@code null}, so a {@code null} from {@code get} means absent.
      */
     @SuppressWarnings("unchecked")
     private static <K, V> V getOrCompute(Map<? super K, V> cache, K key,
@@ -296,147 +318,105 @@ public final class ReflectionUtils {
     }
 
     /**
-     * Sets a custom cache implementation for method lookups.
+     * Installs a Map for method lookups (getMethod(), getNonOverloadedMethod()) to consult and fill,
+     * keyed as in earlier versions.
      * <p>
-     * This method allows switching out the default LRUCache implementation with a custom
-     * cache implementation. The provided cache must be thread-safe and should implement
-     * the Map interface. This method is typically called once during application initialization.
-     * </p>
-     * <p>
-     * <b>Important:</b> The provided cache implementation must support storing null values,
-     * as the caching logic uses null to represent "not found" results to avoid repeated
-     * expensive lookups. If using a standard ConcurrentHashMap, consider using
-     * ConcurrentHashMapNullSafe from java-util or another implementation that supports null values.
+     * Not needed: ReflectionUtils keeps what it finds on each class (see the class documentation), and the answers
+     * come from there whether or not a Map is installed. An installed Map must be thread-safe (one that is not is
+     * wrapped); it holds negative answers as sentinel values, never {@code null}.
      * </p>
      *
-     * @param cache The custom cache implementation to use for storing method lookups.
-     *             Must be thread-safe, implement Map interface, and support null values.
+     * @param cache the Map to consult and fill, or {@code null} to install none (the default)
      */
     public static void setMethodCache(Map<Object, Method> cache) {
         swap(METHOD_CACHE, ensureThreadSafe(cache));
     }
 
     /**
-     * Sets a custom cache implementation for field lookups.
+     * Installs a Map for field-list lookups (getDeclaredFields(), getAllDeclaredFields()) to consult and fill,
+     * keyed as in earlier versions.
      * <p>
-     * This method allows switching out the default LRUCache implementation with a custom
-     * cache implementation. The provided cache must be thread-safe and should implement
-     * the Map interface. This method is typically called once during application initialization.
-     * </p>
-     * <p>
-     * <b>Important:</b> The provided cache implementation must support storing null values,
-     * as the caching logic uses null to represent "not found" results to avoid repeated
-     * expensive lookups. If using a standard ConcurrentHashMap, consider using
-     * ConcurrentHashMapNullSafe from java-util or another implementation that supports null values.
+     * Not needed: ReflectionUtils keeps what it finds on each class (see the class documentation), and the answers
+     * come from there whether or not a Map is installed. An installed Map must be thread-safe (one that is not is
+     * wrapped); it holds negative answers as sentinel values, never {@code null}.
      * </p>
      *
-     * @param cache The custom cache implementation to use for storing field lookups.
-     *             Must be thread-safe, implement Map interface, and support null values.
+     * @param cache the Map to consult and fill, or {@code null} to install none (the default)
      */
     public static void setClassFieldsCache(Map<Object, Collection<Field>> cache) {
         swap(FIELDS_CACHE, ensureThreadSafe(cache));
     }
 
     /**
-     * Sets a custom cache implementation for field lookups.
+     * Installs a Map for field-by-name lookups (getField()) to consult and fill,
+     * keyed as in earlier versions.
      * <p>
-     * This method allows switching out the default LRUCache implementation with a custom
-     * cache implementation. The provided cache must be thread-safe and should implement
-     * the Map interface. This method is typically called once during application initialization.
-     * </p>
-     * <p>
-     * <b>Important:</b> The provided cache implementation must support storing null values,
-     * as the caching logic uses null to represent "not found" results to avoid repeated
-     * expensive lookups. If using a standard ConcurrentHashMap, consider using
-     * ConcurrentHashMapNullSafe from java-util or another implementation that supports null values.
+     * Not needed: ReflectionUtils keeps what it finds on each class (see the class documentation), and the answers
+     * come from there whether or not a Map is installed. An installed Map must be thread-safe (one that is not is
+     * wrapped); it holds negative answers as sentinel values, never {@code null}.
      * </p>
      *
-     * @param cache The custom cache implementation to use for storing field lookups.
-     *             Must be thread-safe, implement Map interface, and support null values.
+     * @param cache the Map to consult and fill, or {@code null} to install none (the default)
      */
     public static void setFieldCache(Map<Object, Field> cache) {
         swap(FIELD_NAME_CACHE, ensureThreadSafe(cache));
     }
 
     /**
-     * Sets a custom cache implementation for class annotation lookups.
+     * Installs a Map for class annotation lookups (getClassAnnotation()) to consult and fill,
+     * keyed as in earlier versions.
      * <p>
-     * This method allows switching out the default LRUCache implementation with a custom
-     * cache implementation. The provided cache must be thread-safe and should implement
-     * the Map interface. This method is typically called once during application initialization.
-     * </p>
-     * <p>
-     * <b>Important:</b> The provided cache implementation must support storing null values,
-     * as the caching logic uses null to represent "not found" results to avoid repeated
-     * expensive lookups. If using a standard ConcurrentHashMap, consider using
-     * ConcurrentHashMapNullSafe from java-util or another implementation that supports null values.
+     * Not needed: ReflectionUtils keeps what it finds on each class (see the class documentation), and the answers
+     * come from there whether or not a Map is installed. An installed Map must be thread-safe (one that is not is
+     * wrapped); it holds negative answers as sentinel values, never {@code null}.
      * </p>
      *
-     * @param cache The custom cache implementation to use for storing class annotation lookups.
-     *             Must be thread-safe, implement Map interface, and support null values.
+     * @param cache the Map to consult and fill, or {@code null} to install none (the default)
      */
     public static void setClassAnnotationCache(Map<Object, Annotation> cache) {
         swap(CLASS_ANNOTATION_CACHE, ensureThreadSafe(cache));
     }
 
     /**
-     * Sets a custom cache implementation for method annotation lookups.
+     * Installs a Map for method annotation lookups (getMethodAnnotation()) to consult and fill,
+     * keyed as in earlier versions.
      * <p>
-     * This method allows switching out the default LRUCache implementation with a custom
-     * cache implementation. The provided cache must be thread-safe and should implement
-     * the Map interface. This method is typically called once during application initialization.
-     * </p>
-     * <p>
-     * <b>Important:</b> The provided cache implementation must support storing null values,
-     * as the caching logic uses null to represent "not found" results to avoid repeated
-     * expensive lookups. If using a standard ConcurrentHashMap, consider using
-     * ConcurrentHashMapNullSafe from java-util or another implementation that supports null values.
+     * Not needed: ReflectionUtils keeps what it finds on each class (see the class documentation), and the answers
+     * come from there whether or not a Map is installed. An installed Map must be thread-safe (one that is not is
+     * wrapped); it holds negative answers as sentinel values, never {@code null}.
      * </p>
      *
-     * @param cache The custom cache implementation to use for storing method annotation lookups.
-     *             Must be thread-safe, implement Map interface, and support null values.
+     * @param cache the Map to consult and fill, or {@code null} to install none (the default)
      */
     public static void setMethodAnnotationCache(Map<Object, Annotation> cache) {
         swap(METHOD_ANNOTATION_CACHE, ensureThreadSafe(cache));
     }
 
     /**
-     * Sets a custom cache implementation for constructor lookups.
+     * Installs a Map for constructor lookups (getConstructor()) to consult and fill,
+     * keyed as in earlier versions.
      * <p>
-     * This method allows switching out the default LRUCache implementation with a custom
-     * cache implementation. The provided cache must be thread-safe and should implement
-     * the Map interface. This method is typically called once during application initialization.
-     * </p>
-     * <p>
-     * <b>Important:</b> The provided cache implementation must support storing null values,
-     * as the caching logic uses null to represent "not found" results to avoid repeated
-     * expensive lookups. If using a standard ConcurrentHashMap, consider using
-     * ConcurrentHashMapNullSafe from java-util or another implementation that supports null values.
+     * Not needed: ReflectionUtils keeps what it finds on each class (see the class documentation), and the answers
+     * come from there whether or not a Map is installed. An installed Map must be thread-safe (one that is not is
+     * wrapped); it holds negative answers as sentinel values, never {@code null}.
      * </p>
      *
-     * @param cache The custom cache implementation to use for storing constructor lookups.
-     *             Must be thread-safe, implement Map interface, and support null values.
+     * @param cache the Map to consult and fill, or {@code null} to install none (the default)
      */
     public static void setConstructorCache(Map<Object, Constructor<?>> cache) {
         swap(CONSTRUCTOR_CACHE, ensureThreadSafe(cache));
     }
 
     /**
-     * Sets a custom cache implementation for sorted constructors lookup.
+     * Installs a Map for getAllConstructors() to consult and fill,
+     * keyed as in earlier versions.
      * <p>
-     * This method allows switching out the default LRUCache implementation with a custom
-     * cache implementation. The provided cache must be thread-safe and should implement
-     * the Map interface. This method is typically called once during application initialization.
-     * </p>
-     * <p>
-     * <b>Important:</b> The provided cache implementation must support storing null values,
-     * as the caching logic uses null to represent "not found" results to avoid repeated
-     * expensive lookups. If using a standard ConcurrentHashMap, consider using
-     * ConcurrentHashMapNullSafe from java-util or another implementation that supports null values.
+     * Not needed: ReflectionUtils keeps what it finds on each class (see the class documentation), and the answers
+     * come from there whether or not a Map is installed. An installed Map must be thread-safe (one that is not is
+     * wrapped); it holds negative answers as sentinel values, never {@code null}.
      * </p>
      *
-     * @param cache The custom cache implementation to use for storing constructor lookups.
-     *             Must be thread-safe, implement Map interface, and support null values.
+     * @param cache the Map to consult and fill, or {@code null} to install none (the default)
      */
     public static void setSortedConstructorsCache(Map<Object, Constructor<?>[]> cache) {
         swap(SORTED_CONSTRUCTORS_CACHE, ensureThreadSafe(cache));
@@ -569,8 +549,10 @@ public final class ReflectionUtils {
         for (StackTraceElement element : stack) {
             String className = element.getClassName();
 
-            // Skip ReflectionUtils frames (always present) and Thread.getStackTrace
-            if (className.equals(thisClassName) || className.equals("java.lang.Thread")) {
+            // Skip ReflectionUtils frames (always present) and Thread.getStackTrace. ReflectionUtils' own nested
+            // classes count as ReflectionUtils: a per-class cache computes its value inside ReflectionUtils$N, and
+            // that frame, read as a java-util caller, would trust every caller.
+            if (isFrameOf(className, thisClassName) || className.equals("java.lang.Thread")) {
                 continue;
             }
 
@@ -907,12 +889,9 @@ public final class ReflectionUtils {
      *     <li>Depth-first traversal via a work stack with an {@link IdentitySet}
      *         visited guard, so type diamonds (interface inherited through multiple
      *         paths) are visited once.</li>
-     *     <li>Both found results and misses are cached in {@code CLASS_ANNOTATION_CACHE}
-     *         keyed on {@code (class, annotationClass)}, with a {@code NOT_FOUND_ANNOTATION}
-     *         sentinel for the miss entries. The cache is justified here because the
-     *         walk itself is O(superclasses + interfaces); without the cache every
-     *         call would repeat that walk.</li>
-     *     <li>Thread-safe via the underlying {@code LRUCacheStrategy}.</li>
+     *     <li>The walk runs once per class and records the first annotation of each type
+     *         it finds, kept on the class: every later lookup, found or not, is a map read.</li>
+     *     <li>Thread-safe; lookups take no lock.</li>
      * </ul>
      * <p>
      * Example usage:
@@ -938,19 +917,15 @@ public final class ReflectionUtils {
         }
         Convention.throwIfNull(annoClass, "annotation class cannot be null");
 
-        final ClassAnnotationCacheKey key = new ClassAnnotationCacheKey(classToCheck, annoClass);
-
-        // Use computeIfAbsent to ensure misses are cached with sentinel values.
-        Annotation annotation = getOrCompute(CLASS_ANNOTATION_CACHE.get(), key, k -> {
-            Annotation found = findClassAnnotation(classToCheck, annoClass);
+        Map<? super ClassAnnotationCacheKey, Annotation> installed = CLASS_ANNOTATION_CACHE.get();
+        if (installed == null) {
+            return (T) HIERARCHY_ANNOTATIONS.get(classToCheck).get(annoClass);
+        }
+        Annotation annotation = getOrCompute(installed, new ClassAnnotationCacheKey(classToCheck, annoClass), k -> {
+            Annotation found = HIERARCHY_ANNOTATIONS.get(classToCheck).get(annoClass);
             return found == null ? NOT_FOUND_ANNOTATION : found;
         });
-
-        if (annotation == NOT_FOUND_ANNOTATION) {
-            return null;
-        }
-
-        return (T) annotation;
+        return annotation == NOT_FOUND_ANNOTATION ? null : (T) annotation;
     }
 
     /**
@@ -989,14 +964,10 @@ public final class ReflectionUtils {
      * interface), regardless of {@code @Inherited}. See that method's documentation
      * for details and use cases.
      * <p>
-     * <strong>Caching:</strong> this method deliberately does NOT consult
-     * {@code CLASS_ANNOTATION_CACHE}. The JVM already caches annotation instances
+     * <strong>Caching:</strong> none of its own. The JVM already caches annotation instances
      * per class internally (via {@code Class.reflectionData()}), so
      * {@code clazz.getAnnotation(annoClass)} is effectively a fast identity-keyed
-     * lookup after the first call. Layering a {@code ClassAnnotationCacheKey}
-     * allocation + {@code ConcurrentHashMap} probe on top of it would be pessimization,
-     * not optimization, and would pollute the hierarchy-walker's cache with
-     * direct-lookup entries that have different semantics.
+     * lookup after the first call.
      * <p>
      * Example usage:
      * <pre>
@@ -1028,7 +999,12 @@ public final class ReflectionUtils {
         return classToCheck.getAnnotation(annoClass);
     }
 
-    private static <T extends Annotation> T findClassAnnotation(Class<?> classToCheck, Class<T> annoClass) {
+    /**
+     * Every annotation on the class's type hierarchy -- the class, its superclasses and its interfaces, searched
+     * depth-first as getClassAnnotation() always has -- keeping the first found of each type.
+     */
+    private static Map<Class<?>, Annotation> hierarchyAnnotations(Class<?> classToCheck) {
+        final Map<Class<?>, Annotation> found = new HashMap<>();
         final Set<Class<?>> visited = new IdentitySet<>();
         final LinkedList<Class<?>> stack = new LinkedList<>();
         stack.add(classToCheck);
@@ -1039,14 +1015,14 @@ public final class ReflectionUtils {
                 continue;
             }
             visited.add(classToChk);
-            T a = classToChk.getAnnotation(annoClass);
-            if (a != null) {
-                return a;
+            // getAnnotations() holds exactly what getAnnotation(type) returns, @Inherited annotations included
+            for (Annotation a : classToChk.getAnnotations()) {
+                found.putIfAbsent(a.annotationType(), a);
             }
             stack.push(classToChk.getSuperclass());
             addInterfaces(classToChk, stack);
         }
-        return null;
+        return found;
     }
 
     private static void addInterfaces(final Class<?> classToCheck, final LinkedList<Class<?>> stack) {
@@ -1057,7 +1033,7 @@ public final class ReflectionUtils {
 
     /**
      * Searches for a specific annotation on a method, examining the entire inheritance hierarchy.
-     * Results (including misses) are cached for performance.
+     * The search runs once per method; what it finds is kept on the method's declaring class.
      * <p>
      * This method performs an exhaustive search through:
      * <ul>
@@ -1069,7 +1045,7 @@ public final class ReflectionUtils {
      * <p>
      * Key behaviors:
      * <ul>
-     *     <li>Caches both found annotations and misses (nulls)</li>
+     *     <li>Searches once per method: every later lookup, found or not, is a map read</li>
      *     <li>Handles different classloaders correctly</li>
      *     <li>Uses depth-first search through the inheritance hierarchy</li>
      *     <li>Matches methods by name and parameter types</li>
@@ -1098,57 +1074,67 @@ public final class ReflectionUtils {
         Convention.throwIfNull(method, "method cannot be null");
         Convention.throwIfNull(annoClass, "annotation class cannot be null");
 
-        final MethodAnnotationCacheKey key = new MethodAnnotationCacheKey(method, annoClass);
+        Map<? super MethodAnnotationCacheKey, Annotation> installed = METHOD_ANNOTATION_CACHE.get();
+        if (installed == null) {
+            return (T) methodAnnotations(method).get(annoClass);
+        }
+        Annotation annotation = getOrCompute(installed, new MethodAnnotationCacheKey(method, annoClass), k -> {
+            Annotation found = methodAnnotations(method).get(annoClass);
+            return found == null ? NOT_FOUND_ANNOTATION : found;
+        });
+        return annotation == NOT_FOUND_ANNOTATION ? null : (T) annotation;
+    }
 
-        // Atomically retrieve or compute the annotation from the cache
-        Annotation annotation = getOrCompute(METHOD_ANNOTATION_CACHE.get(), key, k -> {
-            // Search the entire class and interface hierarchy
-            Set<Class<?>> visited = new IdentitySet<>();
-            Deque<Class<?>> toVisit = new ArrayDeque<>();
-            toVisit.add(method.getDeclaringClass());
-            
-            while (!toVisit.isEmpty()) {
-                Class<?> currentClass = toVisit.poll();
-                if (!visited.add(currentClass)) {
-                    continue; // Already processed this class/interface
-                }
-                
-                // Try to find the method in the current class/interface
-                try {
-                    Method currentMethod = currentClass.getDeclaredMethod(
-                            method.getName(),
-                            method.getParameterTypes()
-                    );
-                    T found = currentMethod.getAnnotation(annoClass);
-                    if (found != null) {
-                        return found;  // store in cache
-                    }
-                } catch (Exception ignored) {
-                    // Method not found in this class/interface
-                }
-                
-                // Add superclass to visit (if exists)
-                Class<?> superclass = currentClass.getSuperclass();
-                if (superclass != null) {
-                    toVisit.add(superclass);
-                }
-                
-                // Add all interfaces to visit
-                for (Class<?> iface : currentClass.getInterfaces()) {
-                    toVisit.add(iface);
-                }
+    /** The annotations on {@code method} or the methods it overrides, first found of each type; kept per method. */
+    private static Map<Class<?>, Annotation> methodAnnotations(Method method) {
+        ConcurrentHashMap<Method, Map<Class<?>, Annotation>> byMethod =
+                METHOD_ANNOTATIONS.get(method.getDeclaringClass());
+        Map<Class<?>, Annotation> found = byMethod.get(method);
+        return found != null ? found : byMethod.computeIfAbsent(method, ReflectionUtils::findMethodAnnotations);
+    }
+
+    /**
+     * Searches the method's declaring class, then its superclasses and interfaces breadth-first, for a method of the
+     * same name and parameter types, collecting the first annotation found of each type.
+     */
+    private static Map<Class<?>, Annotation> findMethodAnnotations(Method method) {
+        final Map<Class<?>, Annotation> found = new HashMap<>();
+        final String name = method.getName();
+        final Class<?>[] types = method.getParameterTypes();
+        Set<Class<?>> visited = new IdentitySet<>();
+        Deque<Class<?>> toVisit = new ArrayDeque<>();
+        toVisit.add(method.getDeclaringClass());
+
+        while (!toVisit.isEmpty()) {
+            Class<?> currentClass = toVisit.poll();
+            if (!visited.add(currentClass)) {
+                continue; // Already processed this class/interface
             }
 
-            // No annotation found - store sentinel
-            return NOT_FOUND_ANNOTATION;
-        });
+            // Try to find the method in the current class/interface
+            try {
+                Method currentMethod = declaredMethod(currentClass, name, types);
+                if (currentMethod != null) {
+                    for (Annotation a : currentMethod.getAnnotations()) {
+                        found.putIfAbsent(a.annotationType(), a);
+                    }
+                }
+            } catch (Exception ignored) {
+                // This class's methods or annotations could not be read: search on
+            }
 
-        if (annotation == NOT_FOUND_ANNOTATION) {
-            return null;
+            // Add superclass to visit (if exists)
+            Class<?> superclass = currentClass.getSuperclass();
+            if (superclass != null) {
+                toVisit.add(superclass);
+            }
+
+            // Add all interfaces to visit
+            for (Class<?> iface : currentClass.getInterfaces()) {
+                toVisit.add(iface);
+            }
         }
-
-        // Cast result back to T
-        return (T) annotation;
+        return found;
     }
 
     /**
@@ -1161,7 +1147,7 @@ public final class ReflectionUtils {
      *     <li>Includes fields from superclasses</li>
      *     <li>Excludes static fields</li>
      *     <li>Makes non-public fields accessible</li>
-     *     <li>Caches results (including misses) for performance</li>
+     *     <li>Kept on the class: after the first lookup, any name, found or not, is a map read</li>
      * </ul>
      * <p>
      * Example usage:
@@ -1181,29 +1167,33 @@ public final class ReflectionUtils {
         Convention.throwIfNull(c, "class cannot be null");
         Convention.throwIfNull(fieldName, "fieldName cannot be null");
 
-        final FieldNameCacheKey key = new FieldNameCacheKey(c, fieldName);
-
-        // Atomically retrieve or compute the field from the cache
-        Field field = getOrCompute(FIELD_NAME_CACHE.get(), key, k -> {
-            Collection<Field> fields = getAllDeclaredFields(c);  // returns all fields in c's hierarchy
-            for (Field f : fields) {
-                if (fieldName.equals(f.getName())) {
-                    return f;
-                }
+        Field field;
+        Map<? super FieldNameCacheKey, Field> installed = FIELD_NAME_CACHE.get();
+        if (installed == null) {
+            field = FIELDS_BY_NAME.get(c).get(fieldName);
+        } else {
+            field = getOrCompute(installed, new FieldNameCacheKey(c, fieldName), k -> {
+                Field found = FIELDS_BY_NAME.get(c).get(fieldName);
+                return found == null ? NOT_FOUND_FIELD : found;
+            });
+            if (field == NOT_FOUND_FIELD) {
+                field = null;
             }
-            return NOT_FOUND_FIELD;  // cache miss
-        });
-
-        if (field == NOT_FOUND_FIELD) {
-            return null;
         }
-        
+
         // Security: Validate field access before returning
         if (field != null) {
             validateFieldAccess(field);
         }
-        
         return field;
+    }
+
+    private static Map<String, Field> fieldsByName(Class<?> c) {
+        Map<String, Field> byName = new HashMap<>();
+        for (Field field : getAllDeclaredFields(c)) {  // all fields in c's hierarchy, c's own first
+            byName.putIfAbsent(field.getName(), field);
+        }
+        return byName;
     }
 
     /**
@@ -1214,7 +1204,7 @@ public final class ReflectionUtils {
      * <ul>
      *     <li>Custom field filtering through provided Predicate</li>
      *     <li>Returns only fields declared directly on the specified class (not from superclasses)</li>
-     *     <li>Caches results for both successful lookups and misses</li>
+     *     <li>Caches the list on the class (see below)</li>
      *     <li>Makes non-public fields accessible when possible</li>
      *     <li>Returns an unmodifiable List to prevent modification</li>
      * </ul>
@@ -1224,7 +1214,9 @@ public final class ReflectionUtils {
      *     <li>Thread-safe caching mechanism</li>
      *     <li>Handles different classloaders correctly</li>
      *     <li>Maintains consistent order of fields</li>
-     *     <li>Caches results per class/filter combination</li>
+     *     <li>Caches per class: the default filter's list always; for a caller's own filter, the lists of the
+     *         last 8 filters used on the class (a filter is held weakly, and one created on every call is not
+     *         reused)</li>
      * </ul>
      * <p>
      * Example usage:
@@ -1252,27 +1244,12 @@ public final class ReflectionUtils {
         Convention.throwIfNull(c, "class cannot be null");
         Convention.throwIfNull(fieldFilter, "fieldFilter cannot be null");
 
-        final FieldsCacheKey key = new FieldsCacheKey(c, fieldFilter, false);
-
-        // Atomically compute and cache the unmodifiable List<Field> if absent
-        Collection<Field> cachedFields = getOrCompute(FIELDS_CACHE.get(), key, k -> {
-            Field[] declared = c.getDeclaredFields();
-            List<Field> filteredList = new ArrayList<>(declared.length);
-
-            for (Field field : declared) {
-                if (!fieldFilter.test(field)) {
-                    continue;
-                }
-                secureSetAccessible(field);
-                filteredList.add(field);
-            }
-
-            // Return an unmodifiable List so it cannot be mutated later
-            return Collections.unmodifiableList(filteredList);
-        });
-
-        // Cast back to List<Field> (we stored an unmodifiable List in the map)
-        return (List<Field>) cachedFields;
+        Map<? super FieldsCacheKey, Collection<Field>> installed = FIELDS_CACHE.get();
+        if (installed == null) {
+            return declaredFields(c, fieldFilter);
+        }
+        return (List<Field>) getOrCompute(installed, new FieldsCacheKey(c, fieldFilter, false),
+                k -> declaredFields(c, fieldFilter));
     }
 
     /**
@@ -1314,7 +1291,7 @@ public final class ReflectionUtils {
      *     <li>Thread-safe caching mechanism</li>
      *     <li>Maintains consistent order (subclass fields before superclass fields)</li>
      *     <li>Returns an unmodifiable List to prevent modification</li>
-     *     <li>Uses recursive caching strategy for optimal performance</li>
+     *     <li>Each class's own list is cached and shared by its subclasses' lists</li>
      * </ul>
      * <p>
      * Example usage:
@@ -1339,30 +1316,91 @@ public final class ReflectionUtils {
     public static List<Field> getAllDeclaredFields(final Class<?> c, final Predicate<Field> fieldFilter) {
         Convention.throwIfNull(c, "class cannot be null");
         Convention.throwIfNull(fieldFilter, "fieldFilter cannot be null");
-        
+
         // Security: Check if the class is dangerous before proceeding
         if (isDangerousClass(c)) {
             LOG.log(Level.WARNING, "Field access blocked for dangerous class: " + sanitizeClassName(c.getName()));
             throw new SecurityException("Access denied: Field access not permitted for security-sensitive class");
         }
 
-        final FieldsCacheKey key = new FieldsCacheKey(c, fieldFilter, true);
+        Map<? super FieldsCacheKey, Collection<Field>> installed = FIELDS_CACHE.get();
+        if (installed == null) {
+            return allDeclaredFields(c, fieldFilter);
+        }
+        return (List<Field>) getOrCompute(installed, new FieldsCacheKey(c, fieldFilter, true),
+                k -> allDeclaredFields(c, fieldFilter));
+    }
 
-        // Atomically compute and cache the unmodifiable list, if not already present
-        Collection<Field> cached = getOrCompute(FIELDS_CACHE.get(), key, k -> {
-            // Collect fields from class + superclasses
-            List<Field> allFields = new ArrayList<>();
-            Class<?> current = c;
-            while (current != null && !isDangerousClass(current)) {
-                allFields.addAll(getDeclaredFields(current, fieldFilter));
-                current = current.getSuperclass();
+    /** The class's own fields that pass the filter; see DECLARED_FIELDS_DEFAULT and FILTER_SLOTS. */
+    private static List<Field> declaredFields(Class<?> c, Predicate<Field> fieldFilter) {
+        return fieldFilter == DEFAULT_FIELD_FILTER ? DECLARED_FIELDS_DEFAULT.get(c) : filtered(c, fieldFilter, false);
+    }
+
+    /** The fields of the class and its superclasses that pass the filter; see ALL_FIELDS_DEFAULT and FILTER_SLOTS. */
+    private static List<Field> allDeclaredFields(Class<?> c, Predicate<Field> fieldFilter) {
+        return fieldFilter == DEFAULT_FIELD_FILTER ? ALL_FIELDS_DEFAULT.get(c) : filtered(c, fieldFilter, true);
+    }
+
+    /** The list for a caller's own filter: from the class's filter slots, or worked out and added to them. */
+    private static List<Field> filtered(Class<?> c, Predicate<Field> fieldFilter, boolean deep) {
+        AtomicReference<Object[]> slots = (deep ? ALL_FIELDS_FILTERED : DECLARED_FIELDS_FILTERED).get(c);
+        List<Field> fields = inSlots(slots.get(), fieldFilter);
+        if (fields != null) {
+            return fields;
+        }
+        fields = deep ? collectAllDeclaredFields(c, fieldFilter) : filterDeclaredFields(c, fieldFilter);
+        while (true) {
+            Object[] current = slots.get();
+            List<Field> raced = inSlots(current, fieldFilter);
+            if (raced != null) {
+                return raced;                   // another thread got there first: one list per filter
             }
-            // Return an unmodifiable list to prevent further modification
-            return Collections.unmodifiableList(allFields);
-        });
+            int keep = Math.min(current.length, 2 * (FILTER_SLOTS - 1));
+            Object[] next = new Object[keep + 2];
+            next[0] = new WeakReference<>(fieldFilter);
+            next[1] = fields;
+            System.arraycopy(current, 0, next, 2, keep);
+            if (slots.compareAndSet(current, next)) {
+                return fields;
+            }
+        }
+    }
 
-        // We know we stored a List<Field>, so cast is safe
-        return (List<Field>) cached;
+    @SuppressWarnings("unchecked")
+    private static List<Field> inSlots(Object[] slots, Predicate<Field> fieldFilter) {
+        for (int i = 0; i < slots.length; i += 2) {
+            if (((WeakReference<?>) slots[i]).get() == fieldFilter) {
+                return (List<Field>) slots[i + 1];
+            }
+        }
+        return null;
+    }
+
+    /** The class's own fields that pass the filter, made accessible (and vetted, when security is on). */
+    private static List<Field> filterDeclaredFields(Class<?> c, Predicate<Field> fieldFilter) {
+        Field[] declared = DECLARED_FIELDS.get(c);
+        List<Field> filteredList = new ArrayList<>(declared.length);
+        for (Field field : declared) {
+            if (!fieldFilter.test(field)) {
+                continue;
+            }
+            secureSetAccessible(field);
+            filteredList.add(field);
+        }
+        // Return an unmodifiable List so it cannot be mutated later
+        return Collections.unmodifiableList(filteredList);
+    }
+
+    /** The fields of the class and its superclasses that pass the filter, the class's own first. */
+    private static List<Field> collectAllDeclaredFields(Class<?> c, Predicate<Field> fieldFilter) {
+        List<Field> allFields = new ArrayList<>();
+        Class<?> current = c;
+        while (current != null && !isDangerousClass(current)) {
+            allFields.addAll(declaredFields(current, fieldFilter));
+            current = current.getSuperclass();
+        }
+        // Return an unmodifiable list to prevent further modification
+        return Collections.unmodifiableList(allFields);
     }
 
     /**
@@ -1428,7 +1466,7 @@ public final class ReflectionUtils {
         Convention.throwIfNull(fieldFilter, "fieldFilter cannot be null");
 
         Map<String, Field> fieldMap = new LinkedHashMap<>();
-        Collection<Field> fields = getAllDeclaredFields(c, fieldFilter);  // Uses FIELDS_CACHE internally
+        Collection<Field> fields = getAllDeclaredFields(c, fieldFilter);  // cached on the class
 
         for (Field field : fields) {
             String fieldName = field.getName();
@@ -1615,7 +1653,7 @@ public final class ReflectionUtils {
      *     <li>Caches method lookups for improved performance</li>
      *     <li>Handles different classloaders correctly</li>
      *     <li>Converts checked exceptions to runtime exceptions</li>
-     *     <li>Caches both successful lookups and misses</li>
+     *     <li>Caches what it finds on the class; a name the class does not have stores nothing</li>
      *     <li>Thread-safe implementation</li>
      * </ul>
      * <p>
@@ -1666,9 +1704,8 @@ public final class ReflectionUtils {
     }
 
     /**
-     * Retrieves a method of any access level by name and parameter types, with sophisticated
-     * caching for optimal performance. This method searches through the class hierarchy and
-     * attempts to make non-public methods accessible.
+     * Retrieves a method of any access level by name and parameter types, cached on the class. This method
+     * searches through the class hierarchy and attempts to make non-public methods accessible.
      * <p>
      * Key features:
      * <ul>
@@ -1676,7 +1713,7 @@ public final class ReflectionUtils {
      *     <li>Includes bridge methods (compiler-generated for generic type erasure)</li>
      *     <li>Includes synthetic methods (compiler-generated for lambdas, inner classes)</li>
      *     <li>Attempts to make non-public methods accessible</li>
-     *     <li>Caches both successful lookups and misses</li>
+     *     <li>Caches what it finds on the class; a name the class does not have stores nothing</li>
      *     <li>Handles different classloaders correctly</li>
      *     <li>Thread-safe implementation</li>
      *     <li>Searches entire inheritance hierarchy</li>
@@ -1697,65 +1734,142 @@ public final class ReflectionUtils {
             LOG.log(Level.WARNING, "Method access blocked for dangerous class: " + sanitizeClassName(c.getName()) + "." + methodName);
             throw new SecurityException("Access denied: Method access not permitted for security-sensitive class");
         }
+        Objects.requireNonNull(types, "types cannot be null");
 
-        final MethodCacheKey key = new MethodCacheKey(c, methodName, types);
-
-        // Atomically retrieve (or compute) the method and cache misses.
-        Method cachedMethod = getOrCompute(METHOD_CACHE.get(), key, k -> {
-            // 1) Walk class chain first
-            Class<?> current = c;
-            while (current != null) {
-                try {
-                    Method method = current.getDeclaredMethod(methodName, types);
-                    secureSetAccessible(method);
-                    return method;
-                } catch (NoSuchMethodException ignored) {
-                    // Not in this class, try superclass
-                }
-                current = current.getSuperclass();
-            }
-            
-            // 2) Walk interface graph (BFS) for default methods
-            Set<Class<?>> seen = new IdentitySet<>();
-            Deque<Class<?>> toVisit = new ArrayDeque<>();
-            toVisit.add(c);
-            
-            while (!toVisit.isEmpty()) {
-                Class<?> x = toVisit.poll();
-                if (!seen.add(x)) continue;
-                
-                for (Class<?> iface : x.getInterfaces()) {
-                    try {
-                        Method method = iface.getDeclaredMethod(methodName, types);
-                        // Default/public interface methods don't always need elevation, but safe to call
-                        secureSetAccessible(method);
-                        return method;
-                    } catch (NoSuchMethodException ignored) {
-                        // Not in this interface
-                    }
-                    toVisit.add(iface);
-                }
-                
-                // Also check superclass interfaces
-                Class<?> superclass = x.getSuperclass();
-                if (superclass != null) {
-                    toVisit.add(superclass);
-                }
-            }
-            
-            // 3) Fallback to JDK resolution for public methods across interfaces
-            try {
-                Method method = c.getMethod(methodName, types);
-                secureSetAccessible(method);
-                return method;
-            } catch (NoSuchMethodException ignored) {
-                // Method not found anywhere
-            }
-            
-            return NOT_FOUND_METHOD;
+        Map<? super MethodCacheKey, Method> installed = METHOD_CACHE.get();
+        if (installed == null) {
+            return findMethod(c, methodName, types);
+        }
+        Method method = getOrCompute(installed, new MethodCacheKey(c, methodName, types), k -> {
+            Method found = findMethod(c, methodName, types);
+            return found == null ? NOT_FOUND_METHOD : found;
         });
+        return method == NOT_FOUND_METHOD ? null : method;
+    }
 
-        return cachedMethod == NOT_FOUND_METHOD ? null : cachedMethod;
+    /** getMethod(c, name, types): what is found is kept on the class; a miss is looked up again, storing nothing. */
+    private static Method findMethod(Class<?> c, String methodName, Class<?>[] types) {
+        ConcurrentHashMap<String, Object[]> found = METHODS_FOUND.get(c);
+        Method method = inPairs(found.get(methodName), types);
+        if (method != null) {
+            return method;
+        }
+        method = resolveMethod(c, methodName, types);
+        if (method == null) {
+            return null;
+        }
+        secureSetAccessible(method);
+        final Method resolved = method;
+        final Class<?>[] parameterTypes = method.getParameterTypes();
+        Object[] pairs = found.compute(methodName, (name, current) -> {
+            if (inPairs(current, parameterTypes) != null) {
+                return current;                 // another thread got there first
+            }
+            int n = current == null ? 0 : current.length;
+            Object[] next = current == null ? new Object[2] : Arrays.copyOf(current, n + 2);
+            next[n] = parameterTypes;
+            next[n + 1] = resolved;
+            return next;
+        });
+        return inPairs(pairs, parameterTypes);
+    }
+
+    private static Method inPairs(Object[] pairs, Class<?>[] types) {
+        if (pairs != null) {
+            for (int i = 0; i < pairs.length; i += 2) {
+                if (Arrays.equals((Class<?>[]) pairs[i], types)) {
+                    return (Method) pairs[i + 1];
+                }
+            }
+        }
+        return null;
+    }
+
+    /** getMethod()'s search: the class and its superclasses, then interfaces breadth-first, then public methods. */
+    private static Method resolveMethod(Class<?> c, String methodName, Class<?>[] types) {
+        // 1) Walk class chain first
+        for (Class<?> current = c; current != null; current = current.getSuperclass()) {
+            Method method = declaredMethod(current, methodName, types);
+            if (method != null) {
+                return method;
+            }
+        }
+
+        // 2) Walk interface graph (BFS) for default methods
+        Set<Class<?>> seen = new IdentitySet<>();
+        Deque<Class<?>> toVisit = new ArrayDeque<>();
+        toVisit.add(c);
+
+        while (!toVisit.isEmpty()) {
+            Class<?> x = toVisit.poll();
+            if (!seen.add(x)) continue;
+
+            for (Class<?> iface : x.getInterfaces()) {
+                Method method = declaredMethod(iface, methodName, types);
+                if (method != null) {
+                    return method;
+                }
+                toVisit.add(iface);
+            }
+
+            // Also check superclass interfaces
+            Class<?> superclass = x.getSuperclass();
+            if (superclass != null) {
+                toVisit.add(superclass);
+            }
+        }
+
+        // 3) Fallback to JDK resolution for public methods across interfaces (asked only when one exists)
+        Method[] named = PUBLIC_METHODS.get(c).get(methodName);
+        if (named != null) {
+            for (Method method : named) {
+                if (sameParameters(method, types)) {
+                    try {
+                        return c.getMethod(methodName, types);
+                    } catch (NoSuchMethodException ignored) {
+                        return null;
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * What {@code c.getDeclaredMethod(name, types)} returns, without the exception when there is none: of the
+     * class's declared methods with that name and those parameter types, the one with the most specific return
+     * type (a covariant override over its bridge method), chosen as the JDK chooses it.
+     */
+    private static Method declaredMethod(Class<?> c, String methodName, Class<?>[] types) {
+        Method[] named = DECLARED_METHODS.get(c).get(methodName);
+        if (named == null) {
+            return null;
+        }
+        Method result = null;
+        for (Method method : named) {
+            if (sameParameters(method, types) && (result == null
+                    || (result.getReturnType() != method.getReturnType()
+                        && result.getReturnType().isAssignableFrom(method.getReturnType())))) {
+                result = method;
+            }
+        }
+        return result;
+    }
+
+    private static boolean sameParameters(Method method, Class<?>[] types) {
+        return method.getParameterCount() == types.length && Arrays.equals(method.getParameterTypes(), types);
+    }
+
+    private static Map<String, Method[]> methodsByName(Method[] methods) {
+        Map<String, List<Method>> grouped = new HashMap<>();
+        for (Method method : methods) {
+            grouped.computeIfAbsent(method.getName(), k -> new ArrayList<>(1)).add(method);
+        }
+        Map<String, Method[]> byName = new HashMap<>(grouped.size() * 4 / 3 + 1);
+        for (Map.Entry<String, List<Method>> entry : grouped.entrySet()) {
+            byName.put(entry.getKey(), entry.getValue().toArray(new Method[0]));
+        }
+        return byName;
     }
 
     /**
@@ -1767,7 +1881,7 @@ public final class ReflectionUtils {
      *     <li>Finds methods of any access level (public, protected, package, private)</li>
      *     <li>Uses deterministic method selection strategy</li>
      *     <li>Attempts to make non-public methods accessible</li>
-     *     <li>Caches both successful lookups and misses</li>
+     *     <li>Caches what it finds on the class; a name the class does not have stores nothing</li>
      *     <li>Handles different classloaders correctly</li>
      *     <li>Thread-safe implementation</li>
      *     <li>Searches entire inheritance hierarchy</li>
@@ -1815,71 +1929,100 @@ public final class ReflectionUtils {
         }
 
         if (argCount == 0) {
-            Method exact = getMethod(beanClass, methodName);
+            Method exact = getMethod(beanClass, methodName, NO_PARAMETERS);
             if (exact != null) {
                 return exact;
             }
         }
 
-        Class<?>[] types = new Class<?>[argCount];
-        Arrays.fill(types, Object.class);
-        MethodCacheKey key = new MethodCacheKey(beanClass, methodName, MethodCacheKey.ARG_COUNT_LOOKUP, types);
-
-        // Use computeIfAbsent for atomic cache access
-        Method result = getOrCompute(METHOD_CACHE.get(), key, k -> {
-            // Collect all matching methods from class hierarchy and interfaces
-            List<Method> candidates = new ArrayList<>();
-            Set<Class<?>> visited = new IdentitySet<>();
-            Deque<Class<?>> toVisit = new ArrayDeque<>();
-            toVisit.add(beanClass);
-
-            while (!toVisit.isEmpty()) {
-                Class<?> current = toVisit.poll();
-                if (!visited.add(current)) {
-                    continue; // Already processed this class/interface
-                }
-
-                // Check declared methods in current class/interface
-                for (Method method : current.getDeclaredMethods()) {
-                    if (method.getName().equals(methodName) && method.getParameterCount() == argCount) {
-                        candidates.add(method);
-                    }
-                }
-
-                // Add superclass to visit (if exists)
-                Class<?> superclass = current.getSuperclass();
-                if (superclass != null) {
-                    toVisit.add(superclass);
-                }
-
-                // Add interfaces to visit
-                for (Class<?> iface : current.getInterfaces()) {
-                    toVisit.add(iface);
-                }
+        Method result;
+        Map<? super MethodCacheKey, Method> installed = METHOD_CACHE.get();
+        if (installed == null) {
+            result = methodByArgCount(beanClass, methodName, argCount);
+        } else {
+            Class<?>[] types = new Class<?>[argCount];
+            Arrays.fill(types, Object.class);
+            MethodCacheKey key = new MethodCacheKey(beanClass, methodName, MethodCacheKey.ARG_COUNT_LOOKUP, types);
+            result = getOrCompute(installed, key, k -> {
+                Method found = methodByArgCount(beanClass, methodName, argCount);
+                return found == null ? NOT_FOUND_METHOD : found;
+            });
+            if (result == NOT_FOUND_METHOD) {
+                result = null;
             }
+        }
 
-            if (candidates.isEmpty()) {
-                // Cache negative result to avoid repeated expensive hierarchy searches
-                return NOT_FOUND_METHOD;
-            }
-
-            // Select the best matching method using our composite strategy
-            Method selected = selectMethod(candidates);
-
-            // Attempt to make the method accessible
-            secureSetAccessible(selected);
-
-            return selected;
-        });
-
-        // Check for sentinel outside computeIfAbsent and throw appropriate exception
-        if (result == NOT_FOUND_METHOD) {
+        if (result == null) {
             throw new IllegalArgumentException(
                     String.format("Method '%s' with %d parameters not found in %s, its superclasses, or interfaces",
                             methodName, argCount, beanClass.getName())
             );
         }
         return result;
+    }
+
+    /** getMethod(instance, name, argCount): what is found is kept on the class; a miss is looked up again. */
+    private static Method methodByArgCount(Class<?> c, String methodName, int argCount) {
+        ConcurrentHashMap<String, Method[]> found = METHODS_BY_ARG_COUNT.get(c);
+        Method[] byCount = found.get(methodName);
+        if (byCount != null && argCount < byCount.length && byCount[argCount] != null) {
+            return byCount[argCount];
+        }
+        Method selected = selectByArgCount(c, methodName, argCount);
+        if (selected == null) {
+            return null;
+        }
+        secureSetAccessible(selected);
+        byCount = found.compute(methodName, (name, current) -> {
+            if (current != null && argCount < current.length && current[argCount] != null) {
+                return current;                 // another thread got there first
+            }
+            int length = current == null ? argCount + 1 : Math.max(current.length, argCount + 1);
+            Method[] next = current == null ? new Method[length] : Arrays.copyOf(current, length);
+            next[argCount] = selected;
+            return next;
+        });
+        return byCount[argCount];
+    }
+
+    /** Of the methods with that name and argument count anywhere in the hierarchy (breadth-first), the best one. */
+    private static Method selectByArgCount(Class<?> c, String methodName, int argCount) {
+        // Collect all matching methods from class hierarchy and interfaces
+        List<Method> candidates = new ArrayList<>();
+        Set<Class<?>> visited = new IdentitySet<>();
+        Deque<Class<?>> toVisit = new ArrayDeque<>();
+        toVisit.add(c);
+
+        while (!toVisit.isEmpty()) {
+            Class<?> current = toVisit.poll();
+            if (!visited.add(current)) {
+                continue; // Already processed this class/interface
+            }
+
+            // Check declared methods in current class/interface
+            Method[] named = DECLARED_METHODS.get(current).get(methodName);
+            if (named != null) {
+                for (Method method : named) {
+                    if (method.getParameterCount() == argCount) {
+                        candidates.add(method);
+                    }
+                }
+            }
+
+            // Add superclass to visit (if exists)
+            Class<?> superclass = current.getSuperclass();
+            if (superclass != null) {
+                toVisit.add(superclass);
+            }
+
+            // Add interfaces to visit
+            for (Class<?> iface : current.getInterfaces()) {
+                toVisit.add(iface);
+            }
+        }
+
+        // Select the best matching method using our composite strategy
+        return candidates.isEmpty() ? null : selectMethod(candidates);
     }
 
     /**
@@ -1940,28 +2083,33 @@ public final class ReflectionUtils {
             LOG.log(Level.WARNING, "Constructor access blocked for dangerous class: " + sanitizeClassName(clazz.getName()));
             throw new SecurityException("Access denied: Constructor access not permitted for security-sensitive class");
         }
+        Objects.requireNonNull(parameterTypes, "parameterTypes cannot be null");
 
-        final ConstructorCacheKey key = new ConstructorCacheKey(clazz, parameterTypes);
+        Map<? super ConstructorCacheKey, Constructor<?>> installed = CONSTRUCTOR_CACHE.get();
+        if (installed == null) {
+            return (Constructor<T>) findConstructor(clazz, parameterTypes);
+        }
+        // A missing constructor is not stored (null)
+        return (Constructor<T>) getOrCompute(installed, new ConstructorCacheKey(clazz, parameterTypes),
+                k -> findConstructor(clazz, parameterTypes));
+    }
 
-        // Atomically retrieve or compute the cached constructor
-        // The mapping function returns Constructor<T>, which is compatible with Constructor<?> for storage.
-        // The final return then casts the Constructor<?> from the cache to Constructor<T>.
-        // This cast is safe because the key ensures we're getting the constructor for Class<T>.
-        Constructor<?> cachedCtor = getOrCompute(CONSTRUCTOR_CACHE.get(), key, k -> {
-            try {
-                // Try to fetch the constructor reflectively
-                Constructor<T> ctor = clazz.getDeclaredConstructor(parameterTypes); // This already returns Constructor<T>
-                secureSetAccessible(ctor); // Secure method with proper security checks
-                return ctor;
-            } catch (NoSuchMethodException ignored) { // Be more specific with exceptions
-                // If no such constructor exists, store null in the cache
-                return null;
-            } catch (SecurityException ignored) {
-                // If security manager denies access
-                return null;
+    /** The declared constructor with exactly these parameter types, made accessible; null if there is none. */
+    private static Constructor<?> findConstructor(Class<?> clazz, Class<?>[] parameterTypes) {
+        try {
+            Object[] table = DECLARED_CONSTRUCTORS.get(clazz);
+            for (int i = 0; i < table.length; i += 2) {
+                if (Arrays.equals((Class<?>[]) table[i], parameterTypes)) {
+                    Constructor<?> ctor = (Constructor<?>) table[i + 1];
+                    secureSetAccessible(ctor); // Secure method with proper security checks
+                    return ctor;
+                }
             }
-        });
-        return (Constructor<T>) cachedCtor; // This cast is necessary and what @SuppressWarnings("unchecked") is for
+            return null;
+        } catch (SecurityException ignored) {
+            // If security manager denies access
+            return null;
+        }
     }
 
     /**
@@ -1983,43 +2131,40 @@ public final class ReflectionUtils {
             throw new SecurityException("Access denied: Constructor enumeration not permitted for security-sensitive class");
         }
 
-        // Probe the cache with the Class itself (identity-keyed) — no per-call key allocation. get()
-        // first so the (capturing) compute lambda is allocated only on a genuine miss, not every hit.
-        Map<Object, Constructor<?>[]> cache = SORTED_CONSTRUCTORS_CACHE.get();
-        Constructor<?>[] cached = cache.get(clazz);
+        Map<Object, Constructor<?>[]> installed = SORTED_CONSTRUCTORS_CACHE.get();
+        if (installed == null) {
+            return SORTED_CONSTRUCTORS.get(clazz);
+        }
+        Constructor<?>[] cached = installed.get(clazz);
         if (cached != null) {
             return cached;
         }
-        return getOrCompute(cache, clazz, k -> getAllConstructorsInternal(clazz));
+        return getOrCompute(installed, clazz, k -> SORTED_CONSTRUCTORS.get(clazz));
+    }
+
+    /** The class's declared constructors with their parameter types: {Class<?>[], Constructor} pairs. */
+    private static Object[] constructorTable(Class<?> clazz) {
+        Constructor<?>[] declared = clazz.getDeclaredConstructors();
+        Object[] table = new Object[declared.length * 2];
+        for (int i = 0; i < declared.length; i++) {
+            table[2 * i] = declared[i].getParameterTypes();
+            table[2 * i + 1] = declared[i];
+        }
+        return table;
     }
 
     /**
-     * Worker method that retrieves and sorts constructors.
-     * This method ensures all constructors are accessible and cached individually.
+     * The class's constructors, made accessible, sorted in preference order. They are the same instances
+     * getConstructor() returns.
      */
-    private static Constructor<?>[] getAllConstructorsInternal(Class<?> clazz) {
-        // Get the declared constructors
-        Constructor<?>[] declared = clazz.getDeclaredConstructors();
-        if (declared.length == 0) {
-            return declared;
+    private static Constructor<?>[] sortedConstructors(Class<?> clazz) {
+        Object[] table = DECLARED_CONSTRUCTORS.get(clazz);
+        Constructor<?>[] result = new Constructor<?>[table.length / 2];
+        for (int i = 0; i < result.length; i++) {
+            Constructor<?> ctor = (Constructor<?>) table[2 * i + 1];
+            secureSetAccessible(ctor);
+            result[i] = ctor;
         }
-
-        // Cache each constructor individually and ensure they're accessible
-        for (int i = 0; i < declared.length; i++) {
-            final Constructor<?> ctor = declared[i];
-            Class<?>[] paramTypes = ctor.getParameterTypes();
-            ConstructorCacheKey key = new ConstructorCacheKey(clazz, paramTypes);
-
-            // Retrieve from cache or add to cache
-            declared[i] = getOrCompute(CONSTRUCTOR_CACHE.get(), key, k -> {
-                secureSetAccessible(ctor);
-                return ctor;
-            });
-        }
-
-        // Create a sorted copy of the constructors
-        Constructor<?>[] result = new Constructor<?>[declared.length];
-        System.arraycopy(declared, 0, result, 0, declared.length);
 
         // Sort the constructors in optimal order if there's more than one
         if (result.length > 1) {
@@ -2110,38 +2255,16 @@ public final class ReflectionUtils {
             throw new SecurityException("Access denied: Method access not permitted for security-sensitive class");
         }
 
-        // Create a cache key for a method with no parameters
-        MethodCacheKey key = new MethodCacheKey(clazz, methodName, MethodCacheKey.NON_OVERLOADED_LOOKUP);
+        Method result;
+        Map<? super MethodCacheKey, Method> installed = METHOD_CACHE.get();
+        if (installed == null) {
+            result = nonOverloadedMethod(clazz, methodName);
+        } else {
+            MethodCacheKey key = new MethodCacheKey(clazz, methodName, MethodCacheKey.NON_OVERLOADED_LOOKUP);
+            result = getOrCompute(installed, key, k -> nonOverloadedMethod(clazz, methodName));
+        }
 
-        Method result = getOrCompute(METHOD_CACHE.get(), key, k -> {
-            // First, check if method name exists at all and count occurrences
-            int methodCount = 0;
-            Method foundMethod = null;
-
-            for (Method m : clazz.getMethods()) {
-                if (methodName.equals(m.getName())) {
-                    methodCount++;
-                    if (m.getParameterCount() == 0) {
-                        foundMethod = m;
-                    }
-                }
-            }
-
-            // If multiple methods exist with same name (overloaded), cache negative result
-            if (methodCount > 1) {
-                return OVERLOADED_METHOD;
-            }
-
-            // If no 0-arg method found, cache negative result
-            if (foundMethod == null) {
-                return NOT_FOUND_METHOD;
-            }
-
-            secureSetAccessible(foundMethod);
-            return foundMethod;
-        });
-
-        // Check for sentinels outside computeIfAbsent and throw appropriate exception
+        // Check for sentinels and throw appropriate exception
         if (result == OVERLOADED_METHOD) {
             throw new IllegalArgumentException("Method: " + methodName + "() called on a class with overloaded methods "
                     + "- ambiguous as to which one to return. Use getMethod() with argument types or argument count.");
@@ -2151,6 +2274,23 @@ public final class ReflectionUtils {
                     + ". Perhaps the method is protected, private, or misspelled?");
         }
         return result;
+    }
+
+    /** The class's one public method of that name if it takes no arguments; otherwise a sentinel saying why not. */
+    private static Method nonOverloadedMethod(Class<?> clazz, String methodName) {
+        Method[] named = PUBLIC_METHODS.get(clazz).get(methodName);
+        if (named == null) {
+            return NOT_FOUND_METHOD;
+        }
+        if (named.length > 1) {
+            return OVERLOADED_METHOD;       // multiple methods with this name: ambiguous
+        }
+        Method method = named[0];
+        if (method.getParameterCount() != 0) {
+            return NOT_FOUND_METHOD;        // no 0-arg method
+        }
+        secureSetAccessible(method);
+        return method;
     }
 
     /**

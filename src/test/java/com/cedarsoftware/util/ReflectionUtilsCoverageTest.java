@@ -10,6 +10,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -29,6 +30,18 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * dedicated security test files to avoid system property cross-contamination.
  */
 class ReflectionUtilsCoverageTest {
+
+    /** The cache-setter tests install Maps; take them out again, so later tests see ReflectionUtils as it ships. */
+    @AfterEach
+    void installNoCacheMaps() {
+        ReflectionUtils.setMethodCache(null);
+        ReflectionUtils.setFieldCache(null);
+        ReflectionUtils.setClassFieldsCache(null);
+        ReflectionUtils.setConstructorCache(null);
+        ReflectionUtils.setClassAnnotationCache(null);
+        ReflectionUtils.setMethodAnnotationCache(null);
+        ReflectionUtils.setSortedConstructorsCache(null);
+    }
 
     // ========== Test model classes ==========
 

@@ -2,21 +2,15 @@ package com.cedarsoftware.util;
 
 import java.io.File;
 import java.lang.ref.WeakReference;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.Field;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
 import com.cedarsoftware.util.convert.Converter;
 import com.cedarsoftware.util.convert.DefaultConverterOptions;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -30,49 +24,20 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * -- could never be unloaded, without an explicit clearCaches(). A redeployed webapp, a plugin, a recompiled script:
  * each discarded loader stayed in memory. The caches are ClassValues now, whose entries live inside the class.
  * <p>
- * No clearCaches() here. ReflectionUtils' constructor caches are swapped out after each operation: they are bounded
- * LRU caches that hold a class only until newer entries evict it, and are not what this test is about.
+ * No clearCaches() here, and nothing swapped out: ReflectionUtils, which newInstance() asks for constructors, keeps
+ * what it finds on the class too (see ReflectionUtilsClassLoaderLeakTest).
  */
 class ClassUtilitiesClassLoaderLeakTest {
 
     private static final String FIXTURE = "com.cedarsoftware.util.ClassUtilitiesClassLoaderLeakTest$LoaderFixture";
     private final Converter converter = new Converter(new DefaultConverterOptions());
 
-    private Map<Object, Constructor<?>[]> originalSorted;
-    private Map<Object, Constructor<?>> originalConstructors;
-
-    @SuppressWarnings("unchecked")
-    private static <T> T reflectionUtilsCache(String name) throws Exception {
-        Field f = ReflectionUtils.class.getDeclaredField(name);
-        f.setAccessible(true);
-        return (T) ((AtomicReference<?>) f.get(null)).get();
-    }
-
-    @BeforeEach
-    void saveReflectionUtilsCaches() throws Exception {
-        originalSorted = reflectionUtilsCache("SORTED_CONSTRUCTORS_CACHE");
-        originalConstructors = reflectionUtilsCache("CONSTRUCTOR_CACHE");
-    }
-
-    @AfterEach
-    void restoreReflectionUtilsCaches() {
-        ReflectionUtils.setSortedConstructorsCache(originalSorted);
-        ReflectionUtils.setConstructorCache(originalConstructors);
-    }
-
     /** Loads the fixture in a throwaway loader, runs {@code use} on it, drops both, and reports whether the loader went. */
     private void assertLoaderIsCollectedAfter(String what, Consumer<Class<?>> use) throws Exception {
         URLClassLoader loader = new URLClassLoader(new URL[]{new File("target/test-classes").toURI().toURL()}, null);
         Class<?> fixture = Class.forName(FIXTURE, false, loader);
         assertNotSame(LoaderFixture.class, fixture, "the fixture must be defined by the throwaway loader");
-
-        // The bounded LRU caches in ReflectionUtils are not under test (see the class comment): the operation gets
-        // throwaway ones, dropped afterwards
-        ReflectionUtils.setSortedConstructorsCache(new ConcurrentHashMap<>());
-        ReflectionUtils.setConstructorCache(new ConcurrentHashMap<>());
         use.accept(fixture);
-        ReflectionUtils.setSortedConstructorsCache(new ConcurrentHashMap<>());
-        ReflectionUtils.setConstructorCache(new ConcurrentHashMap<>());
 
         WeakReference<ClassLoader> loaderRef = new WeakReference<>(loader);
         fixture = null;

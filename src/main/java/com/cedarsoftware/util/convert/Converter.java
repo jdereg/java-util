@@ -2136,6 +2136,31 @@ public final class Converter {
     }
 
     /**
+     * The length of the longest chain of supertypes above a type, following Java's assignability rather than
+     * getSuperclass() alone: strictly greater for a subtype than for any of its supertypes. An interface is below
+     * Object (every interface type is assignable to it); an array is below Object, Cloneable and Serializable, and
+     * below the array of any supertype of its component (String[] is assignable to Object[]). Per class, computed
+     * once. JDK types only, so it pins no class loader.
+     */
+    private static final ClassValue<Integer> TYPE_DEPTH = new ClassValue<Integer>() {
+        @Override
+        protected Integer computeValue(Class<?> type) {
+            if (type.isArray()) {
+                return get(type.getComponentType()) + 2;
+            }
+            int depth = type.isInterface() ? 1 : 0;
+            Class<?> superclass = type.getSuperclass();
+            if (superclass != null) {
+                depth = Math.max(depth, get(superclass) + 1);
+            }
+            for (Class<?> iface : type.getInterfaces()) {
+                depth = Math.max(depth, get(iface) + 1);
+            }
+            return depth;
+        }
+    };
+
+    /**
      * Gets the sorted list of inheritance pairs for a given source/target type combination.
      * <p>
      * The pairs are sorted by:
@@ -2178,12 +2203,16 @@ public final class Converter {
             if (p1ExactTarget != p2ExactTarget) {
                 return p1ExactTarget ? -1 : 1;
             }
-            // More specific target types (by assignability)
+            // More specific target types first: deeper in the type hierarchy. A subtype is always deeper than its
+            // supertypes, so this keeps "a subtype before its supertype" -- which comparing by assignability did
+            // too, but assignability only orders related types, and mixed with the distance rule below it was not
+            // transitive: TimSort threw "Comparison method violates its general contract!" (a Collection source to
+            // a Number target, for one), from isConversionSupportedFor() and convert() alike.
             if (p1.target != p2.target) {
-                boolean p1AssignableToP2 = p2.target.isAssignableFrom(p1.target);
-                boolean p2AssignableToP1 = p1.target.isAssignableFrom(p2.target);
-                if (p1AssignableToP2 != p2AssignableToP1) {
-                    return p1AssignableToP2 ? -1 : 1;
+                int depth1 = TYPE_DEPTH.get(p1.target);
+                int depth2 = TYPE_DEPTH.get(p2.target);
+                if (depth1 != depth2) {
+                    return depth2 - depth1;
                 }
             }
             // Combined inheritance distance
@@ -2351,8 +2380,9 @@ public final class Converter {
      *
      * @param sourceType The source type to convert from
      * @param target     The target type to convert to
-     * @return true if a container-based conversion is supported between the types, false otherwise
-     * @throws IllegalArgumentException if target is EnumSet.class (caller should specify specific Enum type instead)
+     * @return true if a container-based conversion is supported between the types, false otherwise -- including
+     *         for an {@code EnumSet} target, whose enum type cannot be known from the class alone (to convert, pass
+     *         the enum class as the target instead: {@code convert(array, Day.class)} gives an {@code EnumSet<Day>})
      */
     public static boolean isContainerConversionSupported(Class<?> sourceType, Class<?> target) {
         // Quick check: If the source is not an array, a Collection, Map, or an EnumSet, no conversion is supported here.
@@ -2360,13 +2390,11 @@ public final class Converter {
             return false;
         }
 
-        // Target is EnumSet: We cannot directly determine the target Enum type here.
-        // The caller should specify the Enum type (e.g. "Day.class") instead of EnumSet.
+        // Target is EnumSet: the enum type cannot be determined from the class, so this is not a conversion that
+        // can be made to it. A question, so an answer -- it threw, and so did isConversionSupportedFor() through it.
+        // (convert() still explains, with an example, that the Enum class is the type to ask for.)
         if (EnumSet.class.isAssignableFrom(target)) {
-            throw new IllegalArgumentException(
-                    "To convert to EnumSet, specify the Enum class to convert to as the 'toType.' " +
-                            "Example: EnumSet<Day> daySet = (EnumSet<Day>)(Object)converter.convert(array, Day.class);"
-            );
+            return false;
         }
 
         // If the target type is an Enum, then we're essentially looking to create an EnumSet<EnumType>.
@@ -2550,7 +2578,14 @@ public final class Converter {
         // Check direct conversion support in the primary databases.
         Convert<?> method = getConversionFromDBs(source, target);
         if (isValidConversion(method)) {
-            cacheConverter(source, target, method);
+            // getConversionFromDBs() looks primitives up as their wrappers (int as Integer). A converter found that
+            // way belongs to the wrapper pair, so it is cached only when that is the pair asked about. Cached under
+            // (Void, int) it answered convert(null, int.class) -- which looks primitives up exactly, and gives 0 --
+            // with the Void-to-Integer converter: null, for every later caller in the JVM.
+            if (source == ClassUtilities.toPrimitiveWrapperClass(source)
+                    && target == ClassUtilities.toPrimitiveWrapperClass(target)) {
+                cacheConverter(source, target, method);
+            }
             return true;
         }
 

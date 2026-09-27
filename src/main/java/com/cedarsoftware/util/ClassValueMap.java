@@ -1,5 +1,8 @@
 package com.cedarsoftware.util;
 
+import java.lang.ref.Reference;
+import java.lang.ref.ReferenceQueue;
+import java.lang.ref.WeakReference;
 import java.util.AbstractCollection;
 import java.util.AbstractMap;
 import java.util.AbstractSet;
@@ -7,6 +10,8 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.NoSuchElementException;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -26,11 +31,11 @@ import java.util.concurrent.atomic.AtomicReference;
  *   <li>Faster than ConcurrentHashMap for concurrent reads — <b>but only for a small number of
  *       instances.</b> The advantage inverts once many ClassValue-based collections compete on the
  *       same classes; read <a href="#constraints">Critical usage constraints</a> before adopting</li>
- *   <li>Most significant when a <b>few</b> instances are pre-populated and then read repeatedly</li>
+ *   <li>Most significant when a <b>few</b> instances are read repeatedly</li>
  * </ul>
  *
  * <p><b>Not a general-purpose "faster {@code Map<Class,V>}".</b> This is a specialist for a narrow
- * niche (few instances, pre-populated, read-mostly). Outside that niche a plain
+ * niche (few instances, read-mostly). Outside that niche a plain
  * {@link java.util.concurrent.ConcurrentHashMap} is as fast or faster — see
  * <a href="#constraints">Critical usage constraints</a>.
  *
@@ -50,7 +55,10 @@ import java.util.concurrent.atomic.AtomicReference;
  *
  * <h2>How It Works</h2>
  * <p>
- * The implementation utilizes Java's {@link ClassValue} mechanism, which is specially optimized
+ * Each class's value is kept in a small slot stored in the class itself, through a {@link ClassValue}; the
+ * classes that have a mapping are also listed, weakly, for iteration and {@code size()}. So the map never keeps a
+ * class, or its ClassLoader, alive: as in a {@link java.util.WeakHashMap}, an entry goes away when its class is
+ * unloaded, even when the value refers back to the class. Java's {@link ClassValue} mechanism is specially optimized
  * in the JVM through:
  * <ul>
  *   <li>Thread-local caching for reduced contention</li>
@@ -85,8 +93,9 @@ import java.util.concurrent.atomic.AtomicReference;
  * <p>
  * The performance benefits come with some trade-offs:
  * <ul>
- *   <li>Higher memory usage (maintains both a backing map and ClassValue cache)</li>
- *   <li>Write operations (put/remove) aren't faster and may be slightly slower</li>
+ *   <li>A slot (a small object) is kept in every class the map is asked about, found or not</li>
+ *   <li>Iteration, {@code size()} and {@code containsValue()} walk the weakly-listed keys and read each class's
+ *       slot: slower than a {@code ConcurrentHashMap}'s</li>
  *   <li>Only Class keys benefit from the optimized lookups</li>
  * </ul>
  *
@@ -104,18 +113,14 @@ import java.util.concurrent.atomic.AtomicReference;
  *       depends on how many <em>other</em> ClassValue-based collections exist in the JVM — unlike any
  *       ordinary {@code Map}. The "faster than {@code ConcurrentHashMap}" advantage holds for a
  *       handful and <b>inverts</b> once ~10+ compete on the same classes.</li>
- *   <li><b>Pre-populated, not lazily built.</b> Build it once (e.g. at startup) and then read.
- *       Avoid the get-miss-then-{@link #put} idiom on a hot path: {@code put} invalidates this map's
- *       {@code ClassValue}, which the JVM implements by bumping a version that drops <em>every</em>
- *       cached entry, not just the changed key. Lazily populating N classes is therefore ~O(N&sup2;)
- *       of whole-cache invalidation as it warms up. Use a plain {@code ConcurrentHashMap} for
- *       lazily-built caches.</li>
- *   <li><b>Not a leak-safe class cache.</b> The backing {@code ConcurrentHashMap} <b>strongly
- *       references</b> its {@code Class} keys, so a long-lived instance pins those classes (and their
- *       {@code ClassLoader}s) until removed or cleared. (A bare {@code ClassValue} is leak-safe — its
- *       values live inside each {@code Class} and pin nothing — but this map's backing store gives
- *       that up.) Do not accumulate dynamically-loaded classes in a long-lived instance.</li>
+ *   <li><b>Values are kept in the key's class.</b> A value lives as long as its class (or until it is
+ *       removed): a value of a short-lived class loader's type, stored for a long-lived class (a JDK class,
+ *       say), keeps that loader alive while it is mapped.</li>
  * </ul>
+ * <p>
+ * (Earlier versions kept every mapping in a backing {@code ConcurrentHashMap} as well, which kept each key class and
+ * its ClassLoader alive, and made {@code put} invalidate the cached lookup of every class, so filling a map lazily
+ * cost ~O(N&sup2;). Neither applies now: {@code put} writes one class's slot.)
  *
  * <h2>Thread Safety</h2>
  * <p>
@@ -174,17 +179,8 @@ import java.util.concurrent.atomic.AtomicReference;
  */
 public class ClassValueMap<V> extends AbstractMap<Class<?>, V> implements ConcurrentMap<Class<?>, V> {
 
-    // Sentinel used by the ClassValue cache to indicate "no value"
+    // In a class's slot: no mapping. (A mapping to null is stored as null.)
     private static final Object NO_VALUE = new Object();
-
-    // Sentinel used to represent null values in the backing ConcurrentHashMap
-    // (since ConcurrentHashMap doesn't allow null values)
-    private static final Object NULL_VALUE = new Object();
-
-    // Backing map - using raw ConcurrentHashMap since null keys are handled separately.
-    // This avoids the overhead of ConcurrentHashMapNullSafe's null-masking wrapper.
-    // Note: We use Object as value type to allow storing NULL_VALUE sentinel.
-    private final ConcurrentHashMap<Class<?>, Object> backingMap = new ConcurrentHashMap<>();
 
     // Sentinel for "no mapping exists for null key"
     private static final Object NO_NULL_KEY_MAPPING = new Object();
@@ -209,34 +205,80 @@ public class ClassValueMap<V> extends AbstractMap<Class<?>, V> implements Concur
     private transient volatile Collection<V> cachedValues;
     private transient volatile Map<Class<?>, V> cachedUnmodifiableView;
 
-    // A ClassValue cache for extremely fast lookups on non-null Class keys.
-    // Replaced atomically on clear() to invalidate all cached entries at once.
-    private volatile ClassValue<Object> cache = createCache();
+    // The mappings for non-null keys; clear() replaces them all at once.
+    private volatile Mappings mappings = new Mappings();
 
-    private ClassValue<Object> createCache() {
-        return new ClassValue<Object>() {
+    /**
+     * Each class's value is kept in a slot stored in the class itself (a {@link ClassValue}), so the map never keeps
+     * a class -- or its ClassLoader -- alive: when the class is unloaded, its slot and value go with it. A value that
+     * refers back to its class (a Constructor, a hierarchy) is no obstacle, because class and value become garbage
+     * together. A put() or remove() writes one class's slot, under that slot's lock; it never invalidates the cached
+     * lookups of other classes (removing or replacing a ClassValue's value does, for every class at once).
+     * <p>
+     * The slot is a JDK type (an AtomicReference): a ClassValue's value lives inside its Class, and a java-util type
+     * stored in a JDK class would keep java-util's own class loader alive for the life of the JVM.
+     * <p>
+     * The classes that have a mapping are also listed, weakly, for iteration and size().
+     */
+    private static final class Mappings {
+        final ClassValue<AtomicReference<Object>> slots = new ClassValue<AtomicReference<Object>>() {
             @Override
-            protected Object computeValue(Class<?> key) {
-                // Single lookup - ConcurrentHashMap.get() returns null only if key is not present
-                Object result = backingMap.get(key);
-                if (result == null) {
-                    return NO_VALUE;
-                }
-                // Unmask null sentinel
-                return result == NULL_VALUE ? null : result;
+            protected AtomicReference<Object> computeValue(Class<?> type) {
+                return new AtomicReference<>(NO_VALUE);
             }
         };
+        final Set<ClassKey> keys = ConcurrentHashMap.newKeySet();
+        final ReferenceQueue<Class<?>> unloaded = new ReferenceQueue<>();
+
+        AtomicReference<Object> slot(Class<?> key) {
+            return slots.get(key);
+        }
+
+        /** Called holding the key's slot lock, when the key goes from unmapped to mapped. */
+        void added(Class<?> key) {
+            expunge();
+            keys.add(new ClassKey(key, unloaded));
+        }
+
+        /** Called holding the key's slot lock, when the key goes from mapped to unmapped. */
+        void removed(Class<?> key) {
+            keys.remove(new ClassKey(key, null));
+        }
+
+        /** Forgets the keys whose classes have been unloaded. */
+        void expunge() {
+            Reference<? extends Class<?>> ref;
+            while ((ref = unloaded.poll()) != null) {
+                keys.remove(ref);
+            }
+        }
     }
 
-    // Helper to mask null values for storage in ConcurrentHashMap
-    private Object maskNull(V value) {
-        return value == null ? NULL_VALUE : value;
-    }
+    /** A weak reference to a class: equal to another for the same class, and only to itself once cleared. */
+    private static final class ClassKey extends WeakReference<Class<?>> {
+        private final int hash;
 
-    // Helper to unmask null values from storage
-    @SuppressWarnings("unchecked")
-    private V unmaskNull(Object value) {
-        return value == NULL_VALUE ? null : (V) value;
+        ClassKey(Class<?> key, ReferenceQueue<Class<?>> queue) {
+            super(key, queue);
+            hash = System.identityHashCode(key);
+        }
+
+        @Override
+        public int hashCode() {
+            return hash;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) {
+                return true;
+            }
+            if (!(o instanceof ClassKey)) {
+                return false;
+            }
+            Class<?> key = get();
+            return key != null && key == ((ClassKey) o).get();
+        }
     }
 
     // Helper to check if null key has a mapping
@@ -268,6 +310,12 @@ public class ClassValueMap<V> extends AbstractMap<Class<?>, V> implements Concur
         return stored == NULL_FOR_NULL_KEY ? null : (V) stored;
     }
 
+    // A slot's value as the map's: null for "no mapping"
+    @SuppressWarnings("unchecked")
+    private static <V> V valueOf(Object slotValue) {
+        return slotValue == NO_VALUE ? null : (V) slotValue;
+    }
+
     /**
      * Creates a ClassValueMap
      */
@@ -284,20 +332,12 @@ public class ClassValueMap<V> extends AbstractMap<Class<?>, V> implements Concur
         if (map == null) {
             throw new NullPointerException("Map cannot be null");
         }
-        // Batch initialization without per-entry cache invalidation.
-        // The cache is empty at construction time, so no invalidation is needed.
         for (Map.Entry<? extends Class<?>, ? extends V> entry : map.entrySet()) {
-            Class<?> key = entry.getKey();
-            if (key == null) {
-                nullKeyStore.set(maskNullKeyValue(entry.getValue()));
-            } else {
-                backingMap.put(key, maskNull(entry.getValue()));
-            }
+            put(entry.getKey(), entry.getValue());
         }
     }
 
     @Override
-    @SuppressWarnings("unchecked")
     public V get(Object key) {
         if (key == null) {
             return getNullKeyValue();
@@ -305,11 +345,7 @@ public class ClassValueMap<V> extends AbstractMap<Class<?>, V> implements Concur
         // Fast path: identity check is faster than instanceof hierarchy check
         // Class.class is loaded by bootstrap classloader, so identity comparison is safe
         if (key.getClass() == Class.class) {
-            Object value = cache.get((Class<?>) key);
-            if (value == NO_VALUE) {
-                return null;
-            }
-            return (V) value;
+            return valueOf(mappings.slot((Class<?>) key).get());
         }
         return null;
     }
@@ -337,16 +373,11 @@ public class ClassValueMap<V> extends AbstractMap<Class<?>, V> implements Concur
      *         null key has no mapping, for a {@code null} argument)
      * @see #get(Object)
      */
-    @SuppressWarnings("unchecked")
     public V getByClass(Class<?> key) {
         if (key == null) {
             return getNullKeyValue();
         }
-        Object value = cache.get(key);
-        if (value == NO_VALUE) {
-            return null;
-        }
-        return (V) value;
+        return valueOf(mappings.slot(key).get());
     }
 
     /**
@@ -357,7 +388,7 @@ public class ClassValueMap<V> extends AbstractMap<Class<?>, V> implements Concur
      * This map explicitly supports null values, so the default would incorrectly return
      * {@code defaultValue} for a key that is present but mapped to null. This override
      * distinguishes "mapped to null" (returns null) from "no mapping" (returns
-     * {@code defaultValue}) in a single ClassValue cache read.
+     * {@code defaultValue}) in a single slot read.
      */
     @Override
     @SuppressWarnings("unchecked")
@@ -373,7 +404,7 @@ public class ClassValueMap<V> extends AbstractMap<Class<?>, V> implements Concur
         if (key.getClass() != Class.class) {
             return defaultValue;
         }
-        Object value = cache.get((Class<?>) key);
+        Object value = mappings.slot((Class<?>) key).get();
         return value == NO_VALUE ? defaultValue : (V) value;
     }
 
@@ -383,9 +414,15 @@ public class ClassValueMap<V> extends AbstractMap<Class<?>, V> implements Concur
             Object old = nullKeyStore.getAndSet(maskNullKeyValue(value));
             return unmaskNullKeyValue(old);
         }
-        Object old = backingMap.put(key, maskNull(value));
-        cache.remove(key); // Invalidate cached value for this key.
-        return unmaskNull(old);
+        Mappings m = mappings;
+        AtomicReference<Object> slot = m.slot(key);
+        synchronized (slot) {
+            Object old = slot.getAndSet(value);
+            if (old == NO_VALUE) {
+                m.added(key);
+            }
+            return valueOf(old);
+        }
     }
 
     @Override
@@ -399,11 +436,18 @@ public class ClassValueMap<V> extends AbstractMap<Class<?>, V> implements Concur
             return null;
         }
         Class<?> clazz = (Class<?>) key;
-        Object old = backingMap.remove(clazz);
-        if (old != null) {
-            cache.remove(clazz);
+        Mappings m = mappings;
+        AtomicReference<Object> slot = m.slot(clazz);
+        if (slot.get() == NO_VALUE) {
+            return null;
         }
-        return unmaskNull(old);
+        synchronized (slot) {
+            Object old = slot.getAndSet(NO_VALUE);
+            if (old != NO_VALUE) {
+                m.removed(clazz);
+            }
+            return valueOf(old);
+        }
     }
 
     @Override
@@ -415,21 +459,33 @@ public class ClassValueMap<V> extends AbstractMap<Class<?>, V> implements Concur
         if (key.getClass() != Class.class) {
             return false;
         }
-        return cache.get((Class<?>) key) != NO_VALUE;
+        return mappings.slot((Class<?>) key).get() != NO_VALUE;
     }
 
     @Override
     public void clear() {
-        // Clear backing stores first.
-        backingMap.clear();
+        Mappings old = mappings;
+        mappings = new Mappings();
         nullKeyStore.set(NO_NULL_KEY_MAPPING);
-        // Replace cache instance to atomically invalidate all per-class entries.
-        cache = createCache();
+        // Let go of the values now: the old slots stay in their classes until the JVM drops them
+        for (ClassKey ref : old.keys) {
+            Class<?> key = ref.get();
+            if (key != null) {
+                old.slot(key).set(NO_VALUE);
+            }
+        }
     }
 
+    /**
+     * {@inheritDoc}
+     * <p>As with a {@link java.util.WeakHashMap}, the count can include, briefly, an entry whose class has just been
+     * unloaded.</p>
+     */
     @Override
     public int size() {
-        return backingMap.size() + (hasNullKeyMapping() ? 1 : 0);
+        Mappings m = mappings;
+        m.expunge();
+        return m.keys.size() + (hasNullKeyMapping() ? 1 : 0);
     }
 
     /**
@@ -444,28 +500,122 @@ public class ClassValueMap<V> extends AbstractMap<Class<?>, V> implements Concur
 
     @Override
     public boolean isEmpty() {
-        return !hasNullKeyMapping() && backingMap.isEmpty();
+        return size() == 0;
     }
 
     @Override
     public boolean containsValue(Object value) {
         Object nullKeyStored = nullKeyStore.get();
         if (nullKeyStored != NO_NULL_KEY_MAPPING) {
-            if (java.util.Objects.equals(unmaskNullKeyValue(nullKeyStored), value)) {
+            if (Objects.equals(unmaskNullKeyValue(nullKeyStored), value)) {
                 return true;
             }
         }
-        return backingMap.containsValue(value == null ? NULL_VALUE : value);
+        for (MappingIterator<Object> it = new MappingIterator<Object>(false) {
+            @Override
+            Object make(Class<?> key, V mapped) {
+                return mapped;
+            }
+        }; it.hasNext(); ) {
+            Object mapped = it.next();
+            if (mapped == value || (value != null && value.equals(mapped))) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @Override
     public void forEach(java.util.function.BiConsumer<? super Class<?>, ? super V> action) {
-        java.util.Objects.requireNonNull(action);
-        Object nullKeyStored = nullKeyStore.get();
-        if (nullKeyStored != NO_NULL_KEY_MAPPING) {
-            action.accept(null, unmaskNullKeyValue(nullKeyStored));
+        Objects.requireNonNull(action);
+        for (Entry<Class<?>, V> entry : entrySet()) {
+            action.accept(entry.getKey(), entry.getValue());
         }
-        backingMap.forEach((key, value) -> action.accept(key, unmaskNull(value)));
+    }
+
+    /**
+     * Walks the null-key mapping (if any), then the mapped classes that are still loaded, reading each one's slot.
+     * Weakly consistent, like a ConcurrentHashMap's iterators; a mapping removed while iterating is skipped.
+     */
+    private abstract class MappingIterator<T> implements Iterator<T> {
+        private final Mappings m = mappings;
+        private final Iterator<ClassKey> keys = m.keys.iterator();
+        private boolean nullEntryPending;
+        private final V nullEntryValue;
+        private boolean hasNextMapping;
+        private Class<?> nextKey;
+        private V nextValue;
+        private boolean removeAllowed;
+        private boolean lastWasNullEntry;
+        private Class<?> lastKey;
+
+        MappingIterator(boolean includeNullKey) {
+            Object stored = nullKeyStore.get();
+            nullEntryPending = includeNullKey && stored != NO_NULL_KEY_MAPPING;
+            nullEntryValue = nullEntryPending ? unmaskNullKeyValue(stored) : null;
+            advance();
+        }
+
+        private void advance() {
+            while (keys.hasNext()) {
+                Class<?> key = keys.next().get();
+                if (key == null) {
+                    continue;                   // unloaded
+                }
+                Object value = m.slot(key).get();
+                if (value == NO_VALUE) {
+                    continue;                   // removed meanwhile
+                }
+                hasNextMapping = true;
+                nextKey = key;
+                nextValue = valueOf(value);
+                return;
+            }
+            hasNextMapping = false;
+            nextKey = null;
+            nextValue = null;
+        }
+
+        abstract T make(Class<?> key, V value);
+
+        @Override
+        public boolean hasNext() {
+            return nullEntryPending || hasNextMapping;
+        }
+
+        @Override
+        public T next() {
+            if (nullEntryPending) {
+                nullEntryPending = false;
+                removeAllowed = true;
+                lastWasNullEntry = true;
+                lastKey = null;
+                return make(null, nullEntryValue);
+            }
+            if (!hasNextMapping) {
+                throw new NoSuchElementException();
+            }
+            Class<?> key = nextKey;
+            V value = nextValue;
+            advance();
+            removeAllowed = true;
+            lastWasNullEntry = false;
+            lastKey = key;
+            return make(key, value);
+        }
+
+        @Override
+        public void remove() {
+            if (!removeAllowed) {
+                throw new IllegalStateException("next() must be called before remove()");
+            }
+            removeAllowed = false;
+            if (lastWasNullEntry) {
+                nullKeyStore.set(NO_NULL_KEY_MAPPING);
+            } else {
+                ClassValueMap.this.remove(lastKey);
+            }
+        }
     }
 
     @Override
@@ -477,50 +627,10 @@ public class ClassValueMap<V> extends AbstractMap<Class<?>, V> implements Concur
         es = new AbstractSet<Entry<Class<?>, V>>() {
             @Override
             public Iterator<Entry<Class<?>, V>> iterator() {
-                final Iterator<Entry<Class<?>, Object>> backingIterator = backingMap.entrySet().iterator();
-                final Object nullKeyStored = nullKeyStore.get();
-                final boolean hasNullEntry = nullKeyStored != NO_NULL_KEY_MAPPING;
-                final V nullValue = hasNullEntry ? unmaskNullKeyValue(nullKeyStored) : null;
-
-                return new Iterator<Entry<Class<?>, V>>() {
-                    private boolean nullEntryReturned = !hasNullEntry;
-                    private boolean removeAllowed;
-                    private boolean lastReturnedNullEntry;
-                    private Class<?> lastReturnedClassKey;
-
+                return new MappingIterator<Entry<Class<?>, V>>(true) {
                     @Override
-                    public boolean hasNext() {
-                        return !nullEntryReturned || backingIterator.hasNext();
-                    }
-
-                    @Override
-                    public Entry<Class<?>, V> next() {
-                        if (!nullEntryReturned) {
-                            nullEntryReturned = true;
-                            removeAllowed = true;
-                            lastReturnedNullEntry = true;
-                            lastReturnedClassKey = null;
-                            return new SimpleImmutableEntry<>(null, nullValue);
-                        }
-                        Entry<Class<?>, Object> entry = backingIterator.next();
-                        removeAllowed = true;
-                        lastReturnedNullEntry = false;
-                        lastReturnedClassKey = entry.getKey();
-                        return new SimpleImmutableEntry<>(entry.getKey(), unmaskNull(entry.getValue()));
-                    }
-
-                    @Override
-                    public void remove() {
-                        if (!removeAllowed) {
-                            throw new IllegalStateException("next() must be called before remove()");
-                        }
-                        removeAllowed = false;
-                        if (lastReturnedNullEntry) {
-                            nullKeyStore.set(NO_NULL_KEY_MAPPING);
-                        } else {
-                            backingIterator.remove();
-                            cache.remove(lastReturnedClassKey);
-                        }
+                    Entry<Class<?>, V> make(Class<?> key, V value) {
+                        return new SimpleImmutableEntry<>(key, value);
                     }
                 };
             }
@@ -534,10 +644,8 @@ public class ClassValueMap<V> extends AbstractMap<Class<?>, V> implements Concur
         return es;
     }
 
-    // The remaining ConcurrentMap methods (putIfAbsent, replace, etc.) can be implemented by
-    // delegating to the backingMap and invalidating the cache as needed.
-
     @Override
+    @SuppressWarnings("unchecked")
     public V putIfAbsent(Class<?> key, V value) {
         if (key == null) {
             Object masked = maskNullKeyValue(value);
@@ -552,21 +660,23 @@ public class ClassValueMap<V> extends AbstractMap<Class<?>, V> implements Concur
                 }
             }
         }
-        // Per Map spec, null-mapped key should be treated as absent.
-        final Object masked = maskNull(value);
-        while (true) {
-            Object current = backingMap.putIfAbsent(key, masked);
-            if (current == null) {
-                cache.remove(key);
-                return null;
+        Mappings m = mappings;
+        AtomicReference<Object> slot = m.slot(key);
+        Object current = slot.get();
+        if (current != NO_VALUE && current != null) {
+            return (V) current;
+        }
+        synchronized (slot) {
+            current = slot.get();
+            // Per Map spec, null-mapped key should be treated as absent.
+            if (current != NO_VALUE && current != null) {
+                return (V) current;
             }
-            if (current != NULL_VALUE) {
-                return unmaskNull(current);
+            slot.set(value);
+            if (current == NO_VALUE) {
+                m.added(key);
             }
-            if (backingMap.replace(key, NULL_VALUE, masked)) {
-                cache.remove(key);
-                return null;
-            }
+            return null;
         }
     }
 
@@ -576,12 +686,12 @@ public class ClassValueMap<V> extends AbstractMap<Class<?>, V> implements Concur
      * Overridden to correctly handle null-value mappings. The default ConcurrentMap implementation
      * cannot distinguish between "key absent" and "key maps to null" (both return null from get()),
      * causing the computed value to be returned without actually being stored when a null-value
-     * mapping exists.
+     * mapping exists. The mapping function runs holding the key's lock: it must not update this map.
      */
     @Override
     @SuppressWarnings("unchecked")
     public V computeIfAbsent(Class<?> key, java.util.function.Function<? super Class<?>, ? extends V> mappingFunction) {
-        java.util.Objects.requireNonNull(mappingFunction);
+        Objects.requireNonNull(mappingFunction);
         if (key == null) {
             Object current = nullKeyStore.get();
             if (current != NO_NULL_KEY_MAPPING && current != NULL_FOR_NULL_KEY) {
@@ -603,33 +713,29 @@ public class ClassValueMap<V> extends AbstractMap<Class<?>, V> implements Concur
                 }
             }
         }
-        // Non-null key hit path: read through the ClassValue cache (identity-based) instead
-        // of a backingMap hash probe. After warmup, computeIfAbsent-backed registries hit
-        // this path ~100% of the time. The cache returns the unmasked value: NO_VALUE means
-        // absent, null means "mapped to null" — both fall through to the atomic compute below.
-        Object cached = cache.get(key);
-        if (cached != NO_VALUE && cached != null) {
-            return (V) cached;
+        // Hit path: one slot read, no lock. After warmup, computeIfAbsent-backed registries hit it ~100% of the time.
+        Mappings m = mappings;
+        AtomicReference<Object> slot = m.slot(key);
+        Object current = slot.get();
+        if (current != NO_VALUE && current != null) {
+            return (V) current;
         }
-        // Delegate to backingMap.compute() for atomicity — holds bucket lock while computing.
-        // NULL_VALUE in backingMap means "key maps to null"; per Map.computeIfAbsent spec
-        // we treat that the same as absent ("or is mapped to null").
-        boolean[] changed = {false};
-        Object result = backingMap.compute(key, (k, oldRaw) -> {
-            if (oldRaw != null && oldRaw != NULL_VALUE) {
-                return oldRaw;  // Non-null value exists, keep it
+        synchronized (slot) {
+            current = slot.get();
+            // Per Map.computeIfAbsent, a key mapped to null is computed as if absent
+            if (current != NO_VALUE && current != null) {
+                return (V) current;
             }
-            V newValue = mappingFunction.apply(k);
+            V newValue = mappingFunction.apply(key);
             if (newValue == null) {
-                return oldRaw;  // Don't change state if function returns null
+                return null;                    // no change
             }
-            changed[0] = true;
-            return newValue;  // Non-null computed value (no masking needed)
-        });
-        if (changed[0]) {
-            cache.remove(key);
+            slot.set(newValue);
+            if (current == NO_VALUE) {
+                m.added(key);
+            }
+            return newValue;
         }
-        return unmaskNull(result);
     }
 
     /**
@@ -638,10 +744,11 @@ public class ClassValueMap<V> extends AbstractMap<Class<?>, V> implements Concur
      * Overridden to correctly handle null-value mappings. The default ConcurrentMap implementation
      * uses {@code putIfAbsent()} when {@code get()} returns null, but {@code putIfAbsent()} returns
      * null for both "inserted successfully" and "existing value is null," causing incorrect behavior.
+     * The remapping function runs holding the key's lock: it must not update this map.
      */
     @Override
     public V compute(Class<?> key, java.util.function.BiFunction<? super Class<?>, ? super V, ? extends V> remappingFunction) {
-        java.util.Objects.requireNonNull(remappingFunction);
+        Objects.requireNonNull(remappingFunction);
         if (key == null) {
             while (true) {
                 Object current = nullKeyStore.get();
@@ -654,26 +761,27 @@ public class ClassValueMap<V> extends AbstractMap<Class<?>, V> implements Concur
                 // CAS failed, retry with current state
             }
         }
-        // Non-null key: delegate to backingMap.compute() for atomicity
-        boolean[] changed = {false};
-        Object result = backingMap.compute(key, (k, oldRaw) -> {
-            V oldValue = (oldRaw == null) ? null : unmaskNull(oldRaw);
-            V newValue = remappingFunction.apply(k, oldValue);
+        Mappings m = mappings;
+        AtomicReference<Object> slot = m.slot(key);
+        synchronized (slot) {
+            Object current = slot.get();
+            V newValue = remappingFunction.apply(key, valueOf(current));
             if (newValue == null) {
-                changed[0] = (oldRaw != null);  // Changed if there was a mapping to remove
-                return null;  // Remove mapping
+                if (current != NO_VALUE) {      // Remove mapping
+                    slot.set(NO_VALUE);
+                    m.removed(key);
+                }
+                return null;
             }
-            changed[0] = true;
-            return maskNull(newValue);
-        });
-        if (changed[0]) {
-            cache.remove(key);
+            slot.set(newValue);
+            if (current == NO_VALUE) {
+                m.added(key);
+            }
+            return newValue;
         }
-        return unmaskNull(result);
     }
 
     @Override
-    @SuppressWarnings("unchecked")
     public boolean remove(Object key, Object value) {
         if (key == null) {
             // CAS loop with equals() comparison (compareAndSet uses ==, which is wrong for value matching)
@@ -682,7 +790,7 @@ public class ClassValueMap<V> extends AbstractMap<Class<?>, V> implements Concur
                 if (current == NO_NULL_KEY_MAPPING) {
                     return false;
                 }
-                if (!java.util.Objects.equals(unmaskNullKeyValue(current), value)) {
+                if (!Objects.equals(unmaskNullKeyValue(current), value)) {
                     return false;
                 }
                 if (nullKeyStore.compareAndSet(current, NO_NULL_KEY_MAPPING)) {
@@ -695,13 +803,23 @@ public class ClassValueMap<V> extends AbstractMap<Class<?>, V> implements Concur
         if (key.getClass() != Class.class) {
             return false;
         }
-        // Mask the value for comparison since backingMap stores masked values
-        boolean removed = backingMap.remove(key, maskNull((V) value));
-        if (removed) {
-            // Only invalidate cache if removal actually occurred
-            cache.remove((Class<?>) key);
+        Class<?> clazz = (Class<?>) key;
+        Mappings m = mappings;
+        AtomicReference<Object> slot = m.slot(clazz);
+        synchronized (slot) {
+            Object current = slot.get();
+            if (current == NO_VALUE || !matches(value, current)) {
+                return false;
+            }
+            slot.set(NO_VALUE);
+            m.removed(clazz);
+            return true;
         }
-        return removed;
+    }
+
+    // As ConcurrentHashMap compares: the given value's equals(), applied to what is mapped
+    private static boolean matches(Object given, Object mapped) {
+        return given == mapped || (given != null && given.equals(mapped));
     }
 
     @Override
@@ -714,7 +832,7 @@ public class ClassValueMap<V> extends AbstractMap<Class<?>, V> implements Concur
                 if (current == NO_NULL_KEY_MAPPING) {
                     return false;
                 }
-                if (!java.util.Objects.equals(unmaskNullKeyValue(current), oldValue)) {
+                if (!Objects.equals(unmaskNullKeyValue(current), oldValue)) {
                     return false;
                 }
                 if (nullKeyStore.compareAndSet(current, replacement)) {
@@ -723,13 +841,15 @@ public class ClassValueMap<V> extends AbstractMap<Class<?>, V> implements Concur
                 // CAS failed (concurrent modification), retry
             }
         }
-        // Mask both values for comparison/storage since backingMap stores masked values
-        boolean replaced = backingMap.replace(key, maskNull(oldValue), maskNull(newValue));
-        if (replaced) {
-            // Only invalidate cache if replacement actually occurred
-            cache.remove(key);
+        AtomicReference<Object> slot = mappings.slot(key);
+        synchronized (slot) {
+            Object current = slot.get();
+            if (current == NO_VALUE || !matches(oldValue, current)) {
+                return false;
+            }
+            slot.set(newValue);
+            return true;
         }
-        return replaced;
     }
 
     @Override
@@ -748,12 +868,15 @@ public class ClassValueMap<V> extends AbstractMap<Class<?>, V> implements Concur
                 // CAS failed, retry
             }
         }
-        Object replaced = backingMap.replace(key, maskNull(value));
-        if (replaced != null) {
-            // Only invalidate cache if replacement actually occurred
-            cache.remove(key);
+        AtomicReference<Object> slot = mappings.slot(key);
+        synchronized (slot) {
+            Object current = slot.get();
+            if (current == NO_VALUE) {
+                return null;                    // No mapping exists, can't replace
+            }
+            slot.set(value);
+            return valueOf(current);
         }
-        return unmaskNull(replaced);
     }
 
     @Override
@@ -765,50 +888,10 @@ public class ClassValueMap<V> extends AbstractMap<Class<?>, V> implements Concur
         vs = new AbstractCollection<V>() {
             @Override
             public Iterator<V> iterator() {
-                final Iterator<Entry<Class<?>, Object>> backingIterator = backingMap.entrySet().iterator();
-                final Object nullKeyStored = nullKeyStore.get();
-                final boolean hasNullEntry = nullKeyStored != NO_NULL_KEY_MAPPING;
-                final V nullValue = hasNullEntry ? unmaskNullKeyValue(nullKeyStored) : null;
-
-                return new Iterator<V>() {
-                    private boolean nullReturned = !hasNullEntry;
-                    private boolean removeAllowed;
-                    private boolean lastReturnedNullEntry;
-                    private Class<?> lastReturnedClassKey;
-
+                return new MappingIterator<V>(true) {
                     @Override
-                    public boolean hasNext() {
-                        return !nullReturned || backingIterator.hasNext();
-                    }
-
-                    @Override
-                    public V next() {
-                        if (!nullReturned) {
-                            nullReturned = true;
-                            removeAllowed = true;
-                            lastReturnedNullEntry = true;
-                            lastReturnedClassKey = null;
-                            return nullValue;
-                        }
-                        Entry<Class<?>, Object> entry = backingIterator.next();
-                        removeAllowed = true;
-                        lastReturnedNullEntry = false;
-                        lastReturnedClassKey = entry.getKey();
-                        return unmaskNull(entry.getValue());
-                    }
-
-                    @Override
-                    public void remove() {
-                        if (!removeAllowed) {
-                            throw new IllegalStateException("next() must be called before remove()");
-                        }
-                        removeAllowed = false;
-                        if (lastReturnedNullEntry) {
-                            nullKeyStore.set(NO_NULL_KEY_MAPPING);
-                        } else {
-                            backingIterator.remove();
-                            cache.remove(lastReturnedClassKey);
-                        }
+                    V make(Class<?> key, V value) {
+                        return value;
                     }
                 };
             }
@@ -819,7 +902,6 @@ public class ClassValueMap<V> extends AbstractMap<Class<?>, V> implements Concur
             }
 
             @Override
-            @SuppressWarnings("unchecked")
             public boolean contains(Object o) {
                 return containsValue(o);
             }

@@ -1,7 +1,6 @@
 package com.cedarsoftware.util;
 
-import java.lang.reflect.Field;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.junit.jupiter.api.Test;
@@ -349,15 +348,15 @@ class ClassValueMapBugFixTest {
         assertFalse(map.containsKey(String.class), "entry should be removed from map");
     }
 
+    /**
+     * After put() and clear() race and then stop, what get() says, what iteration lists and size() must agree: a
+     * clear() must not leave a value behind that get() still returns but the map no longer lists (or the reverse).
+     */
     @Test
     void testClearDoesNotLeaveQuiescentStaleClassCacheEntries() throws Exception {
-        boolean staleObserved = false;
-
-        for (int attempt = 0; attempt < 6 && !staleObserved; attempt++) {
+        for (int attempt = 0; attempt < 6; attempt++) {
             ClassValueMap<Integer> map = new ClassValueMap<>();
-            ConcurrentHashMap<Class<?>, Object> backingMap = getBackingMap(map);
             AtomicBoolean running = new AtomicBoolean(true);
-            AtomicBoolean staleCandidate = new AtomicBoolean(false);
 
             Thread writer = new Thread(() -> {
                 while (running.get()) {
@@ -370,40 +369,23 @@ class ClassValueMapBugFixTest {
                     map.clear();
                 }
             });
-            Thread checker = new Thread(() -> {
-                while (running.get()) {
-                    if (map.get(String.class) != null && !backingMap.containsKey(String.class)) {
-                        staleCandidate.set(true);
-                        running.set(false);
-                        break;
-                    }
-                }
-            });
 
             writer.start();
             clearer.start();
-            checker.start();
-            Thread.sleep(1200);
+            Thread.sleep(200);
             running.set(false);
             writer.join(2000);
             clearer.join(2000);
-            checker.join(2000);
 
-            if (staleCandidate.get() && !backingMap.containsKey(String.class)) {
-                Integer v1 = map.get(String.class);
-                Integer v2 = map.get(String.class);
-                staleObserved = v1 != null && v2 != null;
+            boolean listed = false;
+            int count = 0;
+            for (Map.Entry<Class<?>, Integer> entry : map.entrySet()) {
+                count++;
+                listed |= entry.getKey() == String.class;
             }
+            assertEquals(map.get(String.class) != null, listed, "get() and iteration disagree after the race");
+            assertEquals(map.containsKey(String.class), listed, "containsKey() and iteration disagree after the race");
+            assertEquals(count, map.size(), "size() and iteration disagree after the race");
         }
-
-        assertFalse(staleObserved,
-                "clear() must not leave stale ClassValue entries after concurrent clear/put activity");
-    }
-
-    @SuppressWarnings("unchecked")
-    private static ConcurrentHashMap<Class<?>, Object> getBackingMap(ClassValueMap<?> map) throws Exception {
-        Field field = ClassValueMap.class.getDeclaredField("backingMap");
-        field.setAccessible(true);
-        return (ConcurrentHashMap<Class<?>, Object>) field.get(map);
     }
 }

@@ -2,6 +2,8 @@ package com.cedarsoftware.util;
 
 import java.lang.reflect.Array;
 import java.lang.reflect.GenericArrayType;
+import java.lang.reflect.GenericDeclaration;
+import java.lang.reflect.Member;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.lang.reflect.TypeVariable;
@@ -11,6 +13,7 @@ import java.util.Collection;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Useful APIs for working with Java types, including resolving type variables and generic types.
@@ -32,16 +35,34 @@ import java.util.Set;
  *         limitations under the License.
  */
 public class TypeUtilities {
-    private static final int DEFAULT_TYPE_CACHE_SIZE = 2000;
+    /**
+     * resolveType() answers, kept on a class (a ClassValue): rootContext -> (typeToResolve -> resolved). A resolution
+     * is kept on its owner: of the classes the two types refer to, the one whose ClassLoader has all the others' as
+     * ancestors (see {@link #owner(Type, Type)}). Everything the entry refers to is then loaded by the owner's loader
+     * or an ancestor of it, so the entry never keeps a class alive longer than the owner, and it goes away with the
+     * owner. A lookup takes no lock and writes nothing. (It was a bounded, locking LRU cache that held its classes
+     * until evicted: a generic field kept its class, and the class's loader, in memory.)
+     */
+    private static final ClassValue<Map<Type, Map<Type, Type>>> RESOLVED =
+            new ClassValue<Map<Type, Map<Type, Type>>>() {
+                @Override
+                protected Map<Type, Map<Type, Type>> computeValue(Class<?> owner) {
+                    return new ConcurrentHashMap<>();
+                }
+            };
 
-    // Size configurable via system property: -Dcedarsoftware.util.typeResolveCacheSize=5000
-    private static final Map<ResolveTypeCacheKey, Type> TYPE_RESOLVE_CACHE =
-            new LRUCache<>(Integer.getInteger("cedarsoftware.util.typeResolveCacheSize", DEFAULT_TYPE_CACHE_SIZE));
-    private static final ThreadLocal<ResolveTypeCacheKey> TYPE_RESOLVE_LOOKUP_KEY =
-            ThreadLocal.withInitial(ResolveTypeCacheKey::new);
+    /** Stands for "the types involve classes of unrelated ClassLoaders": such a resolution is not cached. */
+    private static final class UnrelatedLoaders {
+    }
+    private static final Class<?> UNRELATED = UnrelatedLoaders.class;
 
-    // Cache for array class lookups to avoid Array.newInstance() allocations
-    private static final ClassValueMap<Class<?>> ARRAY_CLASS_CACHE = new ClassValueMap<>();
+    // Per component class, its array class: avoids Array.newInstance() allocations
+    private static final ClassValue<Class<?>> ARRAY_CLASS_CACHE = new ClassValue<Class<?>>() {
+        @Override
+        protected Class<?> computeValue(Class<?> componentClass) {
+            return Array.newInstance(componentClass, 0).getClass();
+        }
+    };
 
     /**
      * Made constructor private - this class is static.
@@ -187,15 +208,127 @@ public class TypeUtilities {
      * which should be the most concrete type (for example, Child.class).
      */
     public static Type resolveType(Type rootContext, Type typeToResolve) {
-        ResolveTypeCacheKey lookupKey = TYPE_RESOLVE_LOOKUP_KEY.get();
-        lookupKey.set(rootContext, typeToResolve);
-        Type resolved = TYPE_RESOLVE_CACHE.get(lookupKey);
+        if (rootContext == null || typeToResolve == null) {
+            return resolveType(rootContext, rootContext, typeToResolve, new IdentitySet<>());
+        }
+        // Fast path: a class resolving the types of its own hierarchy (its fields, say) keeps them on itself, so a hit
+        // needs no owner() walk
+        Map<Type, Type> onRoot = rootContext instanceof Class
+                ? resolutions(RESOLVED.get((Class<?>) rootContext), rootContext) : null;
+        if (onRoot != null) {
+            Type resolved = onRoot.get(typeToResolve);
+            if (resolved != null) {
+                return resolved;
+            }
+        }
+        Class<?> owner = typeToResolve == rootContext
+                ? deeper(null, rootContext, 0) : owner(rootContext, typeToResolve);
+        if (owner == UNRELATED || owner == null) {
+            return resolveType(rootContext, rootContext, typeToResolve, new IdentitySet<>());
+        }
+        Map<Type, Type> resolutions = owner == rootContext ? onRoot : resolutions(RESOLVED.get(owner), rootContext);
+        Type resolved = resolutions.get(typeToResolve);
         if (resolved == null) {
             resolved = resolveType(rootContext, rootContext, typeToResolve, new IdentitySet<>());
-            TYPE_RESOLVE_CACHE.put(new ResolveTypeCacheKey(rootContext, typeToResolve), resolved);
+            if (resolved != null) {
+                Type raced = resolutions.putIfAbsent(typeToResolve, resolved);
+                if (raced != null) {
+                    resolved = raced;
+                }
+            }
         }
-        lookupKey.clear();
         return resolved;
+    }
+
+    private static Map<Type, Type> resolutions(Map<Type, Map<Type, Type>> byRoot, Type rootContext) {
+        Map<Type, Type> resolutions = byRoot.get(rootContext);
+        if (resolutions == null) {
+            Map<Type, Type> fresh = new ConcurrentHashMap<>();
+            Map<Type, Type> raced = byRoot.putIfAbsent(rootContext, fresh);
+            resolutions = raced != null ? raced : fresh;
+        }
+        return resolutions;
+    }
+
+    /**
+     * Of the classes the two types refer to, the one whose ClassLoader has all the others' loaders as ancestors (the
+     * bootstrap loader is everyone's): a cache entry for them can live in that class without keeping anything longer
+     * than the class lives. {@link #UNRELATED} when two of the loaders are not in one line of delegation, or a type is
+     * of a kind this does not know.
+     */
+    private static Class<?> owner(Type rootContext, Type typeToResolve) {
+        return deeper(deeper(null, rootContext, 0), typeToResolve, 0);
+    }
+
+    private static Class<?> deeper(Class<?> owner, Type type, int depth) {
+        if (owner == UNRELATED || type == null) {
+            return owner;
+        }
+        if (depth > 32) {
+            return UNRELATED;
+        }
+        if (type instanceof Class) {
+            return deeper(owner, (Class<?>) type);
+        }
+        if (type instanceof ParameterizedType) {
+            ParameterizedType pt = (ParameterizedType) type;
+            owner = deeper(owner, pt.getRawType(), depth + 1);
+            owner = deeper(owner, pt.getOwnerType(), depth + 1);
+            for (Type arg : pt.getActualTypeArguments()) {
+                owner = deeper(owner, arg, depth + 1);
+            }
+            return owner;
+        }
+        if (type instanceof GenericArrayType) {
+            return deeper(owner, ((GenericArrayType) type).getGenericComponentType(), depth + 1);
+        }
+        if (type instanceof WildcardType) {
+            WildcardType wt = (WildcardType) type;
+            for (Type bound : wt.getUpperBounds()) {
+                owner = deeper(owner, bound, depth + 1);
+            }
+            for (Type bound : wt.getLowerBounds()) {
+                owner = deeper(owner, bound, depth + 1);
+            }
+            return owner;
+        }
+        if (type instanceof TypeVariable) {
+            // A variable refers to where it is declared; its bounds are resolvable from there
+            GenericDeclaration declaration = ((TypeVariable<?>) type).getGenericDeclaration();
+            if (declaration instanceof Class) {
+                return deeper(owner, (Class<?>) declaration);
+            }
+            if (declaration instanceof Member) {
+                return deeper(owner, ((Member) declaration).getDeclaringClass());
+            }
+            return UNRELATED;
+        }
+        return UNRELATED;
+    }
+
+    private static Class<?> deeper(Class<?> owner, Class<?> c) {
+        if (owner == null) {
+            return c;
+        }
+        ClassLoader ownerLoader = owner.getClassLoader();
+        ClassLoader loader = c.getClassLoader();
+        if (ownerLoader == loader || isAncestor(loader, ownerLoader)) {
+            return owner;
+        }
+        return isAncestor(ownerLoader, loader) ? c : UNRELATED;
+    }
+
+    /** True if {@code ancestor} is {@code loader} or one of its parents (null, the bootstrap loader, is everyone's). */
+    private static boolean isAncestor(ClassLoader ancestor, ClassLoader loader) {
+        if (ancestor == null) {
+            return true;
+        }
+        for (ClassLoader l = loader; l != null; l = l.getParent()) {
+            if (l == ancestor) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
@@ -206,12 +339,7 @@ public class TypeUtilities {
      * @return the array class (e.g., String[].class for String.class)
      */
     private static Class<?> getArrayClass(Class<?> componentClass) {
-        Class<?> arrayClass = ARRAY_CLASS_CACHE.getByClass(componentClass);
-        if (arrayClass == null) {
-            arrayClass = Array.newInstance(componentClass, 0).getClass();
-            ARRAY_CLASS_CACHE.put(componentClass, arrayClass);
-        }
-        return arrayClass;
+        return ARRAY_CLASS_CACHE.get(componentClass);
     }
 
     /**
@@ -497,55 +625,6 @@ public class TypeUtilities {
             }
         }
         return fieldGenericType;
-    }
-
-    /**
-     * Key used for type-resolution cache lookups.
-     * <p>
-     * Instances inserted into the cache are immutable; a ThreadLocal instance is reused for cache lookups.
-     * </p>
-     */
-    private static final class ResolveTypeCacheKey {
-        private Type rootContext;
-        private Type typeToResolve;
-        private int hash;
-
-        ResolveTypeCacheKey() {
-        }
-
-        ResolveTypeCacheKey(Type rootContext, Type typeToResolve) {
-            set(rootContext, typeToResolve);
-        }
-
-        void set(Type rootContext, Type typeToResolve) {
-            this.rootContext = rootContext;
-            this.typeToResolve = typeToResolve;
-            this.hash = 31 * Objects.hashCode(rootContext) + Objects.hashCode(typeToResolve);
-        }
-
-        void clear() {
-            this.rootContext = null;
-            this.typeToResolve = null;
-            this.hash = 0;
-        }
-
-        @Override
-        public int hashCode() {
-            return hash;
-        }
-
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) {
-                return true;
-            }
-            if (!(o instanceof ResolveTypeCacheKey)) {
-                return false;
-            }
-            ResolveTypeCacheKey that = (ResolveTypeCacheKey) o;
-            return Objects.equals(rootContext, that.rootContext) &&
-                    Objects.equals(typeToResolve, that.typeToResolve);
-        }
     }
 
     // --- Internal implementations of Type interfaces ---

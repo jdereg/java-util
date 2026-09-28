@@ -2597,11 +2597,17 @@ public class ClassUtilities {
         String[] keys = new String[size];
         Object[] values = new Object[size];
         int n = 0;
-        for (Map.Entry<String, Object> entry : map.entrySet()) {
+        for (Map.Entry<?, ?> entry : ((Map<?, ?>) map).entrySet()) {
             if (n == size) {
                 return valuesInKeyOrderSorted(map);     // the map grew while we read it
             }
-            keys[n] = entry.getKey();
+            Object key = entry.getKey();
+            if (!(key instanceof String)) {
+                // Named parameters are Strings; ordering by name was a ClassCastException or NullPointerException
+                throw new IllegalArgumentException("Cannot order Map arguments by parameter name: "
+                        + (key == null ? "a key is null" : "a key is a " + key.getClass().getName()));
+            }
+            keys[n] = (String) key;
             values[n] = entry.getValue();
             n++;
         }
@@ -2851,13 +2857,14 @@ public class ClassUtilities {
     /**
      * Check if the map has generated keys (arg0, arg1, etc.)
      */
-    private static boolean hasGeneratedKeys(Map<String, Object> map) {
+    private static boolean hasGeneratedKeys(Map<?, ?> map) {
         if (map.isEmpty()) {
             return false;
         }
-        // Check if all keys match the pattern arg0, arg1, etc.
-        for (String key : map.keySet()) {
-            if (!isSyntheticArgName(key)) {
+        // Check if all keys match the pattern arg0, arg1, etc. A key that is not a String (or is null) is not one:
+        // it was a ClassCastException here.
+        for (Object key : map.keySet()) {
+            if (!(key instanceof String) || !isSyntheticArgName((String) key)) {
                 return false;
             }
         }

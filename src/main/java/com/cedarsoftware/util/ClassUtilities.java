@@ -1716,10 +1716,16 @@ public class ClassUtilities {
      * Finds the closest matching class in an inheritance hierarchy from a map of candidate classes.
      * <p>
      * This method searches through a map of candidate classes to find the one that is most closely
-     * related to the input class in terms of inheritance distance. The search prioritizes:
+     * related to the input class. The search prioritizes:
      * <ul>
      *     <li>Exact class match (returns immediately)</li>
-     *     <li>Closest superclass/interface in the inheritance hierarchy</li>
+     *     <li>The most specific of the candidates the class is assignable to: a candidate that another applicable
+     *         candidate is a subtype of is passed over, however few steps away it is, as Java chooses the most
+     *         specific overload (JLS 15.12.2.5). For an {@code ArrayList}, {@code Collection} is chosen over
+     *         {@code Object}, and {@code List} over {@code Collection}.</li>
+     *     <li>Among candidates unrelated to each other, the fewest inheritance steps away
+     *         ({@link #computeInheritanceDistance}); then a class over an interface; then the first in the
+     *         map's iteration order.</li>
      * </ul>
      * <p>
      * This method is typically used for cache misses when looking up class-specific handlers
@@ -1744,49 +1750,58 @@ public class ClassUtilities {
             return exactMatch;
         }
 
-        // If no exact match, then look for closest inheritance match
-        // Pull the distance map once to avoid repeated lookups
+        // The candidates clazz is assignable to: its hierarchy holds exactly those (JLS 4.10)
         Map<Class<?>, Integer> distanceMap = getClassHierarchyInfo(clazz).getDistanceMap();
-        T closest = defaultValue;
-        int minDistance = Integer.MAX_VALUE;
-        Class<?> closestClass = null;
-
-        for (Map.Entry<Class<?>, T> entry : candidateClasses.entrySet()) {
-            Class<?> candidateClass = entry.getKey();
-            Integer distance = distanceMap.get(candidateClass);
-            if (distance != null && (distance < minDistance ||
-                    (distance == minDistance && shouldPreferNewCandidate(candidateClass, closestClass)))) {
-                minDistance = distance;
-                closest = entry.getValue();
-                closestClass = candidateClass;
+        Class<?>[] applicable = null;
+        int[] distances = null;
+        int count = 0;
+        for (Class<?> candidate : candidateClasses.keySet()) {
+            Integer distance = distanceMap.get(candidate);
+            if (distance == null) {
+                continue;
             }
+            if (applicable == null) {
+                applicable = new Class<?>[4];
+                distances = new int[4];
+            } else if (count == applicable.length) {
+                applicable = Arrays.copyOf(applicable, count * 2);
+                distances = Arrays.copyOf(distances, count * 2);
+            }
+            applicable[count] = candidate;
+            distances[count++] = distance;
         }
-        return closest;
+        if (count == 0) {
+            return defaultValue;
+        }
+
+        // The most specific of them. Choosing by distance alone could pass over a subtype for its own supertype:
+        // ArrayList reaches Object in 2 steps (through RandomAccess) and Collection in 3, and on a tie a class was
+        // preferred, so Object won over Collection. So the answer is the best -- fewest steps, then a class over an
+        // interface, then the first -- of the candidates no other applicable candidate is a subtype of. That is
+        // checked only for a candidate that would displace the best so far.
+        int best = -1;
+        for (int i = 0; i < count; i++) {
+            if (best >= 0 && !(distances[i] < distances[best] || (distances[i] == distances[best]
+                    && applicable[best].isInterface() && !applicable[i].isInterface()))) {
+                continue;
+            }
+            if (count > 1 && hasMoreSpecific(applicable[i], applicable, count)) {
+                continue;
+            }
+            best = i;
+        }
+        return candidateClasses.get(applicable[best]);
     }
 
-    /**
-     * Determines if a new candidate class should be preferred over the current closest class when
-     * they have equal inheritance distances.
-     * <p>
-     * The selection logic follows these rules in order:
-     * <ol>
-     *     <li>If there is no current class (null), the new candidate is preferred</li>
-     *     <li>Classes are preferred over interfaces</li>
-     *     <li>When both are classes or both are interfaces, the more specific type is preferred</li>
-     * </ol>
-     *
-     * @param newClass the candidate class being evaluated (must not be null)
-     * @param currentClass the current closest matching class (may be null)
-     * @return true if newClass should be preferred over currentClass, false otherwise
-     */
-    private static boolean shouldPreferNewCandidate(Class<?> newClass, Class<?> currentClass) {
-        if (currentClass == null) return true;
-        // Prefer classes to interfaces
-        if (newClass.isInterface() != currentClass.isInterface()) {
-            return !newClass.isInterface();
+    /** Whether another of the first {@code count} {@code candidates} is a proper subtype of {@code candidate}. */
+    private static boolean hasMoreSpecific(Class<?> candidate, Class<?>[] candidates, int count) {
+        for (int i = 0; i < count; i++) {
+            Class<?> other = candidates[i];
+            if (other != candidate && candidate.isAssignableFrom(other)) {
+                return true;
+            }
         }
-        // Prefer the more specific class: newClass should be a subtype of currentClass
-        return currentClass.isAssignableFrom(newClass);
+        return false;
     }
 
     /**

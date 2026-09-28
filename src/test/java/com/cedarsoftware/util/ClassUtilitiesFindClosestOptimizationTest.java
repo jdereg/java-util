@@ -50,11 +50,10 @@ class ClassUtilitiesFindClosestOptimizationTest {
         candidates.put(Comparable.class, "Comparable");
         candidates.put(Object.class, "Object");
         
-        // Object is the direct superclass of String (distance 1)
-        // Comparable is an interface implemented by String (different distance calculation)
-        // Object wins as the closest match
+        // Both are 1 step from String (its superclass and a superinterface), but every Comparable is an Object:
+        // the more specific candidate wins, as Java chooses the most specific overload
         String result = ClassUtilities.findClosest(String.class, candidates, "default");
-        assertEquals("Object", result);
+        assertEquals("Comparable", result);
     }
     
     @Test
@@ -77,11 +76,10 @@ class ClassUtilitiesFindClosestOptimizationTest {
         candidates.put(CharSequence.class, "CharSequence");
         candidates.put(Object.class, "Object");
         
-        // Object is the direct superclass with distance 1
-        // Comparable and CharSequence are interfaces
-        // Object wins as the closest match
+        // All three are 1 step from String. Object is passed over: Comparable and CharSequence are both more
+        // specific. Those two are unrelated interfaces at the same distance, so the first in the map's order wins
         String result = ClassUtilities.findClosest(String.class, candidates, "default");
-        assertEquals("Object", result);
+        assertEquals("Comparable", result);
     }
     
     @Test

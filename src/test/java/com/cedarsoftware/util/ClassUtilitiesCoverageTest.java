@@ -81,7 +81,8 @@ class ClassUtilitiesCoverageTest {
     @Test
     void testGetClassIfEnum() {
         assertEquals(OuterEnum.class, ClassUtilities.getClassIfEnum(OuterEnum.class));
-        assertEquals(OuterEnum.class, ClassUtilities.getClassIfEnum(OuterEnum.Inner.class));
+        // A class declared inside an enum is not one (this returned OuterEnum, and json-io wrote Inner as an enum)
+        assertNull(ClassUtilities.getClassIfEnum(OuterEnum.Inner.class));
         assertNull(ClassUtilities.getClassIfEnum(String.class));
     }
 

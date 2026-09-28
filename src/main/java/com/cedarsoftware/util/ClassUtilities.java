@@ -2257,10 +2257,15 @@ public class ClassUtilities {
 
 
     /**
-     * Returns the related enum class for the provided class, if one exists.
+     * Returns the enum that instances of {@code c} belong to: {@code c} itself when it is an enum, or the enum whose
+     * constant body it is (a constant with a body, {@code PLUS { ... }}, is an anonymous subclass of its enum).
+     * <p>
+     * A class merely declared inside an enum ({@code enum Status { ...; static class Detail {} }}) is not an enum: its
+     * instances are not constants, and this returns null for it. (It returned the enclosing enum, so json-io wrote a
+     * {@code Status.Detail} as an enum and failed with a ClassCastException.)
      *
      * @param c the class to check; may be null
-     * @return the related enum class, or null if none is found
+     * @return the enum class, or null if instances of {@code c} are not enum constants
      */
     public static Class<?> getClassIfEnum(Class<?> c) {
         if (c == null) {
@@ -2270,11 +2275,13 @@ public class ClassUtilities {
     }
 
     /**
-     * Computes the enum type for a given class by first checking if the class itself is an enum,
-     * then traversing its superclass hierarchy, and finally its enclosing classes.
+     * The enum instances of {@code c} belong to: {@code c} if it is an enum, else the enum among its superclasses (a
+     * constant body's class extends its enum). Enclosing classes are not consulted: a class nested in an enum is not
+     * one, and on JDK 8 {@code getEnclosingClass()} can throw NoClassDefFoundError, resolving the outer class of other
+     * nested classes the enclosing class names.
      *
      * @param c the class to check; not null
-     * @return the related enum class if found, or null otherwise
+     * @return the enum class if found, or null otherwise
      */
     private static Class<?> computeEnum(Class<?> c) {
         // Fast path: if the class itself is an enum (and not java.lang.Enum), return it immediately.
@@ -2289,16 +2296,6 @@ public class ClassUtilities {
                 return current;
             }
         }
-
-        // Traverse the enclosing class chain.
-        current = c.getEnclosingClass();
-        while (current != null) {
-            if (current.isEnum() && current != Enum.class) {
-                return current;
-            }
-            current = current.getEnclosingClass();
-        }
-
         return null;
     }
 

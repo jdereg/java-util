@@ -16,6 +16,8 @@ import java.util.concurrent.atomic.AtomicIntegerArray;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicLongArray;
 import java.util.concurrent.atomic.AtomicReferenceArray;
+import java.util.concurrent.atomic.DoubleAdder;
+import java.util.concurrent.atomic.LongAdder;
 import java.util.stream.DoubleStream;
 import java.util.stream.IntStream;
 import java.util.stream.LongStream;
@@ -155,6 +157,36 @@ final class UniversalConversions {
     static AtomicLong longToAtomicLong(Object from, Converter converter) {
         Long value = (Long) from;
         return value == null ? null : new AtomicLong(value);
+    }
+
+    static long longAdderToLong(Object from, Converter converter) {
+        return ((LongAdder) from).sum();
+    }
+
+    static double doubleAdderToDouble(Object from, Converter converter) {
+        return ((DoubleAdder) from).sum();
+    }
+
+    /** A new LongAdder holding {@code from}. */
+    static LongAdder longToLongAdder(Object from, Converter converter) {
+        Long value = (Long) from;
+        if (value == null) {
+            return null;
+        }
+        LongAdder adder = new LongAdder();
+        adder.add(value);
+        return adder;
+    }
+
+    /** A new DoubleAdder holding {@code from}. */
+    static DoubleAdder doubleToDoubleAdder(Object from, Converter converter) {
+        Double value = (Double) from;
+        if (value == null) {
+            return null;
+        }
+        DoubleAdder adder = new DoubleAdder();
+        adder.add(value);
+        return adder;
     }
 
     /**

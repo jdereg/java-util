@@ -846,6 +846,13 @@ public final class Converter {
         CONVERSION_DB.put(Void.class, AtomicLong.class, VoidConversions::toNull);
         CONVERSION_DB.put(Long.class, AtomicLong.class, NumberConversions::toAtomicLong);  // Bridge
         CONVERSION_DB.put(AtomicLong.class, AtomicLong.class, AtomicLongConversions::toAtomicLong);
+        // An adder converts to a copy of itself; the rest of their conversions are bridged through Long and Double
+        CONVERSION_DB.put(java.util.concurrent.atomic.LongAdder.class, java.util.concurrent.atomic.LongAdder.class,
+                (from, converter) -> UniversalConversions.longToLongAdder(
+                        UniversalConversions.longAdderToLong(from, converter), converter));
+        CONVERSION_DB.put(java.util.concurrent.atomic.DoubleAdder.class, java.util.concurrent.atomic.DoubleAdder.class,
+                (from, converter) -> UniversalConversions.doubleToDoubleAdder(
+                        UniversalConversions.doubleAdderToDouble(from, converter), converter));
         CONVERSION_DB.put(Map.class, AtomicLong.class, MapConversions::toAtomicLong);  // Better error messages
 
         // Date conversions supported
@@ -878,13 +885,6 @@ public final class Converter {
         CONVERSION_DB.put(Map.class, java.sql.Date.class, MapConversions::toSqlDate);
         CONVERSION_DB.put(String.class, java.sql.Date.class, StringConversions::toSqlDate);
 
-        // Timestamp conversions supported
-        CONVERSION_DB.put(Void.class, Timestamp.class, VoidConversions::toNull);
-        CONVERSION_DB.put(Long.class, Timestamp.class, NumberConversions::toTimestamp);
-        CONVERSION_DB.put(Double.class, Timestamp.class, DoubleConversions::toTimestamp);
-        CONVERSION_DB.put(BigInteger.class, Timestamp.class, BigIntegerConversions::toTimestamp);
-        CONVERSION_DB.put(BigDecimal.class, Timestamp.class, BigDecimalConversions::toTimestamp);
-        CONVERSION_DB.put(Timestamp.class, Timestamp.class, DateConversions::toTimestamp);
         // java.sql.Time: JDBC's time of day (see SqlTimeConversions). Every other source that reaches Date reaches
         // Time too, through the Date → Time bridge in getPrimaryToSurrogatePairs(); it got a java.util.Date instead.
         CONVERSION_DB.put(Void.class, java.sql.Time.class, VoidConversions::toNull);
@@ -897,6 +897,13 @@ public final class Converter {
         CONVERSION_DB.put(java.sql.Time.class, Map.class, SqlTimeConversions::toMap);
         CONVERSION_DB.put(java.sql.Time.class, LocalTime.class, SqlTimeConversions::toLocalTime);
 
+        // Timestamp conversions supported
+        CONVERSION_DB.put(Void.class, Timestamp.class, VoidConversions::toNull);
+        CONVERSION_DB.put(Long.class, Timestamp.class, NumberConversions::toTimestamp);
+        CONVERSION_DB.put(Double.class, Timestamp.class, DoubleConversions::toTimestamp);
+        CONVERSION_DB.put(BigInteger.class, Timestamp.class, BigIntegerConversions::toTimestamp);
+        CONVERSION_DB.put(BigDecimal.class, Timestamp.class, BigDecimalConversions::toTimestamp);
+        CONVERSION_DB.put(Timestamp.class, Timestamp.class, DateConversions::toTimestamp);
         CONVERSION_DB.put(java.sql.Date.class, Timestamp.class, SqlDateConversions::toTimestamp);
         CONVERSION_DB.put(Date.class, Timestamp.class, DateConversions::toTimestamp);
         CONVERSION_DB.put(Duration.class, Timestamp.class, DurationConversions::toTimestamp);
@@ -1182,13 +1189,6 @@ public final class Converter {
         CONVERSION_DB.put(Path.class, URL.class, PathConversions::toURL);
 
         // URI Conversions
-        CONVERSION_DB.put(Void.class, URI.class, VoidConversions::toNull);
-        CONVERSION_DB.put(URI.class, URI.class, Converter::identity);
-        CONVERSION_DB.put(URL.class, URI.class, UrlConversions::toURI);
-        CONVERSION_DB.put(String.class, URI.class, StringConversions::toURI);
-        CONVERSION_DB.put(Map.class, URI.class, MapConversions::toURI);
-        CONVERSION_DB.put(File.class, URI.class, FileConversions::toURI);
-        CONVERSION_DB.put(Path.class, URI.class, PathConversions::toURI);
         // InetAddress: an IP address, never a looked-up name (see InetAddressConversions)
         CONVERSION_DB.put(Void.class, java.net.InetAddress.class, VoidConversions::toNull);
         CONVERSION_DB.put(java.net.InetAddress.class, java.net.InetAddress.class, Converter::identity);
@@ -1197,6 +1197,13 @@ public final class Converter {
         CONVERSION_DB.put(java.net.InetAddress.class, String.class, InetAddressConversions::toString);
         CONVERSION_DB.put(java.net.InetAddress.class, Map.class, InetAddressConversions::toMap);
 
+        CONVERSION_DB.put(Void.class, URI.class, VoidConversions::toNull);
+        CONVERSION_DB.put(URI.class, URI.class, Converter::identity);
+        CONVERSION_DB.put(URL.class, URI.class, UrlConversions::toURI);
+        CONVERSION_DB.put(String.class, URI.class, StringConversions::toURI);
+        CONVERSION_DB.put(Map.class, URI.class, MapConversions::toURI);
+        CONVERSION_DB.put(File.class, URI.class, FileConversions::toURI);
+        CONVERSION_DB.put(Path.class, URI.class, PathConversions::toURI);
 
         // TimeZone Conversions
         CONVERSION_DB.put(Void.class, TimeZone.class, VoidConversions::toNull);
@@ -1593,6 +1600,11 @@ public final class Converter {
                             UniversalConversions::atomicIntegerToInt, null),
                     new SurrogatePrimaryPair(AtomicLong.class, Long.class,
                             UniversalConversions::atomicLongToLong, null),
+                    // LongAdder / DoubleAdder: their sum
+                    new SurrogatePrimaryPair(java.util.concurrent.atomic.LongAdder.class, Long.class,
+                            UniversalConversions::longAdderToLong, null),
+                    new SurrogatePrimaryPair(java.util.concurrent.atomic.DoubleAdder.class, Double.class,
+                            UniversalConversions::doubleAdderToDouble, null),
 
                     // String builders → String (lossless via .toString())
                     new SurrogatePrimaryPair(CharSequence.class, String.class,
@@ -1653,6 +1665,11 @@ public final class Converter {
                             UniversalConversions::integerToAtomicInteger),
                     new SurrogatePrimaryPair(Long.class, AtomicLong.class, null,
                             UniversalConversions::longToAtomicLong),
+                    // A new LongAdder / DoubleAdder holding the value
+                    new SurrogatePrimaryPair(Long.class, java.util.concurrent.atomic.LongAdder.class, null,
+                            UniversalConversions::longToLongAdder),
+                    new SurrogatePrimaryPair(Double.class, java.util.concurrent.atomic.DoubleAdder.class, null,
+                            UniversalConversions::doubleToDoubleAdder),
 
                     // String → String builders (create new mutable builder)
                     new SurrogatePrimaryPair(String.class, StringBuffer.class, null,

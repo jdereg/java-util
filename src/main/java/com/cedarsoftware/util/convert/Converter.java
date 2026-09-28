@@ -2411,6 +2411,25 @@ public final class Converter {
             return 0;
         });
 
+        // For the same target, a source before its own supertypes, as Java prefers the most specific overload: the
+        // distance alone could rank a supertype first (an ArrayList is 2 steps from Object, through RandomAccess, and
+        // 3 from Collection), so an added Object conversion won over a Collection one. Not a comparator rule -- mixed
+        // with the distance it would not be transitive -- but a pass over the sorted list: each pair moves before the
+        // first earlier one, for its target, whose source is a proper supertype of its own. The list before it has no
+        // pair after one it should precede, and none between that position and its own can be a subtype of it.
+        for (int j = 1; j < pairs.size(); j++) {
+            InheritancePair pair = pairs.get(j);
+            for (int i = 0; i < j; i++) {
+                InheritancePair earlier = pairs.get(i);
+                if (earlier.target == pair.target && earlier.source != pair.source
+                        && earlier.source.isAssignableFrom(pair.source)) {
+                    pairs.remove(j);
+                    pairs.add(i, pair);
+                    break;
+                }
+            }
+        }
+
         InheritancePair[] pairsArray = pairs.toArray(new InheritancePair[0]);
         InheritancePair[] existing = cacheInheritancePairs.putIfAbsent(sourceType, toType, pairsArray);
         return existing != null ? existing : pairsArray;

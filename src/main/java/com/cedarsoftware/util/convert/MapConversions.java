@@ -110,6 +110,8 @@ final class MapConversions {
     static final String LEAST_SIG_BITS = "leastSigBits";
     static final String ID = "id";
     static final String URI_KEY = "URI";
+    static final String HOST = "host";
+    static final String ADDRESS = "address";
     static final String URL_KEY = "URL";
     static final String FILE_KEY = "file";
     static final String PATH_KEY = "path";
@@ -265,14 +267,14 @@ final class MapConversions {
         return dispatch(from, converter, java.sql.Date.class, SQL_DATE_KEYS);
     }
 
-    private static final String[] DATE_KEYS = {DATE, VALUE, V, EPOCH_MILLIS};
-
     // DATE last: json-io wrote a java.sql.Time as {"date": epochMillis} before Time had conversions of its own
     private static final String[] SQL_TIME_KEYS = {SQL_TIME, VALUE, V, EPOCH_MILLIS, DATE};
 
     static java.sql.Time toSqlTime(Object from, Converter converter) {
         return dispatch(from, converter, java.sql.Time.class, SQL_TIME_KEYS);
     }
+
+    private static final String[] DATE_KEYS = {DATE, VALUE, V, EPOCH_MILLIS};
 
     static Date toDate(Object from, Converter converter) {
         return dispatch(from, converter, Date.class, DATE_KEYS);
@@ -401,6 +403,19 @@ final class MapConversions {
 
     static URL toURL(Object from, Converter converter) {
         return dispatch(from, converter, URL.class, URL_KEYS);
+    }
+
+    private static final String[] INET_ADDRESS_KEYS = {ADDRESS, VALUE, V};
+
+    /** {"address": literal} with an optional "host" (kept, not resolved), or a value holding the text. */
+    static java.net.InetAddress toInetAddress(Object from, Converter converter) {
+        Map<?, ?> map = (Map<?, ?>) from;
+        Object address = map.get(ADDRESS);
+        if (address != null) {
+            Object host = map.get(HOST);
+            return InetAddressConversions.fromParts(host == null ? null : host.toString(), address.toString());
+        }
+        return dispatch(from, converter, java.net.InetAddress.class, INET_ADDRESS_KEYS);
     }
 
     private static final String[] URI_KEYS = {URI_KEY, VALUE, V};

@@ -301,6 +301,10 @@ final class StringConversions {
         }
     }
 
+    static java.net.InetAddress toInetAddress(Object from, Converter converter) {
+        return InetAddressConversions.fromText((String) from);
+    }
+
     static URI toURI(Object from, Converter converter) {
         String str = (String) from;
         if (StringUtilities.isEmpty(str)) {

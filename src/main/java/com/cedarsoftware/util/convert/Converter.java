@@ -1189,6 +1189,14 @@ public final class Converter {
         CONVERSION_DB.put(Map.class, URI.class, MapConversions::toURI);
         CONVERSION_DB.put(File.class, URI.class, FileConversions::toURI);
         CONVERSION_DB.put(Path.class, URI.class, PathConversions::toURI);
+        // InetAddress: an IP address, never a looked-up name (see InetAddressConversions)
+        CONVERSION_DB.put(Void.class, java.net.InetAddress.class, VoidConversions::toNull);
+        CONVERSION_DB.put(java.net.InetAddress.class, java.net.InetAddress.class, Converter::identity);
+        CONVERSION_DB.put(String.class, java.net.InetAddress.class, StringConversions::toInetAddress);
+        CONVERSION_DB.put(Map.class, java.net.InetAddress.class, MapConversions::toInetAddress);
+        CONVERSION_DB.put(java.net.InetAddress.class, String.class, InetAddressConversions::toString);
+        CONVERSION_DB.put(java.net.InetAddress.class, Map.class, InetAddressConversions::toMap);
+
 
         // TimeZone Conversions
         CONVERSION_DB.put(Void.class, TimeZone.class, VoidConversions::toNull);

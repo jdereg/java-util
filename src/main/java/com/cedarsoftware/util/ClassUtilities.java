@@ -2013,6 +2013,18 @@ public class ClassUtilities {
         if (varargsSource.length == 1 && varargsType.isInstance(varargsSource[0])) {
             result[fixedParamCount] = varargsSource[0];
         } else {
+            if (varargsSource.length == 1) {
+                // A lone array or Collection that is not itself an element (Object[]{"a","b"} for String..., or an
+                // Integer[] for int...) holds the elements: it was packed as one element, which converted to null.
+                Object only = varargsSource[0];
+                if (only != null && !componentType.isInstance(only)) {
+                    if (only.getClass().isArray()) {
+                        varargsSource = elementsOf(only);
+                    } else if (only instanceof Collection) {
+                        varargsSource = ((Collection<?>) only).toArray();
+                    }
+                }
+            }
             result[fixedParamCount] = packVarargsArray(converter, varargsSource, componentType);
         }
 
@@ -2050,6 +2062,16 @@ public class ClassUtilities {
         findInheritanceMatches(values, valueUsed, parameters, paramOffset, fixedParamCount, parameterMatched, result, valueStartInclusive, valueEndExclusive, null);
         findConvertibleMatches(converter, values, valueUsed, parameters, paramOffset, fixedParamCount, parameterMatched, result, valueStartInclusive, valueEndExclusive);
         fillRemainingParameters(converter, parameters, paramOffset, fixedParamCount, parameterMatched, result, allowNulls);
+    }
+
+    /** The elements of an array of any component type, boxed. */
+    private static Object[] elementsOf(Object array) {
+        int length = Array.getLength(array);
+        Object[] elements = new Object[length];
+        for (int i = 0; i < length; i++) {
+            elements[i] = Array.get(array, i);
+        }
+        return elements;
     }
 
     /**
@@ -2743,17 +2765,21 @@ public class ClassUtilities {
             // Already the right array type
             array = v;
         } else {
-            // Convert single value or collection to array
-            Collection<?> src = (v instanceof Collection) ? (Collection<?>) v : Collections.singletonList(v);
-            array = Array.newInstance(componentType, src.size());
-            int k = 0;
-            for (Object item : src) {
+            // A Collection or an array (a JSON array arrives as an Object[]) gives one element per item; anything
+            // else, a single element. An array was taken as a single element, and converting it failed.
+            Object[] items = v instanceof Collection ? ((Collection<?>) v).toArray()
+                    : v != null && v.getClass().isArray() ? elementsOf(v) : new Object[]{v};
+            array = Array.newInstance(componentType, items.length);
+            for (int k = 0; k < items.length; k++) {
+                Object element;
                 try {
-                    ArrayUtilities.setElement(array, k++, converter.convert(item, componentType));
+                    element = converter.convert(items[k], componentType);
                 } catch (Exception e) {
-                    // Use default value if conversion fails
-                    ArrayUtilities.setElement(array, k++, getArgForType(converter, componentType));
+                    // Use default value if conversion fails (the index advanced twice here, and the next write
+                    // fell off the end of the array)
+                    element = getArgForType(converter, componentType);
                 }
+                ArrayUtilities.setElement(array, k, element);
             }
         }
         if (LOG.isLoggable(Level.FINEST)) {

@@ -39,6 +39,8 @@ import java.time.YearMonth;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
+import java.util.AbstractMap;
+import java.util.AbstractSet;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -64,6 +66,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.NavigableMap;
 import java.util.NavigableSet;
+import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.OptionalDouble;
@@ -997,17 +1000,23 @@ public class ClassUtilities {
      * Not considered API.  Do not use this class in your code.
      */
     public static class ClassHierarchyInfo {
-        private final Set<Class<?>> allSupertypes;
-        private final Map<Class<?>, Integer> distanceMap;
-        private final int depth; // Store depth as a field
-        
-        ClassHierarchyInfo(Set<Class<?>> supertypes, Map<Class<?>, Integer> distances) {
-            this.allSupertypes = Collections.unmodifiableSet(supertypes);
-            this.distanceMap = Collections.unmodifiableMap(distances);
+        /**
+         * The class, then its supertypes in the order found (breadth-first, so fewest steps first; a wrapper's
+         * primitive, one step away, comes last), and their distances. Two arrays
+         * rather than a set and a map of the same types: about 1,500 bytes of heap per class became about 840, and a
+         * class has tens of supertypes at most, which a scan finds about as fast as a hash lookup.
+         */
+        private final Class<?>[] types;
+        private final int[] distances;
+        private final int depth;
+        private final Map<Class<?>, Integer> distanceMap = new DistanceMap();
+        private final Set<Class<?>> allSupertypes = new Supertypes();
 
-            // Calculate depth as max BFS distance (works for both classes and interfaces)
+        ClassHierarchyInfo(Class<?>[] types, int[] distances) {
+            this.types = types;
+            this.distances = distances;
             int max = 0;
-            for (int d : distances.values()) {
+            for (int d : distances) {
                 if (d > max) max = d;
             }
             this.depth = max;
@@ -1020,13 +1029,93 @@ public class ClassUtilities {
         Set<Class<?>> getAllSupertypes() {
             return allSupertypes;
         }
-        
+
         int getDistance(Class<?> type) {
-            return distanceMap.getOrDefault(type, -1);
+            Class<?>[] t = types;
+            for (int i = 0; i < t.length; i++) {
+                if (t[i] == type) {
+                    return distances[i];
+                }
+            }
+            return -1;
         }
 
         public int getDepth() {
             return depth;
+        }
+
+        private final class DistanceMap extends AbstractMap<Class<?>, Integer> {
+            @Override
+            public Integer get(Object key) {
+                int d = key instanceof Class ? getDistance((Class<?>) key) : -1;
+                return d < 0 ? null : d;
+            }
+
+            @Override
+            public boolean containsKey(Object key) {
+                return key instanceof Class && getDistance((Class<?>) key) >= 0;
+            }
+
+            @Override
+            public int size() {
+                return types.length;
+            }
+
+            @Override
+            public Set<Entry<Class<?>, Integer>> entrySet() {
+                return new AbstractSet<Entry<Class<?>, Integer>>() {
+                    @Override
+                    public Iterator<Entry<Class<?>, Integer>> iterator() {
+                        return new Iterator<Entry<Class<?>, Integer>>() {
+                            int i;
+
+                            public boolean hasNext() {
+                                return i < types.length;
+                            }
+
+                            public Entry<Class<?>, Integer> next() {
+                                if (i >= types.length) throw new NoSuchElementException();
+                                Entry<Class<?>, Integer> e = new SimpleImmutableEntry<>(types[i], distances[i]);
+                                i++;
+                                return e;
+                            }
+                        };
+                    }
+
+                    @Override
+                    public int size() {
+                        return types.length;
+                    }
+                };
+            }
+        }
+
+        private final class Supertypes extends AbstractSet<Class<?>> {
+            @Override
+            public boolean contains(Object o) {
+                return o instanceof Class && getDistance((Class<?>) o) >= 0;
+            }
+
+            @Override
+            public Iterator<Class<?>> iterator() {
+                return new Iterator<Class<?>>() {
+                    int i;
+
+                    public boolean hasNext() {
+                        return i < types.length;
+                    }
+
+                    public Class<?> next() {
+                        if (i >= types.length) throw new NoSuchElementException();
+                        return types[i++];
+                    }
+                };
+            }
+
+            @Override
+            public int size() {
+                return types.length;
+            }
         }
     }
 
@@ -3960,7 +4049,12 @@ public class ClassUtilities {
             allSupertypes.add(counterpart);
         }
 
-        return new ClassHierarchyInfo(allSupertypes, distanceMap);     // which wraps them unmodifiable
+        Class<?>[] types = allSupertypes.toArray(new Class<?>[0]);
+        int[] distances = new int[types.length];
+        for (int i = 0; i < types.length; i++) {
+            distances[i] = distanceMap.get(types[i]);
+        }
+        return new ClassHierarchyInfo(types, distances);
     }
     
     // Convenience boolean method

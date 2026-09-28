@@ -45,6 +45,25 @@ class ClassUtilitiesLowestCommonSupertypesTest {
     static class B extends P implements I1 {
     }
 
+    interface Shared {
+    }
+
+    static class Root {
+    }
+
+    static class LeftMiddle extends Root {
+    }
+
+    static class RightMiddle extends Root {
+    }
+
+    /** Root is 2 steps up, Shared 1. */
+    static class LeftLeaf extends LeftMiddle implements Shared {
+    }
+
+    static class RightLeaf extends RightMiddle implements Shared {
+    }
+
     private static final Set<Class<?>> SKIP = new HashSet<>(Arrays.asList(
             Object.class, Serializable.class, Externalizable.class, Cloneable.class));
 
@@ -53,6 +72,17 @@ class ClassUtilitiesLowestCommonSupertypesTest {
         assertEquals(Collections.singleton(AbstractList.class),
                 ClassUtilities.findLowestCommonSupertypes(ArrayList.class, LinkedList.class));
         assertSame(AbstractList.class, ClassUtilities.findLowestCommonSupertype(ArrayList.class, LinkedList.class));
+    }
+
+    /**
+     * Of unrelated lowest common supertypes the class comes first, as in an intersection type (JLS 4.9), however
+     * many steps away: findLowestCommonSupertype() gave the interface, fewer steps away.
+     */
+    @Test
+    void theCommonClassComesBeforeACommonInterface() {
+        assertEquals(Arrays.asList(Root.class, Shared.class),
+                new ArrayList<>(ClassUtilities.findLowestCommonSupertypes(LeftLeaf.class, RightLeaf.class)));
+        assertSame(Root.class, ClassUtilities.findLowestCommonSupertype(LeftLeaf.class, RightLeaf.class));
     }
 
     @Test

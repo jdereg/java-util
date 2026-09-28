@@ -49,10 +49,14 @@ class ClassUtilitiesFindClosestMostSpecificTest {
     }
 
     @Test
-    void unrelatedCandidatesAreOrderedByDistanceThenClassOverInterface() {
-        // RandomAccess (1 step) is unrelated to AbstractCollection (2), which is more specific than Collection
-        assertEquals("RandomAccess", ClassUtilities.findClosest(ArrayList.class,
+    void unrelatedCandidatesAreOrderedClassFirstThenByDistance() {
+        // AbstractCollection (2 steps) is unrelated to RandomAccess (1) and more specific than Collection: a class
+        // wins over an interface, as a class's method wins over an interface's default (JLS 8.4.8)
+        assertEquals("AbstractCollection", ClassUtilities.findClosest(ArrayList.class,
                 candidates(Object.class, Collection.class, AbstractCollection.class, RandomAccess.class), "none"));
+        // Unrelated interfaces: the fewer steps away
+        assertEquals("RandomAccess", ClassUtilities.findClosest(ArrayList.class,
+                candidates(Object.class, Iterable.class, RandomAccess.class), "none"));
         // AbstractList and List are both 1 step from ArrayList; AbstractList implements List, so it is more specific
         assertEquals("AbstractList", ClassUtilities.findClosest(ArrayList.class,
                 candidates(List.class, AbstractList.class), "none"));
@@ -64,9 +68,10 @@ class ClassUtilitiesFindClosestMostSpecificTest {
     }
 
     /**
-     * The rule restated: the answer is applicable, no other applicable candidate is a subtype of it, and none of the
-     * candidates that pass that test is fewer steps away. It does not depend on the map's order unless two such
-     * candidates tie. Checked over random candidate sets, each in every order it can be given.
+     * The rule restated: the answer is applicable, no other applicable candidate is a subtype of it, and of the
+     * candidates that pass that test it is a class if any is, and the fewest steps away among those. It does not
+     * depend on the map's order unless two such candidates tie. Checked over random candidate sets, each in every
+     * order it can be given.
      */
     @Test
     void theChoiceIsTheMostSpecificWhateverTheOrder() {
@@ -119,36 +124,41 @@ class ClassUtilitiesFindClosestMostSpecificTest {
     }
 
     private static void assertOracle(Class<?> subject, List<Class<?>> chosen, String answer) {
-        List<Class<?>> best = undominated(subject, chosen);
+        List<Class<?>> best = preferred(subject, undominated(subject, chosen));
         if (best.isEmpty()) {
             assertEquals("none", answer, subject.getSimpleName() + " " + chosen);
             return;
         }
-        int least = Integer.MAX_VALUE;
-        for (Class<?> c : best) {
-            least = Math.min(least, ClassUtilities.computeInheritanceDistance(subject, c));
-        }
         boolean found = false;
         for (Class<?> c : best) {
-            found |= c.getSimpleName().equals(answer) && ClassUtilities.computeInheritanceDistance(subject, c) == least;
+            found |= c.getSimpleName().equals(answer);
         }
-        assertTrue(found, subject.getSimpleName() + " " + chosen + " gave " + answer + ", expected one of " + best
-                + " at " + least + " steps");
+        assertTrue(found, subject.getSimpleName() + " " + chosen + " gave " + answer + ", expected one of " + best);
+    }
+
+    /** Of these, the classes if any (else all), and of those the ones the fewest steps away. */
+    private static List<Class<?>> preferred(Class<?> subject, List<Class<?>> candidates) {
+        List<Class<?>> classes = new ArrayList<>();
+        for (Class<?> c : candidates) {
+            if (!c.isInterface()) {
+                classes.add(c);
+            }
+        }
+        List<Class<?>> pool = classes.isEmpty() ? candidates : classes;
+        int least = Integer.MAX_VALUE;
+        for (Class<?> c : pool) {
+            least = Math.min(least, ClassUtilities.computeInheritanceDistance(subject, c));
+        }
+        List<Class<?>> result = new ArrayList<>();
+        for (Class<?> c : pool) {
+            if (ClassUtilities.computeInheritanceDistance(subject, c) == least) {
+                result.add(c);
+            }
+        }
+        return result;
     }
 
     private static boolean hasTie(Class<?> subject, List<Class<?>> chosen) {
-        List<Class<?>> best = undominated(subject, chosen);
-        int least = Integer.MAX_VALUE;
-        int count = 0;
-        for (Class<?> c : best) {
-            int d = ClassUtilities.computeInheritanceDistance(subject, c);
-            if (d < least) {
-                least = d;
-                count = 1;
-            } else if (d == least) {
-                count++;
-            }
-        }
-        return count > 1;
+        return preferred(subject, undominated(subject, chosen)).size() > 1;
     }
 }

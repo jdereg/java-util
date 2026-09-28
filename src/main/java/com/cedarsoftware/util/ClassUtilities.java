@@ -1723,9 +1723,9 @@ public class ClassUtilities {
      *         candidate is a subtype of is passed over, however few steps away it is, as Java chooses the most
      *         specific overload (JLS 15.12.2.5). For an {@code ArrayList}, {@code Collection} is chosen over
      *         {@code Object}, and {@code List} over {@code Collection}.</li>
-     *     <li>Among candidates unrelated to each other, the fewest inheritance steps away
-     *         ({@link #computeInheritanceDistance}); then a class over an interface; then the first in the
-     *         map's iteration order.</li>
+     *     <li>Among candidates unrelated to each other, a class over an interface, as a class's method wins over an
+     *         interface's default (JLS 8.4.8); then the fewest inheritance steps away
+     *         ({@link #computeInheritanceDistance}); then the first in the map's iteration order.</li>
      * </ul>
      * <p>
      * This method is typically used for cache misses when looking up class-specific handlers
@@ -1776,14 +1776,18 @@ public class ClassUtilities {
 
         // The most specific of them. Choosing by distance alone could pass over a subtype for its own supertype:
         // ArrayList reaches Object in 2 steps (through RandomAccess) and Collection in 3, and on a tie a class was
-        // preferred, so Object won over Collection. So the answer is the best -- fewest steps, then a class over an
-        // interface, then the first -- of the candidates no other applicable candidate is a subtype of. That is
-        // checked only for a candidate that would displace the best so far.
+        // preferred, so Object won over Collection. So the answer is the best -- a class over an interface, as a
+        // class's method wins over an interface's default (JLS 8.4.8), then fewest steps, then the first -- of the
+        // candidates no other applicable candidate is a subtype of. That is checked only for a candidate that would
+        // displace the best so far.
         int best = -1;
         for (int i = 0; i < count; i++) {
-            if (best >= 0 && !(distances[i] < distances[best] || (distances[i] == distances[best]
-                    && applicable[best].isInterface() && !applicable[i].isInterface()))) {
-                continue;
+            if (best >= 0) {
+                boolean classOverInterface = applicable[best].isInterface() && !applicable[i].isInterface();
+                boolean sameKind = applicable[best].isInterface() == applicable[i].isInterface();
+                if (!classOverInterface && !(sameKind && distances[i] < distances[best])) {
+                    continue;
+                }
             }
             if (count > 1 && hasMoreSpecific(applicable[i], applicable, count)) {
                 continue;
@@ -3782,12 +3786,16 @@ public class ClassUtilities {
             return Collections.emptySet();
         }
 
-        // 3) Sort by sum of distances from both input classes
-        // The most specific common type minimizes the total distance
+        // 3) A class first, as in an intersection type (JLS 4.9) -- there is at most one lowest common class, the
+        //    superclass chains being single -- then by the sum of the distances from both input classes. Which is
+        //    first matters to findLowestCommonSupertype(); the distance only orders interfaces unrelated to each other.
         List<Class<?>> candidates = new ArrayList<>(common);
         ClassHierarchyInfo infoA = getClassHierarchyInfo(classA);
         ClassHierarchyInfo infoB = getClassHierarchyInfo(classB);
         candidates.sort((x, y) -> {
+            if (x.isInterface() != y.isInterface()) {
+                return x.isInterface() ? 1 : -1;
+            }
             int dx = infoA.getDistance(x) + infoB.getDistance(x);
             int dy = infoA.getDistance(y) + infoB.getDistance(y);
             return Integer.compare(dx, dy); // lowest sum first

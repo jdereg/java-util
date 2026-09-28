@@ -127,6 +127,25 @@
   * **What it returns now:** the class itself if it is an enum, or the enum a constant body extends (a constant with a body is an anonymous subclass of its enum), else `null`.
   * **JDK 8 hazard removed:** enclosing classes are no longer consulted, so this method no longer calls `getEnclosingClass()`. On JDK 8 that call can throw `NoClassDefFoundError`, because it resolves the outer class of other nested classes the enclosing class names, such as an optional dependency's.
   * **Tests.** `ClassUtilitiesEnumClassTest` (2); the nested-class check fails against the previous code. `ClassUtilitiesCoverageTest` asserted the old answer, and now asserts `null`. Full suite: 20,920 tests, 0 failures on JDK 21 and on JDK 8.
+* **BUG FIX (memory) / PERFORMANCE**: **`ClassValueSet` keeps no member class alive, and `add()` / `remove()` no longer invalidate every class's cached lookup.** This is the redesign `ClassValueMap` received earlier in this release.
+  * **The leak:** the set kept every member in a backing set, so a class of a discarded loader (a redeployed webapp, a plugin, a recompiled script) stayed in memory with its loader until removed.
+  * **The invalidation:** each `add()` / `remove()` called `ClassValue.remove()`, which drops the set's cached answer for every class. Building a set lazily (check, then add) cost ~O(N²).
+  * **Now:** each class's membership is an `AtomicBoolean` stored in the class through a `ClassValue`, and written under its own lock. It is a JDK type, so a flag kept in a JDK class never pins java-util's class loader. The members are listed weakly, for iteration and `size()`.
+  * **Speed** (fresh JVM, 100 members):
+
+    | | Before | After |
+    |---|---|---|
+    | Membership hit | 1.22 ns | 1.55 ns |
+    | Membership miss | 1.7 ns | 2.0 ns |
+    | `add` + `remove` | 9.5 ns | 14.5 ns |
+    | Iterate 100 members | 240 ns | 880 ns |
+    | Build 400 classes with check-then-add | 5.9 ms | 0.43 ms |
+  * **Cost:** a flag is kept in every class the set is asked about, member or not.
+  * **Docs:** the Javadoc and the user guide no longer require a set to be pre-populated, and no longer warn that it pins its classes.
+  * **Tests.** `ClassValueSetWeakMembersTest` (4).
+    * The leak test fails against the previous code.
+    * The random-operations test (every `Set` method against a `LinkedHashSet`) and the concurrency test pass on both, and both fail with a planted bug (`remove()` not delisting the class).
+    * Full suite: 20,924 tests, 0 failures on JDK 21 and on JDK 8.
 
 #### 4.112.0 - 2026-09-23
 * **BUG FIX (regression since 4.1.0)**: **`SafeSimpleDateFormat` could not parse a numeric field followed by the locale's decimal separator** -- `yyyy-MM-dd HH:mm:ss.SSS`, `yyyy-MM-dd'T'HH:mm:ss.SSSZ`, `dd.MM.yyyy`, `yyyy.MM.dd`, `HH.mm` under a '.' locale, `ss,SSS` under a ',' locale. Parsing `"2026-09-24 13:33:28.144"` threw `ParseException: Unparseable date`, where `SimpleDateFormat` with the same pattern parses it. The default `NumberFormat` was the locale's general number format (grouping off), which reads `28.144` as ONE number: the seconds field swallowed the milliseconds and the pattern's `.` found nothing left to match. `SimpleDateFormat` installs the locale's INTEGER format, which stops at the separator. **Why it surfaced now:** the defect predates 4.0.0, but there the constructor put that number format only on the constructing thread's formatter; every other thread got a stock `SimpleDateFormat`, so request threads never saw it. The 4.1.0 copy-on-write rewrite builds every thread's formatter from one configuration, which carried the bad default to all of them, and to the static `getDateFormat()`. The default is now exactly `SimpleDateFormat`'s own -- `NumberFormat.getIntegerInstance(locale)`, grouping off, integer-only parsing -- so parsing and formatting match `SimpleDateFormat` on every thread. **Millisecond times parse again**, to the exact millisecond. As in `SimpleDateFormat`, `S` is a count of milliseconds, not a fraction (`28.5` is 5 ms; `28.144123` adds 144,123 ms): for fractional seconds of any length use `DateUtilities.parseDate()` or `java.time`. A number format the caller sets with `setNumberFormat()` is used as given, as before. `SafeSimpleDateFormatNumberFieldTest` (48): every pattern above against `SimpleDateFormat` as the oracle, on the constructing thread, another thread and the static accessor, formatting unchanged, exact milliseconds, a concurrent millisecond round trip, and the caller's number format honoured. Against 4.111.0, 22 of its first 42 fail -- every dotted or comma pattern on every path -- and the patterns without a separator, formatting, and the caller's-format case pass.

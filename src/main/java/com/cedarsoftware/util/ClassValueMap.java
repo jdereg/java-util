@@ -255,7 +255,7 @@ public class ClassValueMap<V> extends AbstractMap<Class<?>, V> implements Concur
     }
 
     /** A weak reference to a class: equal to another for the same class, and only to itself once cleared. */
-    private static final class ClassKey extends WeakReference<Class<?>> {
+    static final class ClassKey extends WeakReference<Class<?>> {   // also ClassValueSet's
         private final int hash;
 
         ClassKey(Class<?> key, ReferenceQueue<Class<?>> queue) {

@@ -1,10 +1,13 @@
 package com.cedarsoftware.util;
 
+import java.lang.ref.Reference;
+import java.lang.ref.ReferenceQueue;
 import java.util.AbstractSet;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -25,11 +28,11 @@ import java.util.concurrent.atomic.AtomicBoolean;
  *       small number of instances.</b> The advantage inverts once many ClassValue-based collections
  *       compete on the same classes; read <a href="#constraints">Critical usage constraints</a>
  *       before adopting</li>
- *   <li>Most significant when a <b>few</b> instances are pre-populated and then checked repeatedly</li>
+ *   <li>Most significant when a <b>few</b> instances are checked repeatedly</li>
  * </ul>
  *
  * <p><b>Not a general-purpose "faster {@code Set<Class>}".</b> This is a specialist for a narrow
- * niche (few instances, pre-populated, read-mostly). Outside it a plain
+ * niche (few instances, read-mostly). Outside it a plain
  * {@link java.util.concurrent.ConcurrentHashMap#newKeySet() ConcurrentHashMap.newKeySet()} is as
  * fast or faster — see <a href="#constraints">Critical usage constraints</a>.
  *
@@ -48,8 +51,10 @@ import java.util.concurrent.atomic.AtomicBoolean;
  *
  * <h2>How It Works</h2>
  * <p>
- * The implementation utilizes Java's {@link ClassValue} mechanism, which is specially optimized
- * in the JVM through:
+ * Each class's membership is a small flag stored in the class itself, through a {@link ClassValue}; the member
+ * classes are also listed, weakly, for iteration and {@code size()}. So the set never keeps a class, or its
+ * ClassLoader, alive: a member goes away when its class is unloaded. Java's {@link ClassValue} mechanism is specially
+ * optimized in the JVM through:
  * <ul>
  *   <li>Thread-local caching for reduced contention</li>
  *   <li>Identity-based lookups (faster than equality checks)</li>
@@ -73,19 +78,15 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * <p>
  * The performance benefits come with some trade-offs:
  * <ul>
- *   <li>Higher memory usage (maintains both a backing set and ClassValue cache)</li>
- *   <li>Write operations (add/remove) aren't faster and may be slightly slower</li>
+ *   <li>A flag (a small object) is kept in every class the set is asked about, member or not</li>
+ *   <li>Iteration, {@code size()}, {@code equals()} and {@code hashCode()} walk the weakly-listed members and read
+ *       each class's flag: slower than a {@code ConcurrentHashMap.newKeySet()}'s</li>
  *   <li>Only Class objects benefit from the optimized lookups</li>
- *   <li>Elements are strongly referenced: a long-lived (e.g. static) set pins its member
- *       {@code Class} objects and their {@code ClassLoader}s until they are removed or the
- *       set is cleared. Do not use a long-lived set to accumulate dynamically-loaded classes
- *       (the {@link ClassValue}-side cache entries live inside each {@code Class} and do not
- *       pin anything; only the backing set's strong references do)</li>
  * </ul>
  *
  * <h2 id="constraints">Critical usage constraints (read before adopting)</h2>
  * <p>
- * Use {@code ClassValueSet} only when <b>all</b> of the following hold; otherwise prefer a plain
+ * Use {@code ClassValueSet} only when the following holds; otherwise prefer a plain
  * {@link java.util.concurrent.ConcurrentHashMap#newKeySet() ConcurrentHashMap.newKeySet()}:
  * <ul>
  *   <li><b>Few instances — the cost is non-local.</b> ClassValue's speed comes from a per-{@code
@@ -97,13 +98,11 @@ import java.util.concurrent.atomic.AtomicBoolean;
  *       <em>other</em> ClassValue-based collections exist in the JVM — unlike any ordinary {@code
  *       Set}. The advantage holds for a handful and <b>inverts</b> once ~10+ compete on the same
  *       classes.</li>
- *   <li><b>Pre-populated, not lazily built.</b> Build it once and then read. {@link #add}/{@link
- *       #remove} invalidate this set's {@code ClassValue}, which the JVM implements by bumping a
- *       version that drops <em>every</em> cached entry, so mutating on a hot path repeatedly
- *       re-validates the whole cache. Use a plain {@code ConcurrentHashMap.newKeySet()} for
- *       frequently-mutated sets.</li>
- *   <li><b>Not a leak-safe class set</b> — see the strong-reference note under Trade-offs above.</li>
  * </ul>
+ * <p>
+ * (Earlier versions kept every member in a backing {@code Set} as well, which kept each member class and its
+ * ClassLoader alive, and made {@code add} and {@code remove} invalidate the cached membership of every class, so
+ * building a set lazily cost ~O(N&sup2;). Neither applies now: {@code add} and {@code remove} write one class's flag.)
  *
  * <h2>Thread Safety</h2>
  * <p>
@@ -157,25 +156,64 @@ import java.util.concurrent.atomic.AtomicBoolean;
  */
 public class ClassValueSet extends AbstractSet<Class<?>> {
 
-    // Backing set for storage and iteration
-    private final Set<Class<?>> backingSet = ConcurrentHashMap.newKeySet();
-
     // Flag for null element
     private final AtomicBoolean containsNull = new AtomicBoolean(false);
 
-    // ClassValue for fast contains checks
-    // Volatile reference allows clear() to atomically replace the entire cache instance.
-    private volatile ClassValue<Boolean> membershipCache = createMembershipCache();
+    // The members (other than null); clear() replaces them all at once.
+    private volatile Members members = new Members();
     // Cached unmodifiable view to avoid repeated wrapper allocations.
     private volatile Set<Class<?>> unmodifiableView;
 
-    private ClassValue<Boolean> createMembershipCache() {
-        return new ClassValue<Boolean>() {
-            @Override
-            protected Boolean computeValue(Class<?> type) {
-                return backingSet.contains(type);
+    /**
+     * Each class's membership is a flag stored in the class itself (a {@link ClassValue}), so the set never keeps a
+     * class -- or its ClassLoader -- alive: when the class is unloaded, its flag goes with it. An add() or remove()
+     * writes one class's flag, under that flag's lock; it never invalidates the cached lookups of other classes
+     * (removing a ClassValue's value does, for every class at once).
+     * <p>
+     * The flag is a JDK type (an AtomicBoolean): a ClassValue's value lives inside its Class, and a java-util type
+     * stored in a JDK class would keep java-util's own class loader alive for the life of the JVM.
+     * <p>
+     * The member classes are also listed, weakly, for iteration and size().
+     * <p>
+     * This object is the ClassValue itself, which saves a load on every lookup. The JDK holds a ClassValue only
+     * weakly from the classes it has values in, so it pins nothing.
+     */
+    private static final class Members extends ClassValue<AtomicBoolean> {
+        final Set<ClassValueMap.ClassKey> keys = ConcurrentHashMap.newKeySet();
+        final ReferenceQueue<Class<?>> unloaded = new ReferenceQueue<>();
+
+        @Override
+        protected AtomicBoolean computeValue(Class<?> type) {
+            return new AtomicBoolean();
+        }
+
+        AtomicBoolean flag(Class<?> cls) {
+            return get(cls);
+        }
+
+        /** Whether {@code cls} is a member, without leaving a flag in it (for probing another set in bulk). */
+        boolean listed(Class<?> cls) {
+            return keys.contains(new ClassValueMap.ClassKey(cls, null));
+        }
+
+        /** Called holding the class's flag lock, when it becomes a member. */
+        void added(Class<?> cls) {
+            expunge();
+            keys.add(new ClassValueMap.ClassKey(cls, unloaded));
+        }
+
+        /** Called holding the class's flag lock, when it stops being one. */
+        void removed(Class<?> cls) {
+            keys.remove(new ClassValueMap.ClassKey(cls, null));
+        }
+
+        /** Forgets the members whose classes have been unloaded. */
+        void expunge() {
+            Reference<? extends Class<?>> ref;
+            while ((ref = unloaded.poll()) != null) {
+                keys.remove(ref);
             }
-        };
+        }
     }
 
     /**
@@ -203,7 +241,7 @@ public class ClassValueSet extends AbstractSet<Class<?>> {
         if (o.getClass() != Class.class) {
             return false;
         }
-        return membershipCache.get((Class<?>) o);
+        return members.flag((Class<?>) o).get();
     }
 
     /**
@@ -221,7 +259,7 @@ public class ClassValueSet extends AbstractSet<Class<?>> {
         if (clazz == null) {
             return containsNull.get();
         }
-        return membershipCache.get(clazz);
+        return members.flag(clazz).get();
     }
 
     @Override
@@ -229,13 +267,19 @@ public class ClassValueSet extends AbstractSet<Class<?>> {
         if (cls == null) {
             return !containsNull.getAndSet(true);
         }
-
-        boolean added = backingSet.add(cls);
-        if (added) {
-            // Force cache recomputation on next get
-            membershipCache.remove(cls);
+        Members m = members;
+        AtomicBoolean flag = m.flag(cls);
+        if (flag.get()) {
+            return false;
         }
-        return added;
+        synchronized (flag) {
+            if (flag.get()) {
+                return false;
+            }
+            flag.set(true);
+            m.added(cls);
+            return true;
+        }
     }
 
     @Override
@@ -247,13 +291,23 @@ public class ClassValueSet extends AbstractSet<Class<?>> {
         if (o.getClass() != Class.class) {
             return false;
         }
-        Class<?> clazz = (Class<?>) o;
-        boolean changed = backingSet.remove(clazz);
-        if (changed) {
-            // Invalidate cache for this class
-            membershipCache.remove(clazz);
+        return removeClass((Class<?>) o);
+    }
+
+    private boolean removeClass(Class<?> cls) {
+        Members m = members;
+        AtomicBoolean flag = m.flag(cls);
+        if (!flag.get()) {
+            return false;
         }
-        return changed;
+        synchronized (flag) {
+            if (!flag.get()) {
+                return false;
+            }
+            flag.set(false);
+            m.removed(cls);
+            return true;
+        }
     }
 
     /**
@@ -261,20 +315,27 @@ public class ClassValueSet extends AbstractSet<Class<?>> {
      */
     @Override
     public void clear() {
-        backingSet.clear();
+        members = new Members();
         containsNull.set(false);
-        // Replace entire cache so all per-class cached membership values are invalidated atomically.
-        membershipCache = createMembershipCache();
     }
 
+    /**
+     * {@inheritDoc}
+     * <p>As with a {@link java.util.WeakHashMap}, the count can include, briefly, a member whose class has just been
+     * unloaded.</p>
+     */
     @Override
     public int size() {
-        return backingSet.size() + (containsNull.get() ? 1 : 0);
+        Members m = members;
+        m.expunge();
+        return m.keys.size() + (containsNull.get() ? 1 : 0);
     }
 
     @Override
     public boolean isEmpty() {
-        return backingSet.isEmpty() && !containsNull.get();
+        Members m = members;
+        m.expunge();
+        return m.keys.isEmpty() && !containsNull.get();
     }
 
     /**
@@ -298,8 +359,9 @@ public class ClassValueSet extends AbstractSet<Class<?>> {
             if (containsNull.get() && !other.contains(null)) {
                 return false;
             }
-            for (Class<?> cls : backingSet) {
-                if (!other.contains(cls)) {
+            MemberIterator members = new MemberIterator();
+            while (members.hasNext()) {
+                if (!other.contains(members.next())) {
                     return false;
                 }
             }
@@ -317,10 +379,19 @@ public class ClassValueSet extends AbstractSet<Class<?>> {
     @Override
     public int hashCode() {
         int h = 0;
-        for (Class<?> cls : backingSet) {
-            h += cls.hashCode();
+        MemberIterator members = new MemberIterator();
+        while (members.hasNext()) {
+            h += members.next().hashCode();
         }
         return h;
+    }
+
+    /**
+     * Whether {@code c} contains {@code cls}. Another ClassValueSet is probed through its member list: its contains()
+     * would leave a flag in every class it is asked about, a side effect of this bulk read.
+     */
+    private static boolean holds(Collection<?> c, Class<?> cls) {
+        return c instanceof ClassValueSet ? ((ClassValueSet) c).members.listed(cls) : c.contains(cls);
     }
 
     /**
@@ -353,22 +424,13 @@ public class ClassValueSet extends AbstractSet<Class<?>> {
             modified = true;
         }
 
-        // For a ClassValueSet argument, probe its backing set directly: its contains()
-        // would install a negative ClassValue entry (a synchronized write) for every
-        // retained-set miss, polluting the argument's cache as a side effect.
-        Collection<?> lookup = (c instanceof ClassValueSet) ? ((ClassValueSet) c).backingSet : c;
-
-        // Single pass over backing set to avoid extra allocations.
-        Iterator<Class<?>> iterator = backingSet.iterator();
-        while (iterator.hasNext()) {
-            Class<?> cls = iterator.next();
-            if (!lookup.contains(cls)) {
-                iterator.remove();
-                membershipCache.remove(cls);
+        MemberIterator members = new MemberIterator();
+        while (members.hasNext()) {
+            Class<?> cls = members.next();
+            if (!holds(c, cls) && removeClass(cls)) {
                 modified = true;
             }
         }
-
         return modified;
     }
 
@@ -394,59 +456,70 @@ public class ClassValueSet extends AbstractSet<Class<?>> {
             modified = true;
         }
 
-        if (backingSet.isEmpty()) {
-            return modified;
-        }
-
-        if (c instanceof ClassValueSet) {
-            // Probe the other set's backing set directly: routing through its contains()
-            // would install a negative ClassValue entry (a synchronized write) for every
-            // miss, polluting the argument's cache as a side effect of this bulk read.
-            Set<Class<?>> otherBacking = ((ClassValueSet) c).backingSet;
-            Iterator<Class<?>> iterator = backingSet.iterator();
-            while (iterator.hasNext()) {
-                Class<?> cls = iterator.next();
-                if (otherBacking.contains(cls)) {
-                    iterator.remove();
-                    membershipCache.remove(cls);
+        if (!(c instanceof ClassValueSet) && c.size() < size()) {
+            for (Object o : c) {
+                if (o != null && o.getClass() == Class.class && removeClass((Class<?>) o)) {
                     modified = true;
                 }
             }
             return modified;
         }
 
-        if (c.size() < backingSet.size()) {
-            for (Object o : c) {
-                if (o != null && o.getClass() == Class.class) {
-                    Class<?> cls = (Class<?>) o;
-                    if (backingSet.remove(cls)) {
-                        membershipCache.remove(cls);
-                        modified = true;
-                    }
-                }
-            }
-            return modified;
-        }
-
-        Iterator<Class<?>> iterator = backingSet.iterator();
-        while (iterator.hasNext()) {
-            Class<?> cls = iterator.next();
-            if (c.contains(cls)) {
-                iterator.remove();
-                membershipCache.remove(cls);
+        MemberIterator members = new MemberIterator();
+        while (members.hasNext()) {
+            Class<?> cls = members.next();
+            if (holds(c, cls) && removeClass(cls)) {
                 modified = true;
             }
         }
-
         return modified;
+    }
+
+    /**
+     * Walks the member classes that are still loaded (not null). The list changes under each class's flag lock with
+     * its flag, so it is the members; weakly consistent, like a ConcurrentHashMap's iterators (a class removed while
+     * iterating may still be returned).
+     */
+    private final class MemberIterator implements Iterator<Class<?>> {
+        private final Members m = members;
+        private final Iterator<ClassValueMap.ClassKey> keys = m.keys.iterator();
+        private Class<?> next;
+
+        MemberIterator() {
+            advance();
+        }
+
+        private void advance() {
+            while (keys.hasNext()) {
+                Class<?> cls = keys.next().get();
+                if (cls != null) {                          // still loaded
+                    next = cls;
+                    return;
+                }
+            }
+            next = null;
+        }
+
+        @Override
+        public boolean hasNext() {
+            return next != null;
+        }
+
+        @Override
+        public Class<?> next() {
+            Class<?> cls = next;
+            if (cls == null) {
+                throw new NoSuchElementException();
+            }
+            advance();
+            return cls;
+        }
     }
 
     @Override
     public Iterator<Class<?>> iterator() {
         final boolean hasNull = containsNull.get();
-        // ConcurrentHashMap.newKeySet() provides weakly-consistent iterators
-        // that never throw ConcurrentModificationException — no snapshot needed.
-        final Iterator<Class<?>> backingIterator = backingSet.iterator();
+        final MemberIterator memberIterator = new MemberIterator();
 
         return new Iterator<Class<?>>() {
             private boolean nullReturned = !hasNull;
@@ -455,7 +528,7 @@ public class ClassValueSet extends AbstractSet<Class<?>> {
 
             @Override
             public boolean hasNext() {
-                return !nullReturned || backingIterator.hasNext();
+                return !nullReturned || memberIterator.hasNext();
             }
 
             @Override
@@ -467,7 +540,7 @@ public class ClassValueSet extends AbstractSet<Class<?>> {
                     return null;
                 }
 
-                lastReturned = backingIterator.next();
+                lastReturned = memberIterator.next();
                 canRemove = true;
                 return lastReturned;
             }
@@ -484,14 +557,12 @@ public class ClassValueSet extends AbstractSet<Class<?>> {
                     // Removing the null element
                     containsNull.set(false);
                 } else {
-                    // Remove directly through iterator and invalidate cache entry.
-                    backingIterator.remove();
-                    membershipCache.remove(lastReturned);
+                    removeClass(lastReturned);
                 }
             }
         };
     }
-    
+
     /**
      * Returns a new set containing all elements from this set
      *
@@ -499,9 +570,13 @@ public class ClassValueSet extends AbstractSet<Class<?>> {
      */
     public Set<Class<?>> toSet() {
         // Use HashSet here since it needs to support null elements
-        Set<Class<?>> result = new HashSet<>(backingSet);
+        Set<Class<?>> result = new HashSet<>();
         if (containsNull.get()) {
             result.add(null);
+        }
+        MemberIterator members = new MemberIterator();
+        while (members.hasNext()) {
+            result.add(members.next());
         }
         return result;
     }

@@ -528,14 +528,15 @@ A high-performance `Set` implementation for `Class` objects that leverages Java'
 
 ### Key Features
 
-- **Fast membership tests (in a narrow niche)**: 2-10x faster than `HashSet` for `contains()`, and faster than `ConcurrentHashMap.keySet()` for concurrent reads — **but only for a few, pre-populated, read-mostly instances**. The advantage inverts once many ClassValue-based collections compete on the same classes; see [Critical usage constraints](#classvalueset-critical-usage-constraints) below.
+- **Fast membership tests (in a narrow niche)**: 2-10x faster than `HashSet` for `contains()`, and faster than `ConcurrentHashMap.keySet()` for concurrent reads — **but only for a few, read-mostly instances**. The advantage inverts once many ClassValue-based collections compete on the same classes; see [Critical usage constraints](#classvalueset-critical-usage-constraints) below.
 - **Typed fast path**: `containsClass(Class)` skips the `instanceof Class` guard for hot paths
+- **Keeps no class alive**: each member's flag lives in the class itself and members are listed weakly, so a member goes away when its class is unloaded (a redeployed webapp's, a plugin's)
 - **Thread-safe**: Fully concurrent support for all operations
 - **Complete Set interface**: Implements the full `Set` contract
 - **Null support**: Null elements are properly supported
 - **Optimized for Class elements**: Specially designed for sets of `Class` objects
 
-> **`ClassValueSet` is a specialist, not a general-purpose faster `Set<Class>`.** It wins for a *few, pre-populated, read-mostly* class sets (blocklists, capability flags); outside that a plain `ConcurrentHashMap.newKeySet()` is as fast or faster. Read [Critical usage constraints](#classvalueset-critical-usage-constraints) before adopting.
+> **`ClassValueSet` is a specialist, not a general-purpose faster `Set<Class>`.** It wins for a *few, read-mostly* class sets (blocklists, capability flags); outside that a plain `ConcurrentHashMap.newKeySet()` is as fast or faster. Read [Critical usage constraints](#classvalueset-critical-usage-constraints) before adopting.
 
 ### Usage Examples
 
@@ -565,24 +566,28 @@ ClassValueSet fromCollection = ClassValueSet.from(existingCollection);
 
 ### Performance Characteristics
 
-The `ClassValueSet` provides improved membership testing performance *within its niche* (few, pre-populated, read-mostly instances):
+The `ClassValueSet` provides improved membership testing performance *within its niche* (few, read-mostly instances):
 
 - **containsClass(Class)**: Typed fast path — skips the `instanceof` guard that `contains(Object)` must perform; prefer this in hot paths
 - **contains(Object)**: 2-10x faster than standard sets due to JVM-optimized `ClassValue` caching
-- **add() / remove()**: Comparable to ConcurrentHashMap-backed sets (standard performance)
-- **Best for**: Read-heavy workloads where membership tests vastly outnumber modifications
+- **add() / remove()**: Write one class's flag and never invalidate other classes' cached lookups, so a set can be built lazily (check, then add). Earlier versions invalidated every class's lookup on each change: building 400 classes with check-then-add took 5.9 ms; it takes 0.43 ms now
+- **Iteration and size()**: Walk the weakly-listed members, so they are slower than a `ConcurrentHashMap.newKeySet()`'s
+- **Best for**: Read-heavy workloads where membership tests vastly outnumber iteration
 
 ### ClassValueSet: critical usage constraints
 
-Use `ClassValueSet` only when **all** of these hold; otherwise use a plain `ConcurrentHashMap.newKeySet()`:
+Use `ClassValueSet` only when this holds; otherwise use a plain `ConcurrentHashMap.newKeySet()`:
 
 - **Few instances — the cost is non-local.** ClassValue's speed comes from a per-`Class` fast cache, but the JVM gives every `Class` *one* small, fixed-capacity cache array **shared across all `ClassValue` instances** (open-addressed, probe limit of 3). Each `ClassValueSet` is a distinct `ClassValue`, so many of them keyed on the same classes evict one another and each membership test falls through to a slower backup path. A `ClassValueSet`'s performance therefore depends on how many *other* ClassValue-based collections exist in the JVM — unlike any ordinary `Set`. The advantage holds for a handful and **inverts** once ~10+ compete on the same classes.
-- **Pre-populated, not lazily built.** Build once, then read. `add()`/`remove()` invalidate the set's `ClassValue`, which the JVM implements by dropping *every* cached entry (a version bump), so mutating on a hot path repeatedly re-validates the whole cache. Use a plain `ConcurrentHashMap.newKeySet()` for frequently-mutated sets.
-- **Not a leak-safe class set.** The backing set **strongly references** its `Class` elements, so a long-lived (e.g. `static`) set pins those classes and their `ClassLoader`s until removed or cleared. Don't accumulate dynamically-loaded classes in a long-lived instance.
+
+A flag (a small object) is kept in every class the set is asked about, member or not.
+
+(Earlier versions kept every member in a backing set as well, which kept each member class and its `ClassLoader` alive, and made `add()` / `remove()` invalidate the cached membership of every class. Neither applies now.)
 
 ### Implementation Notes
 
-- Internally uses `ClassValue` for optimized lookups
+- Each class's membership is an `AtomicBoolean` stored in the class through a `ClassValue` (a JDK type, so a flag kept in a JDK class never pins java-util's own class loader); `add()` / `remove()` change it under that flag's lock
+- The member classes are also listed weakly, for iteration and `size()`
 - Thread-local caching eliminates contention for membership tests
 - All standard `Set` operations are supported
 - Thread-safe - no external synchronization required

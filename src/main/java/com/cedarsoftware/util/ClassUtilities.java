@@ -2197,103 +2197,97 @@ public class ClassUtilities {
     }
 
     /**
-     * Find matches based on inheritance relationships
+     * Gives the unmatched parameters the values that are instances of their types (a wrapper counts for its
+     * primitive). As many values as any assignment could place are placed: each parameter, in declaration order, takes
+     * the first free value it can hold, in the order the values were supplied, and when none is free a value is
+     * moved to it from a parameter that can hold another. So a broad parameter never keeps a value that only another
+     * parameter can hold -- (Object, CharSequence) given ["x", list] gives the Object the list -- and values keep the
+     * order they were supplied in, as far as the types allow. The inheritance distance decided which value a parameter
+     * took; it put ["x"] before [5] for (Object, Object) given [5, "x"], a String being fewer steps from Object.
      */
     private static void findInheritanceMatches(Object[] values, boolean[] valueUsed,
                                                Parameter[] parameters, int paramOffset, int paramCount,
                                                boolean[] parameterMatched, Object[] result,
                                                int valueStartInclusive, int valueEndExclusive,
                                                ArgumentBinding binding) {
-        // Cache ClassHierarchyInfo lookups when multiple candidate values are available.
-        // For single-value cases, direct lookup is cheaper than allocating a map.
-        Map<Class<?>, ClassHierarchyInfo> valueClassCache = null;
-        if (valueEndExclusive - valueStartInclusive > 1) {
-            valueClassCache = new HashMap<>();
-            // Pre-cache hierarchy info for all non-null, unused values
-            for (int j = valueStartInclusive; j < valueEndExclusive; j++) {
-                if (!valueUsed[j] && values[j] != null) {
-                    Class<?> valueClass = values[j].getClass();
-                    valueClassCache.computeIfAbsent(valueClass, ClassUtilities::getClassHierarchyInfo);
-                }
-            }
+        int valueCount = valueEndExclusive - valueStartInclusive;
+        if (valueCount <= 0) {
+            return;
         }
-        
-        // For each unmatched parameter, find the best inheritance match. The most specific parameter types go first
-        // (declaration order otherwise), so a broad parameter takes what the others leave: for (Object, CharSequence)
-        // and ["x", list], the CharSequence takes "x" and the Object the list -- in declaration order the Object
-        // took "x", the nearer of the two, and the list fitted nothing.
-        boolean[] visited = paramCount > 1 ? new boolean[paramCount] : null;
-        for (int round = 0; round < paramCount; round++) {
-            int i = visited == null ? round
-                    : nextMostSpecific(parameters, paramOffset, paramCount, parameterMatched, visited);
-            if (i < 0) break;
-            if (visited != null) visited[i] = true;
+        // fits[i][k]: parameter i can hold value valueStartInclusive + k as it is
+        boolean[][] fits = null;
+        for (int i = 0; i < paramCount; i++) {
             if (parameterMatched[i]) continue;
-
             Class<?> paramType = parameters[paramOffset + i].getType();
-            int bestDistance = Integer.MAX_VALUE;
-            int bestValueIndex = -1;
-
-            for (int j = valueStartInclusive; j < valueEndExclusive; j++) {
-                if (valueUsed[j]) continue;
-
+            for (int k = 0; k < valueCount; k++) {
+                int j = valueStartInclusive + k;
                 Object value = values[j];
-                if (value == null) continue;
-
-                Class<?> valueClass = value.getClass();
-                ClassHierarchyInfo hierarchyInfo;
-                if (valueClassCache != null) {
-                    hierarchyInfo = valueClassCache.get(valueClass);
-                    if (hierarchyInfo == null) {
-                        hierarchyInfo = getClassHierarchyInfo(valueClass);
-                        valueClassCache.put(valueClass, hierarchyInfo);
-                    }
-                } else {
-                    hierarchyInfo = getClassHierarchyInfo(valueClass);
+                if (valueUsed[j] || value == null
+                        || getClassHierarchyInfo(value.getClass()).getDistance(paramType) < 0) {
+                    continue;
                 }
-                int distance = hierarchyInfo.getDistance(paramType);
-
-                if (distance >= 0 && distance < bestDistance) {
-                    bestDistance = distance;
-                    bestValueIndex = j;
+                if (fits == null) {
+                    fits = new boolean[paramCount][valueCount];
                 }
+                fits[i][k] = true;
             }
+        }
+        if (fits == null) {
+            return;     // no value is an instance of any unmatched parameter's type
+        }
 
-            if (bestValueIndex >= 0) {
-                result[i] = values[bestValueIndex];
+        int[] holder = new int[valueCount];         // the parameter holding each value, or -1
+        int[] held = new int[paramCount];           // the value each parameter holds, or -1
+        Arrays.fill(holder, -1);
+        Arrays.fill(held, -1);
+        for (int i = 0; i < paramCount; i++) {
+            if (!parameterMatched[i] && !takeFreeValue(i, fits, holder, held)) {
+                moveValueTo(i, fits, holder, held, new boolean[valueCount]);
+            }
+        }
+
+        for (int i = 0; i < paramCount; i++) {
+            if (held[i] >= 0) {
+                int j = valueStartInclusive + held[i];
+                result[i] = values[j];
                 parameterMatched[i] = true;
-                valueUsed[bestValueIndex] = true;
+                valueUsed[j] = true;
                 if (binding != null) {
-                    binding.source[i] = bestValueIndex;
+                    binding.source[i] = j;
                 }
             }
         }
+    }
+
+    /** Gives parameter {@code i} the first value it can hold that no parameter holds. */
+    private static boolean takeFreeValue(int i, boolean[][] fits, int[] holder, int[] held) {
+        for (int k = 0; k < holder.length; k++) {
+            if (fits[i][k] && holder[k] < 0) {
+                holder[k] = i;
+                held[i] = k;
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
-     * The first parameter not yet visited or matched whose type no other such parameter's type is a proper subtype
-     * of (a primitive counts as its wrapper), or -1 when none is left.
+     * Gives parameter {@code i} a value another parameter holds, when that parameter can take a free value or, in
+     * turn, one moved from yet another (an augmenting path: each move keeps every placed value placed).
      */
-    private static int nextMostSpecific(Parameter[] parameters, int paramOffset, int paramCount,
-                                        boolean[] parameterMatched, boolean[] visited) {
-        for (int i = 0; i < paramCount; i++) {
-            if (visited[i] || parameterMatched[i]) continue;
-            Class<?> type = boxed(parameters[paramOffset + i].getType());
-            boolean broader = false;
-            for (int j = 0; j < paramCount && !broader; j++) {
-                if (j == i || visited[j] || parameterMatched[j]) continue;
-                Class<?> other = boxed(parameters[paramOffset + j].getType());
-                broader = other != type && type.isAssignableFrom(other);
-            }
-            if (!broader) {
-                return i;
+    private static boolean moveValueTo(int i, boolean[][] fits, int[] holder, int[] held, boolean[] tried) {
+        for (int k = 0; k < holder.length; k++) {
+            if (!fits[i][k] || tried[k]) continue;
+            tried[k] = true;
+            int other = holder[k];
+            if (other < 0 || takeFreeValue(other, fits, holder, held)
+                    || moveValueTo(other, fits, holder, held, tried)) {
+                holder[k] = i;
+                held[i] = k;
+                return true;
             }
         }
-        return -1;
-    }
-
-    private static Class<?> boxed(Class<?> type) {
-        return type.isPrimitive() && type != void.class ? PRIMITIVE_TO_WRAPPER.getByClass(type) : type;
+        return false;
     }
 
     /**

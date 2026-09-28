@@ -116,10 +116,9 @@ class ClassUtilitiesBoxingDistanceTest {
         // int → Number (boxing to Integer then to Number) should be distance 1
         assertEquals(1, ClassUtilities.computeInheritanceDistance(int.class, Number.class));
         
-        // int → Long: This actually works through widening!
-        // int → long (widening, distance 1), then long wraps to Long (distance 0)
-        // So int → Long is distance 1 through widening + autoboxing
-        assertEquals(1, ClassUtilities.computeInheritanceDistance(int.class, Long.class));
+        // int → Long: Java does not assign it (JLS 5.2) -- boxing an int gives an Integer, and Java never widens
+        // a primitive and then boxes it
+        assertEquals(-1, ClassUtilities.computeInheritanceDistance(int.class, Long.class));
         
         // int → Short should be -1 (no widening path from int to short)
         assertEquals(-1, ClassUtilities.computeInheritanceDistance(int.class, Short.class));

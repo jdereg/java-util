@@ -126,9 +126,9 @@ class ClassUtilitiesEdgeCaseTest {
         assertEquals(2, ClassUtilities.computeInheritanceDistance(byte.class, int.class));
         assertEquals(1, ClassUtilities.computeInheritanceDistance(float.class, double.class));
         
-        // Cross primitive/wrapper of different types now support widening
+        // A wrapper unboxes and widens to a primitive; a primitive boxes only to its own wrapper (JLS 5.2)
         assertEquals(1, ClassUtilities.computeInheritanceDistance(Integer.class, long.class));
-        assertEquals(3, ClassUtilities.computeInheritanceDistance(int.class, Double.class));
+        assertEquals(-1, ClassUtilities.computeInheritanceDistance(int.class, Double.class));
     }
     
     // ===== loadClass() Array Descriptor Tests =====

@@ -132,25 +132,25 @@ class ClassUtilitiesPrimitiveWideningTest {
     }
     
     @Test
-    @DisplayName("Wrapper to wrapper widening should work")
+    @DisplayName("No wrapper is assigned to another wrapper")
     void testWrapperToWrapperWidening() {
-        // Wrappers should follow same widening rules as primitives
-        assertEquals(1, ClassUtilities.computeInheritanceDistance(Byte.class, Short.class));
-        assertEquals(2, ClassUtilities.computeInheritanceDistance(Byte.class, Integer.class));
-        assertEquals(3, ClassUtilities.computeInheritanceDistance(Byte.class, Long.class));
-        assertEquals(1, ClassUtilities.computeInheritanceDistance(Integer.class, Long.class));
-        assertEquals(2, ClassUtilities.computeInheritanceDistance(Integer.class, Float.class));
+        // Java assigns no wrapper to another (JLS 5.2): an Integer is not a Long
+        assertEquals(-1, ClassUtilities.computeInheritanceDistance(Byte.class, Short.class));
+        assertEquals(-1, ClassUtilities.computeInheritanceDistance(Byte.class, Integer.class));
+        assertEquals(-1, ClassUtilities.computeInheritanceDistance(Byte.class, Long.class));
+        assertEquals(-1, ClassUtilities.computeInheritanceDistance(Integer.class, Long.class));
+        assertEquals(-1, ClassUtilities.computeInheritanceDistance(Integer.class, Float.class));
     }
     
     @Test
     @DisplayName("Mixed primitive and wrapper widening")
     void testMixedPrimitiveWrapperWidening() {
-        // Primitive to different wrapper
-        assertEquals(1, ClassUtilities.computeInheritanceDistance(int.class, Long.class));
-        assertEquals(2, ClassUtilities.computeInheritanceDistance(int.class, Float.class));
-        assertEquals(3, ClassUtilities.computeInheritanceDistance(int.class, Double.class));
-        
-        // Wrapper to different primitive
+        // Primitive to a different wrapper: Java boxes an int only to an Integer (JLS 5.2)
+        assertEquals(-1, ClassUtilities.computeInheritanceDistance(int.class, Long.class));
+        assertEquals(-1, ClassUtilities.computeInheritanceDistance(int.class, Float.class));
+        assertEquals(-1, ClassUtilities.computeInheritanceDistance(int.class, Double.class));
+
+        // Wrapper to a different primitive: unboxed, then widened (JLS 5.1.8, 5.1.2)
         assertEquals(1, ClassUtilities.computeInheritanceDistance(Integer.class, long.class));
         assertEquals(1, ClassUtilities.computeInheritanceDistance(Short.class, int.class));
     }

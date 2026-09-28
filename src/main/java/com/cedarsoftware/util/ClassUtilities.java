@@ -1076,9 +1076,15 @@ public class ClassUtilities {
      * supertypes as the Java Language Specification defines them (JLS 4.10.2, 4.10.3; see
      * {@link #getClassHierarchyInfo}): a distance exists exactly when {@code destination.isAssignableFrom(source)}.
      * So an interface reaches {@code Object}, and {@code String[]} reaches {@code Object[]} in 1 step and
-     * {@code Object} in 2. For primitive types it follows the widening chain (JLS 4.10.1, 5.1.2:
-     * byte→short→int→long→float→double, char→int); a wrapper is one step from its primitive, and boxes to
-     * reach a reference type.
+     * {@code Object} in 2.
+     * <p>
+     * Primitives and their wrappers follow Java's assignment rules (JLS 5.2): a distance exists exactly when Java
+     * would assign a value of {@code source} to {@code destination}. A primitive destination is reached along the
+     * widening chain (JLS 5.1.2: byte→short→int→long→float→double, char→int), a wrapper source being unboxed
+     * first: {@code int} to {@code long} is 1, and so is {@code Integer} to {@code long}. A wrapper destination
+     * takes only its own primitive, boxed: {@code int} to {@code Integer} is 0, while {@code int} to
+     * {@code Long} and {@code Integer} to {@code Long} are -1, as Java assigns neither. A primitive reaches a
+     * reference type by boxing ({@code int} to {@code Number} is 1).
      * <p>
      * A distance counts steps; it does not rank specificity. A supertype can be fewer steps away than one of its
      * own subtypes ({@code ArrayList} reaches {@code Object} in 2 steps, through {@code RandomAccess}, and
@@ -1106,9 +1112,15 @@ public class ClassUtilities {
             // Get the actual primitive types (unwrap if needed)
             Class<?> sourcePrim = source.isPrimitive() ? source : WRAPPER_TO_PRIMITIVE.getByClass(source);
             Class<?> destPrim = destination.isPrimitive() ? destination : WRAPPER_TO_PRIMITIVE.getByClass(destination);
-            
+
             if (sourcePrim != null && destPrim != null) {
-                // Calculate widening distance (includes same type check)
+                if (!destination.isPrimitive()) {
+                    // A wrapper takes only its own primitive: Java boxes an int to an Integer, never to a Long, and
+                    // assigns no wrapper to another (JLS 5.2). This answered as the primitives widen (Integer to
+                    // Long was 1).
+                    return sourcePrim == destPrim ? 0 : -1;
+                }
+                // Widening, a wrapper source unboxed first (JLS 5.1.8, 5.1.2); includes the same type
                 return getPrimitiveWideningDistance(sourcePrim, destPrim);
             }
             return -1; // Shouldn't happen if isPrimitive() is correct

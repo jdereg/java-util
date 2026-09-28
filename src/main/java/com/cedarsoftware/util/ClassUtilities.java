@@ -3575,11 +3575,14 @@ public class ClassUtilities {
                 // type is an ancestor of something already in 'lowest'
                 continue;
             }
-            // type is indeed a "lowest" so far
+            // type is indeed a "lowest" so far. The sort is by distance, not by inheritance, so one of its own
+            // ancestors may have come first (List before AbstractList, for ArrayList and LinkedList): drop it.
+            Set<Class<?>> supertypes = getClassHierarchyInfo(type).getAllSupertypes();
+            lowest.removeIf(supertypes::contains);
             lowest.add(type);
 
             // Add all type's supertypes to the union set
-            unionOfAncestors.addAll(getClassHierarchyInfo(type).getAllSupertypes());
+            unionOfAncestors.addAll(supertypes);
         }
 
         return lowest;

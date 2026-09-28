@@ -3683,45 +3683,55 @@ public class ClassUtilities {
     private static final ClassValue<Boolean> SECURITY_CHECK_CACHE = new ClassValue<Boolean>() {
         @Override
         protected Boolean computeValue(Class<?> type) {
-            // Direct blocked class check (ultra-fast with ClassValueSet). The internal-package rule
-            // is applied HERE ONLY, to the class itself -- never to its supertypes: the danger is an
-            // internal class's own constructors, while many public JDK classes merely implement an
-            // internal interface (java.nio.DirectByteBuffer implements sun.nio.ch.DirectBuffer).
-            String typeName = type.getName();
-            if (!isUnblockedName(typeName)
-                    && (BLOCKED_CLASSES.containsClass(type) || isBlockedName(typeName)
-                        || isBlockedInternalName(typeName))) {
-                return Boolean.TRUE;
-            }
-
-            // Need to check inheritance - use ClassHierarchyInfo. Consult the blocked-class set, the
-            // blocked-NAME set, AND the blocked package prefixes: entries like
-            // javax.script.ScriptEngine[Manager] and every third-party gadget family exist only by
-            // name (their Class may not be loadable at init), and without the name check a class
-            // merely IMPLEMENTING/extending them would pass verifyClass() even though loading it by
-            // name would have been refused. Matching supertypes by name is also what lets a single
-            // entry cover a whole family — org.springframework.context.ApplicationContext blocks
-            // every *ApplicationContext implementation without java-util depending on Spring.
-            //
-            // Do NOT memoize the verdict in a static set: this ClassValue IS the per-class cache
-            // (computeValue runs at most once per Class lifetime, and a re-loaded class is a new
-            // identity that must be re-verified). A strong-reference memo set can never produce a
-            // hit this cache wouldn't, but it pins every checked class — and its ClassLoader —
-            // for the JVM's lifetime, unreleasable even by clearCaches().
-            for (Class<?> superType : getClassHierarchyInfo(type).getAllSupertypes()) {
-                String superName = superType.getName();
-                if (isUnblockedName(superName)) {
-                    // An explicit unblock defeats the rule that would have matched here, so a
-                    // subclass of an unblocked type is not blocked by virtue of that supertype.
-                    continue;
-                }
-                if (BLOCKED_CLASSES.containsClass(superType) || isBlockedName(superName)) {
-                    return Boolean.TRUE;
-                }
-            }
-            return Boolean.FALSE;
+            return builtInBlocked(type, Collections.<String>emptySet());
         }
     };
+
+    /**
+     * The verdict of the init-time (tier 1) rules for {@code type}.
+     *
+     * @param alsoUnblocked supertype names whose rules to skip besides the tier-1 unblocks: the supertypes unblocked
+     *                      at runtime, which exempt a subclass only from the rules that match through them
+     */
+    private static Boolean builtInBlocked(Class<?> type, Set<String> alsoUnblocked) {
+        // Direct blocked class check (ultra-fast with ClassValueSet). The internal-package rule
+        // is applied HERE ONLY, to the class itself -- never to its supertypes: the danger is an
+        // internal class's own constructors, while many public JDK classes merely implement an
+        // internal interface (java.nio.DirectByteBuffer implements sun.nio.ch.DirectBuffer).
+        String typeName = type.getName();
+        if (!isUnblockedName(typeName)
+                && (BLOCKED_CLASSES.containsClass(type) || isBlockedName(typeName)
+                    || isBlockedInternalName(typeName))) {
+            return Boolean.TRUE;
+        }
+
+        // Need to check inheritance - use ClassHierarchyInfo. Consult the blocked-class set, the
+        // blocked-NAME set, AND the blocked package prefixes: entries like
+        // javax.script.ScriptEngine[Manager] and every third-party gadget family exist only by
+        // name (their Class may not be loadable at init), and without the name check a class
+        // merely IMPLEMENTING/extending them would pass verifyClass() even though loading it by
+        // name would have been refused. Matching supertypes by name is also what lets a single
+        // entry cover a whole family — org.springframework.context.ApplicationContext blocks
+        // every *ApplicationContext implementation without java-util depending on Spring.
+        //
+        // Do NOT memoize the verdict in a static set: this ClassValue IS the per-class cache
+        // (computeValue runs at most once per Class lifetime, and a re-loaded class is a new
+        // identity that must be re-verified). A strong-reference memo set can never produce a
+        // hit this cache wouldn't, but it pins every checked class — and its ClassLoader —
+        // for the JVM's lifetime, unreleasable even by clearCaches().
+        for (Class<?> superType : getClassHierarchyInfo(type).getAllSupertypes()) {
+            String superName = superType.getName();
+            if (isUnblockedName(superName) || alsoUnblocked.contains(superName)) {
+                // An explicit unblock defeats the rule that would have matched here, so a
+                // subclass of an unblocked type is not blocked by virtue of that supertype.
+                continue;
+            }
+            if (BLOCKED_CLASSES.containsClass(superType) || isBlockedName(superName)) {
+                return Boolean.TRUE;
+            }
+        }
+        return Boolean.FALSE;
+    }
 
     /** Exact-name or blocked-package-prefix match against the init-time (tier 1) rules. */
     private static boolean isBlockedName(String className) {
@@ -3781,22 +3791,27 @@ public class ClassUtilities {
      *         {@code null} when no runtime rule applies and the tier-1 verdict should stand.
      */
     private static Boolean runtimeVerdict(Class<?> type) {
-        if (runtimeUnblockedNames.contains(type.getName())) {
-            return Boolean.FALSE;
+        String name = type.getName();
+        if (runtimeUnblockedNames.contains(name)) {
+            return Boolean.FALSE;               // an unblock of the class itself overrides every rule, built-in too
         }
-        if (isRuntimeBlockedName(type.getName())) {
+        if (isRuntimeBlockedName(name)) {
             return Boolean.TRUE;
         }
+        boolean unblockedSupertype = false;
         for (Class<?> superType : getClassHierarchyInfo(type).getAllSupertypes()) {
             String superName = superType.getName();
             if (runtimeUnblockedNames.contains(superName)) {
-                return Boolean.FALSE;
-            }
-            if (isRuntimeBlockedName(superName)) {
+                unblockedSupertype = true;      // exempts only from the rules that match through it
+            } else if (isRuntimeBlockedName(superName)) {
                 return Boolean.TRUE;
             }
         }
-        return null;
+        // With no supertype unblocked at runtime, the built-in verdict (cached) stands. Otherwise it is worked out
+        // again without the rules that match through those supertypes: the class's own, and its other supertypes',
+        // still apply. (The first unblocked supertype returned FALSE, which lifted every built-in rule: unblocking
+        // java.io.Flushable unblocked FileOutputStream, and java.lang.Object unblocked ProcessBuilder.)
+        return unblockedSupertype ? builtInBlocked(type, runtimeUnblockedNames) : null;
     }
 
     /**

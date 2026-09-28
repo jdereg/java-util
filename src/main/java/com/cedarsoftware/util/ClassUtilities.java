@@ -2848,7 +2848,12 @@ public class ClassUtilities {
         boolean noArgs = argumentCount == 0;
         Object[] suppliedArgs = noArgs ? ArrayUtilities.EMPTY_OBJECT_ARRAY : argumentValues.toArray();
         ArgumentShapeKey argumentShapeKey = ArgumentShapeKey.from(suppliedArgs);
-        Map<ArgumentShapeKey, Optional<ConstructorPlan>> classPlanCache = getConstructorPlanCache(c);
+        // A non-static inner class needs its enclosing instance, which a plan does not record: a replayed plan (or a
+        // remembered constructor) passed null for it. So nothing is cached for one -- its plans go in a map dropped
+        // with this call.
+        boolean innerClass = c.getEnclosingClass() != null && !Modifier.isStatic(c.getModifiers());
+        Map<ArgumentShapeKey, Optional<ConstructorPlan>> classPlanCache =
+                innerClass ? new HashMap<>(4) : getConstructorPlanCache(c);
 
         Optional<ConstructorPlan> cachedPlanResult = classPlanCache.get(argumentShapeKey);
         if (cachedPlanResult != null) {
@@ -2874,7 +2879,9 @@ public class ClassUtilities {
                 Constructor<?> noArg = c.getDeclaredConstructor();
                 trySetAccessible(noArg);
                 Object instance = noArg.newInstance(ArrayUtilities.EMPTY_OBJECT_ARRAY);
-                rememberConstructor(c, noArg);
+                if (!innerClass) {
+                    rememberConstructor(c, noArg);
+                }
                 classPlanCache.put(argumentShapeKey, Optional.of(new ConstructorPlan(noArg, EMPTY_PARAMETERS, false)));
                 return instance;
             } catch (NoSuchMethodException ignored) {
@@ -2887,7 +2894,7 @@ public class ClassUtilities {
         }
 
         // Check if we have a previously cached result for this class
-        Optional<Constructor<?>> cachedResult = suppliedArgs.length == 0 ? successfulConstructors.get(c).get() : null;
+        Optional<Constructor<?>> cachedResult = suppliedArgs.length == 0 && !innerClass ? successfulConstructors.get(c).get() : null;
 
         if (cachedResult != null) {
             if (!cachedResult.isPresent()) {
@@ -2923,7 +2930,7 @@ public class ClassUtilities {
         }
 
         // Handle inner classes - with circular reference protection
-        if (c.getEnclosingClass() != null && !Modifier.isStatic(c.getModifiers())) {
+        if (innerClass) {
             if (visitedClasses == null) {
                 visitedClasses = new IdentitySet<>();
             }
@@ -2938,9 +2945,20 @@ public class ClassUtilities {
             SecurityChecker.verifyClass(enclosingClass);
 
             try {
-                if (!visitedClasses.contains(enclosingClass)) {
-                    // Try to create enclosing instance with proper constructor initialization
-                    Object enclosingInstance;
+                // The enclosing instance: one supplied among the arguments (it was ignored, and a new one made),
+                // else one made for it. The other arguments go to the constructor's other parameters.
+                Object enclosingInstance = null;
+                Object[] otherArgs = suppliedArgs;
+                for (int i = 0; i < suppliedArgs.length; i++) {
+                    if (enclosingClass.isInstance(suppliedArgs[i])) {
+                        enclosingInstance = suppliedArgs[i];
+                        otherArgs = new Object[suppliedArgs.length - 1];
+                        System.arraycopy(suppliedArgs, 0, otherArgs, 0, i);
+                        System.arraycopy(suppliedArgs, i + 1, otherArgs, i, suppliedArgs.length - i - 1);
+                        break;
+                    }
+                }
+                if (enclosingInstance == null && !visitedClasses.contains(enclosingClass)) {
                     try {
                         // First try default constructor if available
                         Constructor<?> defaultCtor = enclosingClass.getDeclaredConstructor();
@@ -2950,7 +2968,8 @@ public class ClassUtilities {
                         // Fall back to creating with empty args (may use Unsafe)
                         enclosingInstance = newInstance(converter, enclosingClass, Collections.emptyList(), visitedClasses);
                     }
-                    
+                }
+                if (enclosingInstance != null) {
                     // Try all constructors where the first parameter is the enclosing class
                     Constructor<?>[] constructors = ReflectionUtils.getAllConstructors(c);
                     for (Constructor<?> constructor : constructors) {
@@ -2961,22 +2980,15 @@ public class ClassUtilities {
 
                                 if (params.length == 1) {
                                     // Simple case: only takes enclosing instance
-                                    Object instance = constructor.newInstance(enclosingInstance);
-                                    rememberConstructor(c, constructor);
-                                    classPlanCache.put(argumentShapeKey, Optional.of(new ConstructorPlan(constructor, params, false)));
-                                    return instance;
+                                    return constructor.newInstance(enclosingInstance);
                                 } else {
                                     // Complex case: takes enclosing instance plus more arguments
                                     // Create arguments array with enclosing instance first
-                                    Object[] restArgs = matchArgumentsToParameters(converter, suppliedArgs, params, 1, params.length - 1, false);
+                                    Object[] restArgs = matchArgumentsToParameters(converter, otherArgs, params, 1, params.length - 1, false);
                                     Object[] allArgs = new Object[params.length];
                                     allArgs[0] = enclosingInstance;
                                     System.arraycopy(restArgs, 0, allArgs, 1, restArgs.length);
-
-                                    Object instance = constructor.newInstance(allArgs);
-                                    rememberConstructor(c, constructor);
-                                    classPlanCache.put(argumentShapeKey, Optional.of(new ConstructorPlan(constructor, params, false)));
-                                    return instance;
+                                    return constructor.newInstance(allArgs);
                                 }
                             } catch (Exception e) {
                                 // Try next constructor
@@ -3024,7 +3036,9 @@ public class ClassUtilities {
 
                 // Cache this successful constructor for future use
                 if (noArgs || !valueDependentOutcome) {
-                    rememberConstructor(c, constructor);
+                    if (!innerClass) {
+                        rememberConstructor(c, constructor);
+                    }
                     classPlanCache.put(argumentShapeKey, Optional.of(new ConstructorPlan(constructor, parameters, false,
                             binding.seal(suppliedArgs.length))));
                 }
@@ -3046,7 +3060,9 @@ public class ClassUtilities {
 
                     // Cache this successful constructor for future use
                     if (noArgs || !valueDependentOutcome) {
-                        rememberConstructor(c, constructor);
+                        if (!innerClass) {
+                            rememberConstructor(c, constructor);
+                        }
                         classPlanCache.put(argumentShapeKey, Optional.of(new ConstructorPlan(constructor, parameters, true,
                                 binding.seal(suppliedArgs.length))));
                     }

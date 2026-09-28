@@ -2088,14 +2088,12 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             return false;
         }
         
-        // Early rejection on size mismatch
-        // IMPORTANT: Skip size check when stored is expanded Collection and lookup is un-expanded Collection
-        // In COLLECTIONS_EXPANDED mode, stored.size is the EXPANDED size (includes SET_OPEN/SET_CLOSE markers)
-        // but lookupSize is the UN-EXPANDED Collection size. The compareCollections method handles this correctly.
-        boolean skipSizeCheck = (collectionKeyMode == CollectionKeyMode.COLLECTIONS_EXPANDED &&
-                                  stored.kind == MultiKey.KIND_COLLECTION &&
-                                  lookupKind == MultiKey.KIND_COLLECTION);
-        if (!skipSizeCheck && stored.size != lookupSize) return false;
+        // Early rejection on size mismatch. Both sides were normalized by flattenKey() (a lookup and a stored key
+        // alike), so equal keys have equal sizes, Set markers included. The check was skipped for two Collections
+        // in COLLECTIONS_EXPANDED mode, and compareCollections() walked only the stored key's length: a shorter
+        // key that was a prefix of a longer one matched it whenever their hashes collided -- get() returned the
+        // other key's value, put() overwrote it, and the longer lookup threw NoSuchElementException.
+        if (stored.size != lookupSize) return false;
         
         // Handle COLLECTIONS_NOT_EXPANDED mode - Collections should use their own equals
         if (collectionKeyMode == CollectionKeyMode.COLLECTIONS_NOT_EXPANDED && stored.kind == MultiKey.KIND_COLLECTION) {
@@ -2543,6 +2541,9 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         Iterator<?> iter2 = coll2.iterator();
         int i = 0;
         while (i < size) {
+            if (!iter1.hasNext() || !iter2.hasNext()) {
+                return false;       // one ran out first: not the same key (and never NoSuchElementException)
+            }
             Object elem1 = iter1.next();
             Object elem2 = iter2.next();
 
@@ -2691,7 +2692,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             }
             i++;
         }
-        return true;
+        return !iter1.hasNext() && !iter2.hasNext();     // both keys ended together
     }
     
     /**

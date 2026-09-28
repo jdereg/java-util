@@ -2202,6 +2202,7 @@ public static void logConstructorAccessIssue(Constructor<?> constructor, Excepti
 
 // Cache management
 public static void clearCaches()
+public static void forgetMissingClasses(ClassLoader loader)  // drop one loader's "not found" answers
 ```
 ### Usage Examples
 
@@ -2235,7 +2236,25 @@ Class<?> b = ClassUtilities.forName("[Ljava/lang/String;", null);    // String[]
 Class<?> c = ClassUtilities.forName("java.lang.String[][]", null);   // String[][]
 Class<?> d = ClassUtilities.forName("int[]", null);                  // int[]
 // A malformed array name returns null: "[Ixyz", "[I[]", "[Ljava/lang.String;"
+```
 
+**Class loaders that define classes later:** `forName()` caches the classes it finds for good. How long it keeps a
+"not found" answer depends on the class loader. A class can appear in a loader after its name was looked up, and
+the cached miss would then hide it.
+
+| Class loader | A "not found" is kept |
+|---|---|
+| The JDK's own: the system class loader and its ancestors | Until evicted or `clearCaches()`: their classes never change |
+| A Groovy class loader (or a subclass) | Never: it defines classes at any moment |
+| Any other: a container's, Spring Boot's, a plugin's, OSGi's | `classutilities.class.not.found.cache.millis`, 1 second by default (`0`: never) |
+
+Code that defines classes in a loader of the last kind can make them visible at once:
+```java
+myLoader.defineMyClasses();                       // however it does so
+ClassUtilities.forgetMissingClasses(myLoader);    // the next forName() of each missing name asks the loader again
+```
+
+```java
 // Create new instance - multiple approaches supported
 
 // 1. Using Map with parameter names (preferred for complex constructors)

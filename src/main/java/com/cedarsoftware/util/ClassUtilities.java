@@ -98,6 +98,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -230,6 +231,86 @@ public class ClassUtilities {
         /** Names cached as not found, oldest first; its length is kept in notFoundCount. */
         final ConcurrentLinkedQueue<String> notFoundOrder = new ConcurrentLinkedQueue<>();
         final AtomicInteger notFoundCount = new AtomicInteger();
+        /**
+         * How long a "not found" answer is kept, in nanoseconds (see missLifetime). Decided once, when the loader's
+         * cache is made, so a lookup only reads it. Nothing here refers to the loader, which keys this weakly.
+         */
+        final long missLifetimeNanos;
+        /** When the not-found answers were last dropped (System.nanoTime()); read only when they can expire. */
+        volatile long missesDroppedAt = System.nanoTime();
+
+        LoaderCache(ClassLoader loader) {
+            missLifetimeNanos = missLifetime(loader);
+        }
+    }
+
+    /** A "not found" kept until evicted or clearCaches(): the JDK's own loaders, whose classes never change. */
+    private static final long MISSES_KEPT = Long.MAX_VALUE;
+    /** No "not found" kept: a Groovy class loader, which defines classes at any moment. */
+    private static final long MISSES_NOT_KEPT = 0L;
+    /** How long a "not found" is kept for any other loader, in milliseconds, unless the property says otherwise. */
+    private static final long DEFAULT_MISS_LIFETIME_MILLIS = 1000L;
+
+    /**
+     * How long a class loader's "not found" answers are kept. A cached miss claims the loader has no class by that
+     * name; that stays true only for a loader whose classes cannot change after the fact. So:
+     * <ul>
+     *     <li>The JDK's own loaders -- the system class loader and its ancestors, when their classes are the JDK's --
+     *         keep them (until evicted, or clearCaches()).</li>
+     *     <li>A Groovy class loader (by class name; java-util does not depend on Groovy) keeps none: it defines
+     *         classes at any moment -- n-cube defines one milliseconds after looking its name up -- so no window is
+     *         short enough, and a miss there is rare.</li>
+     *     <li>Any other loader (a web container's, Spring Boot's, a plugin's, OSGi's; one that generates classes)
+     *         keeps them for {@code classutilities.class.not.found.cache.millis}, 1 second by default (0: keeps
+     *         none). A class it defines later is found within that time, or at once after
+     *         {@link #forgetMissingClasses(ClassLoader)}.</li>
+     * </ul>
+     * They were kept for good in every loader, so a class a loader defined after a lookup of its name was never
+     * found (until clearCaches()).
+     */
+    private static long missLifetime(ClassLoader loader) {
+        if (isJdkLoader(loader)) {
+            return MISSES_KEPT;
+        }
+        for (Class<?> c = loader.getClass(); c != null; c = c.getSuperclass()) {
+            if ("groovy.lang.GroovyClassLoader".equals(c.getName())) {
+                return MISSES_NOT_KEPT;
+            }
+        }
+        long millis = DEFAULT_MISS_LIFETIME_MILLIS;
+        String property = System.getProperty("classutilities.class.not.found.cache.millis");
+        if (property != null) {
+            try {
+                millis = Math.max(0L, Long.parseLong(property.trim()));
+            } catch (NumberFormatException ignored) {
+                // the default
+            }
+        }
+        return millis == 0 ? MISSES_NOT_KEPT : TimeUnit.MILLISECONDS.toNanos(millis);
+    }
+
+    /** The system class loader or one of its ancestors, when its class is the JDK's (loaded by the bootstrap loader). */
+    private static boolean isJdkLoader(ClassLoader loader) {
+        try {
+            for (ClassLoader l = ClassLoader.getSystemClassLoader(); l != null; l = l.getParent()) {
+                if (l == loader) {
+                    return loader.getClass().getClassLoader() == null;
+                }
+            }
+        } catch (SecurityException ignored) {
+            // Not allowed to look: not assumed to be the JDK's
+        }
+        return false;
+    }
+
+    /** Drops the loader's "not found" answers: each such name is looked up again. */
+    private static void dropMisses(LoaderCache holder, long now) {
+        holder.missesDroppedAt = now;
+        String name;
+        while ((name = holder.notFoundOrder.poll()) != null) {
+            holder.notFoundCount.decrementAndGet();
+            holder.cache.remove(name, NOT_FOUND);     // only if still not found: a class found since stays
+        }
     }
 
     /**
@@ -298,12 +379,24 @@ public class ClassUtilities {
             // This prevents race conditions where another thread added a new entry with the same name.
             holder.cache.remove(name, ref);
         }
+        if (cls == CLASS_NOT_FOUND_SENTINEL && holder.missLifetimeNanos != MISSES_KEPT) {
+            // The loader's misses are dropped together once they may be stale, so none is older than its lifetime
+            long now = System.nanoTime();
+            if (now - holder.missesDroppedAt > holder.missLifetimeNanos) {
+                dropMisses(holder, now);
+                return null;
+            }
+        }
         return cls;
     }
 
     private static void toCacheNotFound(String name, ClassLoader cl) {
         final ClassLoader key = resolveLoader(cl);
         final LoaderCache holder = getLoaderCacheHolder(key);
+
+        if (holder.missLifetimeNanos == MISSES_NOT_KEPT) {
+            return;     // a loader that defines classes at any moment: its misses are not kept
+        }
 
         // Opportunistically drain dead references (lock-free, uses CAS-based removal)
         drainQueue(holder);
@@ -339,7 +432,7 @@ public class ClassUtilities {
         synchronized (NAME_CACHE) {
             holder = NAME_CACHE.get(key);
             if (holder == null) {
-                holder = new LoaderCache();
+                holder = new LoaderCache(key);
                 NAME_CACHE.put(key, holder);
             }
         }
@@ -4254,6 +4347,27 @@ public class ClassUtilities {
         // still apply. (The first unblocked supertype returned FALSE, which lifted every built-in rule: unblocking
         // java.io.Flushable unblocked FileOutputStream, and java.lang.Object unblocked ProcessBuilder.)
         return unblockedSupertype ? builtInBlocked(type, runtimeUnblockedNames) : null;
+    }
+
+    /**
+     * Forgets the class names cached as not found for {@code loader}, so the next {@link #forName} of each asks the
+     * loader again. For code that defines classes in a class loader: a miss there is otherwise kept for up to
+     * {@code classutilities.class.not.found.cache.millis} (1 second by default), and a class defined in that time
+     * is not found until it passes. Not needed for a Groovy class loader, whose misses are not kept. The JDK's own
+     * loaders keep theirs until this is called (a Java agent that appends to the class path, say) or
+     * {@link #clearCaches()}. Unlike clearCaches(), it drops nothing else.
+     *
+     * @param loader the class loader whose "not found" answers to drop; null means the one forName(name, null) uses
+     */
+    public static void forgetMissingClasses(ClassLoader loader) {
+        ClassLoader key = resolveLoader(loader);
+        LoaderCache holder;
+        synchronized (NAME_CACHE) {
+            holder = NAME_CACHE.get(key);
+        }
+        if (holder != null) {
+            dropMisses(holder, System.nanoTime());
+        }
     }
 
     /**

@@ -91,9 +91,17 @@ class ClassUtilitiesNegativeCacheTest {
         }
     }
 
+    // These loaders are neither the JDK's nor Groovy's, so their misses expire (1 second by default): kept long here,
+    // so that what is measured is the cache, however slow the machine.
     @BeforeEach
+    void keepMissesAndClearCaches() {
+        System.setProperty("classutilities.class.not.found.cache.millis", "600000");
+        ClassUtilities.clearCaches();
+    }
+
     @AfterEach
-    void clearCaches() {
+    void restoreAndClearCaches() {
+        System.clearProperty("classutilities.class.not.found.cache.millis");
         ClassUtilities.clearCaches();
     }
 

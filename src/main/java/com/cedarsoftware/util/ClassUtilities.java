@@ -15,6 +15,7 @@ import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Member;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Parameter;
@@ -3257,18 +3258,29 @@ public class ClassUtilities {
         return matchArgumentsToParameters(converter, suppliedArgs, plan.parameters, allowNulls);
     }
 
-    // Memoizes AccessibleObjects that could NOT be made accessible (trySetAccessible only ever
-    // stores Boolean.FALSE). This is probed on every instantiation and field injection, so under
-    // concurrent deserialization it MUST be lock-free: a Collections.synchronizedMap(WeakHashMap)
-    // here serialized every worker thread on a single monitor (the dominant contention point in
-    // multi-threaded reads). ConcurrentHashMap gives lock-free reads and writes.
+    // Per declaring class, its members that could NOT be made accessible (trySetAccessible remembers
+    // only failures). This is probed on every instantiation and field injection, so under concurrent
+    // deserialization it MUST be lock-free: a Collections.synchronizedMap(WeakHashMap) here serialized
+    // every worker thread on a single monitor (the dominant contention point in multi-threaded reads).
     //
-    // Strong references (no WeakHashMap) are safe here: setAccessible only fails for members whose
-    // declaring module refuses to open — JPMS-sealed platform/JDK internals loaded by the
-    // bootstrap/platform loader, which are never unloaded. Application and dynamically-loaded
-    // classes (e.g. Groovy) live in open/unnamed modules, succeed here, and are therefore never
-    // added — so no application classloader is ever retained by this cache.
-    private static final Map<AccessibleObject, Boolean> accessibilityCache = new ConcurrentHashMap<>();
+    // Per class, so the entries go with their class. It was one ConcurrentHashMap, safe only while
+    // every failure was a JDK internal: a named application module that does not open its package
+    // (a module layer's loader), or a SecurityManager, refuses too -- and such a member kept its
+    // class loader alive for good. Values are JDK types (see perClass).
+    private static volatile ClassValue<Set<AccessibleObject>> inaccessibleMembers =
+            perClass(c -> ConcurrentHashMap.newKeySet());
+
+    /** The declaring class whose inaccessibleMembers hold {@code object}, or null: remembered nowhere. */
+    private static Class<?> declaringClass(AccessibleObject object) {
+        return object instanceof Member ? ((Member) object).getDeclaringClass() : null;
+    }
+
+    private static void rememberInaccessible(AccessibleObject object) {
+        Class<?> declaring = declaringClass(object);
+        if (declaring != null) {
+            inaccessibleMembers.get(declaring).add(object);
+        }
+    }
     
     @SuppressWarnings("deprecation")   // isAccessible(): deprecated since 9, not for removal; JDK 8 has no alternative
     static void trySetAccessible(AccessibleObject object) {
@@ -3282,27 +3294,28 @@ public class ClassUtilities {
             return;
         }
 
-        // Check cache for known failures only. We only cache FALSE (failures) to avoid
-        // expensive repeated exception throwing on JPMS-sealed modules. We do NOT cache
-        // TRUE because WeakHashMap uses equals()-based lookup, and Field.equals() matches
-        // by declaring class + name + type. Different Field instances for the same logical
-        // field (from separate getDeclaredFields() calls) would incorrectly share a TRUE
-        // cache entry, causing the second instance to never get setAccessible(true) called.
-        if (Boolean.FALSE.equals(accessibilityCache.get(object))) {
+        // Check cache for known failures only. We only cache failures to avoid expensive
+        // repeated exception throwing on JPMS-sealed modules. We do NOT cache successes because
+        // the lookup is equals()-based, and Field.equals() matches by declaring class + name +
+        // type. Different Field instances for the same logical field (from separate
+        // getDeclaredFields() calls) would incorrectly share a success, causing the second
+        // instance to never get setAccessible(true) called.
+        Class<?> declaring = declaringClass(object);
+        if (declaring != null && inaccessibleMembers.get(declaring).contains(object)) {
             return;
         }
 
         try {
             object.setAccessible(true);
         } catch (SecurityException e) {
-            accessibilityCache.put(object, Boolean.FALSE);
+            rememberInaccessible(object);
             if (LOG.isLoggable(Level.FINE)) {
                 LOG.log(Level.FINE, "Unable to set accessible: " + object + " - " + e.getMessage());
             }
             throw e; // Don't suppress security exceptions - they indicate important access control violations
         } catch (Throwable t) {
             // Only ignore non-security exceptions (like InaccessibleObjectException in Java 9+)
-            accessibilityCache.put(object, Boolean.FALSE);
+            rememberInaccessible(object);
             safelyIgnoreException(t);
         }
     }
@@ -3957,7 +3970,7 @@ public class ClassUtilities {
         assignableTypes = perClass(ClassUtilities::findAssignableSupplier);
         osgiClassLoaders = perClass(c -> new AtomicReference<>());
         osgiPresent = true;
-        accessibilityCache.clear();
+        inaccessibleMembers = perClass(c -> ConcurrentHashMap.newKeySet());
         // ENUM_CLASS_CACHE, SECURITY_CHECK_CACHE and POSITIONAL_KEY_ORDER are ClassValues too, left as they are.
     }
 

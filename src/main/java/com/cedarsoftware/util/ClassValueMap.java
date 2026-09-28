@@ -219,19 +219,21 @@ public class ClassValueMap<V> extends AbstractMap<Class<?>, V> implements Concur
      * stored in a JDK class would keep java-util's own class loader alive for the life of the JVM.
      * <p>
      * The classes that have a mapping are also listed, weakly, for iteration and size().
+     * <p>
+     * This object is the ClassValue itself, which saves a load on every lookup. The JDK holds a ClassValue only
+     * weakly from the classes it has values in, so it pins nothing.
      */
-    private static final class Mappings {
-        final ClassValue<AtomicReference<Object>> slots = new ClassValue<AtomicReference<Object>>() {
-            @Override
-            protected AtomicReference<Object> computeValue(Class<?> type) {
-                return new AtomicReference<>(NO_VALUE);
-            }
-        };
+    private static final class Mappings extends ClassValue<AtomicReference<Object>> {
         final Set<ClassKey> keys = ConcurrentHashMap.newKeySet();
         final ReferenceQueue<Class<?>> unloaded = new ReferenceQueue<>();
 
+        @Override
+        protected AtomicReference<Object> computeValue(Class<?> type) {
+            return new AtomicReference<>(NO_VALUE);
+        }
+
         AtomicReference<Object> slot(Class<?> key) {
-            return slots.get(key);
+            return get(key);
         }
 
         /** Called holding the key's slot lock, when the key goes from unmapped to mapped. */

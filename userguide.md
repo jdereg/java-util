@@ -1521,14 +1521,15 @@ A high-performance `Map` implementation keyed on `Class` objects that leverages 
 
 ### Key Features
 
-- **Fast lookups (in a narrow niche)**: 2-10x faster than `HashMap` for `get()`, and faster than `ConcurrentHashMap` for concurrent reads — **but only for a few, pre-populated, read-mostly instances**. The advantage inverts once many ClassValue-based collections compete on the same classes; see [Critical usage constraints](#classvaluemap-critical-usage-constraints) below.
+- **Fast lookups (in a narrow niche)**: 2-10x faster than `HashMap` for `get()`, and faster than `ConcurrentHashMap` for concurrent reads — **but only for a few, read-mostly instances**. The advantage inverts once many ClassValue-based collections compete on the same classes; see [Critical usage constraints](#classvaluemap-critical-usage-constraints) below.
 - **Typed fast path**: `getByClass(Class)` skips the `instanceof Class` guard for hot paths
+- **Keeps no class alive**: each value lives in a slot stored in its key class, and keys are listed weakly, so as in a `WeakHashMap` an entry goes away when its class is unloaded, even when the value refers back to the class
 - **Thread-safe**: Fully concurrent support for all operations
 - **Drop-in replacement**: Completely implements `ConcurrentMap` interface
 - **Null support**: Both null keys and null values are supported
 - **Optimized for Class keys**: Specially designed for maps where `Class` objects are keys
 
-> **`ClassValueMap` is a specialist, not a general-purpose faster `Map<Class,V>`.** It wins for a *few, pre-populated, read-mostly* class registries; outside that a plain `ConcurrentHashMap` is as fast or faster. Read [Critical usage constraints](#classvaluemap-critical-usage-constraints) before adopting.
+> **`ClassValueMap` is a specialist, not a general-purpose faster `Map<Class,V>`.** It wins for a *few, read-mostly* class registries; outside that a plain `ConcurrentHashMap` is as fast or faster. Read [Critical usage constraints](#classvaluemap-critical-usage-constraints) before adopting.
 
 ### Usage Examples
 
@@ -1554,11 +1555,12 @@ public void process(Object object) {
 
 ### Performance Characteristics
 
-The `ClassValueMap` provides improved lookup performance *within its niche* (few, pre-populated, read-mostly instances):
+The `ClassValueMap` provides improved lookup performance *within its niche* (few, read-mostly instances):
 
 - **getByClass(Class)**: Typed fast path — skips the `instanceof` guard that `get(Object)` must perform; prefer this in hot paths
 - **get(Object) / containsKey()**: 2-10x faster than standard maps due to JVM-optimized `ClassValue` caching
-- **put() / remove()**: Comparable to `ConcurrentHashMap` (standard performance)
+- **put() / remove()**: Write one class's slot and never invalidate other classes' cached lookups, so a map can be filled lazily (get, miss, then put)
+- **Iteration, size() and containsValue()**: Walk the weakly-listed keys and read each class's slot, so they are slower than a `ConcurrentHashMap`'s
 - **Best for**: Read-heavy workloads where lookups vastly outnumber modifications
 
 ### ClassValueMap: critical usage constraints
@@ -1566,12 +1568,16 @@ The `ClassValueMap` provides improved lookup performance *within its niche* (few
 Use `ClassValueMap` only when **all** of these hold; otherwise use a plain `ConcurrentHashMap`:
 
 - **Few instances — the cost is non-local.** ClassValue's speed comes from a per-`Class` fast cache, but the JVM gives every `Class` *one* small, fixed-capacity cache array **shared across all `ClassValue` instances** (open-addressed, probe limit of 3). Each `ClassValueMap` is a distinct `ClassValue`, so many of them keyed on the same classes evict one another from that array and each lookup falls through to a slower backup path (a `WeakHashMap` re-promote). A `ClassValueMap`'s performance therefore depends on how many *other* ClassValue-based collections exist in the JVM — unlike any ordinary `Map`. The "faster than `ConcurrentHashMap`" advantage holds for a handful and **inverts** once ~10+ compete on the same classes.
-- **Pre-populated, not lazily built.** Build once (e.g. at startup), then read. Avoid the get-miss-then-`put` idiom on a hot path: `put()` invalidates the map's `ClassValue`, which the JVM implements by bumping a version that drops *every* cached entry (not just the changed key), so lazily populating N classes is roughly O(N²) of whole-cache invalidation as it warms up. Use a plain `ConcurrentHashMap` for lazily-built caches.
-- **Not a leak-safe class cache.** The backing `ConcurrentHashMap` **strongly references** its `Class` keys, so a long-lived instance pins those classes (and their `ClassLoader`s) until removed or cleared. A bare `ClassValue` is leak-safe — its values live inside each `Class` — but this map's backing store gives that up. Don't accumulate dynamically-loaded classes in a long-lived instance.
+- **Values are kept in the key's class.** A value lives as long as its class, or until it is removed. A value of a short-lived class loader's type, stored for a long-lived class (a JDK class, say), keeps that loader alive while it is mapped.
+
+A slot (a small object) is kept in every class the map is asked about, found or not.
+
+(Earlier versions kept every mapping in a backing `ConcurrentHashMap` as well, which kept each key class and its `ClassLoader` alive, and made `put()` invalidate the cached lookup of every class, so filling a map lazily cost ~O(N²). Neither applies now.)
 
 ### Implementation Notes
 
-- Internally uses a combination of `ClassValue` and `ConcurrentHashMap`
+- Each class's value is kept in an `AtomicReference` slot stored in the class through a `ClassValue` (a JDK type, so a slot kept in a JDK class never pins java-util's own class loader); `put()` / `remove()` change it under that slot's lock
+- The mapped classes are also listed weakly, for iteration and `size()`
 - `ClassValue` provides thread-local caching and identity-based lookup optimization
 - All standard Map operations are supported, including bulk operations
 - Thread-safe - no external synchronization required

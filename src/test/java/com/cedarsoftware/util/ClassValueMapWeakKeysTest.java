@@ -101,10 +101,7 @@ class ClassValueMapWeakKeysTest {
         map.get(Integer.class);
         Field mappingsField = ClassValueMap.class.getDeclaredField("mappings");
         mappingsField.setAccessible(true);
-        Object mappings = mappingsField.get(map);
-        Field slotsField = mappings.getClass().getDeclaredField("slots");
-        slotsField.setAccessible(true);
-        ClassValue<?> slots = (ClassValue<?>) slotsField.get(mappings);
+        ClassValue<?> slots = (ClassValue<?>) mappingsField.get(map);    // the mappings holder is the ClassValue
         for (Class<?> c : new Class<?>[]{String.class, Integer.class}) {
             Object slot = slots.get(c);
             assertNull(slot.getClass().getClassLoader(), c + " holds a " + slot.getClass());

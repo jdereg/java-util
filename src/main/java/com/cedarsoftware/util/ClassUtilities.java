@@ -1900,10 +1900,15 @@ public class ClassUtilities {
         return assignableTypes.get(argType).map(Supplier::get).orElse(null);
     }
 
-    /** The first ASSIGNABLE_CLASS_MAPPING supplier whose type {@code argType} is assignable to, if any. */
+    /**
+     * The first ASSIGNABLE_CLASS_MAPPING supplier whose type {@code argType} is assignable to and whose product is an
+     * {@code argType}, if any. A mapping's product is only known to be of the mapped type: an ArrayBlockingQueue
+     * parameter was given a LinkedBlockingQueue (the BlockingQueue mapping), a GregorianCalendar or a Path an
+     * ArrayList, and a Writer a ByteArrayInputStream -- defaults the constructor could not take.
+     */
     private static Optional<Supplier<Object>> findAssignableSupplier(Class<?> argType) {
         for (Map.Entry<Class<?>, Supplier<Object>> entry : ASSIGNABLE_CLASS_MAPPING.entrySet()) {
-            if (entry.getKey().isAssignableFrom(argType)) {
+            if (entry.getKey().isAssignableFrom(argType) && argType.isInstance(entry.getValue().get())) {
                 return Optional.of(entry.getValue());
             }
         }

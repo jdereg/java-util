@@ -761,9 +761,11 @@ class ClassUtilitiesTest {
     }
 
     @Test
-    void testMapAndCollectionNotRelated() {
+    void testMapAndCollectionShareOnlyObject() {
+        // Every interface type is an Object (JLS 4.10.2); nothing more specific is common to these two
         Set<Class<?>> skip = new HashSet<>();
         Set<Class<?>> results = ClassUtilities.findLowestCommonSupertypesExcluding(Collection.class, Map.class, skip);
-        assert results.isEmpty();
+        assertEquals(Collections.singleton(Object.class), results);
+        assertTrue(ClassUtilities.findLowestCommonSupertypes(Collection.class, Map.class).isEmpty());
     }
 }

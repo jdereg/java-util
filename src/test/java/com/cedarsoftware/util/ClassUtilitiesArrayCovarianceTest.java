@@ -14,9 +14,9 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 
 /**
  * computeInheritanceDistance() and constructor matching know the two assignments Java allows beyond superclasses and
- * interfaces: an array of references to an array of its component's supertype, and an interface to Object. Both were
- * -1, so newInstance(Holder(Object[]), [String[]]) did not pass the array: it went to conversion and the constructor
- * received an empty Object[].
+ * interfaces: an array of references to an array of its component's supertype, and an interface to Object (JLS
+ * 4.10.2, 4.10.3). Both were -1, so newInstance(Holder(Object[]), [String[]]) did not pass the array: it went to
+ * conversion and the constructor received an empty Object[].
  */
 class ClassUtilitiesArrayCovarianceTest {
 
@@ -66,7 +66,8 @@ class ClassUtilitiesArrayCovarianceTest {
     void arrayDistances() {
         assertEquals(1, ClassUtilities.computeInheritanceDistance(String[].class, Object[].class));
         assertEquals(1, ClassUtilities.computeInheritanceDistance(String[][].class, Object[][].class));
-        assertEquals(1, ClassUtilities.computeInheritanceDistance(String[][].class, Object[].class));
+        assertEquals(2, ClassUtilities.computeInheritanceDistance(String[][].class, Object[].class),
+                "String[][] -> Object[][] -> Object[] (JLS 4.10.3)");
         assertEquals(1, ClassUtilities.computeInheritanceDistance(ArrayList[].class, List[].class));
         assertEquals(1, ClassUtilities.computeInheritanceDistance(Integer[].class, Number[].class));
         assertEquals(1, ClassUtilities.computeInheritanceDistance(int[][].class, Object[].class));
@@ -78,11 +79,26 @@ class ClassUtilitiesArrayCovarianceTest {
         assertEquals(-1, ClassUtilities.computeInheritanceDistance(Object[].class, String[].class));
     }
 
+    interface Deep {
+    }
+
+    interface Middle extends Deep {
+    }
+
+    interface Root {
+    }
+
+    /** Object is reached through Root (no superinterfaces) in 2 steps, not above Deep in 3. */
+    interface TwoBranches extends Middle, Root {
+    }
+
     @Test
-    void anInterfaceReachesObjectAboveItsDeepestSupertype() {
+    void anInterfaceReachesObjectThroughItsNearestRootInterface() {
         assertEquals(1, ClassUtilities.computeInheritanceDistance(Runnable.class, Object.class));
         int toObject = ClassUtilities.computeInheritanceDistance(List.class, Object.class);
         assertEquals(ClassUtilities.computeInheritanceDistance(List.class, Iterable.class) + 1, toObject);
+        assertEquals(2, ClassUtilities.computeInheritanceDistance(TwoBranches.class, Object.class));
+        assertEquals(2, ClassUtilities.computeInheritanceDistance(TwoBranches.class, Deep.class));
         assertEquals(-1, ClassUtilities.computeInheritanceDistance(List.class, String.class));
         assertEquals(-1, ClassUtilities.computeInheritanceDistance(Object.class, List.class));
     }

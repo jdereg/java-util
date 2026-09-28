@@ -132,10 +132,12 @@ import static com.cedarsoftware.util.ExceptionUtilities.safelyIgnoreException;
  *
  * <h2>Inheritance Distance</h2>
  * <p>
- * The {@link #computeInheritanceDistance(Class, Class)} method calculates the number of inheritance steps
- * between two classes or interfaces. If there is no relationship, it returns {@code -1}. This method also
- * supports primitive widening conversions as defined in JLS 5.1.2, treating widening paths like
- * byte→short→int→long→float→double as inheritance relationships.
+ * The {@link #computeInheritanceDistance(Class, Class)} method calculates the fewest inheritance steps
+ * between two types, through direct supertypes as the Java Language Specification defines them (JLS 4.10):
+ * a distance exists exactly when Java would assign the one to the other, so an interface reaches
+ * {@code Object} and {@code String[]} reaches {@code Object[]}. If there is no relationship, it returns
+ * {@code -1}. This method also supports primitive widening conversions as defined in JLS 5.1.2, treating
+ * widening paths like byte→short→int→long→float→double as inheritance relationships.
  * </p>
  *
  * <h2>Primitive and Wrapper Handling</h2>
@@ -1069,10 +1071,21 @@ public class ClassUtilities {
 
     /**
      * Computes the inheritance distance between two classes/interfaces/primitive types.
-     * For reference types, distances are cached via ClassHierarchyInfo. For primitive types,
-     * widening conversions are pre-computed in static maps. An array of references reaches an array of
-     * its component's supertype at the components' distance ({@code String[]} to {@code Object[]} is 1),
-     * and an interface reaches {@code Object} one step above its deepest supertype.
+     * <p>
+     * For reference types it is the fewest steps from {@code source} up to {@code destination} through direct
+     * supertypes as the Java Language Specification defines them (JLS 4.10.2, 4.10.3; see
+     * {@link #getClassHierarchyInfo}): a distance exists exactly when {@code destination.isAssignableFrom(source)}.
+     * So an interface reaches {@code Object}, and {@code String[]} reaches {@code Object[]} in 1 step and
+     * {@code Object} in 2. For primitive types it follows the widening chain (JLS 4.10.1, 5.1.2:
+     * byte→short→int→long→float→double, char→int); a wrapper is one step from its primitive, and boxes to
+     * reach a reference type.
+     * <p>
+     * A distance counts steps; it does not rank specificity. A supertype can be fewer steps away than one of its
+     * own subtypes ({@code ArrayList} reaches {@code Object} in 2 steps, through {@code RandomAccess}, and
+     * {@code Collection} in 3), and distances change with the JDK (JDK 21's {@code SequencedCollection} added a
+     * step between {@code List} and {@code Collection}). To choose among candidate types, prefer the most specific
+     * (a subtype over its supertype), as {@link #findClosest} does, and use the distance only between unrelated
+     * candidates.
      *
      * @param source      The source class, interface, or primitive type.
      * @param destination The destination class, interface, or primitive type.
@@ -1113,28 +1126,7 @@ public class ClassUtilities {
             return -1;
         }
 
-        return referenceDistance(source, destination);
-    }
-
-    /**
-     * The inheritance distance between reference types, or -1 if Java would not assign one to the other. The cached
-     * hierarchy follows superclasses and interfaces; it does not record two assignments Java allows, so they are
-     * computed here: an array of references to an array of its component's supertype ({@code String[]} to
-     * {@code Object[]}, at the components' distance), and an interface to {@code Object} (one step above its deepest
-     * supertype).
-     */
-    private static int referenceDistance(Class<?> source, Class<?> destination) {
-        ClassHierarchyInfo info = getClassHierarchyInfo(source);
-        int distance = info.getDistance(destination);
-        if (distance >= 0) {
-            return distance;
-        }
-        if (source.isArray() && destination.isArray()) {
-            Class<?> from = source.getComponentType();
-            Class<?> to = destination.getComponentType();
-            return from.isPrimitive() || to.isPrimitive() ? -1 : referenceDistance(from, to);
-        }
-        return source.isInterface() && destination == Object.class ? info.getDepth() + 1 : -1;
+        return getClassHierarchyInfo(source).getDistance(destination);
     }
 
     /**
@@ -2237,9 +2229,6 @@ public class ClassUtilities {
                     hierarchyInfo = getClassHierarchyInfo(valueClass);
                 }
                 int distance = hierarchyInfo.getDistance(paramType);
-                if (distance < 0 && paramType.isArray()) {
-                    distance = referenceDistance(valueClass, paramType);   // String[] fills an Object[] parameter
-                }
 
                 if (distance >= 0 && distance < bestDistance) {
                     bestDistance = distance;
@@ -3692,12 +3681,51 @@ public class ClassUtilities {
     /**
      * Gets the complete hierarchy information for a class, including all supertypes
      * and their inheritance distances from the source class.
+     * <p>
+     * The supertypes are those of the Java Language Specification (JLS 4.10.2, 4.10.3), each at the fewest steps
+     * through direct supertypes: a class's superclass and superinterfaces; an interface's superinterfaces, or
+     * {@code Object} when it has none; for an array of references {@code S[]}, the array {@code T[]} of each
+     * direct supertype {@code T} of {@code S}; and {@code Object}, {@code Cloneable} and {@code Serializable} for
+     * {@code Object[]} and for an array of primitives. So the supertypes of a reference type are exactly the types
+     * it is assignable to. Beyond the specification, a primitive and its wrapper are one step apart.
      *
      * @param clazz The class to analyze
      * @return ClassHierarchyInfo containing all supertypes and distances
      */
     public static ClassHierarchyInfo getClassHierarchyInfo(Class<?> clazz) {
         return classHierarchies.get(clazz);
+    }
+
+    /**
+     * A type's direct supertypes as the Java Language Specification defines them (JLS 4.10.2, 4.10.3): a class's
+     * superclass and superinterfaces; an interface's superinterfaces, or Object when it has none; for an array of
+     * references S[], the array T[] of each direct supertype T of S; and Object, Cloneable and Serializable for
+     * Object[] and for an array of primitives. A primitive has none here (its widening, JLS 4.10.1, is
+     * computeInheritanceDistance's).
+     */
+    private static List<Class<?>> directSupertypes(Class<?> type) {
+        if (type.isArray()) {
+            Class<?> component = type.getComponentType();
+            if (component.isPrimitive() || component == Object.class) {
+                return Arrays.asList(Object.class, Cloneable.class, Serializable.class);
+            }
+            List<Class<?>> supertypes = directSupertypes(component);
+            List<Class<?>> arrays = new ArrayList<>(supertypes.size());
+            for (Class<?> supertype : supertypes) {
+                arrays.add(Array.newInstance(supertype, 0).getClass());
+            }
+            return arrays;
+        }
+        Class<?> superclass = type.getSuperclass();
+        Class<?>[] interfaces = type.getInterfaces();
+        List<Class<?>> supertypes = new ArrayList<>(interfaces.length + 1);
+        if (superclass != null) {
+            supertypes.add(superclass);
+        } else if (type.isInterface() && interfaces.length == 0) {
+            supertypes.add(Object.class);
+        }
+        Collections.addAll(supertypes, interfaces);
+        return supertypes;
     }
 
     private static ClassHierarchyInfo computeClassHierarchyInfo(Class<?> key) {
@@ -3715,18 +3743,10 @@ public class ClassUtilities {
             int currentDistance = distanceMap.get(current);
 
             if (current != null && allSupertypes.add(current)) {
-                // Add superclass with distance+1
-                Class<?> superclass = current.getSuperclass();
-                if (superclass != null && !distanceMap.containsKey(superclass)) {
-                    distanceMap.put(superclass, currentDistance + 1);
-                    queue.add(superclass);
-                }
-
-                // Add interfaces with distance+1
-                for (Class<?> iface : current.getInterfaces()) {
-                    if (!distanceMap.containsKey(iface)) {
-                        distanceMap.put(iface, currentDistance + 1);
-                        queue.add(iface);
+                for (Class<?> supertype : directSupertypes(current)) {
+                    if (!distanceMap.containsKey(supertype)) {
+                        distanceMap.put(supertype, currentDistance + 1);
+                        queue.add(supertype);
                     }
                 }
             }

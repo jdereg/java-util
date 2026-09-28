@@ -66,7 +66,8 @@ class ClassUtilitiesCoverageTest {
         assertEquals(0, map.get(ArrayList.class));
         assertEquals(1, map.get(AbstractList.class));
         assertEquals(1, map.get(List.class));
-        assertEquals(3, map.get(Object.class));
+        // Through RandomAccess, Cloneable or Serializable, whose direct supertype is Object (JLS 4.10.2)
+        assertEquals(2, map.get(Object.class));
         assertFalse(map.containsKey(Map.class));
     }
 

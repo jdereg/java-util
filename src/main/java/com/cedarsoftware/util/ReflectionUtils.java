@@ -225,6 +225,14 @@ public final class ReflectionUtils {
     private static final ClassValue<ConcurrentHashMap<String, Method[]>> METHODS_BY_ARG_COUNT =
             perClass(c -> new ConcurrentHashMap<>());
 
+    /**
+     * call(instance, name, args): name -> by argument count, NO_OVERLOADS or {Method[] overloads, the last choice as
+     * AtomicReference of {Class[] argument classes, Method}}. JDK types only (see perClass).
+     */
+    private static final ClassValue<ConcurrentHashMap<String, Object[][]>> OVERLOADS =
+            perClass(c -> new ConcurrentHashMap<>());
+    private static final Object[] NO_OVERLOADS = new Object[0];
+
     /** Each class's declared constructors, as {parameter types, Constructor} pairs. */
     private static final ClassValue<Object[]> DECLARED_CONSTRUCTORS = perClass(ReflectionUtils::constructorTable);
 
@@ -1695,6 +1703,15 @@ public final class ReflectionUtils {
     public static Object call(Object instance, String methodName, Object... args) {
         // Security check: Verify permission for reflection access
         Method method = getMethod(instance, methodName, args.length);
+        if (args.length > 0) {
+            // Among overloads with that many parameters, the one Java would call with these arguments
+            Class<?> beanClass = (instance instanceof Class) ? (Class<?>) instance : instance.getClass();
+            Method overload = chooseOverload(overloads(beanClass, methodName, args.length), args);
+            if (overload != null) {
+                secureSetAccessible(overload);
+                method = overload;
+            }
+        }
         try {
             return method.invoke(instance, args);
         } catch (IllegalAccessException | InvocationTargetException e) {
@@ -1987,6 +2004,165 @@ public final class ReflectionUtils {
 
     /** Of the methods with that name and argument count anywhere in the hierarchy (breadth-first), the best one. */
     private static Method selectByArgCount(Class<?> c, String methodName, int argCount) {
+        List<Method> candidates = methodsNamed(c, methodName, argCount);
+        // Select the best matching method using our composite strategy
+        return candidates.isEmpty() ? null : selectMethod(candidates);
+    }
+
+    /**
+     * The overloads call() chooses among: the methods with that name and argument count in the hierarchy, one per
+     * parameter list (the one selectMethod() prefers, e.g. an override over the method it overrides), bridge and
+     * synthetic methods left out, as the compiler leaves them out. Per class, name and count, computed once.
+     */
+    private static Object[] overloads(Class<?> c, String methodName, int argCount) {
+        ConcurrentHashMap<String, Object[][]> byName = OVERLOADS.get(c);
+        Object[][] byCount = byName.get(methodName);
+        if (byCount != null && argCount < byCount.length && byCount[argCount] != null) {
+            return byCount[argCount];
+        }
+        List<List<Method>> groups = new ArrayList<>();
+        for (Method method : methodsNamed(c, methodName, argCount)) {
+            if (method.isBridge() || method.isSynthetic()) {
+                continue;
+            }
+            List<Method> group = null;
+            for (List<Method> g : groups) {
+                if (Arrays.equals(g.get(0).getParameterTypes(), method.getParameterTypes())) {
+                    group = g;
+                    break;
+                }
+            }
+            if (group == null) {
+                group = new ArrayList<>(2);
+                groups.add(group);
+            }
+            group.add(method);
+        }
+        Object[] entry;
+        if (groups.size() < 2) {
+            entry = NO_OVERLOADS;
+        } else {
+            Method[] overloads = new Method[groups.size()];
+            for (int i = 0; i < overloads.length; i++) {
+                overloads[i] = selectMethod(groups.get(i));
+            }
+            entry = new Object[]{overloads, new AtomicReference<Object[]>()};
+        }
+        byName.compute(methodName, (name, current) -> {
+            int length = current == null ? argCount + 1 : Math.max(current.length, argCount + 1);
+            Object[][] next = current == null ? new Object[length][] : Arrays.copyOf(current, length);
+            if (next[argCount] == null) {
+                next[argCount] = entry;
+            }
+            return next;
+        });
+        return entry;
+    }
+
+    /**
+     * The overload Java would choose for these arguments (JLS 15.12.2): of those the arguments can be passed to
+     * without unboxing -- or, when none, with unboxing and widening, as Method.invoke() does -- the most specific
+     * (every parameter type a subtype of the other's, JLS 4.10). Null when there are not two overloads, when none
+     * takes the arguments, or when no single one is most specific; call() then uses getMethod(instance, name, count).
+     * The choice depends only on the arguments' classes, so the last one is remembered with them.
+     */
+    @SuppressWarnings("unchecked")
+    private static Method chooseOverload(Object[] entry, Object[] args) {
+        if (entry == NO_OVERLOADS) {
+            return null;
+        }
+        AtomicReference<Object[]> memo = (AtomicReference<Object[]>) entry[1];
+        Object[] last = memo.get();
+        if (last != null && sameClasses((Class<?>[]) last[0], args)) {
+            return (Method) last[1];
+        }
+        Method chosen = chooseOverload((Method[]) entry[0], args);
+        Class<?>[] classes = new Class<?>[args.length];
+        for (int i = 0; i < args.length; i++) {
+            classes[i] = args[i] == null ? null : args[i].getClass();
+        }
+        memo.set(new Object[]{classes, chosen});
+        return chosen;
+    }
+
+    private static boolean sameClasses(Class<?>[] classes, Object[] args) {
+        for (int i = 0; i < args.length; i++) {
+            if (classes[i] != (args[i] == null ? null : args[i].getClass())) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static Method chooseOverload(Method[] overloads, Object[] args) {
+        for (int phase = 1; phase <= 2; phase++) {
+            List<Method> applicable = new ArrayList<>(overloads.length);
+            for (Method m : overloads) {
+                if (accepts(m.getParameterTypes(), args, phase == 2)) {
+                    applicable.add(m);
+                }
+            }
+            if (applicable.isEmpty()) {
+                continue;
+            }
+            Method best = null;
+            for (Method m : applicable) {
+                boolean beaten = false;
+                for (Method other : applicable) {
+                    beaten |= other != m && moreSpecific(other.getParameterTypes(), m.getParameterTypes());
+                }
+                if (!beaten) {
+                    if (best != null) {
+                        return null;        // ambiguous
+                    }
+                    best = m;
+                }
+            }
+            return best;
+        }
+        return null;
+    }
+
+    /** Whether each argument can be passed as it is (with unboxing and primitive widening when allowed). */
+    private static boolean accepts(Class<?>[] types, Object[] args, boolean unboxing) {
+        for (int i = 0; i < types.length; i++) {
+            Class<?> type = types[i];
+            Object arg = args[i];
+            if (arg == null) {
+                if (type.isPrimitive()) {
+                    return false;
+                }
+            } else if (type.isPrimitive()) {
+                if (!unboxing || ClassUtilities.computeInheritanceDistance(arg.getClass(), type) < 0) {
+                    return false;       // not a wrapper, or not one that widens to this primitive
+                }
+            } else if (!type.isInstance(arg)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /** Every parameter type of {@code a} a subtype of {@code b}'s (primitives by widening), and one a proper one. */
+    private static boolean moreSpecific(Class<?>[] a, Class<?>[] b) {
+        boolean stricter = false;
+        for (int i = 0; i < a.length; i++) {
+            if (a[i] == b[i]) {
+                continue;
+            }
+            boolean sub = a[i].isPrimitive() && b[i].isPrimitive()
+                    ? ClassUtilities.computeInheritanceDistance(a[i], b[i]) > 0     // int widens to long
+                    : !a[i].isPrimitive() && !b[i].isPrimitive() && b[i].isAssignableFrom(a[i]);
+            if (!sub) {
+                return false;
+            }
+            stricter = true;
+        }
+        return stricter;
+    }
+
+    /** The methods with that name and argument count anywhere in the hierarchy, breadth-first. */
+    private static List<Method> methodsNamed(Class<?> c, String methodName, int argCount) {
         // Collect all matching methods from class hierarchy and interfaces
         List<Method> candidates = new ArrayList<>();
         Set<Class<?>> visited = new IdentitySet<>();
@@ -2020,9 +2196,7 @@ public final class ReflectionUtils {
                 toVisit.add(iface);
             }
         }
-
-        // Select the best matching method using our composite strategy
-        return candidates.isEmpty() ? null : selectMethod(candidates);
+        return candidates;
     }
 
     /**

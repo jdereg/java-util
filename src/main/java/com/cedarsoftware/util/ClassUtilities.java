@@ -217,7 +217,9 @@ public class ClassUtilities {
      * Holder for per-ClassLoader cache and its associated ReferenceQueue
      */
     private static final class LoaderCache {
-        final ConcurrentMap<String, WeakReference<Class<?>>> cache = new ConcurrentHashMap<>(2048);
+        // Default capacity: a table sized for 2,048 names took 16 KB per loader on its first entry, and most loaders
+        // resolve a handful (a Groovy class loader per script, say). It grows as names arrive.
+        final ConcurrentMap<String, WeakReference<Class<?>>> cache = new ConcurrentHashMap<>();
         final ReferenceQueue<Class<?>> queue = new ReferenceQueue<>();
         /** Names cached as not found, oldest first; its length is kept in notFoundCount. */
         final ConcurrentLinkedQueue<String> notFoundOrder = new ConcurrentLinkedQueue<>();
@@ -391,6 +393,9 @@ public class ClassUtilities {
 
     // Cache for OSGi ClassLoader to avoid repeated reflection calls (set only when one is found)
     private static volatile ClassValue<AtomicReference<ClassLoader>> osgiClassLoaders = perClass(c -> new AtomicReference<>());
+    // False once OSGi's FrameworkUtil proved not loadable from this class's loader: every later look failed the same
+    // way, at the cost of a ClassNotFoundException each time
+    private static volatile boolean osgiPresent = true;
     private static final ClassLoader SYSTEM_LOADER = ClassLoader.getSystemClassLoader();
     // Counter-based ThreadLocal for reentrant unsafe mode support.
     // Each setUseUnsafe(true) increments, each setUseUnsafe(false) decrements.
@@ -1639,6 +1644,9 @@ public class ClassUtilities {
      * @return the OSGi Bundle's ClassLoader if in an OSGi environment; otherwise, null
      */
     private static ClassLoader getOSGiClassLoader(final Class<?> classFromBundle) {
+        if (!osgiPresent) {
+            return null;
+        }
         AtomicReference<ClassLoader> slot = osgiClassLoaders.get(classFromBundle);
         ClassLoader cl = slot.get();
         if (cl != null) {
@@ -1668,7 +1676,13 @@ public class ClassUtilities {
             }
             
             // Load the FrameworkUtil class from OSGi using explicit classloader
-            Class<?> frameworkUtilClass = Class.forName("org.osgi.framework.FrameworkUtil", false, baseLoader);
+            Class<?> frameworkUtilClass;
+            try {
+                frameworkUtilClass = Class.forName("org.osgi.framework.FrameworkUtil", false, baseLoader);
+            } catch (ClassNotFoundException | LinkageError notOsgi) {
+                osgiPresent = false;
+                return null;
+            }
 
             // Get the getBundle(Class<?>) method
             Method getBundleMethod = frameworkUtilClass.getMethod("getBundle", Class.class);
@@ -3716,8 +3730,7 @@ public class ClassUtilities {
             allSupertypes.add(counterpart);
         }
 
-        return new ClassHierarchyInfo(Collections.unmodifiableSet(allSupertypes),
-                Collections.unmodifiableMap(distanceMap));
+        return new ClassHierarchyInfo(allSupertypes, distanceMap);     // which wraps them unmodifiable
     }
     
     // Convenience boolean method
@@ -3943,6 +3956,7 @@ public class ClassUtilities {
         classHierarchies = perClass(ClassUtilities::computeClassHierarchyInfo);
         assignableTypes = perClass(ClassUtilities::findAssignableSupplier);
         osgiClassLoaders = perClass(c -> new AtomicReference<>());
+        osgiPresent = true;
         accessibilityCache.clear();
         // ENUM_CLASS_CACHE, SECURITY_CHECK_CACHE and POSITIONAL_KEY_ORDER are ClassValues too, left as they are.
     }

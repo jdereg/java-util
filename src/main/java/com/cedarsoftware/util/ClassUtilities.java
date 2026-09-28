@@ -1195,8 +1195,12 @@ public class ClassUtilities {
             if (c == CLASS_NOT_FOUND_SENTINEL) {
                 return null;
             }
-            // Performance: Skip re-verification - classes are verified before being cached
-            // Cached classes are immutable, so if verified once, they remain verified
+            // Verified before it was cached (an alias, when it was registered). Only a runtime rule can change the
+            // verdict since: a block added later, or an unblock since cleared. Once there has been one, every hit
+            // is checked again -- a blocked hit throws, as the lookup of an uncached blocked name does.
+            if (verifyCachedClasses) {
+                verifyClassAndArrayComponent(c);
+            }
             return c;
         }
 
@@ -3638,6 +3642,9 @@ public class ClassUtilities {
     // Tier 2: programmatic overrides. hasRuntimeSecurityRules gates all three lookups so the
     // default configuration pays a single volatile read rather than three set probes.
     private static volatile boolean hasRuntimeSecurityRules;
+    // Set by the first runtime rule and never reset: forName() then checks cached classes and aliases on every hit,
+    // for they were verified under the rules of the time -- before a later block, or under an unblock since cleared.
+    private static volatile boolean verifyCachedClasses;
     private static final Set<String> runtimeBlockedNames = ConcurrentHashMap.newKeySet();
     private static final Set<String> runtimeBlockedPackages = ConcurrentHashMap.newKeySet();
     private static final Set<String> runtimeUnblockedNames = ConcurrentHashMap.newKeySet();
@@ -4063,13 +4070,15 @@ public class ClassUtilities {
 
         /**
          * Blocks an additional class by exact name. Subclasses are blocked too, via the supertype walk.
-         * Takes effect immediately, including for classes already checked.
+         * Takes effect immediately, including for classes already checked, cached by {@code forName()}, or named
+         * by an alias.
          *
          * @param className fully-qualified class name to block; must not be null or blank
          * @throws IllegalArgumentException if {@code className} is null or blank
          */
         public static void addBlockedClass(String className) {
             runtimeBlockedNames.add(requireConfigValue(className, "className"));
+            verifyCachedClasses = true;
             hasRuntimeSecurityRules = true;
         }
 
@@ -4086,6 +4095,7 @@ public class ClassUtilities {
          */
         public static void addBlockedPackage(String packagePrefix) {
             runtimeBlockedPackages.add(requireConfigValue(packagePrefix, "packagePrefix"));
+            verifyCachedClasses = true;
             hasRuntimeSecurityRules = true;
         }
 
@@ -4105,13 +4115,15 @@ public class ClassUtilities {
          */
         public static void allowClass(String className) {
             runtimeUnblockedNames.add(requireConfigValue(className, "className"));
+            verifyCachedClasses = true;
             hasRuntimeSecurityRules = true;
         }
 
         /**
          * Discards every rule added through {@link #addBlockedClass}, {@link #addBlockedPackage}, and
          * {@link #allowClass}, restoring the built-in and system-property configuration. Intended for
-         * tests; note that it also discards any unblocks, so it never loosens the default posture.
+         * tests; note that it also discards any unblocks, so it never loosens the default posture: a class that
+         * only an unblock admitted is refused again, even when {@code forName()} has cached it.
          */
         public static void clearSecurityOverrides() {
             runtimeBlockedNames.clear();

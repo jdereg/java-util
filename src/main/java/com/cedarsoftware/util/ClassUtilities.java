@@ -2945,7 +2945,8 @@ public class ClassUtilities {
                 if (!innerClass) {
                     rememberConstructor(c, noArg);
                 }
-                classPlanCache.put(argumentShapeKey, Optional.of(new ConstructorPlan(noArg, EMPTY_PARAMETERS, false)));
+                rememberPlan(classPlanCache, argumentShapeKey,
+                        Optional.of(new ConstructorPlan(noArg, EMPTY_PARAMETERS, false)));
                 return instance;
             } catch (NoSuchMethodException ignored) {
                 // No no-arg constructor, fall through to normal logic
@@ -2978,12 +2979,14 @@ public class ClassUtilities {
                 try {
                     Object[] argsNonNull = matchArgumentsToParameters(converter, suppliedArgs, parameters, false);
                     Object instance = cachedConstructor.newInstance(argsNonNull);
-                    classPlanCache.put(argumentShapeKey, Optional.of(new ConstructorPlan(cachedConstructor, parameters, false)));
+                    rememberPlan(classPlanCache, argumentShapeKey,
+                            Optional.of(new ConstructorPlan(cachedConstructor, parameters, false)));
                     return instance;
                 } catch (Exception e) {
                     Object[] argsNull = matchArgumentsToParameters(converter, suppliedArgs, parameters, true);
                     Object instance = cachedConstructor.newInstance(argsNull);
-                    classPlanCache.put(argumentShapeKey, Optional.of(new ConstructorPlan(cachedConstructor, parameters, true)));
+                    rememberPlan(classPlanCache, argumentShapeKey,
+                            Optional.of(new ConstructorPlan(cachedConstructor, parameters, true)));
                     return instance;
                 }
             } catch (Exception ignored) {
@@ -3102,8 +3105,9 @@ public class ClassUtilities {
                     if (!innerClass) {
                         rememberConstructor(c, constructor);
                     }
-                    classPlanCache.put(argumentShapeKey, Optional.of(new ConstructorPlan(constructor, parameters, false,
-                            binding.seal(suppliedArgs.length))));
+                    rememberPlan(classPlanCache, argumentShapeKey,
+                            Optional.of(new ConstructorPlan(constructor, parameters, false,
+                                    binding.seal(suppliedArgs.length))));
                 }
                 return instance;
             } catch (Exception e1) {
@@ -3126,8 +3130,9 @@ public class ClassUtilities {
                         if (!innerClass) {
                             rememberConstructor(c, constructor);
                         }
-                        classPlanCache.put(argumentShapeKey, Optional.of(new ConstructorPlan(constructor, parameters, true,
-                                binding.seal(suppliedArgs.length))));
+                        rememberPlan(classPlanCache, argumentShapeKey,
+                                Optional.of(new ConstructorPlan(constructor, parameters, true,
+                                        binding.seal(suppliedArgs.length))));
                     }
                     return instance;
                 } catch (Exception e2) {
@@ -3144,13 +3149,13 @@ public class ClassUtilities {
         Object instance = tryUnsafeInstantiation(c);
         if (instance != null) {
             if (cacheFailure) {
-                classPlanCache.put(argumentShapeKey, Optional.empty());
+                rememberPlan(classPlanCache, argumentShapeKey, Optional.empty());
             }
             return instance;
         }
 
         if (cacheFailure) {
-            classPlanCache.put(argumentShapeKey, Optional.empty());
+            rememberPlan(classPlanCache, argumentShapeKey, Optional.empty());
         }
 
         // If we get here, we couldn't create the instance
@@ -3193,6 +3198,22 @@ public class ClassUtilities {
 
     private static Map<ArgumentShapeKey, Optional<ConstructorPlan>> getConstructorPlanCache(Class<?> c) {
         return constructorPlans.get(c);
+    }
+
+    /**
+     * Plans kept per class. A class meets a few argument shapes, but the shapes are the caller's: a JSON object's
+     * values decide them (null, String, Long, Double, Boolean, Map or array per key is 7^n shapes for n keys), so the
+     * map grew without limit -- one class held a plan for every shape it had ever been sent.
+     */
+    private static final int MAX_PLANS_PER_CLASS = 256;
+
+    /** Past the bound the class's plans start over; the shapes in use are planned again on their next call. */
+    private static void rememberPlan(Map<ArgumentShapeKey, Optional<ConstructorPlan>> plans, ArgumentShapeKey key,
+                                     Optional<ConstructorPlan> plan) {
+        if (plans.size() >= MAX_PLANS_PER_CLASS && !plans.containsKey(key)) {
+            plans.clear();
+        }
+        plans.put(key, plan);
     }
 
     private static Object invokeConstructorWithPlan(Converter converter, Object[] suppliedArgs, ConstructorPlan plan) throws Exception {

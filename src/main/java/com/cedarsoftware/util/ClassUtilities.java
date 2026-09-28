@@ -3277,7 +3277,9 @@ public class ClassUtilities {
     // This uses the same mechanism as ObjectInputStream — creates a synthetic constructor
     // that runs Object.<init>() instead of the class's own constructors.
     private static Object tryUnsafeInstantiation(Class<?> c) {
-        if (unsafeDepth.get() > 0) {
+        // Never an enum: its constants are its only instances, and one made here was a fake (name null, ordinal 0,
+        // equal to none of them)
+        if (unsafeDepth.get() > 0 && !Enum.class.isAssignableFrom(c)) {
             try {
                 SecurityChecker.verifyClass(c);
                 return unsafe.allocateInstance(c);

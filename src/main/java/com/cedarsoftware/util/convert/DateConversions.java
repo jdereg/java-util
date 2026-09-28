@@ -73,11 +73,17 @@ final class DateConversions {
 
     static Instant toInstant(Object from, Converter converter) {
         Date date = (Date) from;
-        if (date instanceof java.sql.Date) {
-            return new java.util.Date(date.getTime()).toInstant();
+        if (date instanceof java.sql.Date || date instanceof java.sql.Time) {
+            // Both throw UnsupportedOperationException from toInstant()
+            return Instant.ofEpochMilli(date.getTime());
         } else {
             return date.toInstant();
         }
+    }
+
+    /** The same instant, as a java.sql.Time (for a Timestamp, its nanoseconds past the millisecond are dropped). */
+    static java.sql.Time toSqlTime(Object from, Converter converter) {
+        return new java.sql.Time(((Date) from).getTime());
     }
 
     static BigInteger toBigInteger(Object from, Converter converter) {

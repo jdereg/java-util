@@ -885,6 +885,18 @@ public final class Converter {
         CONVERSION_DB.put(BigInteger.class, Timestamp.class, BigIntegerConversions::toTimestamp);
         CONVERSION_DB.put(BigDecimal.class, Timestamp.class, BigDecimalConversions::toTimestamp);
         CONVERSION_DB.put(Timestamp.class, Timestamp.class, DateConversions::toTimestamp);
+        // java.sql.Time: JDBC's time of day (see SqlTimeConversions). Every other source that reaches Date reaches
+        // Time too, through the Date → Time bridge in getPrimaryToSurrogatePairs(); it got a java.util.Date instead.
+        CONVERSION_DB.put(Void.class, java.sql.Time.class, VoidConversions::toNull);
+        CONVERSION_DB.put(java.sql.Time.class, java.sql.Time.class, SqlTimeConversions::toSqlTime);
+        CONVERSION_DB.put(Date.class, java.sql.Time.class, DateConversions::toSqlTime);
+        CONVERSION_DB.put(LocalTime.class, java.sql.Time.class, LocalTimeConversions::toSqlTime);
+        CONVERSION_DB.put(String.class, java.sql.Time.class, StringConversions::toSqlTime);
+        CONVERSION_DB.put(Map.class, java.sql.Time.class, MapConversions::toSqlTime);
+        CONVERSION_DB.put(java.sql.Time.class, String.class, SqlTimeConversions::toString);
+        CONVERSION_DB.put(java.sql.Time.class, Map.class, SqlTimeConversions::toMap);
+        CONVERSION_DB.put(java.sql.Time.class, LocalTime.class, SqlTimeConversions::toLocalTime);
+
         CONVERSION_DB.put(java.sql.Date.class, Timestamp.class, SqlDateConversions::toTimestamp);
         CONVERSION_DB.put(Date.class, Timestamp.class, DateConversions::toTimestamp);
         CONVERSION_DB.put(Duration.class, Timestamp.class, DurationConversions::toTimestamp);
@@ -1648,7 +1660,11 @@ public final class Converter {
 
                     // URI → URL (convert URI to URL for legacy compatibility)
                     new SurrogatePrimaryPair(URI.class, URL.class, null,
-                            UriConversions::toURL)
+                            UriConversions::toURL),
+
+                    // Date → java.sql.Time (whatever reaches a Date reaches a Time, as a Time)
+                    new SurrogatePrimaryPair(Date.class, java.sql.Time.class, null,
+                            DateConversions::toSqlTime)
             );
         }
         return PRIMARY_TO_SURROGATE_PAIRS;

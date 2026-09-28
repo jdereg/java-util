@@ -103,4 +103,10 @@ final class LocalTimeConversions {
         cal.set(Calendar.MILLISECOND, localTime.getNano() / 1_000_000); // Convert nanoseconds to milliseconds
         return cal;
     }
+
+    /** 1970-01-01 at this time of day in the JVM's zone, as Time.valueOf(LocalTime) makes it, milliseconds kept. */
+    static java.sql.Time toSqlTime(Object from, Converter converter) {
+        LocalTime localTime = (LocalTime) from;
+        return new java.sql.Time(java.sql.Time.valueOf(localTime).getTime() + localTime.getNano() / 1_000_000);
+    }
 }

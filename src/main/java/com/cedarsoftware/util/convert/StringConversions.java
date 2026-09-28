@@ -453,6 +453,23 @@ final class StringConversions {
 
     private static final Pattern SIMPLE_DATE = Pattern.compile("\\d{4}-\\d{2}-\\d{2}");
 
+    /**
+     * A time of day -- "13:14", "13:14:15", "13:14:15.123" -- or any date-time DateUtilities reads, of which the time
+     * of day (in the string's own zone) is kept, as toSqlDate keeps the date.
+     */
+    static java.sql.Time toSqlTime(Object from, Converter converter) {
+        String str = ((String) from).trim();
+        if (str.isEmpty()) {
+            return null;
+        }
+        try {
+            return LocalTimeConversions.toSqlTime(LocalTime.parse(str), converter);
+        } catch (DateTimeParseException e) {
+            ZonedDateTime zdt = DateUtilities.parseDate(str, converter.getOptions().getZoneId(), true);
+            return zdt == null ? null : LocalTimeConversions.toSqlTime(zdt.toLocalTime(), converter);
+        }
+    }
+
     static java.sql.Date toSqlDate(Object from, Converter converter) {
         String dateStr = ((String) from).trim();
 

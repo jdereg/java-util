@@ -86,6 +86,7 @@ final class MapConversions {
     static final String VALUE = "value";
     static final String DATE = "date";
     static final String SQL_DATE = "sqlDate";
+    static final String SQL_TIME = "sqlTime";
     static final String CALENDAR = "calendar";
     static final String TIMESTAMP = "timestamp";
     static final String DURATION = "duration";
@@ -265,6 +266,13 @@ final class MapConversions {
     }
 
     private static final String[] DATE_KEYS = {DATE, VALUE, V, EPOCH_MILLIS};
+
+    // DATE last: json-io wrote a java.sql.Time as {"date": epochMillis} before Time had conversions of its own
+    private static final String[] SQL_TIME_KEYS = {SQL_TIME, VALUE, V, EPOCH_MILLIS, DATE};
+
+    static java.sql.Time toSqlTime(Object from, Converter converter) {
+        return dispatch(from, converter, java.sql.Time.class, SQL_TIME_KEYS);
+    }
 
     static Date toDate(Object from, Converter converter) {
         return dispatch(from, converter, Date.class, DATE_KEYS);

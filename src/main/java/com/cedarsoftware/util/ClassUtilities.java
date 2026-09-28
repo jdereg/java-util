@@ -3125,6 +3125,31 @@ public class ClassUtilities {
         // must try the constructors again. (Zero supplied arguments carry no values to depend on.)
         boolean valueDependentOutcome = false;
 
+        // Java's choice first (JLS 15.12.2): of the constructors that take the supplied values as they are, the
+        // most specific. Only when none does are the constructors tried in order below, converting and filling in --
+        // where the first that worked was chosen, so N(String) won over N(long) for 42L, a Long converting to text.
+        ExactFit fit = noArgs ? null : findExactFit(constructors, suppliedArgs);
+        if (fit != null) {
+            try {
+                trySetAccessible(fit.constructor);
+                Object[] args = new Object[fit.parameters.length];
+                for (int i = 0; i < args.length; i++) {
+                    args[i] = suppliedArgs[fit.binding.source[i]];
+                }
+                Object instance = fit.constructor.newInstance(args);
+                if (!innerClass) {
+                    rememberConstructor(c, fit.constructor);
+                }
+                rememberPlan(classPlanCache, argumentShapeKey,
+                        Optional.of(new ConstructorPlan(fit.constructor, fit.parameters, false,
+                                fit.binding.seal(suppliedArgs.length))));
+                return instance;
+            } catch (Exception e) {
+                exceptions.add(constructorFailure(e));
+                valueDependentOutcome |= e instanceof InvocationTargetException;
+            }
+        }
+
         // Try each constructor in order
         for (Constructor<?> constructor : constructors) {
             try {
@@ -3226,6 +3251,115 @@ public class ClassUtilities {
         }
 
         throw new IllegalArgumentException(msg);
+    }
+
+    /** A constructor that takes the supplied values as they are, and which value each parameter gets. */
+    private static final class ExactFit {
+        final Constructor<?> constructor;
+        final Parameter[] parameters;
+        final ArgumentBinding binding;
+        /** Per supplied value, the type of the parameter it goes to. */
+        final Class<?>[] valueTypes;
+        final boolean unboxes;
+
+        ExactFit(Constructor<?> constructor, Parameter[] parameters, ArgumentBinding binding) {
+            this.constructor = constructor;
+            this.parameters = parameters;
+            this.binding = binding;
+            valueTypes = new Class<?>[parameters.length];
+            boolean unboxing = false;
+            for (int i = 0; i < parameters.length; i++) {
+                Class<?> type = parameters[i].getType();
+                valueTypes[binding.source[i]] = type;
+                unboxing |= type.isPrimitive();
+            }
+            unboxes = unboxing;
+        }
+
+        /** Every value goes to a parameter type at least as specific as in {@code other}, and one more so. */
+        boolean moreSpecificThan(ExactFit other) {
+            boolean stricter = false;
+            for (int j = 0; j < valueTypes.length; j++) {
+                Class<?> mine = boxed(valueTypes[j]);
+                Class<?> theirs = boxed(other.valueTypes[j]);
+                if (mine == theirs) {
+                    continue;
+                }
+                if (!theirs.isAssignableFrom(mine)) {
+                    return false;
+                }
+                stricter = true;
+            }
+            return stricter;
+        }
+    }
+
+    private static Class<?> boxed(Class<?> type) {
+        Class<?> wrapper = type.isPrimitive() ? PRIMITIVE_TO_WRAPPER.getByClass(type) : null;
+        return wrapper == null ? type : wrapper;
+    }
+
+    /**
+     * Of the constructors that take the supplied values as Java would pass them -- as many parameters as values, not
+     * varargs, every value an instance of its parameter's type (a wrapper for its primitive) -- the one Java would
+     * choose (JLS 15.12.2): those needing no unboxing when any does, then the most specific, judged per value (a
+     * constructor that gives every value a type at least as specific, and one value a more specific one). Between
+     * constructors neither more specific than the other, the first in the constructors' order. Null when none takes
+     * the values so, or when a value is null (a null fits many types; the constructors are then tried in order).
+     */
+    private static ExactFit findExactFit(Constructor<?>[] constructors, Object[] values) {
+        for (Object value : values) {
+            if (value == null) {
+                return null;
+            }
+        }
+        int n = values.length;
+        List<ExactFit> fits = null;
+        for (Constructor<?> constructor : constructors) {
+            if (constructor.getParameterCount() != n) {
+                continue;
+            }
+            Parameter[] parameters = constructor.getParameters();
+            if (parameters[n - 1].isVarArgs()) {
+                continue;
+            }
+            ArgumentBinding binding = new ArgumentBinding(n);
+            boolean[] used = new boolean[n];
+            boolean[] matched = new boolean[n];
+            Object[] result = new Object[n];
+            findExactMatches(values, used, parameters, 0, n, matched, result, 0, n, binding);
+            findInheritanceMatches(values, used, parameters, 0, n, matched, result, 0, n, binding);
+            boolean all = true;
+            for (boolean m : matched) {
+                all &= m;
+            }
+            if (all) {
+                if (fits == null) {
+                    fits = new ArrayList<>(2);
+                }
+                fits.add(new ExactFit(constructor, parameters, binding));
+            }
+        }
+        if (fits == null) {
+            return null;
+        }
+        boolean anyWithoutUnboxing = false;
+        for (ExactFit fit : fits) {
+            anyWithoutUnboxing |= !fit.unboxes;
+        }
+        for (ExactFit fit : fits) {
+            if (anyWithoutUnboxing && fit.unboxes) {
+                continue;
+            }
+            boolean beaten = false;
+            for (ExactFit other : fits) {
+                beaten |= other != fit && !(anyWithoutUnboxing && other.unboxes) && other.moreSpecificThan(fit);
+            }
+            if (!beaten) {
+                return fit;
+            }
+        }
+        return null;        // unreachable: specificity has no cycles
     }
 
     /**

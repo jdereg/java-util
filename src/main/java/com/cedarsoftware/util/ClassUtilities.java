@@ -1064,7 +1064,9 @@ public class ClassUtilities {
     /**
      * Computes the inheritance distance between two classes/interfaces/primitive types.
      * For reference types, distances are cached via ClassHierarchyInfo. For primitive types,
-     * widening conversions are pre-computed in static maps.
+     * widening conversions are pre-computed in static maps. An array of references reaches an array of
+     * its component's supertype at the components' distance ({@code String[]} to {@code Object[]} is 1),
+     * and an interface reaches {@code Object} one step above its deepest supertype.
      *
      * @param source      The source class, interface, or primitive type.
      * @param destination The destination class, interface, or primitive type.
@@ -1105,8 +1107,28 @@ public class ClassUtilities {
             return -1;
         }
 
-        // Use the cached hierarchy info for non-primitive cases
-        return getClassHierarchyInfo(source).getDistance(destination);
+        return referenceDistance(source, destination);
+    }
+
+    /**
+     * The inheritance distance between reference types, or -1 if Java would not assign one to the other. The cached
+     * hierarchy follows superclasses and interfaces; it does not record two assignments Java allows, so they are
+     * computed here: an array of references to an array of its component's supertype ({@code String[]} to
+     * {@code Object[]}, at the components' distance), and an interface to {@code Object} (one step above its deepest
+     * supertype).
+     */
+    private static int referenceDistance(Class<?> source, Class<?> destination) {
+        ClassHierarchyInfo info = getClassHierarchyInfo(source);
+        int distance = info.getDistance(destination);
+        if (distance >= 0) {
+            return distance;
+        }
+        if (source.isArray() && destination.isArray()) {
+            Class<?> from = source.getComponentType();
+            Class<?> to = destination.getComponentType();
+            return from.isPrimitive() || to.isPrimitive() ? -1 : referenceDistance(from, to);
+        }
+        return source.isInterface() && destination == Object.class ? info.getDepth() + 1 : -1;
     }
 
     /**
@@ -2195,6 +2217,9 @@ public class ClassUtilities {
                     hierarchyInfo = getClassHierarchyInfo(valueClass);
                 }
                 int distance = hierarchyInfo.getDistance(paramType);
+                if (distance < 0 && paramType.isArray()) {
+                    distance = referenceDistance(valueClass, paramType);   // String[] fills an Object[] parameter
+                }
 
                 if (distance >= 0 && distance < bestDistance) {
                     bestDistance = distance;

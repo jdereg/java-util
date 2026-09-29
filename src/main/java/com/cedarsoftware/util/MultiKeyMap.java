@@ -466,11 +466,12 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     // Static flag to log stripe configuration only once per JVM
     private static final AtomicBoolean STRIPE_CONFIG_LOGGED = new AtomicBoolean(false);
     
-    // Contention monitoring fields (retained from original)
+    // Contention monitoring fields (retained from original). The per-stripe counts exist only when
+    // trackContentionMetrics is on: 64 AtomicIntegers were built for every map, about 1 KB of its 2.4 KB.
     private final AtomicInteger totalLockAcquisitions = new AtomicInteger(0);
     private final AtomicInteger contentionCount = new AtomicInteger(0);
-    private final AtomicInteger[] stripeLockContention = new AtomicInteger[STRIPE_COUNT];
-    private final AtomicInteger[] stripeLockAcquisitions = new AtomicInteger[STRIPE_COUNT];
+    private final AtomicIntegerArray stripeLockContention;      // null unless trackContentionMetrics
+    private final AtomicIntegerArray stripeLockAcquisitions;    // null unless trackContentionMetrics
     private final AtomicInteger globalLockAcquisitions = new AtomicInteger(0);
     private final AtomicInteger globalLockContentions = new AtomicInteger(0);
 
@@ -673,9 +674,9 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
 
         for (int i = 0; i < STRIPE_COUNT; i++) {
             stripeMonitors[i] = new Object();
-            stripeLockContention[i] = new AtomicInteger(0);
-            stripeLockAcquisitions[i] = new AtomicInteger(0);
         }
+        stripeLockContention = trackContentionMetrics ? new AtomicIntegerArray(STRIPE_COUNT) : null;
+        stripeLockAcquisitions = trackContentionMetrics ? new AtomicIntegerArray(STRIPE_COUNT) : null;
 
         resizeThreshold = (long)(actualCapacity * loadFactor);
 
@@ -3191,10 +3192,10 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                 long waitNs = System.nanoTime() - start;
                 if (waitNs > CONTENTION_THRESHOLD_NS) {
                     contentionCount.incrementAndGet();
-                    stripeLockContention[stripe].incrementAndGet();
+                    stripeLockContention.incrementAndGet(stripe);
                 }
                 totalLockAcquisitions.incrementAndGet();
-                stripeLockAcquisitions[stripe].incrementAndGet();
+                stripeLockAcquisitions.incrementAndGet(stripe);
                 old = putNoLock(newKey);
                 resize = atomicSize.sum() > resizeThreshold;
             }
@@ -3445,10 +3446,10 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                 long waitNs = System.nanoTime() - start;
                 if (waitNs > CONTENTION_THRESHOLD_NS) {
                     contentionCount.incrementAndGet();
-                    stripeLockContention[stripe].incrementAndGet();
+                    stripeLockContention.incrementAndGet(stripe);
                 }
                 totalLockAcquisitions.incrementAndGet();
-                stripeLockAcquisitions[stripe].incrementAndGet();
+                stripeLockAcquisitions.incrementAndGet(stripe);
                 old = removeNoLock(removeKey);
             }
         } else {
@@ -4576,8 +4577,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         LOG.info("-------|-------------|-------------|------");
 
         for (int i = 0; i < STRIPE_COUNT; i++) {
-            int acquisitions = stripeLockAcquisitions[i].get();
-            int contentions = stripeLockContention[i].get();
+            int acquisitions = stripeCount(stripeLockAcquisitions, i);
+            int contentions = stripeCount(stripeLockContention, i);
             double rate = acquisitions > 0 ? (double) contentions / acquisitions * 100 : 0.0;
 
             LOG.info(String.format("%6d | %11d | %11d | %5.2f%%",
@@ -4587,11 +4588,11 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         // Find most/least contended stripes
         int maxContentionStripe = 0;
         int minContentionStripe = 0;
-        int maxContentions = stripeLockContention[0].get();
-        int minContentions = stripeLockContention[0].get();
+        int maxContentions = stripeCount(stripeLockContention, 0);
+        int minContentions = stripeCount(stripeLockContention, 0);
 
         for (int i = 1; i < STRIPE_COUNT; i++) {
-            int contentions = stripeLockContention[i].get();
+            int contentions = stripeCount(stripeLockContention, i);
             if (contentions > maxContentions) {
                 maxContentions = contentions;
                 maxContentionStripe = i;
@@ -4609,12 +4610,17 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         // Check for unused stripes
         int unusedStripes = 0;
         for (int i = 0; i < STRIPE_COUNT; i++) {
-            if (stripeLockAcquisitions[i].get() == 0) {
+            if (stripeCount(stripeLockAcquisitions, i) == 0) {
                 unusedStripes++;
             }
         }
         LOG.info(String.format("Unused stripes: %d out of %d", unusedStripes, STRIPE_COUNT));
         LOG.info("================================================");
+    }
+
+    /** A stripe's count, 0 when contention metrics are not tracked (the counts are not kept). */
+    private static int stripeCount(AtomicIntegerArray counts, int stripe) {
+        return counts == null ? 0 : counts.get(stripe);
     }
 
     private void withAllStripeLocks(Runnable action) {

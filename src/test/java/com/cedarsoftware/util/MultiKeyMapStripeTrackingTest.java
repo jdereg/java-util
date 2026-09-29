@@ -1,7 +1,7 @@
 package com.cedarsoftware.util;
 
 import java.lang.reflect.Field;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicIntegerArray;
 import java.util.concurrent.atomic.AtomicReferenceArray;
 
 import org.junit.jupiter.api.Test;
@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 /**
  * Test for bug #5: Stripe contention diagnostics track the wrong stripe.
@@ -41,7 +42,7 @@ class MultiKeyMapStripeTrackingTest {
         // Access internals via reflection
         Field stripeAcqField = MultiKeyMap.class.getDeclaredField("stripeLockAcquisitions");
         stripeAcqField.setAccessible(true);
-        AtomicInteger[] acq = (AtomicInteger[]) stripeAcqField.get(map);
+        AtomicIntegerArray acq = (AtomicIntegerArray) stripeAcqField.get(map);
 
         Field stripeMaskField = MultiKeyMap.class.getDeclaredField("STRIPE_MASK");
         stripeMaskField.setAccessible(true);
@@ -80,7 +81,7 @@ class MultiKeyMapStripeTrackingTest {
         map.put(testKey, "value");
 
         // Verify acquisition was tracked on the correct stripe
-        assertEquals(1, acq[expectedStripe].get(),
+        assertEquals(1, acq.get(expectedStripe),
                 "Acquisition should be tracked on stripe " + expectedStripe + " (matching getStripeIndex)");
     }
 
@@ -90,7 +91,7 @@ class MultiKeyMapStripeTrackingTest {
 
         Field stripeAcqField = MultiKeyMap.class.getDeclaredField("stripeLockAcquisitions");
         stripeAcqField.setAccessible(true);
-        AtomicInteger[] acq = (AtomicInteger[]) stripeAcqField.get(map);
+        AtomicIntegerArray acq = (AtomicIntegerArray) stripeAcqField.get(map);
 
         Field stripeMaskField = MultiKeyMap.class.getDeclaredField("STRIPE_MASK");
         stripeMaskField.setAccessible(true);
@@ -124,12 +125,12 @@ class MultiKeyMapStripeTrackingTest {
 
         // Put the key first (this also increments the correct stripe's counter)
         map.put(testKey, "value");
-        int acqAfterPut = acq[expectedStripe].get();
+        int acqAfterPut = acq.get(expectedStripe);
 
         // Now remove it - should also track on the correct stripe
         map.remove(testKey);
 
-        assertEquals(acqAfterPut + 1, acq[expectedStripe].get(),
+        assertEquals(acqAfterPut + 1, acq.get(expectedStripe),
                 "Remove acquisition should be tracked on stripe " + expectedStripe);
     }
 
@@ -139,14 +140,14 @@ class MultiKeyMapStripeTrackingTest {
 
         Field stripeAcqField = MultiKeyMap.class.getDeclaredField("stripeLockAcquisitions");
         stripeAcqField.setAccessible(true);
-        AtomicInteger[] acq = (AtomicInteger[]) stripeAcqField.get(map);
+        AtomicIntegerArray acq = (AtomicIntegerArray) stripeAcqField.get(map);
 
         Field bucketsField = MultiKeyMap.class.getDeclaredField("buckets");
         bucketsField.setAccessible(true);
         AtomicReferenceArray<?> table = (AtomicReferenceArray<?>) bucketsField.get(map);
         int tableSize = table.length();
 
-        if (tableSize >= acq.length) {
+        if (tableSize >= acq.length()) {
             return; // Bug can't manifest
         }
 
@@ -158,10 +159,28 @@ class MultiKeyMapStripeTrackingTest {
         // With table size 16 and stripe count 32, the stripe index is
         // (spread(hash) & 15) & 31 which can only produce values in [0, 15].
         // Stripes [16, 31] should never receive acquisitions.
-        for (int s = tableSize; s < acq.length; s++) {
-            assertEquals(0, acq[s].get(),
+        for (int s = tableSize; s < acq.length(); s++) {
+            assertEquals(0, acq.get(s),
                     "Stripe " + s + " is above table size " + tableSize
                             + " and should have no acquisitions");
         }
+    }
+
+    /**
+     * Without contention tracking (the default) no per-stripe counters are kept: 64 AtomicIntegers were built for
+     * every map, about 1 KB of its 2.4 KB. The statistics then report zeros.
+     */
+    @Test
+    void anUntrackedMapKeepsNoStripeCounters() throws Exception {
+        MultiKeyMap<String> map = new MultiKeyMap<>();
+        map.put("a", "1");
+        map.remove("a");
+        Field acquisitions = MultiKeyMap.class.getDeclaredField("stripeLockAcquisitions");
+        acquisitions.setAccessible(true);
+        assertNull(acquisitions.get(map));
+        Field contentions = MultiKeyMap.class.getDeclaredField("stripeLockContention");
+        contentions.setAccessible(true);
+        assertNull(contentions.get(map));
+        map.printContentionStatistics();       // zeros, no NullPointerException
     }
 }

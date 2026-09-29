@@ -2065,7 +2065,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         }
         
         List<Object> expanded = new ExpandedKey(estimatedSize);
-        IdentitySet<Object> visited = new IdentitySet<>();
+        // Holds only the containers on the current path, so a few slots do; the default 16 cost 80 B per expansion
+        IdentitySet<Object> visited = new IdentitySet<>(4);
 
         int hash = expandAndHash(key, expanded, visited, 1, flattenDimensions, caseSensitive);
         if (expanded.isEmpty()) {
@@ -2523,10 +2524,41 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     
     
     /**
-     * Compare two Collections where at least one is non-RandomAccess.
-     * Uses iterators for both.
+     * Compare two Collections of key tokens: by index when both are RandomAccess Lists (the map's own expansions
+     * are), with iterators otherwise.
      */
+    @SuppressWarnings("unchecked")
     private static boolean compareCollections(Collection<?> coll1, Collection<?> coll2, int size, boolean valueBasedEquality, boolean caseSensitive) {
+        if (coll1 instanceof List && coll1 instanceof RandomAccess && coll2 instanceof List && coll2 instanceof RandomAccess) {
+            // Indexed, as below, with each Set portion compared in place as sublists: both portions were copied
+            // out into new lists first (the map's own expansions are ArrayLists, so this is the usual case)
+            List<Object> l1 = (List<Object>) coll1;
+            List<Object> l2 = (List<Object>) coll2;
+            int i = 0;
+            while (i < size) {
+                if (i >= l1.size() || i >= l2.size()) {
+                    return false;
+                }
+                Object elem1 = l1.get(i);
+                Object elem2 = l2.get(i);
+                if (elem1 == SET_OPEN && elem2 == SET_OPEN) {
+                    int end1 = elementEnd(l1, i);
+                    int end2 = elementEnd(l2, i);
+                    if (end1 != end2 || !sameSetElements(l1.subList(i + 1, end1 - 1), l2.subList(i + 1, end2 - 1),
+                            valueBasedEquality, caseSensitive)) {
+                        return false;
+                    }
+                    i = end1;
+                } else if (elem1 == SET_OPEN || elem2 == SET_OPEN) {
+                    return false;
+                } else if (!elementEquals(elem1, elem2, valueBasedEquality, caseSensitive)) {
+                    return false;
+                } else {
+                    i++;
+                }
+            }
+            return i == l1.size() && i == l2.size();        // both keys ended together
+        }
         Iterator<?> iter1 = coll1.iterator();
         Iterator<?> iter2 = coll2.iterator();
         int i = 0;

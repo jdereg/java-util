@@ -3892,24 +3892,14 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     }
 
     /**
-     * A reported key's hash: its hashCode(), except that an array (a primitive array key, or an array key in
-     * COLLECTIONS_NOT_EXPANDED mode) hashes by its content -- an array's own hashCode() is its identity, so a map
-     * and its copy, equal, hashed differently.
-     */
-    private static int keyHashCode(Object key) {
-        if (key == null || !key.getClass().isArray()) {
-            return Objects.hashCode(key);
-        }
-        return key instanceof Object[] ? Arrays.deepHashCode((Object[]) key) : Arrays.deepHashCode(new Object[]{key});
-    }
-
-    /**
      * Returns the hash code value for this map.
-     * <p>The hash code of a map is defined to be the sum of the hash codes of each entry
-     * in the map's {@code entrySet()} view. This ensures that {@code m1.equals(m2)}
-     * implies that {@code m1.hashCode()==m2.hashCode()} for any two maps {@code m1} and
-     * {@code m2}, as required by the general contract of {@link Object#hashCode}.</p>
-     * 
+     * <p>The sum, over the entries, of the key's hash by this map's own rules XOR the value's {@code hashCode()}.
+     * The key is hashed as {@link #equals(Object)} compares it -- numbers by value, text by this map's case
+     * setting, arrays and Lists alike, Sets in any order -- so two MultiKeyMaps that are equal hash alike.</p>
+     * <p>Like {@link CaseInsensitiveMap}, a MultiKeyMap can be equal to a plain {@code Map} whose keys hash by their
+     * own {@code hashCode()} (a MultiKeyMap holding {@code 1} equals a {@code HashMap} holding {@code 1.0}, both
+     * ways) while the two hash differently: no hash can agree with both equalities.</p>
+     *
      * @return the hash code value for this map
      */
     public int hashCode() {
@@ -3923,25 +3913,16 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             return cached;
         }
 
+        // Each key's MultiKey.hash is its hash by this map's rules, the one lookups use. The case-sensitive mode
+        // hashed the reported keys with their own hashCode(), so maps holding 1 and 1.0 were equal but hashed apart.
         int h = 0;
-        if (caseSensitive) {
-            // Case-sensitive: use entrySet() with standard Objects.hashCode()
-            for (Map.Entry<Object, V> e : entrySet()) {
-                h += keyHashCode(e.getKey()) ^ Objects.hashCode(e.getValue());
-            }
-        } else {
-            // Case-insensitive: iterate internal buckets and use MultiKey.hash
-            // (pre-computed via computeElementHash with case-insensitive string hashing).
-            // This ensures two equal case-insensitive maps with different-case keys
-            // produce the same hashCode.
-            final AtomicReferenceArray<MultiKey<V>[]> snapshot = buckets;
-            final int len = snapshot.length();
-            for (int bucketIdx = 0; bucketIdx < len; bucketIdx++) {
-                MultiKey<V>[] chain = snapshot.get(bucketIdx);
-                if (chain != null) {
-                    for (MultiKey<V> mk : chain) {
-                        h += mk.hash ^ Objects.hashCode(mk.value);
-                    }
+        final AtomicReferenceArray<MultiKey<V>[]> snapshot = buckets;
+        final int len = snapshot.length();
+        for (int bucketIdx = 0; bucketIdx < len; bucketIdx++) {
+            MultiKey<V>[] chain = snapshot.get(bucketIdx);
+            if (chain != null) {
+                for (MultiKey<V> mk : chain) {
+                    h += mk.hash ^ Objects.hashCode(mk.value);
                 }
             }
         }

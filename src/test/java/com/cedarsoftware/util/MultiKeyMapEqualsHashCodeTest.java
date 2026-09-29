@@ -450,7 +450,11 @@ class MultiKeyMapEqualsHashCodeTest {
         // MultiKeyMap should equal HashMap with same entries
         assertEquals(mkm, hashMap, "MultiKeyMap should equal HashMap with same entries");
         assertEquals(hashMap, mkm, "HashMap should equal MultiKeyMap (symmetric)");
-        assertEquals(mkm.hashCode(), hashMap.hashCode(), "hashCode should match HashMap");
+        // The hash is the map's own, keys hashed by its rules (as CaseInsensitiveMap does): an equal MultiKeyMap
+        // hashes alike, a HashMap need not. No hash agrees with both value-based and Java equality.
+        MultiKeyMap<String> copy = new MultiKeyMap<>();
+        copy.putAll(hashMap);
+        assertEquals(mkm.hashCode(), copy.hashCode(), "hashCode should match an equal MultiKeyMap");
     }
 
     @Test

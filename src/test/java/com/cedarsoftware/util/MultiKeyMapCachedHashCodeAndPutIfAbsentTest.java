@@ -1,6 +1,5 @@
 package com.cedarsoftware.util;
 
-import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -24,7 +23,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class MultiKeyMapCachedHashCodeAndPutIfAbsentTest {
 
-    private static final class CoordinatedHashKey {
+    /** A value whose hashCode() can be held open, so a mutation lands while the map's hashCode() is running. */
+    private static final class CoordinatedHash {
         private final AtomicBoolean block = new AtomicBoolean(false);
         private final CountDownLatch entered = new CountDownLatch(1);
         private final CountDownLatch release = new CountDownLatch(1);
@@ -63,12 +63,12 @@ class MultiKeyMapCachedHashCodeAndPutIfAbsentTest {
     }
 
     /**
-     * Build a reference HashMap with the same content and return its hashCode.
-     * This lets us compare against MultiKeyMap's hashCode after mutations.
+     * Build a fresh MultiKeyMap with the same content and return its hashCode, computed from scratch.
+     * This lets us compare against MultiKeyMap's (possibly cached) hashCode after mutations.
      */
-    private int referenceHashCode(MultiKeyMap<String> mkm) {
-        Map<Object, String> ref = new HashMap<>();
-        for (Map.Entry<Object, String> e : mkm.entrySet()) {
+    private static <V> int referenceHashCode(MultiKeyMap<V> mkm) {
+        MultiKeyMap<V> ref = new MultiKeyMap<>();
+        for (Map.Entry<Object, V> e : mkm.entrySet()) {
             ref.put(e.getKey(), e.getValue());
         }
         return ref.hashCode();
@@ -250,18 +250,20 @@ class MultiKeyMapCachedHashCodeAndPutIfAbsentTest {
 
     @Test
     void testConcurrentHashComputationDoesNotPublishStaleCache() throws Exception {
-        MultiKeyMap<String> map = new MultiKeyMap<>();
-        CoordinatedHashKey blockingKey = new CoordinatedHashKey();
-        map.put(blockingKey, "value");
+        // hashCode() hashes keys by the hashes the map computed when they were stored, so it is a value's
+        // hashCode() that holds the computation open
+        MultiKeyMap<Object> map = new MultiKeyMap<>();
+        CoordinatedHash blockingValue = new CoordinatedHash();
+        map.put("blocking", blockingValue);
         map.put("stable", "entry");
 
-        blockingKey.enableBlocking();
+        blockingValue.enableBlocking();
         Thread hashThread = new Thread(map::hashCode);
         hashThread.start();
 
-        blockingKey.awaitHashEntry();
+        blockingValue.awaitHashEntry();
         map.put("mutated", "entry");
-        blockingKey.releaseBlocking();
+        blockingValue.releaseBlocking();
         hashThread.join(2000);
 
         int expected = referenceHashCode(map);

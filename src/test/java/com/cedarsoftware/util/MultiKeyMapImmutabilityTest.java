@@ -115,8 +115,13 @@ class MultiKeyMapImmutabilityTest {
         map2.put(Arrays.asList("key1", "key2"), "value1");
         map2.put("key3", "value2");
         
-        // If they're equal, they must have the same hashCode
-        assertEquals(map1.hashCode(), map2.hashCode(), 
+        // Equal both ways. The hash is the map's own (keys hashed by its rules, as CaseInsensitiveMap does), so an
+        // equal MultiKeyMap hashes alike; a HashMap, hashing its List keys by List.hashCode(), need not.
+        assertEquals(map1, map2);
+        assertEquals(map2, map1);
+        MultiKeyMap<String> copy = new MultiKeyMap<>(16);
+        copy.putAll(map2);
+        assertEquals(map1.hashCode(), copy.hashCode(),
                     "Equal maps must have equal hash codes");
     }
     
@@ -131,7 +136,9 @@ class MultiKeyMapImmutabilityTest {
         map2.put("key3", "value");
         
         assertEquals(map1, map2, "Maps with null values should be equal");
-        assertEquals(map1.hashCode(), map2.hashCode(), 
+        MultiKeyMap<String> copy = new MultiKeyMap<>(16);
+        copy.putAll(map2);
+        assertEquals(map1.hashCode(), copy.hashCode(),
                     "Maps with null values should have equal hash codes");
     }
     

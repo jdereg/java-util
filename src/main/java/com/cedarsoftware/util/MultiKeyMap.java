@@ -3498,44 +3498,75 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             double lf = (double) atomicSize.sum() / buckets.length();
             if (lf <= loadFactor) return;
 
-            AtomicReferenceArray<MultiKey<V>[]> oldBuckets = buckets;
-            AtomicReferenceArray<MultiKey<V>[]> newBuckets = new AtomicReferenceArray<>(oldBuckets.length() * 2);
-            int newMax = 0;
-
-            // NOTE: atomicSize is deliberately NOT touched here. The entry count is invariant
-            // during a resize, and size()/isEmpty()/longSize() are lock-free — zeroing and
-            // re-incrementing the counter per entry would let concurrent readers observe the
-            // size transiently collapse toward 0 (isEmpty() == true on a million-entry map),
-            // and would add n atomic RMWs while all stripes are held.
-            for (int i = 0; i < oldBuckets.length(); i++) {
-                MultiKey<V>[] chain = oldBuckets.get(i);
-                if (chain != null) {
-                    for (MultiKey<V> e : chain) {
-                        int len = rehashEntry(e, newBuckets);
-                        newMax = Math.max(newMax, len);
-                    }
-                }
-            }
-            maxChainLength.set(newMax);
-            // Replace buckets atomically after all entries are rehashed
-            buckets = newBuckets;
-            resizeThreshold = (long)(newBuckets.length() * loadFactor);
+            rehashInto(buckets.length() * 2);
         });
     }
 
+    /**
+     * Rehashes every chain into a table of {@code newLength} (a larger power of two) and publishes it; the caller
+     * holds all stripe locks. Old bucket i spreads only over buckets i, i + oldLength, i + 2 * oldLength, ...: a
+     * chain whose entries all land in one bucket is reused (chains are copy-on-write, never changed in place), and
+     * one that splits is grouped by target in one pass, keeping its order. Each entry was appended with a copy of
+     * the chain built so far -- an array of garbage for every entry on every resize.
+     */
     @SuppressWarnings("unchecked")
-    private int rehashEntry(MultiKey<V> entry, AtomicReferenceArray<MultiKey<V>[]> target) {
-        int index = spread(entry.hash) & (target.length() - 1);
-        MultiKey<V>[] chain = target.get(index);
-        if (chain == null) {
-            target.set(index, new MultiKey[]{entry});
-            return 1;
-        } else {
-            MultiKey<V>[] newChain = Arrays.copyOf(chain, chain.length + 1);
-            newChain[chain.length] = entry;
-            target.set(index, newChain);
-            return newChain.length;
+    private void rehashInto(int newLength) {
+        AtomicReferenceArray<MultiKey<V>[]> oldBuckets = buckets;
+        int oldLength = oldBuckets.length();
+        AtomicReferenceArray<MultiKey<V>[]> newBuckets = new AtomicReferenceArray<>(newLength);
+        int newMask = newLength - 1;
+        int newMax = 0;
+
+        // NOTE: atomicSize is deliberately NOT touched here. The entry count is invariant
+        // during a resize, and size()/isEmpty()/longSize() are lock-free — zeroing and
+        // re-incrementing the counter per entry would let concurrent readers observe the
+        // size transiently collapse toward 0 (isEmpty() == true on a million-entry map),
+        // and would add n atomic RMWs while all stripes are held.
+        for (int i = 0; i < oldLength; i++) {
+            MultiKey<V>[] chain = oldBuckets.get(i);
+            if (chain == null) {
+                continue;
+            }
+            int first = spread(chain[0].hash) & newMask;
+            int c = 1;
+            while (c < chain.length && (spread(chain[c].hash) & newMask) == first) {
+                c++;
+            }
+            if (c == chain.length) {
+                newBuckets.set(first, chain);
+                newMax = Math.max(newMax, chain.length);
+                continue;
+            }
+            int[] target = new int[chain.length];
+            for (c = 0; c < chain.length; c++) {
+                target[c] = spread(chain[c].hash) & newMask;
+            }
+            for (c = 0; c < chain.length; c++) {
+                int index = target[c];
+                if (index < 0) {
+                    continue;                                   // placed with an earlier entry
+                }
+                int count = 0;
+                for (int d = c; d < chain.length; d++) {
+                    if (target[d] == index) {
+                        count++;
+                    }
+                }
+                MultiKey<V>[] part = new MultiKey[count];
+                for (int d = c, p = 0; d < chain.length; d++) {
+                    if (target[d] == index) {
+                        part[p++] = chain[d];
+                        target[d] = -1;
+                    }
+                }
+                newBuckets.set(index, part);
+                newMax = Math.max(newMax, count);
+            }
         }
+        maxChainLength.set(newMax);
+        // Replace buckets atomically after all entries are rehashed
+        buckets = newBuckets;
+        resizeThreshold = (long) (newBuckets.length() * loadFactor);
     }
 
     /**

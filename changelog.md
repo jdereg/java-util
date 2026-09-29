@@ -295,6 +295,28 @@
   * **An empty key:** the expansion hashed it as 1, an empty array as 0. So an empty List and an empty array were two keys, and `get(new Object[]{new Object[0]})` missed.
   * **Now:** both hash as 0 on every path. An existing test, `MultiKeyMapNullSentinelSingleElementTest`, had recorded the two `[null]` entries as intended; it now expects one key. `MultiKeyMapReportedKeysTest` now also covers these shapes in flatten mode.
   * **Tests.** `MultiKeyMapFlattenEquivalenceTest` (3). Two fail against the previous code; the default mode, which agreed already, passes on both. Full suite: 21,002 tests, 0 failures on JDK 21 and on JDK 8; json-io 4,737 + 165 + 28, 0 failures, against it.
+* **PERFORMANCE**: **`MultiKeyMap` key hashes spread: dense grids of keys and Sets of small values no longer pile onto a few hashes.**
+  * **The defects:**
+    * **Elements were combined as `h * 31 + e`.** Small numbers and short strings collided linearly (`(0, 31)` hashed as `(1, 0)`). A 1,000 × 1,000 grid of `int` pairs had 31,969 distinct hashes, about 31 keys each, and a lookup walked the chain.
+    * **A Set's elements were XORed.** That cancels: the 41,664 Sets `{i, j, k}` of 0..63 had 127 distinct hashes.
+  * **Now:**
+    * **Keys:** elements are combined as `h * 0x9E3779B9 + e` (the golden-ratio constant), at every site that hashes a key: arrays of each primitive type, `Object[]`, Collections, and the expansion of nested keys.
+    * **Sets:** a Set sums its elements' hashes after the murmur3 finalizer, so it stays independent of order and of `1` vs `1L`.
+    * **Order:** bucket and iteration order change, and with them the order of `toString()` and `entrySet()`.
+  * **Measured** (fresh-key lookups, 2 fresh JVMs each):
+
+    | Keys | get before | get now | put before | put now |
+    |---|---|---|---|---|
+    | 1,000 × 1,000 `int` pairs | 890–1,100 ns | 240–260 ns | 187 ns | 47 ns |
+    | 1,000 × 1,000 String pairs | 960–1,170 ns | 212 ns | 233 ns | 65 ns |
+    | 100³ `int` triples | 427–445 ns | 248 ns | 93 ns | 52 ns |
+    | 300 × 300 `int` pairs | 106 ns | 37 ns | 66 ns | 36 ns |
+    | 41,664 Sets `{i, j, k}` | 13,600–18,300 ns | ~200 ns | 16,700–20,600 ns | 130 ns |
+    | 1,000,000 random pairs (control) | 264–271 ns | 272 ns | 138 ns | 132 ns |
+  * **Tests.** `MultiKeyMapHashSpreadTest` (5):
+    * **Spread:** the grid now has more than 990,000 distinct hashes and the Sets more than 41,000. Both of these tests fail against the previous code.
+    * **Equivalence:** 500 random tuples, each in 12 forms (`Object[]` of `Integer`/`Long`/`Double`, `Integer[]`, `int[]`, `long[]`, `short[]`, `byte[]`, `double[]`, `float[]`, Lists), are each one key. So are a Set in any order and with mixed number types, and the nested and flat forms in flatten mode. These pass on both, and catch a planted mutant that leaves one primitive-array path on `h * 31`.
+    * **Full suite:** 21,007 tests, 0 failures on JDK 21 and on JDK 8; json-io 4,737 + 165 + 28, 0 failures, against it.
 
 #### 4.112.0 - 2026-09-23
 * **BUG FIX (regression since 4.1.0)**: **`SafeSimpleDateFormat` could not parse a numeric field followed by the locale's decimal separator** -- `yyyy-MM-dd HH:mm:ss.SSS`, `yyyy-MM-dd'T'HH:mm:ss.SSSZ`, `dd.MM.yyyy`, `yyyy.MM.dd`, `HH.mm` under a '.' locale, `ss,SSS` under a ',' locale. Parsing `"2026-09-24 13:33:28.144"` threw `ParseException: Unparseable date`, where `SimpleDateFormat` with the same pattern parses it. The default `NumberFormat` was the locale's general number format (grouping off), which reads `28.144` as ONE number: the seconds field swallowed the milliseconds and the pattern's `.` found nothing left to match. `SimpleDateFormat` installs the locale's INTEGER format, which stops at the separator. **Why it surfaced now:** the defect predates 4.0.0, but there the constructor put that number format only on the constructing thread's formatter; every other thread got a stock `SimpleDateFormat`, so request threads never saw it. The 4.1.0 copy-on-write rewrite builds every thread's formatter from one configuration, which carried the bad default to all of them, and to the static `getDateFormat()`. The default is now exactly `SimpleDateFormat`'s own -- `NumberFormat.getIntegerInstance(locale)`, grouping off, integer-only parsing -- so parsing and formatting match `SimpleDateFormat` on every thread. **Millisecond times parse again**, to the exact millisecond. As in `SimpleDateFormat`, `S` is a count of milliseconds, not a fraction (`28.5` is 5 ms; `28.144123` adds 144,123 ms): for fractional seconds of any length use `DateUtilities.parseDate()` or `java.time`. A number format the caller sets with `setNumberFormat()` is used as given, as before. `SafeSimpleDateFormatNumberFieldTest` (48): every pattern above against `SimpleDateFormat` as the oracle, on the constructing thread, another thread and the static accessor, formatting unchanged, exact milliseconds, a concurrent millisecond round trip, and the caller's number format honoured. Against 4.111.0, 22 of its first 42 fail -- every dotted or comma pattern on every path -- and the patterns without a separator, formatting, and the caller's-format case pass.

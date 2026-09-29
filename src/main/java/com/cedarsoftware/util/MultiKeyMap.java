@@ -1046,6 +1046,26 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         return o.hashCode();
     }
     
+    /**
+     * Folds one element's hash into a key's hash. Every path that hashes a key -- arrays of each primitive type,
+     * Object[], Collections, the expansion of nested keys -- must use it, or equal keys would hash apart. The
+     * multiplier is the golden-ratio constant: with 31, small numbers and short strings collided linearly ((0, 31)
+     * hashed as (1, 0)), and a 1,000 x 1,000 grid of int pairs put 31 keys on each hash.
+     */
+    private static int combine(int h, int e) {
+        return h * 0x9E3779B9 + e;
+    }
+
+    /** The murmur3 finalizer: spreads an element's hash before it is summed into a Set's. */
+    private static int mix(int h) {
+        h ^= h >>> 16;
+        h *= 0x85ebca6b;
+        h ^= h >>> 13;
+        h *= 0xc2b2ae35;
+        h ^= h >>> 16;
+        return h;
+    }
+
     private static int hashLong(long v) {
         return (int) (v ^ (v >>> 32));
     }
@@ -1278,7 +1298,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                 int len = array.length;
                 int h = len == 0 ? 0 : 1;
                 for (int i = 0; i < len; i++) {
-                    h = h * 31 + computeElementHash(array[i], caseSensitive);
+                    h = combine(h, computeElementHash(array[i], caseSensitive));
                 }
                 return findEntryWithPrecomputedHash(array, h);
             }
@@ -1401,7 +1421,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                 int len = array.length;
                 int h = len == 0 ? 0 : 1;
                 for (int i = 0; i < len; i++) {
-                    h = h * 31 + computeElementHash(array[i], caseSensitive);
+                    h = combine(h, computeElementHash(array[i], caseSensitive));
                 }
                 return new MultiKey<>(array, h, value, len, MultiKey.KIND_OBJECT_ARRAY);
             }
@@ -1568,7 +1588,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             if (keyClass == int[].class) {
                 int[] array = (int[]) key;
                 for (int i = 0; i < length; i++) {
-                    h = h * 31 + hashLong(array[i]);
+                    h = combine(h, hashLong(array[i]));
                 }
                 return new MultiKey<>(array, h, null);
             }
@@ -1576,7 +1596,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             if (keyClass == long[].class) {
                 long[] array = (long[]) key;
                 for (int i = 0; i < length; i++) {
-                    h = h * 31 + hashLong(array[i]);
+                    h = combine(h, hashLong(array[i]));
                 }
                 return new MultiKey<>(array, h, null);
             }
@@ -1588,9 +1608,9 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                     double d = array[i];
                     if (d == 0.0d) d = 0.0d; // canonicalize -0.0
                     if (Double.isFinite(d) && d == Math.rint(d) && d >= Long.MIN_VALUE && d <= Long.MAX_VALUE) {
-                        h = h * 31 + hashLong((long) d);
+                        h = combine(h, hashLong((long) d));
                     } else {
-                        h = h * 31 + hashDouble(d);
+                        h = combine(h, hashDouble(d));
                     }
                 }
                 return new MultiKey<>(array, h, null);
@@ -1603,9 +1623,9 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                     double d = array[i];
                     if (d == 0.0d) d = 0.0d; // canonicalize -0.0
                     if (Double.isFinite(d) && d == Math.rint(d) && d >= Long.MIN_VALUE && d <= Long.MAX_VALUE) {
-                        h = h * 31 + hashLong((long) d);
+                        h = combine(h, hashLong((long) d));
                     } else {
-                        h = h * 31 + hashDouble(d);
+                        h = combine(h, hashDouble(d));
                     }
                 }
                 return new MultiKey<>(array, h, null);
@@ -1614,7 +1634,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             if (keyClass == boolean[].class) {
                 boolean[] array = (boolean[]) key;
                 for (int i = 0; i < length; i++) {
-                    h = h * 31 + Boolean.hashCode(array[i]);
+                    h = combine(h, Boolean.hashCode(array[i]));
                 }
                 return new MultiKey<>(array, h, null);
             }
@@ -1622,7 +1642,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             if (keyClass == byte[].class) {
                 byte[] array = (byte[]) key;
                 for (int i = 0; i < length; i++) {
-                    h = h * 31 + hashLong(array[i]);
+                    h = combine(h, hashLong(array[i]));
                 }
                 return new MultiKey<>(array, h, null);
             }
@@ -1630,7 +1650,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             if (keyClass == short[].class) {
                 short[] array = (short[]) key;
                 for (int i = 0; i < length; i++) {
-                    h = h * 31 + hashLong(array[i]);
+                    h = combine(h, hashLong(array[i]));
                 }
                 return new MultiKey<>(array, h, null);
             }
@@ -1638,7 +1658,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             if (keyClass == char[].class) {
                 char[] array = (char[]) key;
                 for (int i = 0; i < length; i++) {
-                    h = h * 31 + Character.hashCode(array[i]);
+                    h = combine(h, Character.hashCode(array[i]));
                 }
                 return new MultiKey<>(array, h, null);
             }
@@ -1691,7 +1711,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
 
         if (simpleKeysMode) {
             for (int i = 0; i < size; i++) {
-                h = h * 31 + computeElementHash(array[i], caseSensitive);
+                h = combine(h, computeElementHash(array[i], caseSensitive));
             }
         } else {
             for (int i = 0; i < size; i++) {
@@ -1710,7 +1730,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                         }
                     }
                 }
-                h = h * 31 + computeElementHash(elem, caseSensitive);
+                h = combine(h, computeElementHash(elem, caseSensitive));
             }
         }
 
@@ -1737,7 +1757,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         if (simpleKeysMode) {
             // In simple keys mode, just compute hash
             for (int i = 0; i < size; i++) {
-                h = h * 31 + computeElementHash(iter.next(), caseSensitive);
+                h = combine(h, computeElementHash(iter.next(), caseSensitive));
             }
         } else {
             // Check for nested structures
@@ -1751,7 +1771,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                     if (flattenDimLocal) return expandWithHash(coll);
                     return process1DCollection(coll);
                 }
-                h = h * 31 + computeElementHash(elem, caseSensitive);
+                h = combine(h, computeElementHash(elem, caseSensitive));
             }
         }
 
@@ -1774,8 +1794,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         for (int i = 0; i < len; i++) {
             final Object e = array[i];
             if (e == null) {
-                // h = h * 31 + 0; // This is just h * 31, optimize it
-                h *= 31;
+                // h = combine(h, 0); // This is just h * 31, optimize it
+                h = combine(h, 0);
             } else {
                 final Class<?> eClass = e.getClass();
                 // Check dimension first (before expensive hash computation if we're going to break)
@@ -1786,7 +1806,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                 }
                 // Most common path - regular object, inline the common cases
                 // Always use computeElementHash to maintain value-mode hash alignment
-                h = h * 31 + computeElementHash(e, caseSensitive);
+                h = combine(h, computeElementHash(e, caseSensitive));
             }
         }
         
@@ -1825,7 +1845,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                 is1D = false;
                 break;
             }
-            h = h * 31 + computeElementHash(e, caseSensitive);
+            h = combine(h, computeElementHash(e, caseSensitive));
         }
         
         if (is1D) {
@@ -1858,7 +1878,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             int h = 1;
             for (int i = 0; i < len; i++) {
                 final Object o = objArray[i];
-                h = h * 31 + computeElementHash(o, caseSensitive);
+                h = combine(h, computeElementHash(o, caseSensitive));
             }
 
             // No collapse - arrays stay as arrays
@@ -1883,7 +1903,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         // Compute full hash for all elements
         for (int i = 0; i < len; i++) {
             Object e = ArrayUtilities.getElement(arr, i);
-            h = h * 31 + computeElementHash(e, caseSensitive);
+            h = combine(h, computeElementHash(e, caseSensitive));
             if (e instanceof Collection || (e != null && e.getClass().isArray())) {
                 is1D = false;
                 break;
@@ -1942,20 +1962,20 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             // Hashed as 0, as the unexpanded paths hash it: in flatten mode a Collection is always expanded and an
             // array of plain elements is not, so [null, a] as a List and as an array hashed apart and never matched
             result.add(NULL_SENTINEL);
-            return runningHash * 31;
+            return combine(runningHash, 0);
         }
 
         // Fast path: O(1) ClassValueSet lookup for common leaf types (replaces 9 sequential class == checks)
         Class<?> clazz = current.getClass();
         if (LEAF_TYPES.containsClass(clazz)) {
             result.add(current);
-            return runningHash * 31 + computeElementHash(current, caseSensitive);
+            return combine(runningHash, computeElementHash(current, caseSensitive));
         }
 
         if (visited.contains(current)) {
             Object cycle = EMOJI_CYCLE + System.identityHashCode(current);
             result.add(cycle);
-            return runningHash * 31 + cycle.hashCode();
+            return combine(runningHash, cycle.hashCode());
         }
 
         // Use getComponentType() != null instead of isArray() - slightly faster
@@ -1964,7 +1984,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             try {
                 if (!useFlatten) {
                     result.add(OPEN);
-                    runningHash = runningHash * 31 + OPEN.hashCode();
+                    runningHash = combine(runningHash, OPEN.hashCode());
                 }
                 int len = ArrayUtilities.getLength(current);
                 for (int i = 0; i < len; i++) {
@@ -1972,7 +1992,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                 }
                 if (!useFlatten) {
                     result.add(CLOSE);
-                    runningHash = runningHash * 31 + CLOSE.hashCode();
+                    runningHash = combine(runningHash, CLOSE.hashCode());
                 }
             } finally {
                 visited.remove(current);
@@ -1986,32 +2006,34 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                     // Sets always use SET_OPEN/SET_CLOSE markers (even in flatten mode)
                     // to preserve order-agnostic semantics
                     result.add(SET_OPEN);
-                    runningHash = runningHash * 31 + SET_OPEN.hashCode();
+                    runningHash = combine(runningHash, SET_OPEN.hashCode());
 
-                    // Order-agnostic hash for Set elements (XOR with rotation for better distribution)
+                    // Order-agnostic hash for Set elements: the sum of each element's hash, mixed. XOR of rotated
+                    // hashes cancelled out -- small elements gave small hashes, so the 41,664 Sets {i, j, k} of
+                    // 0..63 had 127 distinct hashes and lookups walked chains of hundreds.
                     // Optimization: Add elements directly to result instead of allocating tempResult per element.
                     // By passing 1 as runningHash, expandAndHash returns just that element's hash.
                     int setHash = 0;
                     for (Object e : coll) {
                         int elemHash = expandAndHash(e, result, visited, 1, useFlatten, caseSensitive);
-                        setHash ^= Integer.rotateLeft(elemHash, 1);
+                        setHash += mix(elemHash);
                     }
-                    runningHash = runningHash * 31 + setHash;
+                    runningHash = combine(runningHash, setHash);
 
                     result.add(SET_CLOSE);
-                    runningHash = runningHash * 31 + SET_CLOSE.hashCode();
+                    runningHash = combine(runningHash, SET_CLOSE.hashCode());
                 } else {
                     // Non-Set Collections use order-dependent polynomial hash
                     if (!useFlatten) {
                         result.add(OPEN);
-                        runningHash = runningHash * 31 + OPEN.hashCode();
+                        runningHash = combine(runningHash, OPEN.hashCode());
                     }
                     for (Object e : coll) {
                         runningHash = expandAndHash(e, result, visited, runningHash, useFlatten, caseSensitive);
                     }
                     if (!useFlatten) {
                         result.add(CLOSE);
-                        runningHash = runningHash * 31 + CLOSE.hashCode();
+                        runningHash = combine(runningHash, CLOSE.hashCode());
                     }
                 }
             } finally {
@@ -2019,7 +2041,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             }
         } else {
             result.add(current);
-            runningHash = runningHash * 31 + computeElementHash(current, caseSensitive);
+            runningHash = combine(runningHash, computeElementHash(current, caseSensitive));
         }
         return runningHash;
     }

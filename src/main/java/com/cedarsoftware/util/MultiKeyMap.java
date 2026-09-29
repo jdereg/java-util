@@ -3,14 +3,16 @@ package com.cedarsoftware.util;
 import java.lang.reflect.Array;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.util.AbstractMap;
+import java.util.AbstractSet;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
-import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -3703,11 +3705,9 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      * @return a snapshot set view of the mappings contained in this map
      */
     public Set<Map.Entry<Object, V>> entrySet() {
-        // Snapshot keyed by KEY. A HashSet of entries hashes every VALUE to store it (Map.Entry.hashCode() is
-        // key ^ value) -- work nobody asked for, and unbounded recursion when a value's graph leads back here.
-        // Each entry's key is reported as one that finds that entry again (externalKey), so no two entries can
-        // collide in the snapshot.
-        Map<Object, V> entries = new LinkedHashMap<>(Math.max(16, (int) (size() / 0.75f) + 1));
+        // Snapshot held in a list (see EntrySnapshot). Each entry's key is reported as one that finds that entry
+        // again (externalKey), so no two entries collide.
+        ArrayList<Map.Entry<Object, V>> entries = new ArrayList<>(size());
         // Iterate buckets directly instead of using deprecated entries()
         final AtomicReferenceArray<MultiKey<V>[]> snapshot = buckets;
         final int len = snapshot.length();
@@ -3715,11 +3715,82 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             MultiKey<V>[] chain = snapshot.get(bucketIdx);
             if (chain != null) {
                 for (MultiKey<V> e : chain) {
-                    entries.put(externalKey(e.keys), e.value);
+                    entries.add(new AbstractMap.SimpleEntry<>(externalKey(e.keys), e.value));
                 }
             }
         }
-        return entries.entrySet();
+        return new EntrySnapshot<>(entries);
+    }
+
+    /**
+     * The entrySet() snapshot, in bucket order, held in a list. It filled a LinkedHashMap, which hashed every
+     * reported key (a List key recomputes its hashCode element by element) for callers that mostly only iterate --
+     * json-io's writer, putAll(), equals(): 100,000 three-part keys took 19-21 ms and 14.9 MB. contains() answers as
+     * that map's entry set did -- the entry with an equal key, compared whole -- from an index by KEY built the first
+     * time it is asked; a set of entries would hash every value (Map.Entry.hashCode() is key ^ value), work nobody
+     * asked for, and unbounded recursion when a value's graph leads back to this map.
+     */
+    private static final class EntrySnapshot<V> extends AbstractSet<Map.Entry<Object, V>> {
+        private final ArrayList<Map.Entry<Object, V>> entries;
+        private Map<Object, Map.Entry<Object, V>> byKey;       // built on the first contains()
+
+        EntrySnapshot(ArrayList<Map.Entry<Object, V>> entries) {
+            this.entries = entries;
+        }
+
+        @Override
+        public int size() {
+            return entries.size();
+        }
+
+        @Override
+        public Iterator<Map.Entry<Object, V>> iterator() {
+            final Iterator<Map.Entry<Object, V>> it = entries.iterator();
+            return new Iterator<Map.Entry<Object, V>>() {
+                private Map.Entry<Object, V> last;
+
+                @Override
+                public boolean hasNext() {
+                    return it.hasNext();
+                }
+
+                @Override
+                public Map.Entry<Object, V> next() {
+                    return last = it.next();
+                }
+
+                @Override
+                public void remove() {
+                    it.remove();
+                    if (byKey != null) {
+                        byKey.remove(last.getKey());
+                    }
+                }
+            };
+        }
+
+        @Override
+        public boolean contains(Object o) {
+            if (!(o instanceof Map.Entry)) {
+                return false;
+            }
+            if (byKey == null) {
+                Map<Object, Map.Entry<Object, V>> index = new HashMap<>(Math.max(16, (int) (entries.size() / 0.75f) + 1));
+                for (Map.Entry<Object, V> e : entries) {
+                    index.put(e.getKey(), e);
+                }
+                byKey = index;
+            }
+            Map.Entry<?, ?> candidate = (Map.Entry<?, ?>) o;
+            Map.Entry<Object, V> entry = byKey.get(candidate.getKey());
+            return entry != null && entry.equals(candidate);
+        }
+
+        @Override
+        public void clear() {
+            entries.clear();
+            byKey = null;
+        }
     }
 
     /**

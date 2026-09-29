@@ -15,6 +15,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.RandomAccess;
 import java.util.Set;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -43,7 +44,7 @@ import java.util.logging.Logger;
  * <h3>Key Features:</h3>
  * <ul>
  *   <li><b>N-Dimensional Keys:</b> Support for keys with any number of components (1, 2, 3, ... N).</li>
- *   <li><b>High Performance:</b> Zero-allocation polymorphic storage, polynomial rolling hash, and optimized hash computation — no GC/heap pressure for gets in flat cases.</li>
+ *   <li><b>High Performance:</b> Zero-allocation polymorphic storage, a well-spread multiplicative hash, and optimized hash computation — no GC/heap pressure for gets in flat cases.</li>
  *   <li><b>Thread-Safe:</b> Lock-free reads with auto-tuned stripe locking that scales with your server cores, similar to ConcurrentHashMap.</li>
  *   <li><b>Map Interface Compatible:</b> Supports single-key operations via the standard Map interface (get()/put() automatically unpack Collections/Arrays into multi-keys).</li>
  *   <li><b>Flexible API:</b> Var-args methods for convenient multi-key operations (getMultiKey()/putMultiKey() with many keys).</li>
@@ -66,7 +67,9 @@ import java.util.logging.Logger;
  * <ul>
  *   <li><b>Lock-Free Reads:</b> Get operations require no locking for optimal concurrent performance</li>
  *   <li><b>Auto-Tuned Stripe Locking:</b> Write operations use stripe locking that adapts to your server's core count</li>
- *   <li><b>Zero-Allocation Gets:</b> No temporary objects created during retrieval operations</li>
+ *   <li><b>Zero-Allocation Gets:</b> No temporary objects created when looking up a single key, a flat
+ *       {@code Object[]} or a flat {@code RandomAccess} List (default collection mode, no flattening); nested,
+ *       primitive-array and Set keys are expanded first</li>
  *   <li><b>Polymorphic Storage:</b> Efficient memory usage adapts storage format based on key complexity</li>
  *   <li><b>Simple Keys Mode:</b> Optional performance optimization that skips nested structure checks when keys are known to be flat</li>
  * </ul>
@@ -1381,6 +1384,30 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                 }
             }
             // It's an array (including rare atomic arrays) - fall through to complex path
+        } else if (key instanceof List && key instanceof RandomAccess && !(key instanceof Set)
+                && collectionKeyMode == CollectionKeyMode.COLLECTIONS_EXPANDED && !flattenDimensions) {
+            // Fast path: a flat RandomAccess List, as the Object[] path above -- in the modes where flattenKey()
+            // hashes a flat List the same way and keeps the List itself as the key. Indexed, so no iterator.
+            List<?> list = (List<?>) key;
+            int len = list.size();
+            if (len > 0) {
+                int h = 1;
+                int i = 0;
+                for (; i < len; i++) {
+                    Object e = list.get(i);
+                    if (!simpleKeysMode && e != null) {
+                        Class<?> ec = e.getClass();
+                        if (ec != String.class && ec != Integer.class && ec != Long.class && ec != Double.class
+                                && (e instanceof Collection || ec.isArray() || isAtomicArray(e))) {
+                            break;
+                        }
+                    }
+                    h = combine(h, computeElementHash(e, caseSensitive));
+                }
+                if (i == len) {
+                    return findEntryWithPrecomputedHash(list, h);
+                }
+            }
         }
 
         // Complex keys: Use zero-allocation lookup with simple new Norm()
@@ -2443,6 +2470,24 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      * Compare Object[] to non-RandomAccess Collection using iterator.
      */
     private static boolean compareObjectArrayToCollection(Object[] array, Collection<?> coll, int size, boolean valueBasedEquality, boolean caseSensitive) {
+        if (coll instanceof List && coll instanceof RandomAccess) {
+            // Indexed, as below: the iterator over a lookup List (Arrays.asList's, an unmodifiable List's) was
+            // allocated on every compare
+            List<?> list = (List<?>) coll;
+            for (int i = 0; i < size; i++) {
+                Object elem1 = array[i];
+                Object elem2 = list.get(i);
+                if (elem1 == SET_OPEN && elem2 == SET_OPEN) {
+                    return compareCollections(Arrays.asList(array).subList(i, size), list.subList(i, size), size - i,
+                            valueBasedEquality, caseSensitive);
+                } else if (elem1 == SET_OPEN || elem2 == SET_OPEN) {
+                    return false;
+                } else if (!elementEquals(elem1, elem2, valueBasedEquality, caseSensitive)) {
+                    return false;
+                }
+            }
+            return true;
+        }
         Iterator<?> iter = coll.iterator();
         int i = 0;
         while (i < size) {

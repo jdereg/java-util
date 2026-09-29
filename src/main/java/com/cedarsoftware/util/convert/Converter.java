@@ -206,8 +206,39 @@ public final class Converter {
     // Precision constants for time conversions
     public static final String PRECISION_MILLIS = "millis";
     public static final String PRECISION_NANOS = "nanos";
-    private static final Map<Class<?>, SortedSet<ClassLevel>> cacheParentTypes = new ClassValueMap<>();
-    private static final Map<Class<?>, SortedSet<ClassLevel>> cacheCompleteHierarchy = new ClassValueMap<>();
+    /**
+     * Per class, its complete type hierarchy in ClassLevel order (the class itself at level 0, then its supertypes
+     * but the marker interfaces), as {Class<?>[] types, int[] levels}: JDK types, kept in the class itself, so they pin
+     * no class loader. Two ClassValueMaps of SortedSet<ClassLevel> kept a java-util type in JDK classes.
+     */
+    private static final ClassValue<Object[]> TYPE_HIERARCHY = new ClassValue<Object[]>() {
+        @Override
+        protected Object[] computeValue(Class<?> type) {
+            SortedSet<ClassLevel> hierarchy = new TreeSet<>();
+            hierarchy.add(new ClassLevel(type, 0));
+            ClassUtilities.ClassHierarchyInfo info = ClassUtilities.getClassHierarchyInfo(type);
+            for (Map.Entry<Class<?>, Integer> entry : info.getDistanceMap().entrySet()) {
+                Class<?> supertype = entry.getKey();
+                int distance = entry.getValue();
+                // Skip the class itself and marker interfaces
+                if (distance > 0 &&
+                        supertype != Serializable.class &&
+                        supertype != Cloneable.class &&
+                        supertype != Comparable.class &&
+                        supertype != Externalizable.class) {
+                    hierarchy.add(new ClassLevel(supertype, distance));
+                }
+            }
+            Class<?>[] types = new Class<?>[hierarchy.size()];
+            int[] levels = new int[hierarchy.size()];
+            int i = 0;
+            for (ClassLevel level : hierarchy) {
+                types[i] = level.clazz;
+                levels[i++] = level.level;
+            }
+            return new Object[]{types, levels};
+        }
+    };
     // Performance: All per-(source, target) lookups use ClassPairMap, which is a two-tier
     // nested ClassValueMap. This eliminates per-lookup ConversionPair allocation and
     // leverages ClassValueMap's identity-based fast path for both tiers.
@@ -215,7 +246,6 @@ public final class Converter {
     private static final ClassPairMap<Convert<?>> CONVERSION_DB = new ClassPairMap<>();
     private final ClassPairMap<Convert<?>> USER_DB = new ClassPairMap<>();
     private static final ClassPairMap<Convert<?>> FULL_CONVERSION_CACHE = new ClassPairMap<>();
-    private static final ClassValueMap<String> CUSTOM_ARRAY_NAMES = new ClassValueMap<>();
     private static final AtomicLong INSTANCE_ID_GENERATOR = new AtomicLong(1);
 
     // Identity converter for marking non-standard types and handling identity conversions
@@ -548,7 +578,6 @@ public final class Converter {
     }
 
     static {
-        CUSTOM_ARRAY_NAMES.put(java.sql.Date[].class, "java.sql.Date[]");
         buildFactoryConversions();
 
     }
@@ -2258,59 +2287,6 @@ public final class Converter {
     }
 
     /**
-     * Gets a sorted set of all superclasses and interfaces for a class,
-     * with their inheritance distances.
-     *
-     * @param clazz The class to analyze
-     * @return Sorted set of ClassLevel objects representing the inheritance hierarchy
-     */
-    private static SortedSet<ClassLevel> getSuperClassesAndInterfaces(Class<?> clazz) {
-        return cacheParentTypes.computeIfAbsent(clazz, key -> {
-            SortedSet<ClassLevel> parentTypes = new TreeSet<>();
-            ClassUtilities.ClassHierarchyInfo info = ClassUtilities.getClassHierarchyInfo(key);
-
-            for (Map.Entry<Class<?>, Integer> entry : info.getDistanceMap().entrySet()) {
-                Class<?> type = entry.getKey();
-                int distance = entry.getValue();
-
-                // Skip the class itself and marker interfaces
-                if (distance > 0 &&
-                        type != Serializable.class &&
-                        type != Cloneable.class &&
-                        type != Comparable.class &&
-                        type != Externalizable.class) {
-
-                    parentTypes.add(new ClassLevel(type, distance));
-                }
-            }
-
-            return parentTypes;
-        });
-    }
-
-    /**
-     * Gets the complete type hierarchy for a class, including the class itself at level 0.
-     * <p>
-     * This method returns a cached, immutable sorted set containing:
-     * <ul>
-     *   <li>The class itself at level 0</li>
-     *   <li>All superclasses and interfaces with their inheritance distances</li>
-     * </ul>
-     * The result is cached per class, so no copying is needed on subsequent calls.
-     * </p>
-     *
-     * @param clazz The class to analyze
-     * @return Sorted set of ClassLevel objects representing the complete type hierarchy
-     */
-    private static SortedSet<ClassLevel> getCompleteTypeHierarchy(Class<?> clazz) {
-        return cacheCompleteHierarchy.computeIfAbsent(clazz, key -> {
-            SortedSet<ClassLevel> hierarchy = new TreeSet<>(getSuperClassesAndInterfaces(key));
-            hierarchy.add(new ClassLevel(key, 0));
-            return hierarchy;
-        });
-    }
-
-    /**
      * The length of the longest chain of supertypes above a type, following Java's assignability rather than
      * getSuperclass() alone: strictly greater for a subtype than for any of its supertypes. An interface is below
      * Object (every interface type is assignable to it); an array is below Object, Cloneable and Serializable, and
@@ -2359,13 +2335,17 @@ public final class Converter {
         }
 
         // Build pairs from complete hierarchies (already cached per type)
-        SortedSet<ClassLevel> sourceTypes = getCompleteTypeHierarchy(sourceType);
-        SortedSet<ClassLevel> targetTypes = getCompleteTypeHierarchy(toType);
+        Object[] sourceHierarchy = TYPE_HIERARCHY.get(sourceType);
+        Object[] targetHierarchy = TYPE_HIERARCHY.get(toType);
+        Class<?>[] sourceTypes = (Class<?>[]) sourceHierarchy[0];
+        int[] sourceLevels = (int[]) sourceHierarchy[1];
+        Class<?>[] targetTypes = (Class<?>[]) targetHierarchy[0];
+        int[] targetLevels = (int[]) targetHierarchy[1];
 
-        List<InheritancePair> pairs = new ArrayList<>(sourceTypes.size() * targetTypes.size());
-        for (ClassLevel source : sourceTypes) {
-            for (ClassLevel target : targetTypes) {
-                pairs.add(new InheritancePair(source.clazz, target.clazz, source.level, target.level));
+        List<InheritancePair> pairs = new ArrayList<>(sourceTypes.length * targetTypes.length);
+        for (int s = 0; s < sourceTypes.length; s++) {
+            for (int t = 0; t < targetTypes.length; t++) {
+                pairs.add(new InheritancePair(sourceTypes[s], targetTypes[t], sourceLevels[s], targetLevels[t]));
             }
         }
 
@@ -2522,10 +2502,9 @@ public final class Converter {
      */
     static String getShortName(Class<?> type) {
         if (type.isArray()) {
-            // Check if the array type has a custom short name
-            String customName = CUSTOM_ARRAY_NAMES.getByClass(type);
-            if (customName != null) {
-                return customName;
+            // The one array type with a custom short name (a table of one was a ClassValueMap)
+            if (type == java.sql.Date[].class) {
+                return "java.sql.Date[]";
             }
             // For other arrays, use component's simple name + "[]"
             Class<?> componentType = type.getComponentType();

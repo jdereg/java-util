@@ -1952,14 +1952,16 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         int h = 1;
         boolean is1D = true;
         
-        // Compute full hash for all elements
+        // Compute full hash for all elements. Check dimension first, as process1DCollection does: a nested element
+        // is re-hashed structurally by expandWithHash, and for a collection that contains itself (in a List[], say)
+        // its own hashCode() never returns -- put() threw StackOverflowError.
         for (int i = 0; i < len; i++) {
             Object e = ArrayUtilities.getElement(arr, i);
-            h = combine(h, computeElementHash(e, caseSensitive));
             if (e instanceof Collection || (e != null && (e.getClass().isArray() || isAtomicArray(e)))) {
                 is1D = false;
                 break;
             }
+            h = combine(h, computeElementHash(e, caseSensitive));
         }
         
         if (is1D) {

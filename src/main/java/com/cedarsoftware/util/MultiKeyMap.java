@@ -2083,8 +2083,12 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                     // By passing 1 as runningHash, expandAndHash returns just that element's hash.
                     int setHash = 0;
                     for (Object e : coll) {
-                        int elemHash = expandAndHash(e, result, visited, 1, useFlatten, caseSensitive);
-                        setHash += mix(elemHash);
+                        if (useFlatten) {
+                            setHash += flattenedSetMemberHashes(e, result, visited, caseSensitive);
+                        } else {
+                            int elemHash = expandAndHash(e, result, visited, 1, useFlatten, caseSensitive);
+                            setHash += mix(elemHash);
+                        }
                     }
                     runningHash = combine(runningHash, setHash);
 
@@ -2114,6 +2118,40 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         return runningHash;
     }
     
+    /**
+     * In flatten mode, a Set member's contribution to the Set's hash: a List or array member dissolves into the Set's
+     * berries, which match in any order one by one, so each berry is summed in on its own (a Set inside stays one
+     * element). The member was hashed whole, so {[0, 2], [1]} and {[2, 0], [1]} -- the same berries -- hashed apart
+     * and missed each other, and a key reported by keySet() ({0, 2, 1}) did not find its own entry.
+     */
+    private static int flattenedSetMemberHashes(Object member, List<Object> result, IdentitySet<Object> visited,
+                                                boolean caseSensitive) {
+        if (member != null && !(member instanceof Set) && !visited.contains(member)) {
+            Object array = member.getClass().getComponentType() != null ? member : atomicArrayValues(member);
+            if (array != null || member instanceof Collection) {
+                visited.add(member);
+                try {
+                    int sum = 0;
+                    if (array != null) {
+                        int len = ArrayUtilities.getLength(array);
+                        for (int i = 0; i < len; i++) {
+                            sum += flattenedSetMemberHashes(ArrayUtilities.getElement(array, i), result, visited,
+                                    caseSensitive);
+                        }
+                    } else {
+                        for (Object e : (Collection<?>) member) {
+                            sum += flattenedSetMemberHashes(e, result, visited, caseSensitive);
+                        }
+                    }
+                    return sum;
+                } finally {
+                    visited.remove(member);
+                }
+            }
+        }
+        return mix(expandAndHash(member, result, visited, 1, true, caseSensitive));
+    }
+
     /**
      * Optimized findEntry that skips the flattenKey() call when we already have
      * the normalized key and precomputed hash. This is the core of informed handoff optimization.
@@ -4227,7 +4265,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             } else if (elem == SET_OPEN) {
                 index[0]++;  // Skip SET_OPEN
                 List<Object> elements = collectElementsToNative(in, index, SET_CLOSE);
-                components.add(Collections.unmodifiableSet(new LinkedHashSet<>(elements)));  // Return as LinkedHashSet
+                components.add(regionSet(elements));  // Return as LinkedHashSet, repeats kept
                 index[0]++;  // Skip SET_CLOSE
             } else {
                 // Regular element (not inside a collection marker)
@@ -4242,6 +4280,25 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         } else {
             return Collections.unmodifiableList(components);
         }
+    }
+
+    /**
+     * A Set of a Set region's elements that keeps a repeated one. A Set region matches as a multiset of its elements:
+     * in flatten mode {[3, 0], [0, 3]} holds the berries 3, 0, 0, 3, and a Set holding two arrays with equal contents
+     * holds two equal elements. A plain Set dropped the repeat, so the reported key had fewer elements than the
+     * stored one and did not find its entry. A repeated List is kept as an Object[] (an array is equal only to
+     * itself), and a repeated plain element as a one-element Object[], which flatten mode dissolves back into it.
+     * (A repeated Set is kept the same way, which is exact in flatten mode only; outside it that needs two arrays with
+     * equal contents inside two Sets inside a Set.)
+     */
+    private static Set<Object> regionSet(List<Object> elements) {
+        Set<Object> set = new LinkedHashSet<>(elements.size() * 4 / 3 + 1);
+        for (Object e : elements) {
+            if (!set.add(e)) {
+                set.add(e instanceof List ? ((List<?>) e).toArray() : new Object[]{e});
+            }
+        }
+        return Collections.unmodifiableSet(set);
     }
 
     /**

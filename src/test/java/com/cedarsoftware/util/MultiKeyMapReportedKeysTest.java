@@ -43,6 +43,10 @@ class MultiKeyMapReportedKeysTest {
                 list(list("a"), "b", set("c")), new Object[]{}, list(), set(), new Object[]{list()},
                 new Object[]{set()}, list(set("a")), new Object[]{new Object[]{"a"}}, list(1, 2L, 3.0)));
         shapes.addAll(Arrays.asList(new Object[]{null}, list((Object) null), new Object[]{"a", null}));
+        // Sets whose elements repeat once expanded: in flatten mode {[3, 0], [0, 3]} holds 3, 0, 0, 3; in any mode
+        // two arrays with equal contents are two equal elements
+        shapes.addAll(Arrays.asList(new Object[]{"p", set(list(0, 2), list(1))}, set(list(3, 0), list(0, 3)),
+                set(new int[]{1}, new int[]{1}), list("q", set(new Object[]{"r"}, list("r")))));
         return shapes.toArray();
     }
 

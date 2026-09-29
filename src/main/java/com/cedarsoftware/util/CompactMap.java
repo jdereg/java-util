@@ -27,6 +27,7 @@ import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
@@ -270,8 +271,15 @@ public class CompactMap<K, V> implements Map<K, V> {
      * Per-class cache for the isLegacyConstructed() result. This is the only configuration
      * method that does real work (string operations on class name). The other config methods
      * (isCaseInsensitive, compactSize, getOrdering) simply return constants and are already fast.
+     * Kept in the class itself (a ClassValue of JDK types, which pins no class loader); these three were
+     * ClassValueMaps.
      */
-    private static final ClassValueMap<Boolean> LEGACY_CONSTRUCTED_CACHE = new ClassValueMap<>();
+    private static final ClassValue<Boolean> LEGACY_CONSTRUCTED = new ClassValue<Boolean>() {
+        @Override
+        protected Boolean computeValue(Class<?> type) {
+            return !type.getName().startsWith("com.cedarsoftware.util.CompactMap$");
+        }
+    };
 
     /**
      * Per-class cache of the iteration sort decision: 0 = no sort needed at iteration
@@ -281,21 +289,41 @@ public class CompactMap<K, V> implements Map<K, V> {
      * it — previously paid on every iterator creation. Assumes a legacy subclass's
      * getNewMap() returns a consistent map type, the same assumption the constructor
      * validation and state-transition logic already make. Storing 0 for non-legacy
-     * classes lets the iterator-creation hot path decide with a single cache probe.
+     * classes lets the iterator-creation hot path decide with a single cache probe. It takes an instance, so
+     * each class holds a slot (-1 until known) that its first iterator fills.
      */
-    private static final ClassValueMap<Integer> LEGACY_SORT_INFO_CACHE = new ClassValueMap<>();
+    private static final ClassValue<AtomicInteger> LEGACY_SORT_INFO = new ClassValue<AtomicInteger>() {
+        @Override
+        protected AtomicInteger computeValue(Class<?> type) {
+            return new AtomicInteger(-1);
+        }
+    };
 
     /**
      * Per-template-class constructor cache: avoids re-scanning declared constructors
      * on every build() — the json-io factories construct a CompactMap/CompactSet per
-     * deserialized instance, so this sits on a hot path.
+     * deserialized instance, so this sits on a hot path. Null when there is none; newMap() then asks again, for
+     * the exception.
      */
-    private static final ClassValueMap<Constructor<?>> TEMPLATE_CONSTRUCTOR_CACHE = new ClassValueMap<>();
+    private static final ClassValue<Constructor<?>> TEMPLATE_CONSTRUCTORS = new ClassValue<Constructor<?>>() {
+        @Override
+        protected Constructor<?> computeValue(Class<?> type) {
+            try {
+                return type.getDeclaredConstructor();
+            } catch (NoSuchMethodException e) {
+                return null;
+            }
+        }
+    };
 
     private int getCachedLegacySortInfo() {
         Class<?> clazz = getClass();
-        Integer info = LEGACY_SORT_INFO_CACHE.getByClass(clazz);
-        if (info == null) {
+        if (clazz.getClassLoader() == templateClassLoader) {
+            return 0;       // a generated template: never legacy, and read on every iterator
+        }
+        AtomicInteger slot = LEGACY_SORT_INFO.get(clazz);
+        int info = slot.get();
+        if (info < 0) {
             info = 0;
             if (getCachedLegacyConstructed()) {
                 Map<K, V> mapInstance = getNewMap();
@@ -314,7 +342,7 @@ public class CompactMap<K, V> implements Map<K, V> {
                     info = reverse ? 2 : 1;
                 }
             }
-            LEGACY_SORT_INFO_CACHE.put(clazz, info);
+            slot.set(info);
         }
         return info;
     }
@@ -324,13 +352,7 @@ public class CompactMap<K, V> implements Map<K, V> {
      * This caches the result of the class name check which would otherwise be computed repeatedly.
      */
     private boolean getCachedLegacyConstructed() {
-        Class<?> clazz = getClass();
-        Boolean legacy = LEGACY_CONSTRUCTED_CACHE.getByClass(clazz);
-        if (legacy == null) {
-            legacy = !clazz.getName().startsWith("com.cedarsoftware.util.CompactMap$");
-            LEGACY_CONSTRUCTED_CACHE.put(clazz, legacy);
-        }
-        return legacy;
+        return LEGACY_CONSTRUCTED.get(getClass());
     }
 
     private static boolean isAllowedMapType(Class<?> mapType) {
@@ -2208,10 +2230,9 @@ public class CompactMap<K, V> implements Map<K, V> {
 
             // Create new instance (constructor cached — build() runs per deserialized
             // instance in json-io's CompactMap/CompactSet factories)
-            Constructor<?> ctor = TEMPLATE_CONSTRUCTOR_CACHE.getByClass(templateClass);
+            Constructor<?> ctor = TEMPLATE_CONSTRUCTORS.get(templateClass);
             if (ctor == null) {
-                ctor = templateClass.getDeclaredConstructor();
-                TEMPLATE_CONSTRUCTOR_CACHE.put(templateClass, ctor);
+                ctor = templateClass.getDeclaredConstructor();      // there is none: throws, as it did
             }
             CompactMap<K, V> map = (CompactMap<K, V>) ctor.newInstance();
 

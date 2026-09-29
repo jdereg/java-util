@@ -3,6 +3,7 @@ package com.cedarsoftware.util;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.Map;
@@ -178,13 +179,9 @@ class ClassUtilitiesMissingClassPolicyTest {
     @SuppressWarnings("unchecked")
     private static long lifetimeOf(ClassLoader loader) throws Exception {
         assertNull(ClassUtilities.forName("com.cedarsoftware.nowhere.Missing", loader));    // makes its cache
-        Field nameCache = ClassUtilities.class.getDeclaredField("NAME_CACHE");
-        nameCache.setAccessible(true);
-        Map<ClassLoader, Object> byLoader = (Map<ClassLoader, Object>) nameCache.get(null);
-        Object holder;
-        synchronized (byLoader) {
-            holder = byLoader.get(loader);
-        }
+        Method find = ClassUtilities.class.getDeclaredMethod("findLoaderCache", ClassLoader.class);
+        find.setAccessible(true);
+        Object holder = find.invoke(null, loader);
         assertNotNull(holder);
         Field lifetime = holder.getClass().getDeclaredField("missLifetimeNanos");
         lifetime.setAccessible(true);

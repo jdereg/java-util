@@ -4,6 +4,7 @@ import java.lang.management.ManagementFactory;
 import java.lang.management.ThreadMXBean;
 import java.lang.ref.WeakReference;
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -65,13 +66,9 @@ class ClassUtilitiesNegativeCacheTest {
     /** The number of names this loader's cache holds as not found. */
     @SuppressWarnings("unchecked")
     private static int notFoundEntries(ClassLoader loader) throws Exception {
-        Field nameCache = ClassUtilities.class.getDeclaredField("NAME_CACHE");
-        nameCache.setAccessible(true);
-        Map<ClassLoader, Object> byLoader = (Map<ClassLoader, Object>) nameCache.get(null);
-        Object holder;
-        synchronized (byLoader) {
-            holder = byLoader.get(loader);
-        }
+        Method find = ClassUtilities.class.getDeclaredMethod("findLoaderCache", ClassLoader.class);
+        find.setAccessible(true);
+        Object holder = find.invoke(null, loader);
         Field cacheField = holder.getClass().getDeclaredField("cache");
         cacheField.setAccessible(true);
         Map<String, WeakReference<Class<?>>> cache = (Map<String, WeakReference<Class<?>>>) cacheField.get(holder);

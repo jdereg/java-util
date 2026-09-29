@@ -314,29 +314,29 @@ public class ClassUtilities {
     }
 
     /**
-     * One-entry memo in front of NAME_CACHE: the (loader → LoaderCache) pair most recently used.
-     * <p>
-     * NAME_CACHE is a synchronized WeakHashMap, so without this memo every {@code forName()} cache
-     * hit acquires a single global lock — under concurrent load (e.g., multi-threaded JSON parsing
-     * resolving type names) that lock does not just cap scaling, it inverts it (measured: 8 threads
-     * ran ~5x slower in aggregate than 1 thread). Nearly all processes resolve classes through one
-     * dominant ClassLoader, so a one-entry identity-checked memo removes the lock from the hot path.
-     * <p>
-     * The memo is held through a {@link WeakReference} so it never pins a ClassLoader: when the
-     * loader is otherwise unreachable, the memo entry is weakly reachable and both collapse together
-     * (the backing WeakHashMap remains the authority). Threads racing on different loaders simply
-     * overwrite the memo — each then falls back to the synchronized map, which stays correct.
+     * A class loader's slot in {@link #loaderTable}: the loader held weakly (a cache must never pin one), its
+     * LoaderCache strongly -- a LoaderCache refers to no loader, so that pins nothing either.
      */
-    private static final class LoaderCacheMemo {
-        final ClassLoader loader;
+    private static final class LoaderEntry extends WeakReference<ClassLoader> {
         final LoaderCache cache;
 
-        LoaderCacheMemo(ClassLoader loader, LoaderCache cache) {
-            this.loader = loader;
+        LoaderEntry(ClassLoader loader, LoaderCache cache) {
+            super(loader);
             this.cache = cache;
         }
     }
-    private static volatile WeakReference<LoaderCacheMemo> lastLoaderCache = new WeakReference<>(null);
+
+    /**
+     * The per-loader caches, found for any loader without a lock or an allocation: an open-addressed table by
+     * identity hash, at most half full, published whole. A lookup probes it; a loader seen for the first time
+     * rebuilds it under {@link #LOADER_TABLE_LOCK}, leaving out the entries of loaders since collected. It was a
+     * synchronized WeakHashMap behind a one-entry memo of the loader last used, so lookups that alternated between
+     * loaders -- the application's and the thread context loader, several web applications, Groovy's beside the
+     * application's -- took one global lock and allocated a new memo on every switch: two alternating loaders
+     * ran at 30 million lookups a second on one thread against 175 for one loader, and at 10 in total on eight.
+     */
+    private static volatile LoaderEntry[] loaderTable = new LoaderEntry[16];
+    private static final Object LOADER_TABLE_LOCK = new Object();
 
     private ClassUtilities() {
     }
@@ -420,24 +420,76 @@ public class ClassUtilities {
         }
     }
     
-    // Helper to get or create loader cache holder. Lock-free for the most recently used loader
-    // (the overwhelmingly common case); falls back to the synchronized backing map otherwise.
+    // The loader's cache, made on first use. Lock-free and allocation-free for every loader seen before.
     private static LoaderCache getLoaderCacheHolder(ClassLoader key) {
-        LoaderCacheMemo memo = lastLoaderCache.get();
-        if (memo != null && memo.loader == key) {
-            return memo.cache;
-        }
+        LoaderCache holder = findLoaderCache(key);
+        return holder != null ? holder : addLoaderCache(key);
+    }
 
-        LoaderCache holder;
-        synchronized (NAME_CACHE) {
-            holder = NAME_CACHE.get(key);
-            if (holder == null) {
-                holder = new LoaderCache(key);
-                NAME_CACHE.put(key, holder);
+    /** The loader's cache, or null when it has none: a probe of the published table. */
+    private static LoaderCache findLoaderCache(ClassLoader key) {
+        LoaderEntry[] table = loaderTable;
+        int mask = table.length - 1;
+        for (int i = System.identityHashCode(key) & mask; ; i = (i + 1) & mask) {
+            LoaderEntry e = table[i];
+            if (e == null) {
+                return null;
+            }
+            if (e.get() == key) {
+                return e.cache;
             }
         }
-        lastLoaderCache = new WeakReference<>(new LoaderCacheMemo(key, holder));
-        return holder;
+    }
+
+    /** Makes the loader's cache and publishes a rebuilt table holding it and every live loader's. */
+    private static LoaderCache addLoaderCache(ClassLoader key) {
+        synchronized (LOADER_TABLE_LOCK) {
+            LoaderCache holder = findLoaderCache(key);      // another thread may have just added it
+            if (holder != null) {
+                return holder;
+            }
+            LoaderEntry[] table = loaderTable;
+            int live = 1;
+            for (LoaderEntry e : table) {
+                if (e != null && e.get() != null) {
+                    live++;
+                }
+            }
+            int length = 16;
+            while (length < live * 2) {
+                length <<= 1;
+            }
+            LoaderEntry[] rebuilt = new LoaderEntry[length];
+            for (LoaderEntry e : table) {
+                if (e != null && e.get() != null) {
+                    insertLoaderEntry(rebuilt, e);
+                }
+            }
+            holder = new LoaderCache(key);
+            insertLoaderEntry(rebuilt, new LoaderEntry(key, holder));
+            loaderTable = rebuilt;
+            return holder;
+        }
+    }
+
+    private static void insertLoaderEntry(LoaderEntry[] table, LoaderEntry entry) {
+        int mask = table.length - 1;
+        int i = System.identityHashCode(entry.get()) & mask;
+        while (table[i] != null) {
+            i = (i + 1) & mask;
+        }
+        table[i] = entry;
+    }
+
+    /** Every live loader's cache, from the published table. */
+    private static List<LoaderCache> loaderCaches() {
+        List<LoaderCache> caches = new ArrayList<>();
+        for (LoaderEntry e : loaderTable) {
+            if (e != null && e.get() != null) {
+                caches.add(e.cache);
+            }
+        }
+        return caches;
     }
     
     private static void toCache(String name, ClassLoader cl, Class<?> c) {
@@ -472,11 +524,6 @@ public class ClassUtilities {
         holder.cache.remove(name);
     }
 
-    // ClassLoader-scoped cache with weak references to prevent classloader leaks
-    // and ensure correctness in multi-classloader environments (OSGi, app servers, etc.)
-    private static final Map<ClassLoader, LoaderCache> NAME_CACHE =
-            Collections.synchronizedMap(new WeakHashMap<>());
-    
     // Global aliases for primitive types and common names (not classloader-specific)
     private static final Map<String, Class<?>> GLOBAL_ALIASES = new ConcurrentHashMap<>();
     // Separate built-in aliases from user-added aliases to preserve user aliases during clearCaches()
@@ -1224,10 +1271,8 @@ public class ClassUtilities {
         USER_ALIASES.put(alias, clazz);
         GLOBAL_ALIASES.put(alias, clazz);
         // prevent stale per-loader mappings for this alias
-        synchronized (NAME_CACHE) {
-            for (LoaderCache holder : NAME_CACHE.values()) {
-                removeCacheEntry(holder, alias);
-            }
+        for (LoaderCache holder : loaderCaches()) {
+            removeCacheEntry(holder, alias);
         }
     }
 
@@ -1244,10 +1289,8 @@ public class ClassUtilities {
         } else {
             GLOBAL_ALIASES.remove(alias);
         }
-        synchronized (NAME_CACHE) {
-            for (LoaderCache holder : NAME_CACHE.values()) {
-                removeCacheEntry(holder, alias);
-            }
+        for (LoaderCache holder : loaderCaches()) {
+            removeCacheEntry(holder, alias);
         }
     }
 
@@ -4360,11 +4403,7 @@ public class ClassUtilities {
      * @param loader the class loader whose "not found" answers to drop; null means the one forName(name, null) uses
      */
     public static void forgetMissingClasses(ClassLoader loader) {
-        ClassLoader key = resolveLoader(loader);
-        LoaderCache holder;
-        synchronized (NAME_CACHE) {
-            holder = NAME_CACHE.get(key);
-        }
+        LoaderCache holder = findLoaderCache(resolveLoader(loader));
         if (holder != null) {
             dropMisses(holder, System.nanoTime());
         }
@@ -4379,10 +4418,9 @@ public class ClassUtilities {
      * </p>
      */
     public static void clearCaches() {
-        NAME_CACHE.clear();
-        // Drop the loader-cache memo too — it fronts NAME_CACHE, and keeping it would hand out
-        // the now-orphaned holder (stale class mappings) after the backing map was cleared.
-        lastLoaderCache = new WeakReference<>(null);
+        synchronized (LOADER_TABLE_LOCK) {
+            loaderTable = new LoaderEntry[16];
+        }
         // Preserve user-added aliases while clearing and re-adding built-in aliases
         GLOBAL_ALIASES.clear();
         GLOBAL_ALIASES.putAll(BUILTIN_ALIASES);

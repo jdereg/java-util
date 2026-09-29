@@ -113,9 +113,10 @@ import java.util.logging.Logger;
  *
  * <h4>Value-Based Equality Edge Cases:</h4>
  * <ul>
- *   <li><b>NaN Behavior:</b> In value-based mode, {@code NaN == NaN} returns true (unlike Java's default).
- *       This ensures consistent key lookups with floating-point values.</li>
- *   <li><b>Zero Handling:</b> {@code +0.0 == -0.0} returns true in both modes (standard Java behavior).</li>
+ *   <li><b>NaN Behavior:</b> In both modes, {@code NaN} matches {@code NaN} (unlike Java's {@code ==}), so a
+ *       NaN key can be found again.</li>
+ *   <li><b>Zero Handling:</b> {@code +0.0} and {@code -0.0} are one key in both modes, as they are under Java's
+ *       {@code ==} (unlike {@code Double.equals()}).</li>
  *   <li><b>BigDecimal Precision:</b> Doubles are converted via {@code new BigDecimal(number.toString())}.
  *       This means {@code 0.1d} equals {@code BigDecimal("0.1")} but NOT {@code BigDecimal(0.1)} 
  *       (the latter has binary rounding errors).</li>
@@ -2181,7 +2182,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                 case MultiKey.KIND_PRIMITIVE_ARRAY:
                     // Same primitive array type - use optimized comparison
                     if (storedClass == lookupClass) {
-                        return compareSamePrimitiveArrays(stored, lookup, storedClass, valueBasedEquality);
+                        return compareSamePrimitiveArrays(stored, lookup, storedClass);
                     }
                     // Different primitive array types - fall through to cross-type
                     break;
@@ -2237,51 +2238,38 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     
     /**
      * Compare two primitive arrays of the same type.
-     * Handles special cases for float/double arrays with NaN in valueBasedEquality mode.
+     * For float/double arrays, -0.0 equals +0.0 and NaN equals NaN in both equality modes, as the hash has them.
+     * Type-strict mode used Arrays.equals(), which tells -0.0 from +0.0 by their bits.
      */
-    private boolean compareSamePrimitiveArrays(Object array1, Object array2, Class<?> arrayClass, boolean valueBasedEquality) {
-        // Special handling for double[] with NaN equality in valueBasedEquality mode
+    private boolean compareSamePrimitiveArrays(Object array1, Object array2, Class<?> arrayClass) {
         if (arrayClass == double[].class) {
             double[] a = (double[]) array1;
             double[] b = (double[]) array2;
-            if (valueBasedEquality) {
-                // Value-based mode: NaN == NaN
-                for (int i = 0; i < a.length; i++) {
-                    double x = a[i], y = b[i];
-                    // Fast path: if equal (including -0.0 == +0.0), continue
-                    if (x == y) continue;
-                    // Special case: both NaN should be equal
-                    if (Double.isNaN(x) && Double.isNaN(y)) continue;
-                    return false;
-                }
-                return true;
-            } else {
-                // Type-strict mode: use standard Arrays.equals (NaN != NaN)
-                return Arrays.equals(a, b);
+            for (int i = 0; i < a.length; i++) {
+                double x = a[i], y = b[i];
+                // Fast path: if equal (including -0.0 == +0.0), continue
+                if (x == y) continue;
+                // Special case: both NaN should be equal
+                if (Double.isNaN(x) && Double.isNaN(y)) continue;
+                return false;
             }
+            return true;
         }
-        
-        // Special handling for float[] with NaN equality in valueBasedEquality mode
+
         if (arrayClass == float[].class) {
             float[] a = (float[]) array1;
             float[] b = (float[]) array2;
-            if (valueBasedEquality) {
-                // Value-based mode: NaN == NaN
-                for (int i = 0; i < a.length; i++) {
-                    float x = a[i], y = b[i];
-                    // Fast path: if equal (including -0.0f == +0.0f), continue
-                    if (x == y) continue;
-                    // Special case: both NaN should be equal
-                    if (Float.isNaN(x) && Float.isNaN(y)) continue;
-                    return false;
-                }
-                return true;
-            } else {
-                // Type-strict mode: use standard Arrays.equals (NaN != NaN)
-                return Arrays.equals(a, b);
+            for (int i = 0; i < a.length; i++) {
+                float x = a[i], y = b[i];
+                // Fast path: if equal (including -0.0f == +0.0f), continue
+                if (x == y) continue;
+                // Special case: both NaN should be equal
+                if (Float.isNaN(x) && Float.isNaN(y)) continue;
+                return false;
             }
+            return true;
         }
-        
+
         // Other primitive types: Arrays.equals is fine (no NaN issues)
         if (arrayClass == int[].class) return Arrays.equals((int[]) array1, (int[]) array2);
         if (arrayClass == long[].class) return Arrays.equals((long[]) array1, (long[]) array2);
@@ -2861,6 +2849,16 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             // always use value-based comparison for intuitive behavior
             if (isAtomicType(a) && isAtomicType(b)) {
                 return atomicValueEquals(a, b);
+            }
+            // A double or float equals its own type by value, as the hash has it: -0.0 is +0.0, and NaN is NaN.
+            // Double.equals() compares bits, so -0.0 missed a key stored as +0.0.
+            if (a instanceof Double && b instanceof Double) {
+                double x = (Double) a, y = (Double) b;
+                return x == y || (Double.isNaN(x) && Double.isNaN(y));
+            }
+            if (a instanceof Float && b instanceof Float) {
+                float x = (Float) a, y = (Float) b;
+                return x == y || (Float.isNaN(x) && Float.isNaN(y));
             }
             return Objects.equals(a, b);
         }

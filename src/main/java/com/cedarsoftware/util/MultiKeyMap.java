@@ -23,6 +23,7 @@ import java.util.concurrent.atomic.AtomicIntegerArray;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicLongArray;
 import java.util.concurrent.atomic.AtomicReferenceArray;
+import java.util.concurrent.atomic.LongAdder;
 // ReentrantLock replaced with synchronized monitors for lower uncontended latency
 import java.util.function.BiFunction;
 import java.util.function.BiPredicate;
@@ -71,7 +72,7 @@ import java.util.logging.Logger;
  * </ul>
  *
  * <h3>Capacity and Size Limits:</h3>
- * <p>MultiKeyMap uses {@code AtomicLong} internally for size tracking, allowing it to scale well beyond
+ * <p>MultiKeyMap uses a {@code LongAdder} internally for size tracking, allowing it to scale well beyond
  * the traditional {@code Integer.MAX_VALUE} (2<sup>31</sup>-1) limitation:</p>
  * <ul>
  *   <li><b>Actual Capacity:</b> The map can hold many more than 2<sup>31</sup>-1 entries, limited only by heap memory.</li>
@@ -489,7 +490,10 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     }
 
     private volatile AtomicReferenceArray<MultiKey<V>[]> buckets;
-    private final AtomicLong atomicSize = new AtomicLong(0);
+    // The entry count. A LongAdder, not an AtomicLong: every insert and remove updated one shared counter, so
+    // writes on different threads contended for its cache line (remove+put churn, 8 threads: 3.6 Mops/s). size() is
+    // exact whenever no write is in progress.
+    private final LongAdder atomicSize = new LongAdder();
     // Diagnostic metric: tracks the maximum chain length seen since map creation (never decreases on remove)
     private final AtomicInteger maxChainLength = new AtomicInteger(0);
     private final int capacity;
@@ -508,6 +512,12 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     // Version-stamps cached hash codes so concurrent hash computations never publish stale values.
     private final AtomicLong hashStateVersion = new AtomicLong(0);
     private transient volatile long cachedHashVersion = -1L;
+    // Set by the first hashCode() and never cleared. Until then no hash is cached, so a write need not bump
+    // hashStateVersion -- an atomic increment on a counter every writer shares, which made writes on more threads
+    // slower (replace-put, 8 threads: 9.5 Mops/s against 56 on one). Safe by the order of volatile accesses:
+    // hashCode() sets the flag before it reads the version, and a write updates the table before it reads the flag,
+    // so either the write sees the flag and bumps the version, or hashCode()'s scan sees the write.
+    private transient volatile boolean hashCodeRequested;
 
     // Pre-computed resize threshold to avoid per-put multiplication
     private volatile long resizeThreshold;
@@ -3086,12 +3096,12 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                 totalLockAcquisitions.incrementAndGet();
                 stripeLockAcquisitions[stripe].incrementAndGet();
                 old = putNoLock(newKey);
-                resize = atomicSize.get() > resizeThreshold;
+                resize = atomicSize.sum() > resizeThreshold;
             }
         } else {
             synchronized (monitor) {
                 old = putNoLock(newKey);
-                resize = atomicSize.get() > resizeThreshold;
+                resize = atomicSize.sum() > resizeThreshold;
             }
         }
 
@@ -3127,7 +3137,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
 
         if (chain == null) {
             table.set(index, new MultiKey[]{newKey});
-            atomicSize.incrementAndGet();
+            atomicSize.increment();
             updateMaxChainLength(1);
             invalidateHashCache();
             return null;
@@ -3149,7 +3159,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         MultiKey<V>[] newChain = Arrays.copyOf(chain, chain.length + 1);
         newChain[chain.length] = newKey;
         table.set(index, newChain);
-        atomicSize.incrementAndGet();
+        atomicSize.increment();
         updateMaxChainLength(newChain.length);
         invalidateHashCache();
         return null;
@@ -3375,7 +3385,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                     System.arraycopy(chain, i + 1, newChain, i, chain.length - i - 1);
                     table.set(index, newChain);
                 }
-                atomicSize.decrementAndGet();
+                atomicSize.decrement();
                 invalidateHashCache();
                 return old;
             }
@@ -3385,7 +3395,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
 
     private void resizeInternal() {
         withAllStripeLocks(() -> {
-            double lf = (double) atomicSize.get() / buckets.length();
+            double lf = (double) atomicSize.sum() / buckets.length();
             if (lf <= loadFactor) return;
 
             AtomicReferenceArray<MultiKey<V>[]> oldBuckets = buckets;
@@ -3442,7 +3452,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         }
 
         // Double-check load factor before expensive CAS - another thread may have resized
-        if (atomicSize.get() <= resizeThreshold) {
+        if (atomicSize.sum() <= resizeThreshold) {
             return;
         }
 
@@ -3466,7 +3476,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      * @see #longSize()
      */
     public int size() {
-        long sz = atomicSize.get();
+        long sz = longSize();
         return sz > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) sz;
     }
 
@@ -3480,7 +3490,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      * @see #size()
      */
     public long longSize() {
-        return atomicSize.get();
+        return Math.max(0L, atomicSize.sum());   // a sum taken during a remove could briefly go below 0
     }
 
     /**
@@ -3489,7 +3499,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      * @return {@code true} if this map contains no key-value mappings
      */
     public boolean isEmpty() {
-        return atomicSize.get() == 0;
+        return atomicSize.sum() <= 0;
     }
 
     /**
@@ -3502,7 +3512,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             for (int i = 0; i < table.length(); i++) {
                 table.set(i, null);
             }
-            atomicSize.set(0);
+            atomicSize.reset();
             maxChainLength.set(0);
             invalidateHashCache();
         });
@@ -3662,7 +3672,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                 MultiKey<V> newKey = new MultiKey<>(normalizedKey, hash, value);
                 putNoLock(newKey);
                 if (existingEntry == null) {
-                    resize = atomicSize.get() > resizeThreshold;
+                    resize = atomicSize.sum() > resizeThreshold;
                 }
             } else {
                 existing = existingEntry.value;
@@ -3712,8 +3722,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                     // Create new key with value and use putNoLock
                     MultiKey<V> newKey = new MultiKey<>(normalizedKey, hash, v);
                     putNoLock(newKey);
-                    cachedHashCode = null;
-                    resize = atomicSize.get() > resizeThreshold;
+                    resize = atomicSize.sum() > resizeThreshold;
                 }
             }
         }
@@ -3759,14 +3768,12 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                     // Replace with new value using putNoLock
                     MultiKey<V> newKey = new MultiKey<>(normalizedKey, hash, newV);
                     putNoLock(newKey);
-                    cachedHashCode = null;
-                    resize = atomicSize.get() > resizeThreshold;
+                    resize = atomicSize.sum() > resizeThreshold;
                     result = newV;
                 } else {
                     // Remove using removeNoLock
                     MultiKey<V> removeKey = new MultiKey<>(normalizedKey, hash, old);
                     removeNoLock(removeKey);
-                    cachedHashCode = null;
                 }
             }
         }
@@ -3805,15 +3812,13 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                 if (old != null || findEntryWithPrecomputedHash(normalizedKey, hash) != null) {
                     MultiKey<V> removeKey = new MultiKey<>(normalizedKey, hash, old);
                     removeNoLock(removeKey);
-                    cachedHashCode = null;
                 }
                 result = null;
             } else {
                 // Put new value using putNoLock
                 MultiKey<V> newKey = new MultiKey<>(normalizedKey, hash, newV);
                 putNoLock(newKey);
-                cachedHashCode = null;
-                resize = atomicSize.get() > resizeThreshold;
+                resize = atomicSize.sum() > resizeThreshold;
                 result = newV;
             }
         }
@@ -3858,9 +3863,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                 // Put new value using putNoLock
                 MultiKey<V> newKey = new MultiKey<>(normalizedKey, hash, newV);
                 putNoLock(newKey);
-                resize = atomicSize.get() > resizeThreshold;
+                resize = atomicSize.sum() > resizeThreshold;
             }
-            cachedHashCode = null;
             result = newV;
         }
         // Handle resize outside the lock
@@ -3991,6 +3995,9 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      */
     public int hashCode() {
         // Fast path: return cached value when it matches the current map version.
+        if (!hashCodeRequested) {
+            hashCodeRequested = true;       // before the version is read: see hashCodeRequested
+        }
         long startVersion = hashStateVersion.get();
         Integer cached = cachedHashCode;
         if (cached != null && cachedHashVersion == startVersion) {
@@ -4063,9 +4070,11 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     }
 
     private void invalidateHashCache() {
-        cachedHashCode = null;
-        cachedHashVersion = -1L;
-        hashStateVersion.incrementAndGet();
+        // A new version makes the cached hash stale (hashCode() checks it). The cache itself is left alone: two
+        // volatile stores per write that readers of this map object would see.
+        if (hashCodeRequested) {
+            hashStateVersion.incrementAndGet();
+        }
     }
 
     /**

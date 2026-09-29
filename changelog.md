@@ -317,6 +317,25 @@
     * **Spread:** the grid now has more than 990,000 distinct hashes and the Sets more than 41,000. Both of these tests fail against the previous code.
     * **Equivalence:** 500 random tuples, each in 12 forms (`Object[]` of `Integer`/`Long`/`Double`, `Integer[]`, `int[]`, `long[]`, `short[]`, `byte[]`, `double[]`, `float[]`, Lists), are each one key. So are a Set in any order and with mixed number types, and the nested and flat forms in flatten mode. These pass on both, and catch a planted mutant that leaves one primitive-array path on `h * 31`.
     * **Full suite:** 21,007 tests, 0 failures on JDK 21 and on JDK 8; json-io 4,737 + 165 + 28, 0 failures, against it.
+* **PERFORMANCE (concurrency)**: **`MultiKeyMap` writes no longer update counters that every writer shares, so writes on more threads get faster, not slower.**
+  * **The defect:** every insert and remove incremented one `AtomicLong` for the size. Every write also incremented a version counter and made two volatile stores into the map object, for the cached `hashCode()`. Writers contended for those cache lines, and readers' lines were disturbed.
+  * **Now:**
+    * **The size** is a `LongAdder`. `size()` is exact whenever no write is in progress, and never reads below 0.
+    * **The version** is bumped only once `hashCode()` has been asked for, via a sticky flag. It's safe by the order of volatile accesses: `hashCode()` sets the flag before reading the version, and a write updates the table before reading the flag. So either the write bumps the version, or `hashCode()`'s scan sees the write.
+    * **Six compute-path lines** cleared the cached hash directly without bumping the version. They're gone; the write each path makes already invalidates the hash.
+  * **Measured** (3 s rounds, fresh JVMs):
+
+    | | 1 thread | 4 threads | 8 threads |
+    |---|---|---|---|
+    | replace-put, Mops/s | 60 → 60 | 12 → 119 | 6.5 → 72 |
+    | remove + put churn, Mops/s | 40 → 40 | 6.3 → 29.5 | 3.2 → 15.9 |
+    | reader get beside 1 writer, Mops/s | — | 194–276 → 552–560 | 570–592 → 943–952 |
+  * **Tests.** `MultiKeyMapWriteCountersTest` (3):
+    * Each of 14 kinds of write (put, replace, remove, the compute family, merge, replaceAll, clear) changes a cached hash, and it matches a freshly computed one.
+    * A hash cached while 4 writers race is not stale once they finish.
+    * `size()` is exact after 8 writers finish.
+    * These guard behavior that didn't change, so they pass on both. Planted mutants are caught: a version that is never bumped, and a replace-put that skips invalidation.
+    * **Full suite:** 21,010 tests, 0 failures on JDK 21 and on JDK 8; json-io 4,737 + 165 + 28, 0 failures, against it.
 
 #### 4.112.0 - 2026-09-23
 * **BUG FIX (regression since 4.1.0)**: **`SafeSimpleDateFormat` could not parse a numeric field followed by the locale's decimal separator** -- `yyyy-MM-dd HH:mm:ss.SSS`, `yyyy-MM-dd'T'HH:mm:ss.SSSZ`, `dd.MM.yyyy`, `yyyy.MM.dd`, `HH.mm` under a '.' locale, `ss,SSS` under a ',' locale. Parsing `"2026-09-24 13:33:28.144"` threw `ParseException: Unparseable date`, where `SimpleDateFormat` with the same pattern parses it. The default `NumberFormat` was the locale's general number format (grouping off), which reads `28.144` as ONE number: the seconds field swallowed the milliseconds and the pattern's `.` found nothing left to match. `SimpleDateFormat` installs the locale's INTEGER format, which stops at the separator. **Why it surfaced now:** the defect predates 4.0.0, but there the constructor put that number format only on the constructing thread's formatter; every other thread got a stock `SimpleDateFormat`, so request threads never saw it. The 4.1.0 copy-on-write rewrite builds every thread's formatter from one configuration, which carried the bad default to all of them, and to the static `getDateFormat()`. The default is now exactly `SimpleDateFormat`'s own -- `NumberFormat.getIntegerInstance(locale)`, grouping off, integer-only parsing -- so parsing and formatting match `SimpleDateFormat` on every thread. **Millisecond times parse again**, to the exact millisecond. As in `SimpleDateFormat`, `S` is a count of milliseconds, not a fraction (`28.5` is 5 ms; `28.144123` adds 144,123 ms): for fractional seconds of any length use `DateUtilities.parseDate()` or `java.time`. A number format the caller sets with `setNumberFormat()` is used as given, as before. `SafeSimpleDateFormatNumberFieldTest` (48): every pattern above against `SimpleDateFormat` as the oracle, on the constructing thread, another thread and the static accessor, formatting unchanged, exact milliseconds, a concurrent millisecond round trip, and the caller's number format honoured. Against 4.111.0, 22 of its first 42 fail -- every dotted or comma pattern on every path -- and the patterns without a separator, formatting, and the caller's-format case pass.

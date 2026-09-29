@@ -50,12 +50,14 @@ import java.util.TimeZone;
 import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.UUID;
+import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicIntegerArray;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicLongArray;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.atomic.AtomicReferenceArray;
 import java.util.regex.Pattern;
 import java.util.stream.DoubleStream;
@@ -63,8 +65,6 @@ import java.util.stream.IntStream;
 import java.util.stream.LongStream;
 
 import com.cedarsoftware.util.ClassUtilities;
-import com.cedarsoftware.util.ClassValueMap;
-import com.cedarsoftware.util.ConcurrentHashMapNullSafe;
 import com.cedarsoftware.util.IdentitySet;
 import com.cedarsoftware.util.LRUCache;
 import com.cedarsoftware.util.TTLCache;
@@ -239,9 +239,8 @@ public final class Converter {
             return new Object[]{types, levels};
         }
     };
-    // Performance: All per-(source, target) lookups use ClassPairMap, which is a two-tier
-    // nested ClassValueMap. This eliminates per-lookup ConversionPair allocation and
-    // leverages ClassValueMap's identity-based fast path for both tiers.
+    // Performance: All per-(source, target) lookups use ClassPairMap: a ClassValue read on one class of the pair and
+    // an identity-hash probe for the other. No ConversionPair is allocated per lookup.
     private static final ClassPairMap<InheritancePair[]> cacheInheritancePairs = new ClassPairMap<>();
     private static final ClassPairMap<Convert<?>> CONVERSION_DB = new ClassPairMap<>();
     private final ClassPairMap<Convert<?>> USER_DB = new ClassPairMap<>();
@@ -315,32 +314,52 @@ public final class Converter {
 
     /**
      * A map keyed by (source, target) class pairs: no allocation per lookup, and it never keeps a class -- or its
-     * ClassLoader -- alive. An entry is kept on one of its two classes, through {@link ClassValueMap}s, and on the right
-     * one: an entry refers to both classes (an {@code InheritancePair[]} lists their supertypes), so kept on a class
-     * that outlives the other it would keep that other class alive (a JDK class, say, holding an application's):
+     * ClassLoader -- alive. An entry is kept on one of its two classes, in a {@link ClassValue}, and on the right one:
+     * an entry refers to both classes (an {@code InheritancePair[]} lists their supertypes), so kept on a class that
+     * outlives the other it would keep that other class alive (a JDK class, say, holding an application's):
      * <ul>
-     *   <li>Both classes of one ClassLoader (JDK to JDK, the common case): source, then target, two ClassValueMap
-     *       lookups.</li>
-     *   <li>One class's loader an ancestor of the other's (JDK and an application class): kept on the class of the
-     *       deeper loader, in a map keyed by the other class, which lives at least as long.</li>
+     *   <li>Both classes of one ClassLoader (JDK to JDK, the common case), or the source's loader the deeper: kept on
+     *       the source, keyed by the target.</li>
+     *   <li>The target's loader the deeper (a JDK class converted to an application's): kept on the target, keyed by
+     *       the source, which lives at least as long.</li>
      *   <li>Neither loader an ancestor of the other: not kept. A get() misses, and a put() keeps nothing.</li>
      * </ul>
-     * <p>Iteration is supported via {@link #forEach(TriConsumer)} and {@link #removeIf(java.util.function.BiPredicate)}
-     * for the few places that need it (bridge expansion and cache invalidation).</p>
+     * <p>A class's entries are one small open-addressed table, probed by the other class's identity hash and at most
+     * half full, held in an {@code AtomicReference} (a JDK type). A write replaces the table whole, under the map's
+     * lock: each cache fills once, and the tables are small. A lookup is a ClassValue read, a volatile read and a
+     * probe. (A ClassValueMap per class, as the inner level, attached a slot of every source's map to each target
+     * class, which crowded the JDK's small per-class ClassValue cache.) The classes holding entries are listed weakly,
+     * for {@link #forEach(TriConsumer)} and {@link #removeIf(java.util.function.BiPredicate)} (bridge expansion and
+     * cache invalidation). A null class is a key like any other, of the same loader as every class.</p>
      */
     static final class ClassPairMap<V> {
-        // Both classes of one loader: source -> (target -> value)
-        private final ClassValueMap<ClassValueMap<V>> sameLoader = new ClassValueMap<>();
-        // Each created on its first write (a Converter builds a ClassPairMap per instance, and most stay empty):
-        // the source's loader is the deeper: source -> (target -> value)
-        private volatile ClassValueMap<Map<Class<?>, V>> onSource;
-        // the target's loader is the deeper: target -> (source -> value)
-        private volatile ClassValueMap<Map<Class<?>, V>> onTarget;
+        private static final Object[] EMPTY = new Object[2];    // one free slot, so every probe of it misses
+        // Each made on its first write (a Converter builds a ClassPairMap per instance, and most stay empty):
+        private volatile Side bySource;         // source -> (target -> value)
+        private volatile Side byTarget;         // target -> (source -> value): the target's loader is the deeper
 
         private static final int SAME = 0;
         private static final int ON_SOURCE = 1;
         private static final int ON_TARGET = 2;
         private static final int NOT_KEPT = 3;
+
+        /** Stands in for a null class, which a ClassValue cannot take. */
+        private static final class NullClass {
+        }
+
+        /**
+         * Per class, its table: {class, value, class, value, ...}. The classes holding one are listed weakly. This is
+         * a ClassValueMap's own slot without its null-key and absent-value checks; a ClassValueMap&lt;Object[]&gt; here
+         * measured slower: isConversionSupportedFor 3.4-3.5 ns against 3.1-3.2 on JDK 21, 6.8 against 2.7 on JDK 8.
+         */
+        private static final class Side extends ClassValue<AtomicReference<Object[]>> {
+            final Map<Class<?>, Boolean> owners = new WeakHashMap<>();     // guarded by the map's lock
+
+            @Override
+            protected AtomicReference<Object[]> computeValue(Class<?> type) {
+                return new AtomicReference<>(EMPTY);
+            }
+        }
 
         /** Where the (source, target) entry is kept. A null class (the null key) counts as the same loader. */
         private static int placement(Class<?> source, Class<?> target) {
@@ -375,93 +394,119 @@ public final class Converter {
             return false;
         }
 
+        private static Class<?> key(Class<?> type) {
+            return type == null ? NullClass.class : type;
+        }
+
+        private static Class<?> unkey(Class<?> type) {
+            return type == NullClass.class ? null : type;
+        }
+
         /**
          * Looks up a value by (source, target). Zero allocation. Returns {@code null} if absent.
          */
+        @SuppressWarnings("unchecked")
         V get(Class<?> source, Class<?> target) {
-            // A pair is always kept in the same place, so a hit here settles it without comparing loaders: the common
-            // case (both classes of one loader) costs two ClassValueMap reads
-            ClassValueMap<V> byTarget = sameLoader.getByClass(source);
-            if (byTarget != null) {
-                V value = byTarget.getByClass(target);
+            // A pair is always kept in the same place, so a hit on the source settles it without comparing loaders:
+            // the common case (both classes of one loader) is one ClassValue read and a probe
+            Side sources = bySource;
+            if (sources != null) {
+                Object value = find(sources.get(key(source)).get(), key(target));
                 if (value != null) {
-                    return value;
+                    return (V) value;
                 }
             }
-            switch (placement(source, target)) {
-                case ON_SOURCE:
-                    return inOwned(onSource, source, target);
-                case ON_TARGET:
-                    return inOwned(onTarget, target, source);
-                default:
-                    return null;
+            Side targets = byTarget;
+            if (targets != null && placement(source, target) == ON_TARGET) {
+                return (V) find(targets.get(target).get(), source);
             }
-        }
-
-        private static <V> V inOwned(ClassValueMap<Map<Class<?>, V>> side, Class<?> owner, Class<?> other) {
-            Map<Class<?>, V> map = side == null ? null : side.getByClass(owner);
-            return map == null ? null : map.get(other);
+            return null;
         }
 
         /**
          * Stores a value under (source, target). Kept nowhere when the two classes' loaders are unrelated.
          */
         V put(Class<?> source, Class<?> target, V value) {
-            switch (placement(source, target)) {
-                case SAME:
-                    return innerForWrite(source).put(target, value);
-                case ON_SOURCE:
-                    return owned(onSource(), source).put(target, value);
-                case ON_TARGET:
-                    return owned(onTarget(), target).put(source, value);
-                default:
-                    return null;
-            }
+            return write(source, target, value, false);
         }
 
         /**
          * Atomic putIfAbsent on the (source, target) slot. Kept nowhere when the two classes' loaders are unrelated.
          */
         V putIfAbsent(Class<?> source, Class<?> target, V value) {
-            switch (placement(source, target)) {
-                case SAME:
-                    return innerForWrite(source).putIfAbsent(target, value);
-                case ON_SOURCE:
-                    return owned(onSource(), source).putIfAbsent(target, value);
-                case ON_TARGET:
-                    return owned(onTarget(), target).putIfAbsent(source, value);
-                default:
-                    return null;
+            return write(source, target, value, true);
+        }
+
+        @SuppressWarnings("unchecked")
+        private synchronized V write(Class<?> source, Class<?> target, V value, boolean ifAbsent) {
+            int where = placement(source, target);
+            if (where == NOT_KEPT) {
+                return null;
             }
+            Side side;
+            Class<?> owner;
+            Class<?> other;
+            if (where == ON_TARGET) {
+                if (byTarget == null) {
+                    byTarget = new Side();
+                }
+                side = byTarget;
+                owner = target;
+                other = source;
+            } else {
+                if (bySource == null) {
+                    bySource = new Side();
+                }
+                side = bySource;
+                owner = key(source);
+                other = key(target);
+            }
+            AtomicReference<Object[]> slot = side.get(owner);
+            Object[] table = slot.get();
+            int i = indexOf(table, other);
+            if (i < 0) {
+                slot.set(rebuilt(table, null, other, value));
+                side.owners.put(owner, Boolean.TRUE);
+                return null;
+            }
+            V previous = (V) table[i + 1];
+            if (!ifAbsent || previous == null) {        // an entry holding null counts as absent
+                Object[] copy = table.clone();
+                copy[i + 1] = value;
+                slot.set(copy);
+            }
+            return previous;
         }
 
         /**
          * Removes the value at (source, target). Returns the previous value or {@code null}.
          */
-        V remove(Class<?> source, Class<?> target) {
-            switch (placement(source, target)) {
-                case SAME: {
-                    ClassValueMap<V> byTarget = sameLoader.getByClass(source);
-                    return byTarget == null ? null : byTarget.remove(target);
-                }
-                case ON_SOURCE: {
-                    Map<Class<?>, V> byTarget = onSource == null ? null : onSource.getByClass(source);
-                    return byTarget == null ? null : byTarget.remove(target);
-                }
-                case ON_TARGET: {
-                    Map<Class<?>, V> bySource = onTarget == null ? null : onTarget.getByClass(target);
-                    return bySource == null ? null : bySource.remove(source);
-                }
-                default:
-                    return null;
+        @SuppressWarnings("unchecked")
+        synchronized V remove(Class<?> source, Class<?> target) {
+            int where = placement(source, target);
+            Side side = where == ON_TARGET ? byTarget : where == NOT_KEPT ? null : bySource;
+            if (side == null) {
+                return null;
             }
+            Class<?> owner = where == ON_TARGET ? target : key(source);
+            Class<?> other = where == ON_TARGET ? source : key(target);
+            AtomicReference<Object[]> slot = side.get(owner);
+            Object[] table = slot.get();
+            int i = indexOf(table, other);
+            if (i < 0) {
+                return null;
+            }
+            boolean[] dropped = new boolean[table.length >> 1];
+            dropped[i >> 1] = true;
+            replace(side, owner, slot, rebuilt(table, dropped, null, null));
+            return (V) table[i + 1];
         }
 
         /**
          * Returns true if there are no mappings.
          */
-        boolean isEmpty() {
-            return size() == 0;
+        synchronized boolean isEmpty() {
+            return (bySource == null || bySource.owners.isEmpty()) && (byTarget == null || byTarget.owners.isEmpty());
         }
 
         /**
@@ -475,26 +520,31 @@ public final class Converter {
         }
 
         /**
-         * Iterates over every (source, target, value) entry, invoking the action for each.
-         * Not concurrent-safe with writes — callers should snapshot if they need to mutate.
+         * Iterates over every (source, target, value) entry, invoking the action for each. It walks the tables as
+         * they were when it began, so the action may write to this map.
          */
+        @SuppressWarnings("unchecked")
         void forEach(TriConsumer<Class<?>, Class<?>, V> action) {
-            for (Map.Entry<Class<?>, ClassValueMap<V>> srcEntry : sameLoader.entrySet()) {
-                Class<?> source = srcEntry.getKey();
-                for (Map.Entry<Class<?>, V> tgtEntry : srcEntry.getValue().entrySet()) {
-                    action.accept(source, tgtEntry.getKey(), tgtEntry.getValue());
-                }
+            List<Class<?>> owners = new ArrayList<>();
+            List<Object[]> tables = new ArrayList<>();
+            int onTargets;
+            synchronized (this) {
+                collect(bySource, owners, tables);
+                onTargets = owners.size();
+                collect(byTarget, owners, tables);
             }
-            for (Map.Entry<Class<?>, Map<Class<?>, V>> srcEntry : entries(onSource)) {
-                Class<?> source = srcEntry.getKey();
-                for (Map.Entry<Class<?>, V> tgtEntry : srcEntry.getValue().entrySet()) {
-                    action.accept(source, tgtEntry.getKey(), tgtEntry.getValue());
-                }
-            }
-            for (Map.Entry<Class<?>, Map<Class<?>, V>> tgtEntry : entries(onTarget)) {
-                Class<?> target = tgtEntry.getKey();
-                for (Map.Entry<Class<?>, V> srcEntry : tgtEntry.getValue().entrySet()) {
-                    action.accept(srcEntry.getKey(), target, srcEntry.getValue());
+            for (int n = 0; n < owners.size(); n++) {
+                Class<?> owner = unkey(owners.get(n));
+                Object[] table = tables.get(n);
+                for (int i = 0; i < table.length; i += 2) {
+                    if (table[i] != null) {
+                        Class<?> other = unkey((Class<?>) table[i]);
+                        if (n < onTargets) {
+                            action.accept(owner, other, (V) table[i + 1]);
+                        } else {
+                            action.accept(other, owner, (V) table[i + 1]);
+                        }
+                    }
                 }
             }
         }
@@ -504,68 +554,121 @@ public final class Converter {
          * Safe to call during cache invalidation; does not affect ongoing reads of
          * unrelated entries.
          */
-        void removeIf(java.util.function.BiPredicate<Class<?>, Class<?>> predicate) {
-            for (Map.Entry<Class<?>, ClassValueMap<V>> srcEntry : sameLoader.entrySet()) {
-                Class<?> source = srcEntry.getKey();
-                srcEntry.getValue().keySet().removeIf(target -> predicate.test(source, target));
-            }
-            for (Map.Entry<Class<?>, Map<Class<?>, V>> srcEntry : entries(onSource)) {
-                Class<?> source = srcEntry.getKey();
-                srcEntry.getValue().keySet().removeIf(target -> predicate.test(source, target));
-            }
-            for (Map.Entry<Class<?>, Map<Class<?>, V>> tgtEntry : entries(onTarget)) {
-                Class<?> target = tgtEntry.getKey();
-                tgtEntry.getValue().keySet().removeIf(source -> predicate.test(source, target));
-            }
+        synchronized void removeIf(java.util.function.BiPredicate<Class<?>, Class<?>> predicate) {
+            removeIf(bySource, false, predicate);
+            removeIf(byTarget, true, predicate);
         }
 
-        // Internal: obtain (or lazily create) the inner map for a given source class,
-        // coordinated via putIfAbsent on the outer ClassValueMap for thread safety.
-        private ClassValueMap<V> innerForWrite(Class<?> source) {
-            ClassValueMap<V> byTarget = sameLoader.getByClass(source);
-            if (byTarget == null) {
-                ClassValueMap<V> fresh = new ClassValueMap<>();
-                ClassValueMap<V> existing = sameLoader.putIfAbsent(source, fresh);
-                byTarget = existing == null ? fresh : existing;
+        private static void removeIf(Side side, boolean onTarget,
+                                     java.util.function.BiPredicate<Class<?>, Class<?>> predicate) {
+            if (side == null) {
+                return;
             }
-            return byTarget;
-        }
-
-        private ClassValueMap<Map<Class<?>, V>> onSource() {
-            if (onSource == null) {
-                synchronized (this) {
-                    if (onSource == null) {
-                        onSource = new ClassValueMap<>();
+            for (Class<?> owner : new ArrayList<>(side.owners.keySet())) {
+                AtomicReference<Object[]> slot = side.get(owner);
+                Object[] table = slot.get();
+                boolean[] dropped = null;
+                for (int i = 0; i < table.length; i += 2) {
+                    if (table[i] == null) {
+                        continue;
+                    }
+                    Class<?> other = unkey((Class<?>) table[i]);
+                    if (onTarget ? predicate.test(other, owner) : predicate.test(unkey(owner), other)) {
+                        if (dropped == null) {
+                            dropped = new boolean[table.length >> 1];
+                        }
+                        dropped[i >> 1] = true;
                     }
                 }
-            }
-            return onSource;
-        }
-
-        private ClassValueMap<Map<Class<?>, V>> onTarget() {
-            if (onTarget == null) {
-                synchronized (this) {
-                    if (onTarget == null) {
-                        onTarget = new ClassValueMap<>();
-                    }
+                if (dropped != null) {
+                    replace(side, owner, slot, rebuilt(table, dropped, null, null));
                 }
             }
-            return onTarget;
         }
 
-        private static <K, M> Set<Map.Entry<K, M>> entries(Map<K, M> map) {
-            return map == null ? java.util.Collections.emptySet() : map.entrySet();
-        }
-
-        // The map kept on the owning class (created on first write), keyed by the pair's other class
-        private static <V> Map<Class<?>, V> owned(ClassValueMap<Map<Class<?>, V>> side, Class<?> owner) {
-            Map<Class<?>, V> map = side.getByClass(owner);
-            if (map == null) {
-                Map<Class<?>, V> fresh = new ConcurrentHashMapNullSafe<>();
-                Map<Class<?>, V> existing = side.putIfAbsent(owner, fresh);
-                map = existing == null ? fresh : existing;
+        private static void collect(Side side, List<Class<?>> owners, List<Object[]> tables) {
+            if (side != null) {
+                for (Class<?> owner : side.owners.keySet()) {
+                    owners.add(owner);
+                    tables.add(side.get(owner).get());
+                }
             }
-            return map;
+        }
+
+        /** Publishes the owner's new table; an owner left with none is no longer listed. */
+        private static void replace(Side side, Class<?> owner, AtomicReference<Object[]> slot, Object[] table) {
+            slot.set(table);
+            if (table == EMPTY) {
+                side.owners.remove(owner);
+            }
+        }
+
+        /** The value kept under {@code key} in the table, or null. */
+        private static Object find(Object[] table, Class<?> key) {
+            int mask = table.length - 2;
+            for (int i = (System.identityHashCode(key) << 1) & mask; ; i = (i + 2) & mask) {
+                Object k = table[i];
+                if (k == key) {
+                    return table[i + 1];
+                }
+                if (k == null) {
+                    return null;
+                }
+            }
+        }
+
+        /** The index of {@code key} in the table, or -1. */
+        private static int indexOf(Object[] table, Class<?> key) {
+            int mask = table.length - 2;
+            for (int i = (System.identityHashCode(key) << 1) & mask; ; i = (i + 2) & mask) {
+                Object k = table[i];
+                if (k == key) {
+                    return i;
+                }
+                if (k == null) {
+                    return -1;
+                }
+            }
+        }
+
+        /**
+         * A new table: the entries of {@code table} except those {@code dropped} (by slot; null drops none), plus
+         * {@code key -> value} when key is not null. At most half full.
+         */
+        private static Object[] rebuilt(Object[] table, boolean[] dropped, Class<?> key, Object value) {
+            int count = key == null ? 0 : 1;
+            for (int i = 0; i < table.length; i += 2) {
+                if (table[i] != null && (dropped == null || !dropped[i >> 1])) {
+                    count++;
+                }
+            }
+            if (count == 0) {
+                return EMPTY;
+            }
+            int length = 8;
+            while (length < count << 2) {
+                length <<= 1;
+            }
+            Object[] fresh = new Object[length];
+            for (int i = 0; i < table.length; i += 2) {
+                if (table[i] != null && (dropped == null || !dropped[i >> 1])) {
+                    insert(fresh, table[i], table[i + 1]);
+                }
+            }
+            if (key != null) {
+                insert(fresh, key, value);
+            }
+            return fresh;
+        }
+
+        private static void insert(Object[] table, Object key, Object value) {
+            int mask = table.length - 2;
+            int i = (System.identityHashCode(key) << 1) & mask;
+            while (table[i] != null) {
+                i = (i + 2) & mask;
+            }
+            table[i] = key;
+            table[i + 1] = value;
         }
     }
 
@@ -2130,11 +2233,11 @@ public final class Converter {
     }
 
     private Convert<?> getCachedConverter(Class<?> source, Class<?> target) {
-        // Nested ClassValueMap makes this a zero-allocation, thread-safe fast path.
+        // ClassPairMap makes this a zero-allocation, thread-safe fast path.
         // No L1 slot: a volatile-field slot was measured to be ~3-4 ns per hit but
         // had a correctness hole (three non-atomic volatile writes could produce
         // stale mixed-state reads under contention), and a ThreadLocal slot would
-        // cost more than the two-level ClassValueMap lookup it was trying to avoid.
+        // cost more than the ClassPairMap lookup it was trying to avoid.
         return FULL_CONVERSION_CACHE.get(source, target);
     }
 

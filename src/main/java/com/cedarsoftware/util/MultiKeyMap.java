@@ -1,5 +1,6 @@
 package com.cedarsoftware.util;
 
+import java.lang.reflect.Array;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.ArrayList;
@@ -3516,24 +3517,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             MultiKey<V>[] chain = snapshot.get(bucketIdx);
             if (chain != null) {
                 for (MultiKey<V> e : chain) {
-                    Object keys = e.keys;
-                    Object k;
-                    if (keys == null || keys == NULL_SENTINEL) {
-                        k = null;
-                    } else if (keys instanceof Object[]) {
-                        Object[] keysArray = (Object[]) keys;
-                        k = keysArray.length == 1 ? (keysArray[0] == NULL_SENTINEL ? null : keysArray[0]) : reconstructKey(keysArray);
-                    } else if (keys instanceof Collection) {
-                        if (collectionKeyMode == CollectionKeyMode.COLLECTIONS_NOT_EXPANDED) {
-                            k = keys;
-                        } else {
-                            Object[] keysArray = ((Collection<?>) keys).toArray();
-                            k = reconstructKey(keysArray);
-                        }
-                    } else {
-                        k = keys;
-                    }
-                    set.add(k);
+                    set.add(externalKey(e.keys));
                 }
             }
         }
@@ -3584,8 +3568,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     public Set<Map.Entry<Object, V>> entrySet() {
         // Snapshot keyed by KEY. A HashSet of entries hashes every VALUE to store it (Map.Entry.hashCode() is
         // key ^ value) -- work nobody asked for, and unbounded recursion when a value's graph leads back here.
-        // Keys are distinct under this map's own equivalence, which is looser than equals(), so no two entries
-        // can collide in the snapshot.
+        // Each entry's key is reported as one that finds that entry again (externalKey), so no two entries can
+        // collide in the snapshot.
         Map<Object, V> entries = new LinkedHashMap<>(Math.max(16, (int) (size() / 0.75f) + 1));
         // Iterate buckets directly instead of using deprecated entries()
         final AtomicReferenceArray<MultiKey<V>[]> snapshot = buckets;
@@ -3594,29 +3578,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             MultiKey<V>[] chain = snapshot.get(bucketIdx);
             if (chain != null) {
                 for (MultiKey<V> e : chain) {
-                    // Reconstruct key for external presentation
-                    Object keys = e.keys;
-                    Object k;
-                    if (keys == null || keys == NULL_SENTINEL) {
-                        k = null;
-                    } else if (keys instanceof Object[]) {
-                        Object[] keysArray = (Object[]) keys;
-                        k = keysArray.length == 1 ? (keysArray[0] == NULL_SENTINEL ? null : keysArray[0]) : reconstructKey(keysArray);
-                    } else if (keys instanceof Collection) {
-                        // In COLLECTIONS_NOT_EXPANDED mode, Collections are stored as single keys without flattening
-                        // Return them as-is to preserve the original type and hashCode
-                        if (collectionKeyMode == CollectionKeyMode.COLLECTIONS_NOT_EXPANDED) {
-                            k = keys;
-                        } else {
-                            // Collection represents nested structure - need to convert to array for reconstruction
-                            Object[] keysArray = ((Collection<?>) keys).toArray();
-                            k = reconstructKey(keysArray);
-                        }
-                    } else {
-                        // Single key
-                        k = keys;
-                    }
-                    entries.put(k, e.value);
+                    entries.put(externalKey(e.keys), e.value);
                 }
             }
         }
@@ -3978,6 +3940,18 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     }
 
     /**
+     * A reported key's hash: its hashCode(), except that an array (a primitive array key, or an array key in
+     * COLLECTIONS_NOT_EXPANDED mode) hashes by its content -- an array's own hashCode() is its identity, so a map
+     * and its copy, equal, hashed differently.
+     */
+    private static int keyHashCode(Object key) {
+        if (key == null || !key.getClass().isArray()) {
+            return Objects.hashCode(key);
+        }
+        return key instanceof Object[] ? Arrays.deepHashCode((Object[]) key) : Arrays.deepHashCode(new Object[]{key});
+    }
+
+    /**
      * Returns the hash code value for this map.
      * <p>The hash code of a map is defined to be the sum of the hash codes of each entry
      * in the map's {@code entrySet()} view. This ensures that {@code m1.equals(m2)}
@@ -3998,7 +3972,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         if (caseSensitive) {
             // Case-sensitive: use entrySet() with standard Objects.hashCode()
             for (Map.Entry<Object, V> e : entrySet()) {
-                h += Objects.hashCode(e.getKey()) ^ Objects.hashCode(e.getValue());
+                h += keyHashCode(e.getKey()) ^ Objects.hashCode(e.getValue());
             }
         } else {
             // Case-insensitive: iterate internal buckets and use MultiKey.hash
@@ -4084,6 +4058,43 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         return CycleSafeToString.render(this, path -> renderEntries(path));
     }
 
+    /**
+     * A reported key as toString() shows it: [..] for a List or an array, {..} for a Set, the null sign for null,
+     * (this Map) for this map, and (cycle) for a container met again inside itself.
+     */
+    private void appendKey(StringBuilder sb, Object key, Set<Object> onPath) {
+        if (key == null || key == NULL_SENTINEL) {
+            sb.append(EMOJI_EMPTY);
+        } else if (key == this) {
+            sb.append(THIS_MAP);
+        } else if (key instanceof Collection || key.getClass().isArray()) {
+            if (!onPath.add(key)) {
+                sb.append("(cycle)");
+                return;
+            }
+            boolean set = key instanceof Set;
+            sb.append(set ? '{' : '[');
+            if (key instanceof Collection) {
+                boolean first = true;
+                for (Object element : (Collection<?>) key) {
+                    if (!first) sb.append(", ");
+                    first = false;
+                    appendKey(sb, element, onPath);
+                }
+            } else {
+                int n = Array.getLength(key);
+                for (int i = 0; i < n; i++) {
+                    if (i > 0) sb.append(", ");
+                    appendKey(sb, Array.get(key, i), onPath);
+                }
+            }
+            sb.append(set ? '}' : ']');
+            onPath.remove(key);
+        } else {
+            sb.append(key);
+        }
+    }
+
     private String renderEntries(CycleSafeToString.Path path) {
         StringBuilder sb = new StringBuilder("{\n");
         boolean first = true;
@@ -4097,22 +4108,11 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                     if (!first) sb.append(",\n");
                     first = false;
                     sb.append("  ");  // Two-space indentation
-                    // Access raw keys for dumpExpandedKeyStatic
-                    Object keys = e.keys;
-                    Object[] keysArray;
-                    if (keys instanceof Object[]) {
-                        keysArray = (Object[]) keys;
-                    } else if (keys instanceof Collection) {
-                        keysArray = ((Collection<?>) keys).toArray();
-                    } else {
-                        keysArray = new Object[]{keys};
-                    }
-                    String keyStr = dumpExpandedKeyStatic(keysArray, true, this);
-                    // Remove trailing comma and space if present
-                    if (keyStr.endsWith(", ")) {
-                        keyStr = keyStr.substring(0, keyStr.length() - 2);
-                    }
-                    sb.append(keyStr).append(" → ");
+                    // The key keySet() reports for this entry, so each entry shows its own key: from the raw keys,
+                    // a and [a] both showed as a, null and [null] as the null sign, and a Set of Sets lost its commas
+                    sb.append(EMOJI_KEY);
+                    appendKey(sb, externalKey(e.keys), new IdentitySet<>());
+                    sb.append(" → ");
                     sb.append(EMOJI_VALUE);
                     sb.append(formatValueForToString(e.value, this, path));
                 }
@@ -4124,15 +4124,63 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
 
 
     /**
+     * A stored key as keySet() and entrySet() report it: one that finds its own entry again (get(), containsKey()),
+     * so that no two entries report the same key. They unwrapped any 1-element key ([a] became a, [null] became
+     * null -- different keys), wrapped every key holding only Sets into one flat Set ({{a},{b}} became {a,b}), and
+     * in COLLECTIONS_NOT_EXPANDED mode returned internal lists with their markers: copies of a map lost entries,
+     * and a key read back from the map did not find its value.
+     * <ul>
+     *     <li>A single key is itself (null for the null key); a primitive array is itself.</li>
+     *     <li>A flat key (an array or Collection of plain elements) is an unmodifiable List of them, whatever its
+     *         length -- [a] stays a 1-element List. In COLLECTIONS_NOT_EXPANDED mode an array key is an Object[]
+     *         copy, since a List is one opaque key there; a Collection key is the Collection it was stored as.</li>
+     *     <li>A key with nested containers is rebuilt as it was nested (see reconstructKey); in
+     *         COLLECTIONS_NOT_EXPANDED mode its outer level, an array, is an Object[].</li>
+     * </ul>
+     */
+    private Object externalKey(Object keys) {
+        if (keys == null || keys == NULL_SENTINEL) {
+            return null;
+        }
+        boolean notExpanded = collectionKeyMode == CollectionKeyMode.COLLECTIONS_NOT_EXPANDED;
+        if (keys instanceof Object[]) {
+            Object[] array = (Object[]) keys;
+            if (notExpanded) {
+                Object[] copy = new Object[array.length];
+                for (int i = 0; i < array.length; i++) {
+                    copy[i] = array[i] == NULL_SENTINEL ? null : array[i];
+                }
+                return copy;
+            }
+            return reconstructKey(array);
+        }
+        if (keys instanceof Collection) {
+            Collection<?> collection = (Collection<?>) keys;
+            if (notExpanded) {
+                Iterator<?> it = collection.iterator();
+                Object first = it.hasNext() ? it.next() : null;
+                if (first != OPEN && first != SET_OPEN) {
+                    return collection;          // a user Collection, stored whole as one key
+                }
+                Object rebuilt = reconstructKey(collection.toArray());      // an array, expanded with markers
+                return rebuilt instanceof List ? ((List<?>) rebuilt).toArray() : rebuilt;
+            }
+            return reconstructKey(collection.toArray());
+        }
+        return keys;
+    }
+
+    /**
      * Reconstructs keys as native structures (List, Set, or single items) for serialization.
      * This is the preferred method for entrySet()/keySet() as it returns structures that serialize
      * naturally in JSON without requiring marker parsing.
      * <p>
      * Returns:
      * <ul>
-     *   <li>Single item if the key has only one component</li>
-     *   <li>List (ArrayList) for ordered sequences (from OPEN/CLOSE markers or unmarked arrays)</li>
-     *   <li>Set (LinkedHashSet) for unordered sequences (from SET_OPEN/SET_CLOSE markers)</li>
+     *   <li>An unmodifiable List for an ordered sequence: unmarked elements, of any length (a 1-element key array
+     *       is a 1-element List -- the key [a] is not the key a), or an OPEN/CLOSE region</li>
+     *   <li>An unmodifiable Set for an unordered one: a SET_OPEN/SET_CLOSE region</li>
+     *   <li>The List or Set itself when one such region spans the whole key (the key was that container)</li>
      * </ul>
      * <p>Nested structures are handled recursively, so Lists can contain Sets/Lists/singles,
      * and Sets can contain Lists/Sets/singles. This ensures proper equals/hashCode behavior
@@ -4144,40 +4192,20 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     public static Object reconstructKey(Object[] in) {
         // Check if there are any markers in the array
         boolean hasMarkers = false;
-        boolean hasSetMarker = false;
         for (Object elem : in) {
-            if (elem == OPEN || elem == CLOSE) {
+            if (elem == OPEN || elem == CLOSE || elem == SET_OPEN || elem == SET_CLOSE) {
                 hasMarkers = true;
-            } else if (elem == SET_OPEN || elem == SET_CLOSE) {
-                hasMarkers = true;
-                hasSetMarker = true;
+                break;
             }
         }
 
-        // If no markers, check if it's a single element or a multi-element sequence
+        // No markers: an ordered sequence, of any length. A 1-element key array is a 1-element key, not its element.
         if (!hasMarkers) {
-            if (in.length == 1) {
-                // Single element without markers - return as-is (it's a simple key)
-                return (in[0] == NULL_SENTINEL) ? null : in[0];
-            } else {
-                // Multi-element array without markers - return as List (ordered sequence)
-                List<Object> elements = new ArrayList<>(in.length);
-                for (int i = 0; i < in.length; i++) {
-                    elements.add((in[i] == NULL_SENTINEL) ? null : in[i]);
-                }
-                return Collections.unmodifiableList(elements);
+            List<Object> elements = new ArrayList<>(in.length);
+            for (int i = 0; i < in.length; i++) {
+                elements.add((in[i] == NULL_SENTINEL) ? null : in[i]);
             }
-        }
-
-        // If only Set markers and no List markers, wrap entire content as Set
-        if (hasSetMarker && !hasNonSetMarkers(in)) {
-            List<Object> elements = new ArrayList<>();
-            for (Object elem : in) {
-                if (elem != SET_OPEN && elem != SET_CLOSE) {
-                    elements.add(elem == NULL_SENTINEL ? null : elem);
-                }
-            }
-            return Collections.unmodifiableSet(new LinkedHashSet<>(elements));
+            return Collections.unmodifiableList(elements);
         }
 
         // Has markers - reconstruct composite structure
@@ -4241,18 +4269,6 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         }
 
         return elements;
-    }
-
-    /**
-     * Helper method to check if array has non-Set markers (OPEN/CLOSE).
-     */
-    private static boolean hasNonSetMarkers(Object[] arr) {
-        for (Object elem : arr) {
-            if (elem == OPEN || elem == CLOSE) {
-                return true;
-            }
-        }
-        return false;
     }
 
     /**

@@ -127,6 +127,9 @@ import java.util.logging.Logger;
  *       to BigDecimal returns false (BigDecimal cannot represent infinity).</li>
  *   <li><b>Atomic Types:</b> In type-based mode, only identical atomic types match (AtomicInteger ≠ Integer).
  *       In value-based mode, atomic types participate in numeric families (AtomicInteger(1) == Integer(1)).</li>
+ *   <li><b>Atomic Arrays:</b> An {@code AtomicIntegerArray}, {@code AtomicLongArray} or
+ *       {@code AtomicReferenceArray} in a key, at any depth, is a container like an array: the key is its values
+ *       at the time of the call ({@code new AtomicIntegerArray(new int[]{1, 2})} is the key {@code [1, 2]}).</li>
  * </ul>
  *
  * <h3>Case Sensitivity for CharSequences:</h3>
@@ -1277,7 +1280,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         // Fast path: simple keys (not arrays or collections)
         if (!(key instanceof Collection)) {
             Class<?> keyClass = key.getClass();
-            if (!keyClass.isArray()) {
+            if (!keyClass.isArray() && !isAtomicArray(key)) {
                 // Simple object - not a collection or array
                 n.key = key;
                 n.hash = computeElementHash(key, caseSensitive);
@@ -1307,7 +1310,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         // This optimization bypasses normalization entirely for the most common case
         if (key != null && !(key instanceof Collection)) {
             Class<?> keyClass = key.getClass();
-            if (!keyClass.isArray()) {
+            if (!keyClass.isArray() && !isAtomicArray(key)) {
                 // Direct bucket access - no normalization needed for simple keys
                 int hash = computeElementHash(key, caseSensitive);
                 final AtomicReferenceArray<MultiKey<V>[]> table = buckets;
@@ -1444,7 +1447,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             Class<?> keyClass = key.getClass();
             boolean isKeyArray = keyClass.isArray();
 
-            if (!isKeyArray) {
+            if (!isKeyArray && !isAtomicArray(key)) {
                 // === FAST PATH: Simple objects (not arrays or collections) ===
                 return new MultiKey<>(key, computeElementHash(key, caseSensitive), value, 1, MultiKey.KIND_SINGLE);
             }
@@ -1500,6 +1503,45 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     }
     
     /**
+     * An AtomicIntegerArray, AtomicLongArray or AtomicReferenceArray: in a key, a container like an array, read as
+     * the array of its current values (see atomicArrayValues). put(), get() and the other single-key fast paths
+     * took one as a plain object, compared by identity, while the compute paths read it as its values -- a key
+     * stored by computeIfAbsent() was not found by get() -- and one nested in a key stayed an identity element.
+     */
+    private static boolean isAtomicArray(Object o) {
+        return o instanceof AtomicIntegerArray || o instanceof AtomicLongArray || o instanceof AtomicReferenceArray;
+    }
+
+    /** The current values of an atomic array as an int[], long[] or Object[]; null for anything else. */
+    private static Object atomicArrayValues(Object o) {
+        if (o instanceof AtomicIntegerArray) {
+            AtomicIntegerArray atomicArr = (AtomicIntegerArray) o;
+            int[] values = new int[atomicArr.length()];
+            for (int i = 0; i < values.length; i++) {
+                values[i] = atomicArr.get(i);
+            }
+            return values;
+        }
+        if (o instanceof AtomicLongArray) {
+            AtomicLongArray atomicArr = (AtomicLongArray) o;
+            long[] values = new long[atomicArr.length()];
+            for (int i = 0; i < values.length; i++) {
+                values[i] = atomicArr.get(i);
+            }
+            return values;
+        }
+        if (o instanceof AtomicReferenceArray) {
+            AtomicReferenceArray<?> atomicArr = (AtomicReferenceArray<?>) o;
+            Object[] values = new Object[atomicArr.length()];
+            for (int i = 0; i < values.length; i++) {
+                values[i] = atomicArr.get(i);
+            }
+            return values;
+        }
+        return null;
+    }
+
+    /**
      * CENTRAL NORMALIZATION METHOD - Single source of truth for all key operations.
      * <p>
      * This method is the ONLY place where keys are normalized in the entire MultiKeyMap.
@@ -1533,34 +1575,9 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         // === ATOMIC ARRAY CONVERSION ===
         // Convert atomic arrays to regular arrays for normalization
         // These are transport mechanisms for values, not stored directly
-        if (key instanceof AtomicIntegerArray) {
-            AtomicIntegerArray atomicArr = (AtomicIntegerArray) key;
-            int len = atomicArr.length();
-            int[] regularArr = new int[len];
-            for (int i = 0; i < len; i++) {
-                regularArr[i] = atomicArr.get(i);
-            }
-            return flattenKey(regularArr);
-        }
-        
-        if (key instanceof AtomicLongArray) {
-            AtomicLongArray atomicArr = (AtomicLongArray) key;
-            int len = atomicArr.length();
-            long[] regularArr = new long[len];
-            for (int i = 0; i < len; i++) {
-                regularArr[i] = atomicArr.get(i);
-            }
-            return flattenKey(regularArr);
-        }
-        
-        if (key instanceof AtomicReferenceArray) {
-            AtomicReferenceArray<?> atomicArr = (AtomicReferenceArray<?>) key;
-            int len = atomicArr.length();
-            Object[] regularArr = new Object[len];
-            for (int i = 0; i < len; i++) {
-                regularArr[i] = atomicArr.get(i);
-            }
-            return flattenKey(regularArr);
+        Object atomicValues = atomicArrayValues(key);
+        if (atomicValues != null) {
+            return flattenKey(atomicValues);
         }
 
         // === Check for Collection or Array ===
@@ -1757,7 +1774,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                     if (ec != String.class && ec != Integer.class &&
                         ec != Long.class && ec != Double.class) {
                         // Not a known simple type - check if it's an array or collection
-                        if (elem instanceof Collection || ec.isArray()) {
+                        if (elem instanceof Collection || ec.isArray() || isAtomicArray(elem)) {
                             // Found complex element - bail out
                             if (flattenDimensions) return expandWithHash(array);
                             return process1DObjectArray(array);
@@ -1799,7 +1816,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             
             for (int i = 0; i < size; i++) {
                 Object elem = iter.next();
-                boolean isArrayOrCollection = elem instanceof Collection || (elem != null && elem.getClass().isArray());
+                boolean isArrayOrCollection = elem instanceof Collection
+                        || (elem != null && (elem.getClass().isArray() || isAtomicArray(elem)));
                 if (isArrayOrCollection) {
                     // Found complex element - bail out
                     if (flattenDimLocal) return expandWithHash(coll);
@@ -1833,7 +1851,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             } else {
                 final Class<?> eClass = e.getClass();
                 // Check dimension first (before expensive hash computation if we're going to break)
-                if (eClass.isArray() || e instanceof Collection) {
+                if (eClass.isArray() || e instanceof Collection || isAtomicArray(e)) {
                     // Not 1D - delegate to expandWithHash which will handle everything
                     is1D = false;
                     break;
@@ -1875,7 +1893,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             // Check dimension first, as process1DObjectArray and flattenCollectionN do. A nested element is
             // re-hashed structurally by expandWithHash, which tracks the containers it has visited, so hashing
             // it here is wasted -- and for a collection that contains itself, its own hashCode() never returns.
-            if (e instanceof Collection || (e != null && e.getClass().isArray())) {
+            if (e instanceof Collection || (e != null && (e.getClass().isArray() || isAtomicArray(e)))) {
                 is1D = false;
                 break;
             }
@@ -1938,7 +1956,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         for (int i = 0; i < len; i++) {
             Object e = ArrayUtilities.getElement(arr, i);
             h = combine(h, computeElementHash(e, caseSensitive));
-            if (e instanceof Collection || (e != null && e.getClass().isArray())) {
+            if (e instanceof Collection || (e != null && (e.getClass().isArray() || isAtomicArray(e)))) {
                 is1D = false;
                 break;
             }
@@ -2012,17 +2030,19 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             return combine(runningHash, cycle.hashCode());
         }
 
-        // Use getComponentType() != null instead of isArray() - slightly faster
-        if (clazz.getComponentType() != null) {
+        // Use getComponentType() != null instead of isArray() - slightly faster. An atomic array is its values;
+        // visited holds the atomic array itself, since each read of its values is a new array.
+        Object array = clazz.getComponentType() != null ? current : atomicArrayValues(current);
+        if (array != null) {
             visited.add(current);
             try {
                 if (!useFlatten) {
                     result.add(OPEN);
                     runningHash = combine(runningHash, OPEN.hashCode());
                 }
-                int len = ArrayUtilities.getLength(current);
+                int len = ArrayUtilities.getLength(array);
                 for (int i = 0; i < len; i++) {
-                    runningHash = expandAndHash(ArrayUtilities.getElement(current, i), result, visited, runningHash, useFlatten, caseSensitive);
+                    runningHash = expandAndHash(ArrayUtilities.getElement(array, i), result, visited, runningHash, useFlatten, caseSensitive);
                 }
                 if (!useFlatten) {
                     result.add(CLOSE);

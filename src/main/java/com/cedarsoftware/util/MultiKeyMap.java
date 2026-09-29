@@ -3687,8 +3687,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      *         if there was no mapping for the key
      */
     public V putIfAbsent(Object key, V value) {
-        MultiKey<V> norm = flattenKey(key);
-        Object normalizedKey = norm.keys;
+        Norm norm = normalizeForLookup(key);    // as flattenKey(), without allocating a MultiKey for a plain key
+        Object normalizedKey = norm.key;
         int hash = norm.hash;
 
         MultiKey<V> existingEntry = findEntryWithPrecomputedHash(normalizedKey, hash);
@@ -3731,8 +3731,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         Objects.requireNonNull(mappingFunction);
 
         // Normalize key once upfront - avoid double normalization that get() + flattenKey() would cause
-        MultiKey<V> norm = flattenKey(key);
-        Object normalizedKey = norm.keys;
+        Norm norm = normalizeForLookup(key);    // as flattenKey(), without allocating a MultiKey for a plain key
+        Object normalizedKey = norm.key;
         int hash = norm.hash;
 
         // Fast path: check if value exists without locking (lock-free read)
@@ -3779,8 +3779,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         Objects.requireNonNull(remappingFunction);
 
         // Normalize key once upfront - avoid double normalization that get() + flattenKey() would cause
-        MultiKey<V> norm = flattenKey(key);
-        Object normalizedKey = norm.keys;
+        Norm norm = normalizeForLookup(key);    // as flattenKey(), without allocating a MultiKey for a plain key
+        Object normalizedKey = norm.key;
         int hash = norm.hash;
 
         // Fast path: check if value exists without locking (lock-free read)
@@ -3829,8 +3829,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     public V compute(Object key, BiFunction<? super Object, ? super V, ? extends V> remappingFunction) {
         Objects.requireNonNull(remappingFunction);
 
-        MultiKey<V> norm = flattenKey(key);
-        Object normalizedKey = norm.keys;
+        Norm norm = normalizeForLookup(key);    // as flattenKey(), without allocating a MultiKey for a plain key
+        Object normalizedKey = norm.key;
         int hash = norm.hash;
         boolean resize = false;
 
@@ -3877,8 +3877,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         Objects.requireNonNull(value);
         Objects.requireNonNull(remappingFunction);
 
-        MultiKey<V> norm = flattenKey(key);
-        Object normalizedKey = norm.keys;
+        Norm norm = normalizeForLookup(key);    // as flattenKey(), without allocating a MultiKey for a plain key
+        Object normalizedKey = norm.key;
         int hash = norm.hash;
         boolean resize = false;
 
@@ -3922,8 +3922,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      * @return {@code true} if the value was removed
      */
     public boolean remove(Object key, Object value) {
-        MultiKey<V> norm = flattenKey(key);
-        Object normalizedKey = norm.keys;
+        Norm norm = normalizeForLookup(key);    // as flattenKey(), without allocating a MultiKey for a plain key
+        Object normalizedKey = norm.key;
         int hash = norm.hash;
 
         synchronized (getStripeMonitor(hash)) {
@@ -3958,8 +3958,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      *         if there was no mapping for the key
      */
     public V replace(Object key, V value) {
-        MultiKey<V> norm = flattenKey(key);
-        Object normalizedKey = norm.keys;
+        Norm norm = normalizeForLookup(key);    // as flattenKey(), without allocating a MultiKey for a plain key
+        Object normalizedKey = norm.key;
         int hash = norm.hash;
         synchronized (getStripeMonitor(hash)) {
             MultiKey<V> existingEntry = findEntryWithPrecomputedHash(normalizedKey, hash);
@@ -3991,8 +3991,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      * @return {@code true} if the value was replaced
      */
     public boolean replace(Object key, V oldValue, V newValue) {
-        MultiKey<V> norm = flattenKey(key);
-        Object normalizedKey = norm.keys;
+        Norm norm = normalizeForLookup(key);    // as flattenKey(), without allocating a MultiKey for a plain key
+        Object normalizedKey = norm.key;
         int hash = norm.hash;
         synchronized (getStripeMonitor(hash)) {
             MultiKey<V> existingEntry = findEntryWithPrecomputedHash(normalizedKey, hash);

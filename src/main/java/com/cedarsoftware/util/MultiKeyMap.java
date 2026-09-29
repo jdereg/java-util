@@ -3203,7 +3203,71 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         if (w == Math.rint(w) || !Double.isFinite(w)) {
             return w;
         }
-        return Double.parseDouble(Float.toString(f));
+        return parseDecimal(Float.toString(f));
+    }
+
+    /** 10^0 .. 10^22: every one an exact double. */
+    private static final double[] EXACT_POWERS_OF_TEN = {
+            1e0, 1e1, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9, 1e10, 1e11,
+            1e12, 1e13, 1e14, 1e15, 1e16, 1e17, 1e18, 1e19, 1e20, 1e21, 1e22};
+
+    /**
+     * Double.parseDouble() of a Float.toString() result, the same double, faster. A float prints at most nine
+     * significant digits, so they fit a long exactly, and when the decimal exponent is within 10^22 both the digits
+     * and the power of ten are exact doubles: one IEEE multiply or divide is then correctly rounded, as
+     * parseDouble() is (Clinger's fast path). Anything else goes to parseDouble(). parseDouble() was about 27 ns of
+     * the 65 ns a fractional float cost; a float[] key pays it per element.
+     */
+    private static double parseDecimal(String s) {
+        int n = s.length();
+        int i = 0;
+        boolean negative = s.charAt(0) == '-';
+        if (negative) {
+            i = 1;
+        }
+        long digits = 0;
+        int significant = 0;
+        int fractionDigits = 0;
+        boolean afterPoint = false;
+        int exponent = 0;
+        for (; i < n; i++) {
+            char c = s.charAt(i);
+            if (c >= '0' && c <= '9') {
+                if (afterPoint) {
+                    fractionDigits++;
+                }
+                if (digits == 0 && c == '0') {
+                    continue;                                   // a leading zero
+                }
+                digits = digits * 10 + (c - '0');
+                if (++significant > 15) {
+                    return Double.parseDouble(s);
+                }
+            } else if (c == '.') {
+                afterPoint = true;
+            } else if (c == 'E') {
+                boolean negativeExponent = s.charAt(i + 1) == '-';
+                for (int k = negativeExponent ? i + 2 : i + 1; k < n; k++) {
+                    exponent = exponent * 10 + (s.charAt(k) - '0');
+                }
+                if (negativeExponent) {
+                    exponent = -exponent;
+                }
+                break;
+            } else {
+                return Double.parseDouble(s);
+            }
+        }
+        int exp10 = exponent - fractionDigits;
+        double value;
+        if (exp10 >= 0 && exp10 <= 22) {
+            value = digits * EXACT_POWERS_OF_TEN[exp10];
+        } else if (exp10 < 0 && exp10 >= -22) {
+            value = digits / EXACT_POWERS_OF_TEN[-exp10];
+        } else {
+            return Double.parseDouble(s);
+        }
+        return negative ? -value : value;
     }
 
     /** A Float's or Double's value as a double (see floatValue). */

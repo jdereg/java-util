@@ -353,9 +353,10 @@ public final class StringUtilities {
             char c2 = b.charAt(bOff + i);
             if (c1 == c2) { i++; continue; }
 
-            // If either is non-ASCII, fall back once
+            // If either is non-ASCII, fall back once (from here, keeping the regions' starts: a surrogate may pair
+            // with the char before it)
             if ( (c1 | c2) >= 128 ) {
-                return regionEqualsIgnoreCaseSlow(a, aOff + i, b, bOff + i, len - i);
+                return regionEqualsIgnoreCaseSlow(a, aOff, b, bOff, len, i);
             }
 
             // Fold ASCII A..Z → a..z
@@ -367,22 +368,78 @@ public final class StringUtilities {
         return true;
     }
 
-    /** Slow path: exact String.regionMatches(ignoreCase=true) semantics (char-based). */
+    /**
+     * Whether this JDK's String.equalsIgnoreCase() folds case by code point, as JDK 16 and later do: the Deseret
+     * letters U+10400 and U+10428 are then equal ignoring case. The CharSequence comparisons follow it, so that a
+     * StringBuilder and a String with the same text compare alike; they compared char by char.
+     */
+    private static final boolean FOLDS_CODE_POINTS = "\uD801\uDC00".equalsIgnoreCase("\uD801\uDC28");
+
+    /**
+     * Slow path, from index {@code from} of the regions: exact String.regionMatches(ignoreCase=true) semantics.
+     * Where two chars differ, a surrogate is taken with its neighbour inside its region as one code point when
+     * this JDK's String does (FOLDS_CODE_POINTS) -- the steps of the JDK's StringUTF16.compareToCIImpl().
+     */
     private static boolean regionEqualsIgnoreCaseSlow(CharSequence a, int aOff,
                                                       CharSequence b, int bOff,
-                                                      int len) {
-        for (int i = 0; i < len; i++) {
-            char c1 = a.charAt(aOff + i);
-            char c2 = b.charAt(bOff + i);
-            if (c1 == c2) continue;
-
-            char u1 = Character.toUpperCase(c1);
-            char u2 = Character.toUpperCase(c2);
-            if (u1 != u2 && Character.toLowerCase(u1) != Character.toLowerCase(u2)) {
+                                                      int len, int from) {
+        final int aEnd = aOff + len;
+        final int bEnd = bOff + len;
+        for (int k1 = aOff + from, k2 = bOff + from; k1 < aEnd && k2 < bEnd; k1++, k2++) {
+            char c1 = a.charAt(k1);
+            char c2 = b.charAt(k2);
+            if (c1 == c2 || codePointsEqualIgnoreCase(c1, c2)) {
+                continue;
+            }
+            if (!FOLDS_CODE_POINTS) {
+                return false;
+            }
+            int cp1 = codePointIncluding(a, c1, k1, aOff, aEnd);
+            if (cp1 < 0) {
+                k1++;
+                cp1 = -cp1;
+            }
+            int cp2 = codePointIncluding(b, c2, k2, bOff, bEnd);
+            if (cp2 < 0) {
+                k2++;
+                cp2 = -cp2;
+            }
+            if (!codePointsEqualIgnoreCase(cp1, cp2)) {
                 return false;
             }
         }
         return true;
+    }
+
+    /** Equal ignoring case, as String compares two chars or code points: by upper case, then by its lower case. */
+    private static boolean codePointsEqualIgnoreCase(int cp1, int cp2) {
+        int u1 = Character.toUpperCase(cp1);
+        int u2 = Character.toUpperCase(cp2);
+        return u1 == u2 || Character.toLowerCase(u1) == Character.toLowerCase(u2);
+    }
+
+    /**
+     * The code point a char at {@code index} belongs to, within [start, end): a low surrogate with the high one
+     * before it, or a high surrogate with the low one after it -- returned negated, since it takes the next char.
+     */
+    private static int codePointIncluding(CharSequence s, char c, int index, int start, int end) {
+        if (!Character.isSurrogate(c)) {
+            return c;
+        }
+        if (Character.isLowSurrogate(c)) {
+            if (index > start) {
+                char high = s.charAt(index - 1);
+                if (Character.isHighSurrogate(high)) {
+                    return Character.toCodePoint(high, c);
+                }
+            }
+        } else if (index + 1 < end) {
+            char low = s.charAt(index + 1);
+            if (Character.isLowSurrogate(low)) {
+                return -Character.toCodePoint(c, low);
+            }
+        }
+        return c;
     }
 
     public static boolean equalsWithTrim(String s1, String s2) {
@@ -998,15 +1055,35 @@ public final class StringUtilities {
         final int n = cs.length();
         int h = 0;
         for (int i = 0; i < n; i++) {
-            h = 31 * h + foldCaseForHash(cs.charAt(i));
+            char c = cs.charAt(i);
+            if (Character.isHighSurrogate(c) && i + 1 < n && Character.isLowSurrogate(cs.charAt(i + 1))) {
+                // A surrogate pair folds as one code point, as in hashCodeIgnoreCase(String)
+                h = hashFoldedCodePoint(h, Character.toCodePoint(c, cs.charAt(++i)));
+            } else {
+                h = 31 * h + foldCaseForHash(c);
+            }
         }
         return h;
     }
 
     /**
+     * Folds one supplementary code point into a case-insensitive hash, as its chars: String.equalsIgnoreCase()
+     * compares a surrogate pair as one code point from JDK 16 on (the Deseret letters U+10400 and U+10428 are equal
+     * ignoring case), and folding each surrogate alone hashed such a pair apart. Folding by code point is consistent
+     * on older JDKs too, where the pair's chars must be equal anyway. A code point with no case hashes as before.
+     */
+    private static int hashFoldedCodePoint(int h, int codePoint) {
+        int folded = Character.toLowerCase(Character.toUpperCase(codePoint));
+        if (Character.isBmpCodePoint(folded)) {
+            return 31 * h + folded;
+        }
+        return 31 * (31 * h + Character.highSurrogate(folded)) + Character.lowSurrogate(folded);
+    }
+
+    /**
      * Get the hashCode of a String, insensitive to case, without allocating temporary strings.
-     * This implementation is consistent with {@link String#equalsIgnoreCase(String)} char-based
-     * comparison semantics.
+     * This implementation is consistent with {@link String#equalsIgnoreCase(String)}: chars fold one at a
+     * time, and a surrogate pair folds as one code point, as the JDK compares it from JDK 16 on.
      *
      * <p>The fold logic is inlined rather than delegated to a helper method to ensure
      * C2 JIT compiles the entire loop as a single compilation unit. The branch structure
@@ -1027,6 +1104,11 @@ public final class StringUtilities {
                     c += 32;
                 }
             } else if (c >= 128) {      // non-ASCII: full Unicode case fold
+                if (Character.isHighSurrogate(c) && i + 1 < n && Character.isLowSurrogate(buf[i + 1])) {
+                    // A surrogate pair folds as one code point (see hashFoldedCodePoint)
+                    h = hashFoldedCodePoint(h, Character.toCodePoint(c, buf[++i]));
+                    continue;
+                }
                 c = Character.toLowerCase(Character.toUpperCase(c));
             }
             // else: c is 91-127 (lowercase a-z, symbols) — no folding, 2 comparisons

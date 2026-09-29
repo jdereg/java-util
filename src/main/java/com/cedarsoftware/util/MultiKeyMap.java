@@ -518,12 +518,13 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     private final boolean trackContentionMetrics;
     private static final float DEFAULT_LOAD_FACTOR = 0.75f;
 
-    // Cached hashCode for performance (invalidated on mutations)
-    // Volatile ensures visibility when mutations set to null; no lock needed since computation is idempotent
-    private transient volatile Integer cachedHashCode;
+    // Cached hashCode for performance, with the map version it was computed at (a mutation makes it stale).
+    // One immutable holder in one volatile field: the hash and its version were two volatile fields, written one
+    // after the other, so two threads publishing could leave one's hash with the other's newer version -- a stale
+    // hash that hashCode() returned until the next mutation -- and a reader could pair fields of two publications.
+    private transient volatile CachedHash cachedHash;
     // Version-stamps cached hash codes so concurrent hash computations never publish stale values.
     private final AtomicLong hashStateVersion = new AtomicLong(0);
-    private transient volatile long cachedHashVersion = -1L;
     // Set by the first hashCode() and never cleared. Until then no hash is cached, so a write need not bump
     // hashStateVersion -- an atomic increment on a counter every writer shares, which made writes on more threads
     // slower (replace-put, 8 threads: 9.5 Mops/s against 56 on one). Safe by the order of volatile accesses:
@@ -595,6 +596,17 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         @Override
         public String toString() {
             return dumpExpandedKeyStatic(keys, true, null);  // Use emoji rendering
+        }
+    }
+
+    /** A computed hashCode() and the map version it belongs to, published together (see cachedHash). */
+    private static final class CachedHash {
+        final int hash;
+        final long version;
+
+        CachedHash(int hash, long version) {
+            this.hash = hash;
+            this.version = version;
         }
     }
 
@@ -3963,9 +3975,9 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             hashCodeRequested = true;       // before the version is read: see hashCodeRequested
         }
         long startVersion = hashStateVersion.get();
-        Integer cached = cachedHashCode;
-        if (cached != null && cachedHashVersion == startVersion) {
-            return cached;
+        CachedHash cached = cachedHash;
+        if (cached != null && cached.version == startVersion) {
+            return cached.hash;
         }
 
         // Each key's MultiKey.hash is its hash by this map's rules, the one lookups use. The case-sensitive mode
@@ -3985,8 +3997,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         // Cache only if no mutation occurred during computation.
         long endVersion = hashStateVersion.get();
         if (startVersion == endVersion) {
-            cachedHashCode = h;
-            cachedHashVersion = endVersion;
+            cachedHash = new CachedHash(h, endVersion);
         }
         return h;
     }

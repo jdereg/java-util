@@ -1350,15 +1350,35 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                 }
                 return null;
             }
-            // Fast path: Object[] in simpleKeysMode — compute hash inline, zero allocation
-            if (simpleKeysMode && keyClass == Object[].class) {
+            // Fast path: a flat Object[] -- hash computed inline, zero allocation, as flattenKey() computes it. In the
+            // default mode each element is checked for nesting, and the first container falls through to the full
+            // path; the array went through flattenKey(), allocating a MultiKey on every get(), containsKey() and
+            // getMultiKey(a, b, ...).
+            if (keyClass == Object[].class) {
                 Object[] array = (Object[]) key;
                 int len = array.length;
                 int h = len == 0 ? 0 : 1;
-                for (int i = 0; i < len; i++) {
-                    h = combine(h, computeElementHash(array[i], caseSensitive));
+                int i = 0;
+                if (simpleKeysMode) {
+                    for (; i < len; i++) {
+                        h = combine(h, computeElementHash(array[i], caseSensitive));
+                    }
+                } else {
+                    for (; i < len; i++) {
+                        Object e = array[i];
+                        if (e != null) {
+                            Class<?> ec = e.getClass();
+                            if (ec != String.class && ec != Integer.class && ec != Long.class && ec != Double.class
+                                    && (e instanceof Collection || ec.isArray() || isAtomicArray(e))) {
+                                break;
+                            }
+                        }
+                        h = combine(h, computeElementHash(e, caseSensitive));
+                    }
                 }
-                return findEntryWithPrecomputedHash(array, h);
+                if (i == len) {
+                    return findEntryWithPrecomputedHash(array, h);
+                }
             }
             // It's an array (including rare atomic arrays) - fall through to complex path
         }

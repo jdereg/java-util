@@ -257,17 +257,18 @@ public class MultiKeyMapNullSentinelSingleElementTest {
         assertNull(map.get((Object) null));
         assertEquals("flattened_null_value", map.get(singleNullArray));
         
-        // List with same content - with flatten=true, lists go through expandWithHash
-        // while arrays don't, so they end up as different keys
+        // A List with the same content is the same key, as it is without a null inside and in the default mode.
+        // (With flatten=true a List is expanded and an array is not; a null hashed differently on the two paths,
+        // so these were two keys.)
         List<Object> singleNullList = Arrays.asList((Object) null);
-        map.put(singleNullList, "flattened_null_list");  // Different key with flatten=true
-        
+        map.put(singleNullList, "flattened_null_list");  // Replaces the array's value: the same key
+
         // Direct null is still different from [null]
         assertNull(map.get((Object) null));
-        assertEquals("flattened_null_value", map.get(singleNullArray)); // Array keeps its value
-        assertEquals("flattened_null_list", map.get(singleNullList)); // List has its own value with flatten=true
-        
-        assertEquals(2, map.size()); // Two entries with flatten=true: array and expanded list
+        assertEquals("flattened_null_list", map.get(singleNullArray));
+        assertEquals("flattened_null_list", map.get(singleNullList));
+
+        assertEquals(1, map.size());
     }
     
     @Test  

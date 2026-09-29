@@ -34,21 +34,15 @@ class MultiKeyMapReportedKeysTest {
         return new ArrayList<>(Arrays.asList(o));
     }
 
-    /**
-     * Key shapes: single, flat, nested, Sets, empties. In flatten mode an empty array and an empty List are two
-     * keys, and a null inside an array and inside a List hash apart -- both left to their own test.
-     */
-    private static Object[] shapes(boolean flattenSafe) {
+    /** Key shapes: single, flat, nested, Sets, empties, nulls inside. */
+    private static Object[] shapes() {
         List<Object> shapes = new ArrayList<>(Arrays.asList(
                 "a", new Object[]{"a"}, list("a"), null, new Object[]{"a", "b"}, list("a", "b"), new int[]{1, 2},
                 new Object[]{"a", list("b")}, new Object[]{list("a"), "b"}, set("a", "b"), set(set("a"), set("b")),
                 new Object[]{"x", set("a", "b")}, new Object[]{set("a", "b"), "x"}, list(list("a", "b"), list("c")),
-                list(list("a"), "b", set("c")), list(), set(), new Object[]{list()},
+                list(list("a"), "b", set("c")), new Object[]{}, list(), set(), new Object[]{list()},
                 new Object[]{set()}, list(set("a")), new Object[]{new Object[]{"a"}}, list(1, 2L, 3.0)));
-        if (!flattenSafe) {
-            shapes.addAll(Arrays.asList(new Object[]{}, new Object[]{null}, list((Object) null),
-                    new Object[]{"a", null}));
-        }
+        shapes.addAll(Arrays.asList(new Object[]{null}, list((Object) null), new Object[]{"a", null}));
         return shapes.toArray();
     }
 
@@ -77,11 +71,11 @@ class MultiKeyMapReportedKeysTest {
 
     @Test
     void everyReportedKeyFindsItsOwnEntry() {
-        assertKeysFindTheirEntries(filled(new MultiKeyMap<>(), shapes(false)), "default");
+        assertKeysFindTheirEntries(filled(new MultiKeyMap<>(), shapes()), "default");
         assertKeysFindTheirEntries(filled(MultiKeyMap.<String>builder().flattenDimensions(true).build(),
-                shapes(true)), "flatten");
+                shapes()), "flatten");
         assertKeysFindTheirEntries(filled(MultiKeyMap.<String>builder()
-                .collectionKeyMode(MultiKeyMap.CollectionKeyMode.COLLECTIONS_NOT_EXPANDED).build(), shapes(false)),
+                .collectionKeyMode(MultiKeyMap.CollectionKeyMode.COLLECTIONS_NOT_EXPANDED).build(), shapes()),
                 "collections not expanded");
     }
 
@@ -174,8 +168,8 @@ class MultiKeyMapReportedKeysTest {
         whole.put(set("a", "b"), "3");
         assertEquals(new LinkedHashSet<>(Arrays.asList("{}", "[]", "{a, b}")), new LinkedHashSet<>(renderedKeys(whole)));
 
-        for (MultiKeyMap<String> m : Arrays.asList(filled(new MultiKeyMap<>(), shapes(false)),
-                filled(MultiKeyMap.<String>builder().flattenDimensions(true).build(), shapes(true)))) {
+        for (MultiKeyMap<String> m : Arrays.asList(filled(new MultiKeyMap<>(), shapes()),
+                filled(MultiKeyMap.<String>builder().flattenDimensions(true).build(), shapes()))) {
             List<String> rendered = renderedKeys(m);
             assertEquals(m.size(), rendered.size());
             assertEquals(m.size(), new LinkedHashSet<>(rendered).size(), "each entry its own key: " + rendered);

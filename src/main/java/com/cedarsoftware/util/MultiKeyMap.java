@@ -1923,6 +1923,11 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         IdentitySet<Object> visited = new IdentitySet<>();
 
         int hash = expandAndHash(key, expanded, visited, 1, flattenDimensions, caseSensitive);
+        if (expanded.isEmpty()) {
+            // No elements at all (an empty List in flatten mode, say): hash as an empty array does. It was 1, so an
+            // empty List and an empty array were two keys.
+            hash = 0;
+        }
         
         // NO COLLAPSE - expanded results stay as lists
         // Even single-element expanded results remain as lists to maintain consistency
@@ -1934,8 +1939,10 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     private static int expandAndHash(Object current, List<Object> result, IdentitySet<Object> visited,
                                       int runningHash, boolean useFlatten, boolean caseSensitive) {
         if (current == null) {
+            // Hashed as 0, as the unexpanded paths hash it: in flatten mode a Collection is always expanded and an
+            // array of plain elements is not, so [null, a] as a List and as an array hashed apart and never matched
             result.add(NULL_SENTINEL);
-            return runningHash * 31 + NULL_SENTINEL.hashCode();
+            return runningHash * 31;
         }
 
         // Fast path: O(1) ClassValueSet lookup for common leaf types (replaces 9 sequential class == checks)

@@ -117,9 +117,12 @@ import java.util.logging.Logger;
  *       NaN key can be found again.</li>
  *   <li><b>Zero Handling:</b> {@code +0.0} and {@code -0.0} are one key in both modes, as they are under Java's
  *       {@code ==} (unlike {@code Double.equals()}).</li>
- *   <li><b>BigDecimal Precision:</b> Doubles are converted via {@code new BigDecimal(number.toString())}.
- *       This means {@code 0.1d} equals {@code BigDecimal("0.1")} but NOT {@code BigDecimal(0.1)} 
- *       (the latter has binary rounding errors).</li>
+ *   <li><b>Fractions are the decimals they print:</b> a double or float with a fraction is the decimal it prints,
+ *       so {@code 0.1d}, {@code 0.1f} and {@code BigDecimal("0.1")} are one key, but NOT {@code new BigDecimal(0.1)}
+ *       (which holds the binary value 0.1000000000000000055...).</li>
+ *   <li><b>Whole numbers are exact:</b> a whole double or float is its exact integer at any size, as against a
+ *       long: {@code 0x1p60} (2^60) equals {@code 1L << 60} and {@code BigInteger} 2^60, and 2^63 as a double is
+ *       not {@code Long.MAX_VALUE}.</li>
  *   <li><b>Infinity Handling:</b> Comparing {@code Double.POSITIVE_INFINITY} or {@code NEGATIVE_INFINITY} 
  *       to BigDecimal returns false (BigDecimal cannot represent infinity).</li>
  *   <li><b>Atomic Types:</b> In type-based mode, only identical atomic types match (AtomicInteger ≠ Integer).
@@ -417,7 +420,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             return hashDouble(d);
         });
         HASH_FUNCTIONS.put(Float.class, o -> {
-            double d = ((Float) o).doubleValue();
+            double d = floatValue((Float) o);
             if (d == 0.0d) d = 0.0d; // Canonicalize -0.0 to +0.0
             if (Double.isFinite(d) && d == Math.rint(d) && d >= Long.MIN_VALUE && d <= Long.MAX_VALUE) {
                 return hashLong((long) d);
@@ -812,7 +815,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
          * <p>When enabled, numeric keys are compared by value rather than type:</p>
          * <ul>
          *   <li>Integral types (byte, short, int, long) compare as longs</li>
-         *   <li>Floating point types (float, double) compare as doubles</li>
+         *   <li>Floating point types (float, double) compare by value: one with a fraction is the decimal it
+         *       prints (0.1f equals 0.1d and BigDecimal("0.1")), a whole one is its exact integer</li>
          *   <li>Float/double can equal integers only when they represent whole numbers</li>
          *   <li>Booleans only equal other booleans</li>
          *   <li>Characters only equal other characters</li>
@@ -1649,8 +1653,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             if (keyClass == float[].class) {
                 float[] array = (float[]) key;
                 for (int i = 0; i < length; i++) {
-                    // Convert float to double and use value-based hash
-                    double d = array[i];
+                    // The float's value as a double (see floatValue) and use value-based hash
+                    double d = floatValue(array[i]);
                     if (d == 0.0d) d = 0.0d; // canonicalize -0.0
                     if (Double.isFinite(d) && d == Math.rint(d) && d >= Long.MIN_VALUE && d <= Long.MAX_VALUE) {
                         h = combine(h, hashLong((long) d));
@@ -2945,19 +2949,20 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         final boolean bInt = isIntegralLike(cb);
         if (aInt && bInt) return extractLongFast(a) == extractLongFast(b);
 
-        // 2) Float-like ↔ float-like (float/double): promote to double
+        // 2) Float-like ↔ float-like (float/double): as doubles, a float being the double of its value (floatValue)
         final boolean aFp = (ca == Double.class || ca == Float.class);
         final boolean bFp = (cb == Double.class || cb == Float.class);
         if (aFp && bFp) {
-            final double x = ((Number) a).doubleValue();
-            final double y = ((Number) b).doubleValue();
+            final double x = fpValue(a);
+            final double y = fpValue(b);
             return (x == y) || (Double.isNaN(x) && Double.isNaN(y));
         }
 
         // 3) Mixed integral ↔ float: equal only if finite and exactly integer (.0)
         if ((aInt && bFp) || (aFp && bInt)) {
-            final double d = aFp ? ((Number) a).doubleValue() : ((Number) b).doubleValue();
-            if (!Double.isFinite(d)) return false;
+            final double d = aFp ? fpValue(a) : fpValue(b);
+            // Within a long's range only: the cast saturates, and 2^63 as a double equalled Long.MAX_VALUE
+            if (!(d >= -0x1p63 && d < 0x1p63)) return false;
             final long li = aInt ? extractLongFast(a) : extractLongFast(b);
             // Quick fail then exactness check
             if ((long) d != li) return false;
@@ -2990,11 +2995,39 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         return ((Number) o).longValue();
     }
     
+    /**
+     * A finite number as a BigDecimal. A whole float or double is its exact integer, as it is against a long;
+     * a double with a fraction is the decimal it prints (0.1d is BigDecimal("0.1"), not new BigDecimal(0.1)), and
+     * a float is first the double of its value (floatValue). A whole double was converted through its printed
+     * decimal too, so 2^60 became ...980 -- not the 2^60 a long equals -- and hashed apart from it; a float was
+     * converted through its own printed decimal while it compared with doubles as its binary value.
+     */
     private static BigDecimal toBigDecimal(Number n) {
         if (n instanceof BigDecimal) return (BigDecimal) n;
         if (n instanceof BigInteger) return new BigDecimal((BigInteger) n);
-        if (n instanceof Double || n instanceof Float) return new BigDecimal(n.toString()); // exact
+        if (n instanceof Double || n instanceof Float) {
+            double d = fpValue(n);
+            return d == Math.rint(d) ? new BigDecimal(d) : new BigDecimal(Double.toString(d));
+        }
         return BigDecimal.valueOf(n.longValue());
+    }
+
+    /**
+     * The value a float stands for, as a double: the decimal it prints when it has a fraction (0.1f is 0.1, as 0.1d
+     * and BigDecimal("0.1") are), otherwise its exact value (whole, infinite, NaN). Widening gave 0.1f the value
+     * 0.10000000149011612, so it was not 0.1d. Every comparison and hash of a float goes through this.
+     */
+    private static double floatValue(float f) {
+        double w = f;
+        if (w == Math.rint(w) || !Double.isFinite(w)) {
+            return w;
+        }
+        return Double.parseDouble(Float.toString(f));
+    }
+
+    /** A Float's or Double's value as a double (see floatValue). */
+    private static double fpValue(Object n) {
+        return n instanceof Float ? floatValue((Float) n) : ((Number) n).doubleValue();
     }
 
     private V putInternal(MultiKey<V> newKey) {

@@ -2933,7 +2933,8 @@ String v5 = map.getMultiKey(42.0);              // "atomic" - Double matches too
 **Edge Cases in Value-Based Mode:**
 - **NaN Behavior:** `NaN == NaN` returns true (unlike Java's default), ensuring consistent key lookups
 - **Zero Handling:** `+0.0 == -0.0` returns true (standard Java behavior)
-- **BigDecimal Precision:** Doubles convert via `new BigDecimal(number.toString())`, so `0.1d` equals `BigDecimal("0.1")` but NOT `BigDecimal(0.1)` (which has binary rounding errors)
+- **Fractions are the decimals they print:** a double or float with a fraction is the decimal it prints, so `0.1d`, `0.1f` and `BigDecimal("0.1")` are one key, but NOT `new BigDecimal(0.1)` (which holds the binary value 0.1000000000000000055...)
+- **Whole numbers are exact:** a whole double or float is its exact integer at any size, as against a long: `0x1p60` (2^60) equals `1L << 60` and `BigInteger` 2^60, and 2^63 as a double is not `Long.MAX_VALUE`
 - **Infinity:** Comparing `Double.POSITIVE_INFINITY` or `NEGATIVE_INFINITY` to BigDecimal returns false
 - **Atomic Types:** AtomicInteger(1) equals Integer(1), AtomicLong(1L) equals Long(1L), etc.
 

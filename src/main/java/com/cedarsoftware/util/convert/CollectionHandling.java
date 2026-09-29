@@ -24,7 +24,6 @@ import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingDeque;
 import java.util.concurrent.BlockingQueue;
 import com.cedarsoftware.util.ClassUtilities;
-import com.cedarsoftware.util.ClassValueMap;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ConcurrentSkipListSet;
@@ -77,7 +76,9 @@ final class CollectionHandling {
     // Base collection type mappings (most specific to most general)
     private static final Map<Class<?>, Function<Integer, Collection<?>>> BASE_FACTORIES = new LinkedHashMap<>();
 
-    private static final ClassValueMap<Function<Integer, Collection<?>>> FACTORY_CACHE = new ClassValueMap<>();
+    // The two tables in their order, for the plans below; the last base factory is the default (ArrayList)
+    private static final CollectionFactory[] SPECIAL_FACTORY_LIST;
+    private static final Function<Integer, Collection<?>>[] BASE_FACTORY_LIST;
 
     static {
         // Initialize special collection handlers (most specific to most general)
@@ -87,7 +88,40 @@ final class CollectionHandling {
         initializeBaseFactories();
 
         validateMappings();
+
+        SPECIAL_FACTORY_LIST = SPECIAL_HANDLERS.values().toArray(new CollectionFactory[0]);
+        @SuppressWarnings("unchecked")
+        Function<Integer, Collection<?>>[] base = new Function[BASE_FACTORIES.size() + 1];
+        int i = 0;
+        for (Function<Integer, Collection<?>> factory : BASE_FACTORIES.values()) {
+            base[i++] = factory;
+        }
+        base[i] = ArrayList::new;       // Default factory
+        BASE_FACTORY_LIST = base;
     }
+
+    /**
+     * Per target class, how createCollection() makes one: an index, a JDK type, since a java-util factory kept in a
+     * JDK class would pin java-util's class loader. 0 .. S-1 is a special handler (the first whose marker class the
+     * target is), S and above is S + a base factory (the first assignable one, else the default), and a negative
+     * value ~b is the target class itself -- a concrete class of the caller's own, made by its no-argument
+     * constructor -- falling back to base factory b. It was a ClassValueMap of factories, consulted after scanning
+     * every special handler with isAssignableFrom() on each conversion.
+     */
+    private static final ClassValue<Integer> PLANS = new ClassValue<Integer>() {
+        @Override
+        protected Integer computeValue(Class<?> type) {
+            int i = 0;
+            for (Class<?> marker : SPECIAL_HANDLERS.keySet()) {
+                if (marker.isAssignableFrom(type)) {
+                    return i;
+                }
+                i++;
+            }
+            int base = closestBaseIndex(type);
+            return isOwnConcreteType(type) ? ~base : SPECIAL_FACTORY_LIST.length + base;
+        }
+    };
 
     @SuppressWarnings({"unchecked"})
     private static void initializeSpecialHandlers() {
@@ -246,62 +280,42 @@ final class CollectionHandling {
      * Creates a collection matching the target type and special characteristics if any
      */
     static Collection<?> createCollection(Object source, Class<?> targetType) {
-        // Check for special collection types first
-        CollectionFactory specialFactory = getSpecialCollectionFactory(targetType);
-        if (specialFactory != null) {
-            // Allow SPECIAL_HANDLERS to decide if the collection should be modifiable or not
-            return specialFactory.create(sizeOrDefault(source), source);
+        int plan = PLANS.get(targetType);
+        if (plan >= 0 && plan < SPECIAL_FACTORY_LIST.length) {
+            // Special collection types first: they decide whether the collection is modifiable
+            return SPECIAL_FACTORY_LIST[plan].create(sizeOrDefault(source), source);
         }
-
-        // Handle base collection types (always modifiable)
-        Function<Integer, Collection<?>> baseFactory = getBaseCollectionFactory(targetType);
-        return baseFactory.apply(sizeOrDefault(source));
-    }
-
-    private static CollectionFactory getSpecialCollectionFactory(Class<?> targetType) {
-        for (Map.Entry<Class<?>, CollectionFactory> entry : SPECIAL_HANDLERS.entrySet()) {
-            if (entry.getKey().isAssignableFrom(targetType)) {
-                return entry.getValue();
-            }
-        }
-        return null;
-    }
-
-    private static Function<Integer, Collection<?>> getBaseCollectionFactory(Class<?> targetType) {
-        Function<Integer, Collection<?>> factory = FACTORY_CACHE.getByClass(targetType);
-        if (factory == null) {
-            factory = FACTORY_CACHE.computeIfAbsent(targetType, type -> {
-                Function<Integer, Collection<?>> base = closestBaseFactory(type);
-                if (!isOwnConcreteType(type)) {
-                    return base;
+        if (plan < 0) {
+            // A concrete class of the caller's own (MyList extends ArrayList, say): make one of it, as the Map
+            // conversions do, rather than the closest known type, which is not an instance of what was asked for.
+            // ClassUtilities.newInstance() applies its security checks; if it cannot make one, the closest known
+            // type it is.
+            try {
+                Object created = ClassUtilities.newInstance(targetType, (Object) null);
+                if (targetType.isInstance(created)) {
+                    return (Collection<?>) created;
                 }
-                // A concrete class of the caller's own (MyList extends ArrayList, say): make one of it, as the Map
-                // conversions do, rather than the closest known type, which is not an instance of what was asked for.
-                // ClassUtilities.newInstance() applies its security checks; if it cannot make one, the closest known
-                // type it is.
-                return size -> {
-                    try {
-                        Object created = ClassUtilities.newInstance(type, (Object) null);
-                        if (type.isInstance(created)) {
-                            return (Collection<?>) created;
-                        }
-                    } catch (Exception ignored) {
-                        // fall back below
-                    }
-                    return base.apply(size);
-                };
-            });
+            } catch (Exception ignored) {
+                // fall back below
+            }
+            plan = ~plan;
+        } else {
+            plan -= SPECIAL_FACTORY_LIST.length;
         }
-        return factory;
+        // Base collection types (always modifiable)
+        return BASE_FACTORY_LIST[plan].apply(sizeOrDefault(source));
     }
 
-    private static Function<Integer, Collection<?>> closestBaseFactory(Class<?> type) {
-        for (Map.Entry<Class<?>, Function<Integer, Collection<?>>> entry : BASE_FACTORIES.entrySet()) {
-            if (entry.getKey().isAssignableFrom(type)) {
-                return entry.getValue();
+    /** The index in BASE_FACTORY_LIST of the first base factory the type is assignable to, else the default's. */
+    private static int closestBaseIndex(Class<?> type) {
+        int i = 0;
+        for (Class<?> baseType : BASE_FACTORIES.keySet()) {
+            if (baseType.isAssignableFrom(type)) {
+                return i;
             }
+            i++;
         }
-        return ArrayList::new; // Default factory
+        return i;       // the default (ArrayList)
     }
 
     /**

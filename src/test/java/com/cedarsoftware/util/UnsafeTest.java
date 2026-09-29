@@ -89,4 +89,27 @@ class UnsafeTest {
         assertFalse(Example.ctorCalled, "constructor should not run");
         assertEquals(0, ((Example) obj).value);
     }
+
+    /**
+     * The serialization constructor (strategy 1) is used when there is one, found once per class and kept in the
+     * class (a ClassValue); the same Constructor serves every later allocation.
+     */
+    @Test
+    void theSerializationConstructorIsFoundOncePerClass() throws Exception {
+        assumeTrue(unsafeInstance != null, "Unsafe not available");
+        java.lang.reflect.Field field = Unsafe.class.getDeclaredField("serializationConstructors");
+        field.setAccessible(true);
+        @SuppressWarnings("unchecked")
+        ClassValue<java.lang.reflect.Constructor<?>> perClass =
+                (ClassValue<java.lang.reflect.Constructor<?>>) field.get(unsafeInstance);
+        Example.ctorCalled = false;
+        Object first = unsafeInstance.allocateInstance(Example.class);
+        java.lang.reflect.Constructor<?> ctor = perClass.get(Example.class);
+        assertNotNull(ctor, "ReflectionFactory made a serialization constructor");
+        Object second = unsafeInstance.allocateInstance(Example.class);
+        assertTrue(ctor == perClass.get(Example.class), "found once, then kept");
+        assertTrue(first instanceof Example && second instanceof Example);
+        assertEquals(0, ((Example) second).value);
+        assertFalse(Example.ctorCalled);
+    }
 }

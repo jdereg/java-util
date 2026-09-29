@@ -3,7 +3,6 @@ package com.cedarsoftware.util;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
-import com.cedarsoftware.util.ClassValueMap;
 
 import static com.cedarsoftware.util.ClassUtilities.trySetAccessible;
 
@@ -28,7 +27,17 @@ final class Unsafe {
     private final Constructor<?> objectConstructor;
     private final Object sunUnsafe;
     private final Method unsafeAllocateInstance;
-    private final ClassValueMap<Constructor<?>> serializationConstructorCache = new ClassValueMap<>();
+    /**
+     * Per class, its serialization constructor, or none: kept in the class itself (a ClassValue, JDK types only, so
+     * it pins no class loader). It was a ClassValueMap, which attached a ClassValue per map anyway and listed its
+     * classes; a class ReflectionFactory could not serve was asked again on every allocation.
+     */
+    private final ClassValue<Constructor<?>> serializationConstructors = new ClassValue<Constructor<?>>() {
+        @Override
+        protected Constructor<?> computeValue(Class<?> type) {
+            return createSerializationConstructor(type);        // null (none) is kept too
+        }
+    };
 
     /**
      * Constructs the wrapper, reflectively loading ReflectionFactory and sun.misc.Unsafe.
@@ -109,14 +118,8 @@ final class Unsafe {
         // Strategy 1: ReflectionFactory — serialization constructor cached per class
         if (reflectionFactory != null) {
             try {
-                Constructor<?> ctor = serializationConstructorCache.getByClass(clazz);
-                if (ctor == null) {
-                    ctor = createSerializationConstructor(clazz);
-                    if (ctor != null) {
-                        serializationConstructorCache.put(clazz, ctor);
-                        return ctor.newInstance();
-                    }
-                } else {
+                Constructor<?> ctor = serializationConstructors.get(clazz);
+                if (ctor != null) {
                     return ctor.newInstance();
                 }
             } catch (Exception ignored) {

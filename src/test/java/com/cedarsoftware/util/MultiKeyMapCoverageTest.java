@@ -20,7 +20,6 @@ import static org.assertj.core.api.Assertions.assertThat;
  * - Primitive array vs non-RandomAccess Collection comparison
  * - Builder getter methods (longSize, capacity, loadFactor, etc.)
  * - toString formatting for array values
- * - isArrayOrCollection paths
  */
 class MultiKeyMapCoverageTest {
 

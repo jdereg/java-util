@@ -4754,14 +4754,6 @@ public class ClassUtilities {
     // Note: These provide enhanced security features beyond the always-on core security
     // Performance: These now use cached constants instead of repeated System.getProperty() calls
 
-    private static boolean isEnhancedSecurityEnabled() {
-        return ENHANCED_SECURITY_ENABLED;
-    }
-
-    private static int getMaxClassLoadDepth() {
-        return MAX_CLASS_LOAD_DEPTH;
-    }
-
     private static int getMaxConstructorArgs() {
         return MAX_CONSTRUCTOR_ARGS;
     }

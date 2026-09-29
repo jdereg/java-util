@@ -621,16 +621,6 @@ public final class StringUtilities {
         return new String(result);
     }
 
-    /**
-     * Convert the specified value (0 .. 15) to the corresponding hex digit.
-     *
-     * @param value to be converted
-     * @return '0'..'F' in char format.
-     */
-    private static char convertDigit(int value) {
-        return ByteUtilities.toHexChar(value);
-    }
-
     public static int count(String s, char c) {
         if (s == null) {
             return 0;

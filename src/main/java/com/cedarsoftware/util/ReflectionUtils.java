@@ -2627,21 +2627,6 @@ public final class ReflectionUtils {
         }
     }
     
-    /**
-     * Return a String representation of the class loader, or "bootstrap" if null.
-     *
-     * @param c The class whose class loader is to be identified.
-     * @return A String representing the class loader.
-     */
-    private static String getClassLoaderName(Class<?> c) {
-        ClassLoader loader = c.getClassLoader();
-        if (loader == null) {
-            return "bootstrap";
-        }
-        // Example: "org.example.MyLoader@1a2b3c4"
-        return loader.getClass().getName() + '@' + Integer.toHexString(System.identityHashCode(loader));
-    }
-    
     // Record support (Java 14+) - using holder class for thread-safe lazy initialization
     // with zero synchronization overhead after init
     private static class RecordSupport {

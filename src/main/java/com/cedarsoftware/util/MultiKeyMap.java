@@ -1553,27 +1553,6 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     }
     
     /**
-     * Fast check if an object is an array or collection that might contain nested structures.
-     * Used by optimized fast paths to determine routing.
-     */
-    private boolean isArrayOrCollection(Object o) {
-        // In simpleKeysMode, immediately return false to avoid all checks
-        if (simpleKeysMode) {
-            return false;
-        }
-        if (o == null) {
-            return false;
-        }
-        // Fast path: known simple types are never arrays or collections
-        Class<?> c = o.getClass();
-        if (LEAF_TYPES.containsClass(c)) {
-            return false;
-        }
-        // Check for Collection or array
-        return o instanceof Collection || c.isArray();
-    }
-    
-    /**
      * An AtomicIntegerArray, AtomicLongArray or AtomicReferenceArray: in a key, a container like an array, read as
      * the array of its current values (see atomicArrayValues). put(), get() and the other single-key fast paths
      * took one as a plain object, compared by identity, while the compute paths read it as its values -- a key

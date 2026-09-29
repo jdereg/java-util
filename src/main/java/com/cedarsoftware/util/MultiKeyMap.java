@@ -3835,7 +3835,32 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      * @throws NullPointerException if the specified map is null
      */
     public void putAll(Map<?, ? extends V> m) {
+        // Grow once to hold them all, rather than doubling again and again on the way
+        long needed = atomicSize.sum() + m.size();
+        if (needed > resizeThreshold) {
+            growToHold(needed);
+        }
         for (Map.Entry<?, ? extends V> e : m.entrySet()) put(e.getKey(), e.getValue());
+    }
+
+    /**
+     * Grows the table once, to hold {@code entries} within the load factor. Skipped when another resize is under
+     * way; the puts that follow grow the table as usual.
+     */
+    private void growToHold(long entries) {
+        if (resizeInProgress.compareAndSet(false, true)) {
+            try {
+                withAllStripeLocks(() -> {
+                    long wanted = (long) Math.ceil(entries / (double) loadFactor);
+                    int newLength = tableSizeFor((int) Math.min(wanted, 1 << 30));
+                    if (newLength > buckets.length()) {
+                        rehashInto(newLength);
+                    }
+                });
+            } finally {
+                resizeInProgress.set(false);
+            }
+        }
     }
 
     /**

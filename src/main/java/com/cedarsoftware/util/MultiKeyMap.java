@@ -1048,6 +1048,15 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         // BigInteger/BigDecimal: convert to primitive type for consistent hashing
         if (o instanceof BigDecimal) {
             BigDecimal bd = (BigDecimal) o;
+            if (bd.scale() > 0) {
+                // A fraction, known without remainder(), which allocates on every hash (get(100000.25) 63 ns and
+                // 264 B): a whole number's double is whole, so a fractional double means a fractional value, and
+                // the code below would reach hashDouble(d) too
+                double d = bd.doubleValue();
+                if (Double.isFinite(d) && d != Math.rint(d)) {
+                    return hashDouble(d);
+                }
+            }
             try {
                 // Check if it can be represented as a long (whole number)
                 if (bd.scale() <= 0 || bd.remainder(BigDecimal.ONE).compareTo(BigDecimal.ZERO) == 0) {

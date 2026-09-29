@@ -77,6 +77,12 @@ class MultiKeyMapReportedKeysTest {
         assertKeysFindTheirEntries(filled(MultiKeyMap.<String>builder()
                 .collectionKeyMode(MultiKeyMap.CollectionKeyMode.COLLECTIONS_NOT_EXPANDED).build(), shapes()),
                 "collections not expanded");
+        // In flatten mode an expanded array's first token is often a plain element or a Set's marker, which is how
+        // an internal list was told from a caller's Collection: it was reported markers and all ([x, {, a, b, }]),
+        // and 4 of these 22 entries were missing from keySet() and from a copy
+        assertKeysFindTheirEntries(filled(MultiKeyMap.<String>builder().flattenDimensions(true)
+                .collectionKeyMode(MultiKeyMap.CollectionKeyMode.COLLECTIONS_NOT_EXPANDED).build(), shapes()),
+                "collections not expanded, flatten");
     }
 
     @Test

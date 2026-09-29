@@ -485,6 +485,11 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
          * A List.of("a", "b", "c") remains as a single Collection key.
          * Use this mode when you want Collections to be compared by their equals() method
          * rather than being expanded into multidimensional keys.
+         * <p>Such a key matches only another Collection that its equals() accepts (any List type in the same order,
+         * any Set type with the same members). The map's case-insensitivity and value-based equality do not reach
+         * inside it, and an array with the same elements is a different key, since arrays are always expanded.
+         * A Collection nested inside an array key is expanded and matched by the map's rules, as in
+         * {@link #COLLECTIONS_EXPANDED}.</p>
          */
         COLLECTIONS_NOT_EXPANDED
     }
@@ -583,6 +588,20 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         @Override
         public String toString() {
             return dumpExpandedKeyStatic(keys, true, null);  // Use emoji rendering
+        }
+    }
+
+    /**
+     * A key the map expanded itself (its elements with the nesting markers), told apart from a Collection the caller
+     * passed. In COLLECTIONS_NOT_EXPANDED mode only the caller's Collection is one opaque key, compared by its own
+     * equals(). Both were ArrayLists, so a nested key the map had expanded was compared with ArrayList.equals()
+     * (case and value-based equality lost), and keySet() handed out an internal list as if it were a caller's key.
+     */
+    private static final class ExpandedKey extends ArrayList<Object> {
+        private static final long serialVersionUID = 1L;
+
+        ExpandedKey(int initialCapacity) {
+            super(initialCapacity);
         }
     }
 
@@ -1949,7 +1968,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             }
         }
         
-        List<Object> expanded = new ArrayList<>(estimatedSize);
+        List<Object> expanded = new ExpandedKey(estimatedSize);
         IdentitySet<Object> visited = new IdentitySet<>();
 
         int hash = expandAndHash(key, expanded, visited, 1, flattenDimensions, caseSensitive);
@@ -2087,23 +2106,26 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         if (stored.keys == lookup) return true;
         if (stored.keys == null || lookup == null) return false;
 
+        // In COLLECTIONS_NOT_EXPANDED mode a Collection the caller passed is one key, compared by its own equals(): it
+        // matches only another such Collection, never an array (always expanded) or a key the map expanded. Decided
+        // by the key object, not the stored kind, which the write paths infer again from it. The stored side was
+        // tested alone, so a List lookup found a stored array whose hash it shared while the reverse missed, and the
+        // map's own expansions of nested keys were compared with ArrayList.equals() (case and 1 = 1L lost).
+        if (collectionKeyMode == CollectionKeyMode.COLLECTIONS_NOT_EXPANDED) {
+            boolean storedWhole = stored.keys instanceof Collection && !(stored.keys instanceof ExpandedKey);
+            boolean lookupWhole = lookup instanceof Collection && !(lookup instanceof ExpandedKey);
+            if (storedWhole || lookupWhole) {
+                return storedWhole && lookupWhole && stored.keys.equals(lookup);
+            }
+        }
+
         // Multi-key case - use precomputed kind for fast switching
         final Class<?> lookupClass = lookup.getClass();
 
         // Early size rejection - if stored has precomputed size, check it first
         if (stored.kind == MultiKey.KIND_SINGLE) {
-            // Single key optimization
-            // In COLLECTIONS_NOT_EXPANDED mode, a Collection/array can be a single key
+            // A single key never matches an array or Collection (those are keys of parts)
             if (lookupClass.isArray() || lookup instanceof Collection) {
-                // If stored key is also a Collection/array, compare using elementEquals
-                // This handles COLLECTIONS_NOT_EXPANDED mode where collections are single keys
-                if (stored.keys instanceof Collection || stored.keys.getClass().isArray()) {
-                    // Both stored and lookup are Collection/array - compare using elementEquals
-                    // This handles cases where collection types differ (e.g., List vs Set)
-                    // but content is the same - can happen after deserialization
-                    return elementEquals(stored.keys, lookup, valueBasedEquality, caseSensitive);
-                }
-                // Stored is not Collection/array but lookup is - no match
                 return false;
             }
             // Use elementEquals to respect value-based equality for single keys
@@ -2134,14 +2156,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         // key that was a prefix of a longer one matched it whenever their hashes collided -- get() returned the
         // other key's value, put() overwrote it, and the longer lookup threw NoSuchElementException.
         if (stored.size != lookupSize) return false;
-        
-        // Handle COLLECTIONS_NOT_EXPANDED mode - Collections should use their own equals
-        if (collectionKeyMode == CollectionKeyMode.COLLECTIONS_NOT_EXPANDED && stored.kind == MultiKey.KIND_COLLECTION) {
-            if (!(lookup instanceof Collection)) return false;
-            // Always use the collection's own equals; do NOT require same concrete class
-            return stored.keys.equals(lookup);
-        }
-        
+
         final Class<?> storeKeysClass = stored.keys.getClass();
         
         // Delegate all container comparisons to unified method
@@ -4101,13 +4116,13 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         if (keys instanceof Collection) {
             Collection<?> collection = (Collection<?>) keys;
             if (notExpanded) {
-                Iterator<?> it = collection.iterator();
-                Object first = it.hasNext() ? it.next() : null;
-                if (first != OPEN && first != SET_OPEN) {
+                if (!(collection instanceof ExpandedKey)) {
                     return collection;          // a user Collection, stored whole as one key
                 }
-                Object rebuilt = reconstructKey(collection.toArray());      // an array, expanded with markers
-                return rebuilt instanceof List ? ((List<?>) rebuilt).toArray() : rebuilt;
+                // An array the map expanded. Told apart by its first token, which in flatten mode is often a plain
+                // element or a Set's marker: the internal list itself was reported, markers and all.
+                Object rebuilt = reconstructKey(collection.toArray());
+                return rebuilt instanceof List ? ((List<?>) rebuilt).toArray() : new Object[]{rebuilt};
             }
             return reconstructKey(collection.toArray());
         }

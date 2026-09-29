@@ -3063,6 +3063,9 @@ String v4 = map.getMultiKey("a", "b", "c");          // null - not found!
 ```
 
 **Note:** Arrays are ALWAYS expanded regardless of this setting. Since arrays use identity-based `equals()` and `hashCode()` (not content-based), they cannot serve as value-comparable keys. Collections, with their proper `equals()` and `hashCode()` implementations, can be treated as atomic keys.
+So in this mode an array and a List with the same elements are two different keys, and the map's case-insensitivity
+and value-based equality do not reach inside a Collection key (`[1, "A"]` does not find `[1L, "a"]`). A Collection
+nested inside an array key is expanded and matched by the map's rules, as in the default mode.
 
 #### Advanced Collection Features
 

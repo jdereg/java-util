@@ -7,8 +7,10 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Modifier;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.net.InetAddress;
 import java.net.URI;
 import java.net.URL;
+import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
 import java.nio.charset.Charset;
@@ -255,7 +257,8 @@ public final class Converter {
      * the supertype's superclass chain applies (java.sql.Date and java.sql.Time use Date's). Makers exist for the value
      * types whose state can be set on a new instance (Date, Timestamp, Calendar, AtomicLong, AtomicInteger,
      * AtomicBoolean, BitSet), for Map, and for the immutable types a constructor makes (BigDecimal, BigInteger,
-     * File). A supertype with no maker converts as before.
+     * File). For Number, TimeZone, InetAddress and Buffer, whose conversions choose the result's class from the
+     * value, the result must already be of the requested type. A supertype with no maker converts as before.
      */
     private static final Map<Class<?>, Function<Class<?>, BiFunction<Object, Converter, Object>>> SUBTYPE_MAKERS =
             subtypeMakers();
@@ -297,7 +300,30 @@ public final class Converter {
         makers.put(BigDecimal.class, type -> constructedMaker(type, String.class, Object::toString));
         makers.put(BigInteger.class, type -> constructedMaker(type, String.class, Object::toString));
         makers.put(File.class, type -> constructedMaker(type, String.class, Object::toString));
+        // Types whose conversions pick the class of the result from the value (a zone ID gives a ZoneInfo, text an
+        // Inet4Address or an Inet6Address, a number its own type): a subclass asked for is converted to only when
+        // the result is one. A SimpleTimeZone cannot follow a zone's rules, nor a LongAccumulator be rebuilt.
+        makers.put(Number.class, Converter::onlyWhenAlready);
+        makers.put(TimeZone.class, Converter::onlyWhenAlready);
+        makers.put(InetAddress.class, Converter::onlyWhenAlready);
+        makers.put(Buffer.class, Converter::onlyWhenAlready);
         return makers;
+    }
+
+    /**
+     * For a type no value can be turned into: a result that is not one already is no conversion. A class that is not
+     * public (the JDK's HeapCharBuffer, which json-io records as a buffer's class) cannot be what a caller must have,
+     * since no caller can name it: it gets the conversion's result, the closest known type, as a JDK collection
+     * class no factory makes does.
+     */
+    private static BiFunction<Object, Converter, Object> onlyWhenAlready(Class<?> type) {
+        if (!Modifier.isPublic(type.getModifiers())) {
+            return (value, converter) -> value;
+        }
+        return (value, converter) -> {
+            throw new IllegalArgumentException("Unsupported conversion to " + type.getName() + ": the value converts to a "
+                    + value.getClass().getName() + ", and a " + type.getName() + " cannot be made from it");
+        };
     }
 
     /**

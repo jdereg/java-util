@@ -420,6 +420,44 @@ class ConverterSubtypeTargetTest {
         assertThrows(IllegalArgumentException.class, () -> converter.convert(5L, ZeroOnly.class));
     }
 
+    /**
+     * Where the value decides the class of the result -- text gives an Inet4Address or an Inet6Address, a zone ID a
+     * ZoneInfo, a number its own type -- a subclass asked for is the answer only when the result is one; otherwise
+     * the conversion is refused, where it used to hand back the parent type's result.
+     */
+    @Test
+    void whereTheValueDecidesTheClassTheResultMustBeTheOneAskedFor() throws Exception {
+        java.net.InetAddress v6 = java.net.InetAddress.getByName("::1");
+        java.net.InetAddress v4 = java.net.InetAddress.getByName("127.0.0.1");
+        assertSame(v6.getClass(), converter.convert("::1", java.net.Inet6Address.class).getClass());
+        assertRefused(v4, java.net.Inet6Address.class);
+
+        java.util.concurrent.atomic.LongAccumulator accumulator =
+                new java.util.concurrent.atomic.LongAccumulator(Long::sum, 5L);
+        assertSame(accumulator, converter.convert(accumulator, java.util.concurrent.atomic.LongAccumulator.class));
+        assertRefused(5L, java.util.concurrent.atomic.LongAccumulator.class);
+        assertRefused(5L, java.util.concurrent.atomic.DoubleAccumulator.class);
+
+        java.util.SimpleTimeZone simple = new java.util.SimpleTimeZone(3_600_000, "Plus1");
+        assertSame(java.util.SimpleTimeZone.class, converter.convert(simple, java.util.SimpleTimeZone.class).getClass());
+        assertRefused("UTC", java.util.SimpleTimeZone.class);
+
+        assertRefused("abc", java.nio.MappedByteBuffer.class);
+
+        // A class no caller can name (json-io records a buffer's runtime class, the JDK's HeapCharBuffer) gets the
+        // closest known type, as before
+        Class<?> heapCharBuffer = java.nio.CharBuffer.allocate(1).getClass();
+        Object buffer = converter.convert("abc", heapCharBuffer);
+        assertTrue(buffer instanceof java.nio.CharBuffer);
+        assertEquals("abc", buffer.toString());
+    }
+
+    private void assertRefused(Object source, Class<?> type) {
+        IllegalArgumentException e = assertThrows(IllegalArgumentException.class, () -> converter.convert(source, type),
+                source + " to " + type.getName());
+        assertTrue(e.getMessage().contains("Unsupported conversion"), e.getMessage());
+    }
+
     /** A conversion the caller added for the parent type is the one used, and makes the subclass too. */
     @Test
     void aCallersConversionToTheParentMakesTheSubclass() {

@@ -137,6 +137,31 @@ class ConverterSubtypeTargetTest {
         }
     }
 
+    public static class Money extends BigDecimal {
+        public Money(String value) {
+            super(value);
+        }
+    }
+
+    public static class Count extends java.math.BigInteger {
+        public Count(String value) {
+            super(value);
+        }
+    }
+
+    public static class Document extends File {
+        public Document(String path) {
+            super(path);
+        }
+    }
+
+    /** Immutable, and only a no-argument constructor: its value cannot be given to it. */
+    public static class ZeroOnly extends BigDecimal {
+        public ZeroOnly() {
+            super(0);
+        }
+    }
+
     /** Neither a no-argument nor a (long) constructor: the Converter cannot make one. */
     public static class DateOfText extends Date {
         public DateOfText(String text) {
@@ -369,6 +394,30 @@ class ConverterSubtypeTargetTest {
                 converter.convert(items, java.util.concurrent.BlockingQueue.class).getClass());
         assertSame(java.util.LinkedList.class, converter.convert(items, java.util.Queue.class).getClass());
         assertSame(java.util.ArrayList.class, converter.convert(items, java.util.List.class).getClass());
+    }
+
+    /** An immutable subclass is made by the constructor its JDK type has, from the text that reads back exactly. */
+    @Test
+    void immutableSubclassesAreMadeByTheirValueConstructor() {
+        Object[] numbers = {5L, 7, "1.50", new BigDecimal("1.2300"), 2.5d, java.math.BigInteger.TEN};
+        for (Object source : numbers) {
+            BigDecimal expected = converter.convert(source, BigDecimal.class);
+            Object money = converter.convert(source, Money.class);
+            assertSame(Money.class, money.getClass(), "from " + source);
+            assertEquals(expected, money);        // equals compares the scale too
+            assertEquals(expected.scale(), ((BigDecimal) money).scale());
+        }
+        for (Object source : new Object[]{5L, "12345678901234567890", new BigDecimal("42")}) {
+            Object count = converter.convert(source, Count.class);
+            assertSame(Count.class, count.getClass());
+            assertEquals(converter.convert(source, java.math.BigInteger.class), count);
+        }
+        Object document = converter.convert("dir/report.txt", Document.class);
+        assertSame(Document.class, document.getClass());
+        assertEquals(new File("dir/report.txt"), document);
+
+        assertFalse(converter.isConversionSupportedFor(Long.class, ZeroOnly.class));
+        assertThrows(IllegalArgumentException.class, () -> converter.convert(5L, ZeroOnly.class));
     }
 
     /** A conversion the caller added for the parent type is the one used, and makes the subclass too. */

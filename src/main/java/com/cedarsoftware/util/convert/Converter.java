@@ -253,8 +253,9 @@ public final class Converter {
      * null when that class cannot be made. Asked for MyDate (extends Date), the inheritance walk finds, say, Long ->
      * Date, which makes a plain Date; the Date maker turns it into a MyDate (see toSubtype). The most specific maker on
      * the supertype's superclass chain applies (java.sql.Date and java.sql.Time use Date's). Makers exist for the value
-     * types whose state can be set on a new instance: Date, Timestamp, Calendar, AtomicLong, AtomicInteger,
-     * AtomicBoolean and BitSet. A supertype with no maker converts as before.
+     * types whose state can be set on a new instance (Date, Timestamp, Calendar, AtomicLong, AtomicInteger,
+     * AtomicBoolean, BitSet), for Map, and for the immutable types a constructor makes (BigDecimal, BigInteger,
+     * File). A supertype with no maker converts as before.
      */
     private static final Map<Class<?>, Function<Class<?>, BiFunction<Object, Converter, Object>>> SUBTYPE_MAKERS =
             subtypeMakers();
@@ -292,7 +293,22 @@ public final class Converter {
         makers.put(BitSet.class, type -> maker(type, null, value -> value,
                 (made, value) -> ((BitSet) made).or((BitSet) value)));
         makers.put(Map.class, Converter::mapMaker);
+        // Immutable: made only by the constructor the JDK type itself has, from the text that reads back exactly
+        makers.put(BigDecimal.class, type -> constructedMaker(type, String.class, Object::toString));
+        makers.put(BigInteger.class, type -> constructedMaker(type, String.class, Object::toString));
+        makers.put(File.class, type -> constructedMaker(type, String.class, Object::toString));
         return makers;
+    }
+
+    /**
+     * Makes a subclass of an immutable type, whose state cannot be set after construction, with its constructor
+     * taking {@code stateType} (the one the JDK type has: BigDecimal(String)), given {@code state} of the value. Null
+     * when it has none.
+     */
+    private static BiFunction<Object, Converter, Object> constructedMaker(Class<?> type, Class<?> stateType,
+                                                                          Function<Object, Object> state) {
+        Constructor<?> ofState = constructor(type, stateType);
+        return ofState == null ? null : (value, converter) -> instantiate(ofState, state.apply(value));
     }
 
     /**

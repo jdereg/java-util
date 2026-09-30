@@ -575,12 +575,7 @@ public class DeepEquals {
 
         while (!stack.isEmpty()) {
             ItemsToCompare itemsToCompare = stack.removeFirst();
-            
-            // Skip if already visited
-            if (!visited.add(itemsToCompare)) {
-                continue;
-            }
-            
+
             // Security check: prevent excessive recursion depth (heap-based depth tracking, read from ThreadLocal)
             if (maxRecursionDepth != Integer.MAX_VALUE && itemsToCompare.depth > maxRecursionDepth) {
                 throw new SecurityException("Maximum recursion depth exceeded: " + itemsToCompare.depth + " > " + maxRecursionDepth);
@@ -652,11 +647,17 @@ public class DeepEquals {
             // Atomic holders have no equals() of their own, and on JDK 17+ their state is hidden from reflection:
             // compared by what they hold, the same on every JDK
             if (key1 instanceof AtomicReference && key2 instanceof AtomicReference) {
+                if (!visited.add(itemsToCompare)) {
+                    continue;               // it may hold itself
+                }
                 stack.addFirst(new ItemsToCompare(((AtomicReference<?>) key1).get(), ((AtomicReference<?>) key2).get(),
                         "value", itemsToCompare, Difference.FIELD_VALUE_MISMATCH));
                 continue;
             }
             if (isAtomicArray(key1) && key1.getClass() == key2.getClass()) {
+                if (!visited.add(itemsToCompare)) {
+                    continue;
+                }
                 if (!decomposeAtomicArray(key1, key2, stack, itemsToCompare, maxArraySize)) {
                     return false;
                 }
@@ -713,6 +714,12 @@ public class DeepEquals {
                     stack.addFirst(new ItemsToCompare(key1, key2, itemsToCompare, Difference.VALUE_MISMATCH));
                     return false;
                 }
+                continue;
+            }
+
+            // Containers and objects may refer back to themselves: each pair is taken apart once. (The values above
+            // are compared where they stand and hold nothing, so they need no place in the visited set.)
+            if (!visited.add(itemsToCompare)) {
                 continue;
             }
 
@@ -1051,6 +1058,8 @@ public class DeepEquals {
             hashGroups.computeIfAbsent(hash, k -> new ArrayList<>()).add(o);
         }
         final Map<String, Object> childOptions = sanitizedChildOptions(options, currentItem);
+        ScopedSet visitedCopy = new ScopedSet(visited);           // reset before each probe
+        Deque<ItemsToCompare> probeStack = new ArrayDeque<>();
 
         // Find first item in col1 not found in col2
         for (Object item1 : col1) {
@@ -1068,15 +1077,9 @@ public class DeepEquals {
 
             // Check candidates with matching hash
             boolean foundMatch = false;
-            ScopedSet visitedCopy = new ScopedSet(visited);
-            Deque<ItemsToCompare> probeStack = new ArrayDeque<>();
             for (Iterator<Object> it = candidates.iterator(); it.hasNext();) {
                 Object item2 = it.next();
-                // Use a copy of visited set to avoid polluting it with failed comparisons
-                // Call 5-arg overload directly to bypass diff generation entirely
-                visitedCopy.reset();
-                probeStack.clear();
-                if (deepEquals(item1, item2, probeStack, childOptions, visitedCopy)) {
+                if (sameProbe(item1, item2, probeStack, childOptions, visitedCopy)) {
                     foundMatch = true;
                     it.remove();                  // safe removal during iteration
                     if (candidates.isEmpty()) {
@@ -1107,6 +1110,21 @@ public class DeepEquals {
         }
 
         return true;
+    }
+
+    /**
+     * Whether two elements (or keys) are deeply equal, probed on the side: with a copy of the visited set (so that
+     * failed comparisons do not pollute it) and a stack of their own, with no difference reported. Two Strings are
+     * equal exactly when equals() says so, which is what the full comparison would conclude.
+     */
+    private static boolean sameProbe(Object a, Object b, Deque<ItemsToCompare> probeStack, Map<String, ?> options,
+                                     ScopedSet visitedCopy) {
+        if (a instanceof String && b instanceof String) {
+            return a.equals(b);
+        }
+        visitedCopy.reset();
+        probeStack.clear();
+        return deepEquals(a, b, probeStack, options, visitedCopy);
     }
 
     // Slow-path for unordered collections: search all buckets for a deep-equal match.
@@ -1239,6 +1257,8 @@ public class DeepEquals {
                     .add(new AbstractMap.SimpleEntry<>(entry.getKey(), entry.getValue()));
         }
         final Map<String, Object> childOptions = sanitizedChildOptions(options, currentItem);
+        ScopedSet visitedCopy = new ScopedSet(visited);           // reset before each probe
+        Deque<ItemsToCompare> probeStack = new ArrayDeque<>();
 
         // Process map1 entries
         for (Map.Entry<?, ?> entry : map1.entrySet()) {
@@ -1264,17 +1284,11 @@ public class DeepEquals {
             boolean foundMatch = false;
             Iterator<Map.Entry<?, ?>> iterator = otherEntries.iterator();
 
-            ScopedSet visitedCopy = new ScopedSet(visited);
-            Deque<ItemsToCompare> probeStack = new ArrayDeque<>();
             while (iterator.hasNext()) {
                 Map.Entry<?, ?> otherEntry = iterator.next();
 
                 // Check if keys are equal
-                // Use a copy of visited set to avoid polluting it with failed comparisons
-                // Call 5-arg overload directly to bypass diff generation for key probes
-                visitedCopy.reset();
-                probeStack.clear();
-                if (deepEquals(entry.getKey(), otherEntry.getKey(), probeStack, childOptions, visitedCopy)) {
+                if (sameProbe(entry.getKey(), otherEntry.getKey(), probeStack, childOptions, visitedCopy)) {
                     // Push value comparison only - keys are known to be equal
                     stack.addFirst(new ItemsToCompare(
                             entry.getValue(),                // map1 value
@@ -1861,17 +1875,22 @@ public class DeepEquals {
      * @return an integer representing the object's deep hash code
      */
     public static int deepHashCode(Object obj) {
-        try {
-            Set<Object> visited = new IdentitySet<>();
-            return deepHashCode(obj, visited);
-        } finally {
-            // Only remove formattingStack if empty (to support re-entrant calls)
-            Deque<Set<Object>> fmtStack = formattingStack.get();
-            if (fmtStack != null && fmtStack.isEmpty()) {
-                formattingStack.remove();
-            }
-            // Note: maxDepthBudgetStack is only used by deepEquals, not deepHashCode
+        // A value that hashes as itself, as the walk below would: no set, stack or walk for it. DeepEquals hashes
+        // every key of a map and every element of a set it compares, so this is its common case.
+        if (obj == null) {
+            return 0;
         }
+        if (obj instanceof String || obj instanceof Integer || obj instanceof Long || obj instanceof Boolean
+                || obj instanceof Character || obj instanceof Short || obj instanceof Byte) {
+            return obj.hashCode();
+        }
+        if (obj instanceof Double) {
+            return hashDouble((Double) obj);
+        }
+        if (obj instanceof Float) {
+            return hashFloat((Float) obj);
+        }
+        return deepHashCode(obj, new IdentitySet<>());
     }
 
     private static int deepHashCode(Object obj, Set<Object> visited) {

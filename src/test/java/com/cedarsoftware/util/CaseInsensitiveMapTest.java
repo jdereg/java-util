@@ -2924,7 +2924,7 @@ class CaseInsensitiveMapTest
         assertEquals(100, map.size());
     }
 
-    // ---- JU-3: LookupKey optimization for read-only operations ----
+    // ---- JU-3: read-only String lookups (these once went through a reused per-thread LookupKey) ----
 
     @Test
     void testLookupKeyGetCaseInsensitive() {
@@ -2932,7 +2932,7 @@ class CaseInsensitiveMapTest
         map.put("Hello", "world");
         map.put("FOO", "bar");
 
-        // get() with various casings should work via LookupKey (no CaseInsensitiveString allocated)
+        // get() with various casings
         assertEquals("world", map.get("hello"));
         assertEquals("world", map.get("HELLO"));
         assertEquals("world", map.get("Hello"));
@@ -2970,7 +2970,7 @@ class CaseInsensitiveMapTest
         map.put(42, "int-key");
         map.put("str", "str-key");
 
-        // Non-string keys should still work (bypass LookupKey path)
+        // Non-string keys still work
         assertEquals("int-key", map.get(42));
         assertTrue(map.containsKey(42));
         assertEquals("str-key", map.get("STR"));
@@ -2994,7 +2994,7 @@ class CaseInsensitiveMapTest
 
     @Test
     void testLookupKeyWithConcurrentHashMapBacking() {
-        // ConcurrentHashMap calls storedKey.equals(lookupKey) — tests CaseInsensitiveString.equals(LookupKey)
+        // ConcurrentHashMap calls storedKey.equals(lookupKey)
         CaseInsensitiveMap<String, String> map = new CaseInsensitiveMap<>(
                 Collections.emptyMap(),
                 new java.util.concurrent.ConcurrentHashMap<>());

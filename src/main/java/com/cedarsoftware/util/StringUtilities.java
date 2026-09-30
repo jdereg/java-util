@@ -1084,19 +1084,20 @@ public final class StringUtilities {
         if (s == null) return 0;
 
         final int n = s.length();
-        char[] buf = CharBufScratch.getChars(s, n);
 
+        // charAt() directly: copying into a thread-local scratch char[] first cost a ThreadLocal lookup and a copy
+        // per call, and measured a third slower (15 vs 10 ns for 15 chars, JDK 21 and JDK 8)
         int h = 0;
         for (int i = 0; i < n; i++) {
-            char c = buf[i];
+            char c = s.charAt(i);
             if (c <= 'Z') {            // digits, symbols, and uppercase all ≤ 90
                 if (c >= 'A') {         // uppercase A-Z: fold to lowercase
                     c += 32;
                 }
             } else if (c >= 128) {      // non-ASCII: full Unicode case fold
-                if (Character.isHighSurrogate(c) && i + 1 < n && Character.isLowSurrogate(buf[i + 1])) {
+                if (Character.isHighSurrogate(c) && i + 1 < n && Character.isLowSurrogate(s.charAt(i + 1))) {
                     // A surrogate pair folds as one code point (see hashFoldedCodePoint)
-                    h = hashFoldedCodePoint(h, Character.toCodePoint(c, buf[++i]));
+                    h = hashFoldedCodePoint(h, Character.toCodePoint(c, s.charAt(++i)));
                     continue;
                 }
                 c = Character.toLowerCase(Character.toUpperCase(c));

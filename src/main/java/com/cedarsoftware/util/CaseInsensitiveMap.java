@@ -879,6 +879,11 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
              */
             @Override
             public boolean remove(Object o) {
+                if (!isMultiKeyMapBacking) {
+                    // The backing key set says whether it removed the key; comparing sizes before and after was
+                    // wrong when another thread added a key in between
+                    return map.keySet().remove(convertKey(o));
+                }
                 int size = map.size();
                 CaseInsensitiveMap.this.remove(o);
                 return map.size() != size;
@@ -1053,16 +1058,9 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
                     return false;
                 }
                 Entry<K, V> that = (Entry<K, V>) o;
-                K key = that.getKey();
-                if (!CaseInsensitiveMap.this.containsKey(key)) {
-                    return false;
-                }
-                V storedValue = CaseInsensitiveMap.this.get(key);
-                if (!Objects.equals(storedValue, that.getValue())) {
-                    return false;
-                }
-                CaseInsensitiveMap.this.remove(key);
-                return true;
+                // remove(key, value): atomic on a concurrent backing map. Checking the value and then removing the key
+                // removed another thread's newer value put in between.
+                return CaseInsensitiveMap.this.remove(that.getKey(), that.getValue());
             }
 
             /**

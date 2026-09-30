@@ -14,6 +14,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.sql.Timestamp;
 import java.util.Date;
 import java.util.Deque;
 import java.util.HashMap;
@@ -29,7 +30,11 @@ import java.util.TimeZone;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicIntegerArray;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicLongArray;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.atomic.AtomicReferenceArray;
 import java.util.regex.Pattern;
 
 import static com.cedarsoftware.util.Converter.convert2BigDecimal;
@@ -142,6 +147,13 @@ public class DeepEquals {
     // Option keys
     public static final String IGNORE_CUSTOM_EQUALS = "ignoreCustomEquals";
     public static final String ALLOW_STRINGS_TO_MATCH_NUMBERS = "stringsCanMatchNumbers";
+    /**
+     * Option (a {@code Boolean}): skip the fields that cannot be read, as before 4.113.0. By default a field that
+     * cannot be read -- the private state of a JDK class, which the module system keeps from reflection on JDK 17+ --
+     * leaves the decision to the class's own {@code equals()}; for a class without one, two distinct objects are
+     * unequal. Skipped, such fields made {@code new Random(1)} equal {@code new Random(2)}.
+     */
+    public static final String SKIP_UNREADABLE_FIELDS = "skipUnreadableFields";
     public static final String DIFF = "diff";
     public static final String DIFF_ITEM = "diff_item";
     public static final String INCLUDE_DIFF_ITEM = "deepequals.include.diff_item";
@@ -442,6 +454,12 @@ public class DeepEquals {
      *     {@code DeepEquals.ALLOW_STRINGS_TO_MATCH_NUMBERS} (a {@code Boolean}):
      *     If set to {@code true}, allows strings like {@code "10"} to match the numeric value {@code 10}. Default false.
      *   </li>
+     *   <li>
+     *     {@code DeepEquals.SKIP_UNREADABLE_FIELDS} (a {@code Boolean}):
+     *     If set to {@code true}, fields that cannot be read (a JDK class's private state on JDK 17+) are skipped, as
+     *     before 4.113.0. Default false: the class's own {@code equals()} decides, and two distinct objects of a class
+     *     without one are unequal.
+     *   </li>
      * </ul>
      *
      * <p>If the objects differ, a difference description string is stored in {@code options}
@@ -541,6 +559,7 @@ public class DeepEquals {
         final boolean allowAllCustomEquals = ignoreCustomEquals == null;
         final boolean hasNonEmptyIgnoreSet = (ignoreCustomEquals != null && !ignoreCustomEquals.isEmpty());
         final boolean allowStringsToMatchNumbers = (options != null) && convert2boolean(options.get(ALLOW_STRINGS_TO_MATCH_NUMBERS));
+        final boolean skipUnreadableFields = (options != null) && convert2boolean(options.get(SKIP_UNREADABLE_FIELDS));
 
         stack.addFirst(new ItemsToCompare(a, b));
 
@@ -616,6 +635,32 @@ public class DeepEquals {
                 } else {
                     continue;
                 }
+            }
+
+            // Dates (Timestamp, java.sql.Date, java.sql.Time too): the same instant, to the nanosecond. Not
+            // compareTo(): Date.compareTo ignores a Timestamp's nanoseconds, which Timestamp.compareTo counts, so the
+            // answer depended on the order -- and on JDK 8 Date.compareTo reads a Timestamp's time truncated to the
+            // second.
+            if (key1 instanceof Date && key2 instanceof Date) {
+                if (!sameInstant((Date) key1, (Date) key2)) {
+                    stack.addFirst(new ItemsToCompare(key1, key2, itemsToCompare, Difference.VALUE_MISMATCH));
+                    return false;
+                }
+                continue;
+            }
+
+            // Atomic holders have no equals() of their own, and on JDK 17+ their state is hidden from reflection:
+            // compared by what they hold, the same on every JDK
+            if (key1 instanceof AtomicReference && key2 instanceof AtomicReference) {
+                stack.addFirst(new ItemsToCompare(((AtomicReference<?>) key1).get(), ((AtomicReference<?>) key2).get(),
+                        "value", itemsToCompare, Difference.FIELD_VALUE_MISMATCH));
+                continue;
+            }
+            if (isAtomicArray(key1) && key1.getClass() == key2.getClass()) {
+                if (!decomposeAtomicArray(key1, key2, stack, itemsToCompare, maxArraySize)) {
+                    return false;
+                }
+                continue;
             }
 
             final Class<?> key1Class = key1.getClass();
@@ -784,7 +829,7 @@ public class DeepEquals {
             
             // Special handling for Records (Java 14+) - use record components instead of fields
             if (ReflectionUtils.isRecord(key1Class)) {
-                if (!decomposeRecord(key1, key2, stack, itemsToCompare)) {
+                if (!decomposeRecord(key1, key2, stack, itemsToCompare, skipUnreadableFields)) {
                     return false;
                 }
                 continue;
@@ -846,7 +891,9 @@ public class DeepEquals {
             }
             
             // Decompose object into its fields (not using custom equals)
-            decomposeObject(key1, key2, stack, itemsToCompare, maxObjectFields);
+            if (!decomposeObject(key1, key2, stack, itemsToCompare, maxObjectFields, skipUnreadableFields)) {
+                return false;
+            }
         }
         return true;
     }
@@ -877,20 +924,32 @@ public class DeepEquals {
         return Math.max(16, (int) capacity);
     }
 
-    private static boolean decomposeRecord(Object rec1, Object rec2, Deque<ItemsToCompare> stack, ItemsToCompare currentItem) {
+    private static boolean decomposeRecord(Object rec1, Object rec2, Deque<ItemsToCompare> stack, ItemsToCompare currentItem,
+                                           boolean skipUnreadableFields) {
         // Get record components using reflection (Java 14+ feature)
         Object[] components = ReflectionUtils.getRecordComponents(rec1.getClass());
         if (components == null) {
             // Fallback to regular object decomposition if record components unavailable
-            return decomposeObject(rec1, rec2, stack, currentItem, Integer.MAX_VALUE);
+            return decomposeObject(rec1, rec2, stack, currentItem, Integer.MAX_VALUE, skipUnreadableFields);
         }
         
         // Compare each record component
+        int pushed = 0;
         for (Object component : components) {
             String componentName = ReflectionUtils.getRecordComponentName(component);
             if (componentName == null) {
-                // Skip components we can't access (reflection failure)
-                continue;
+                // A component it cannot read: as for a field (see decomposeObject), the record's equals() decides
+                if (skipUnreadableFields) {
+                    continue;
+                }
+                for (; pushed > 0; pushed--) {
+                    stack.removeFirst();
+                }
+                if (rec1.equals(rec2)) {
+                    return true;
+                }
+                stack.addFirst(new ItemsToCompare(rec1, rec2, "(component)", currentItem, Difference.UNREADABLE_FIELD));
+                return false;
             }
 
             Object value1 = ReflectionUtils.getRecordComponentValue(component, rec1);
@@ -898,6 +957,7 @@ public class DeepEquals {
 
             // Push component values for comparison with proper naming
             stack.addFirst(new ItemsToCompare(value1, value2, componentName, currentItem, Difference.FIELD_VALUE_MISMATCH));
+            pushed++;
         }
         
         return true;
@@ -926,6 +986,7 @@ public class DeepEquals {
         for (String key : options.keySet()) {
             if (!ALLOW_STRINGS_TO_MATCH_NUMBERS.equals(key) &&
                 !IGNORE_CUSTOM_EQUALS.equals(key) &&
+                !SKIP_UNREADABLE_FIELDS.equals(key) &&
                 !DEPTH_BUDGET.equals(key)) {  // DEPTH_BUDGET may exist from user input (ignored now)
                 hasOnlyInputKeys = false;
                 break;
@@ -946,6 +1007,10 @@ public class DeepEquals {
         Object ignore = options.get(IGNORE_CUSTOM_EQUALS);
         if (ignore != null) {
             child.put(IGNORE_CUSTOM_EQUALS, ignore);
+        }
+        Object skip = options.get(SKIP_UNREADABLE_FIELDS);
+        if (skip != null) {
+            child.put(SKIP_UNREADABLE_FIELDS, skip);
         }
 
         // Note: DEPTH_BUDGET is now tracked via ThreadLocal, not copied through options
@@ -1458,7 +1523,15 @@ public class DeepEquals {
         return true;
     }
 
-    private static boolean decomposeObject(Object obj1, Object obj2, Deque<ItemsToCompare> stack, ItemsToCompare currentItem, int maxObjectFields) {
+    /**
+     * Pushes each instance field's pair of values. A field that cannot be read (a JDK class's private state, which the
+     * module system keeps from reflection on JDK 17+) cannot show the objects equal: the pairs pushed for this object
+     * are taken back and the class's own equals() decides -- Object.equals(), identity, for a class without one --
+     * unless the caller asked to skip such fields (SKIP_UNREADABLE_FIELDS). False, with the difference on the stack,
+     * when they are unequal.
+     */
+    private static boolean decomposeObject(Object obj1, Object obj2, Deque<ItemsToCompare> stack, ItemsToCompare currentItem,
+                                           int maxObjectFields, boolean skipUnreadableFields) {
 
         // Get all fields from the object
         Collection<Field> fields = ReflectionUtils.getAllDeclaredFields(obj1.getClass());
@@ -1469,35 +1542,116 @@ public class DeepEquals {
         }
 
         // Push each field for comparison
+        int pushed = 0;
+        if (obj1 instanceof Throwable) {
+            // Throwable's own state is hidden from reflection on JDK 17+: compared by what it exposes -- message,
+            // cause and suppressed exceptions (not the stack trace, which a copy made elsewhere cannot share) --
+            // the same on every JDK. A subclass's own fields are compared below, as any object's.
+            Throwable t1 = (Throwable) obj1;
+            Throwable t2 = (Throwable) obj2;
+            stack.addFirst(new ItemsToCompare(t1.getSuppressed(), t2.getSuppressed(), "suppressed", currentItem,
+                    Difference.FIELD_VALUE_MISMATCH));
+            stack.addFirst(new ItemsToCompare(t1.getCause(), t2.getCause(), "cause", currentItem,
+                    Difference.FIELD_VALUE_MISMATCH));
+            stack.addFirst(new ItemsToCompare(t1.getMessage(), t2.getMessage(), "message", currentItem,
+                    Difference.FIELD_VALUE_MISMATCH));
+            pushed = 3;
+        }
         for (Field field : fields) {
-            try {
-                // Skip synthetic fields
-                if (field.isSynthetic()) {
-                    continue;
-                }
-                
-                // Skip static fields - they're not part of instance state
-                int modifiers = field.getModifiers();
-                if (Modifier.isStatic(modifiers)) {
-                    continue;
-                }
-                
-                // Skip transient fields - they're typically not part of equality
-                if (Modifier.isTransient(modifiers)) {
-                    continue;
-                }
-                
-                Object value1 = field.get(obj1);
-                Object value2 = field.get(obj2);
-
-                stack.addFirst(new ItemsToCompare(value1, value2, field.getName(), currentItem, Difference.FIELD_VALUE_MISMATCH));
-            } catch (Exception ignored) {
+            // Skip synthetic fields
+            if (field.isSynthetic()) {
+                continue;
             }
+
+            // Throwable's own fields were compared by its accessors, above
+            if (field.getDeclaringClass() == Throwable.class) {
+                continue;
+            }
+
+            // Skip static fields - they're not part of instance state
+            int modifiers = field.getModifiers();
+            if (Modifier.isStatic(modifiers)) {
+                continue;
+            }
+
+            // Skip transient fields - they're typically not part of equality
+            if (Modifier.isTransient(modifiers)) {
+                continue;
+            }
+
+            Object value1;
+            Object value2;
+            try {
+                value1 = field.get(obj1);
+                value2 = field.get(obj2);
+            } catch (Exception unreadable) {
+                if (skipUnreadableFields) {
+                    continue;
+                }
+                for (; pushed > 0; pushed--) {
+                    stack.removeFirst();
+                }
+                if (obj1.equals(obj2)) {
+                    return true;
+                }
+                stack.addFirst(new ItemsToCompare(obj1, obj2, field.getName(), currentItem, Difference.UNREADABLE_FIELD));
+                return false;
+            }
+            stack.addFirst(new ItemsToCompare(value1, value2, field.getName(), currentItem, Difference.FIELD_VALUE_MISMATCH));
+            pushed++;
         }
 
         return true;
     }
     
+    /** The same instant, to the nanosecond: a plain Date has no nanoseconds beyond its milliseconds. */
+    private static boolean sameInstant(Date a, Date b) {
+        return a.getTime() == b.getTime() && subMillisecondNanos(a) == subMillisecondNanos(b);
+    }
+
+    private static int subMillisecondNanos(Date date) {
+        return date instanceof Timestamp ? ((Timestamp) date).getNanos() % 1_000_000 : 0;
+    }
+
+    private static boolean isAtomicArray(Object o) {
+        return o instanceof AtomicIntegerArray || o instanceof AtomicLongArray || o instanceof AtomicReferenceArray;
+    }
+
+    /** Compares two atomic arrays of one class by length and elements, as arrays are compared. */
+    private static boolean decomposeAtomicArray(Object array1, Object array2, Deque<ItemsToCompare> stack,
+                                                ItemsToCompare currentItem, int maxArraySize) {
+        int len1 = array1 instanceof AtomicIntegerArray ? ((AtomicIntegerArray) array1).length()
+                : array1 instanceof AtomicLongArray ? ((AtomicLongArray) array1).length()
+                : ((AtomicReferenceArray<?>) array1).length();
+        int len2 = array2 instanceof AtomicIntegerArray ? ((AtomicIntegerArray) array2).length()
+                : array2 instanceof AtomicLongArray ? ((AtomicLongArray) array2).length()
+                : ((AtomicReferenceArray<?>) array2).length();
+        if (maxArraySize > 0 && (len1 > maxArraySize || len2 > maxArraySize)) {
+            throw new SecurityException("Array size exceeds maximum allowed: " + maxArraySize);
+        }
+        if (len1 != len2) {
+            // A value mismatch (printed with toString()): the array-length report reads real arrays
+            stack.addFirst(new ItemsToCompare(array1, array2, currentItem, Difference.VALUE_MISMATCH));
+            return false;
+        }
+        for (int i = len1 - 1; i >= 0; i--) {
+            Object e1;
+            Object e2;
+            if (array1 instanceof AtomicIntegerArray) {
+                e1 = ((AtomicIntegerArray) array1).get(i);
+                e2 = ((AtomicIntegerArray) array2).get(i);
+            } else if (array1 instanceof AtomicLongArray) {
+                e1 = ((AtomicLongArray) array1).get(i);
+                e2 = ((AtomicLongArray) array2).get(i);
+            } else {
+                e1 = ((AtomicReferenceArray<?>) array1).get(i);
+                e2 = ((AtomicReferenceArray<?>) array2).get(i);
+            }
+            stack.addFirst(new ItemsToCompare(e1, e2, new int[]{i}, currentItem, Difference.ARRAY_ELEMENT_MISMATCH));
+        }
+        return true;
+    }
+
     private static boolean isIntegralNumber(Number n) {
         return n instanceof Byte || n instanceof Short || 
                n instanceof Integer || n instanceof Long ||
@@ -1993,7 +2147,10 @@ public class DeepEquals {
         TYPE_MISMATCH("type mismatch", DiffCategory.TYPE),
 
         // The class's own equals() returned false, yet a field-by-field comparison finds no difference
-        CUSTOM_EQUALS_ONLY("custom equals() returned false", DiffCategory.VALUE);
+        CUSTOM_EQUALS_ONLY("custom equals() returned false", DiffCategory.VALUE),
+
+        // A field could not be read (module-encapsulated on JDK 17+), and the class's equals() says the objects differ
+        UNREADABLE_FIELD("field could not be read", DiffCategory.VALUE);
 
         private final String description;
         private final DiffCategory category;
@@ -2108,7 +2265,7 @@ public class DeepEquals {
         Difference last = it.previous().difference;
         // Every false return leaves a node that carries a difference; guard anyway, as the parent is.
         String a = last == null ? Difference.VALUE_MISMATCH.getDescription() : last.getDescription();
-        if (last == Difference.CUSTOM_EQUALS_ONLY) {
+        if (last == Difference.CUSTOM_EQUALS_ONLY || last == Difference.UNREADABLE_FIELD) {
             return a;   // the specific reason, not the container's generic "field value mismatch"
         }
 
@@ -2184,6 +2341,15 @@ public class DeepEquals {
         if (item.difference == Difference.CUSTOM_EQUALS_ONLY) {
             result.append(String.format("  %s.equals() returned false, but every field is equal%n  Expected: %s%n  Found: %s",
                     item._key1.getClass().getSimpleName(),
+                    formatDifferenceValue(item._key1),
+                    formatDifferenceValue(item._key2)));
+            return;
+        }
+
+        if (item.difference == Difference.UNREADABLE_FIELD) {
+            result.append(String.format("  %s field '%s' could not be read, and %s.equals() says the objects differ"
+                            + "%n  Expected: %s%n  Found: %s",
+                    item._key1.getClass().getSimpleName(), item.fieldName, item._key1.getClass().getSimpleName(),
                     formatDifferenceValue(item._key1),
                     formatDifferenceValue(item._key2)));
             return;

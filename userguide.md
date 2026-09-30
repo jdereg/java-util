@@ -4563,7 +4563,14 @@ These options can be passed in the `options` Map parameter:
 |------------|------|---------|-------------|
 | `DeepEquals.IGNORE_CUSTOM_EQUALS` | Set<Class> or Boolean | false | Ignore custom equals() methods for specified classes or all classes |
 | `DeepEquals.ALLOW_STRINGS_TO_MATCH_NUMBERS` | Boolean | false | Allow string "10" to match numeric 10 |
+| `DeepEquals.SKIP_UNREADABLE_FIELDS` | Boolean | false | Skip fields that cannot be read (see below), as before 4.113.0 |
 | `DeepEquals.INCLUDE_DIFF_ITEM` | Boolean | false | Include ItemsToCompare object in output (memory intensive) |
+
+**Fields that cannot be read.** On JDK 17+ the module system keeps a JDK class's private fields from reflection
+(`java.util.Random`, `ReentrantLock`, `StringJoiner`, ...). DeepEquals does not claim two such objects are equal without
+comparing them: the class's own `equals()` decides, and for a class without one, two distinct objects are unequal (the
+difference names the field that could not be read). Set `SKIP_UNREADABLE_FIELDS` to `true` to skip those fields
+instead, as before 4.113.0, when that made `new Random(1)` equal `new Random(2)`.
 
 **Output Keys (written to options Map):**
 

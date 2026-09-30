@@ -14,9 +14,22 @@ import java.util.BitSet;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.GregorianCalendar;
+import java.util.EnumMap;
 import java.util.HashMap;
+import java.util.Hashtable;
+import java.util.IdentityHashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.NavigableMap;
+import java.util.Properties;
+import java.util.SortedMap;
 import java.util.TimeZone;
+import java.util.TreeMap;
+import java.util.WeakHashMap;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.ConcurrentNavigableMap;
+import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -116,6 +129,11 @@ class ConverterSubtypeTargetTest {
 
     public static class MyBitSet extends BitSet {
         public MyBitSet() {
+        }
+    }
+
+    public static class MyMap extends HashMap<Object, Object> {
+        public MyMap() {
         }
     }
 
@@ -266,6 +284,66 @@ class ConverterSubtypeTargetTest {
             assertSame(MyBitSet.class, converted.getClass(), "from " + source.getClass().getName());
             assertEquals(expected, converted);
         }
+    }
+
+    /**
+     * A value converts to a Map as {_v: value}; asked for a particular Map type, it gets that type, made as a Map
+     * converts to it (an interface gets its usual implementation), rather than a LinkedHashMap.
+     */
+    @Test
+    void aValueConvertsToTheMapTypeAskedFor() {
+        Class<?>[] types = {SortedMap.class, NavigableMap.class, TreeMap.class, ConcurrentMap.class,
+                ConcurrentNavigableMap.class, ConcurrentHashMap.class, ConcurrentSkipListMap.class, Hashtable.class,
+                Properties.class, WeakHashMap.class, IdentityHashMap.class, LinkedHashMap.class, MyMap.class};
+        Object[] sources = {1L, 42, new BigDecimal("1.5"), true, new Date(5L)};
+        for (Object source : sources) {
+            Map<?, ?> expected = converter.convert(source, Map.class);
+            for (Class<?> type : types) {
+                Object converted = converter.convert(source, type);
+                assertTrue(type.isInstance(converted), source + " to " + type.getName() + " gave "
+                        + converted.getClass().getName());
+                assertEquals(new HashMap<>(expected), new HashMap<>((Map<?, ?>) converted));
+                assertTrue(converter.isConversionSupportedFor(source.getClass(), type));
+            }
+        }
+        assertSame(MyMap.class, converter.convert(1L, MyMap.class).getClass());
+    }
+
+    /** A Map converted to SortedMap or NavigableMap is a TreeMap, in the source's order when it has one. */
+    @Test
+    void aMapConvertsToTheSortedInterfaces() {
+        Map<String, Integer> plain = new LinkedHashMap<>();
+        plain.put("b", 1);
+        plain.put("a", 2);
+        TreeMap<String, Integer> reversed = new TreeMap<>(java.util.Comparator.reverseOrder());
+        reversed.putAll(plain);
+        for (Class<?> type : new Class<?>[]{SortedMap.class, NavigableMap.class}) {
+            Object sorted = converter.convert(plain, type);
+            assertSame(TreeMap.class, sorted.getClass());
+            assertEquals(java.util.Arrays.asList("a", "b"), new java.util.ArrayList<>(((Map<?, ?>) sorted).keySet()));
+            Object ordered = converter.convert(reversed, type);
+            assertEquals(java.util.Arrays.asList("b", "a"), new java.util.ArrayList<>(((Map<?, ?>) ordered).keySet()));
+        }
+    }
+
+    @Test
+    void aMapTypeItCannotMakeIsRefused() {
+        // Abstract, and a class with no no-argument or (int) constructor
+        for (Class<?> type : new Class<?>[]{java.security.Provider.class, EnumMap.class}) {
+            assertFalse(converter.isConversionSupportedFor(Long.class, type), type.getName());
+            assertThrows(IllegalArgumentException.class, () -> converter.convert(1L, type), type.getName());
+        }
+        // From a Map, the same types cannot be made either (it used to give a LinkedHashMap)
+        Map<String, Object> map = new HashMap<>();
+        map.put("a", 1);
+        for (Class<?> type : new Class<?>[]{java.security.Provider.class, EnumMap.class}) {
+            assertThrows(IllegalArgumentException.class, () -> converter.convert(map, type), type.getName());
+        }
+        // One it can make, whose entries do not fit (Attributes takes Attributes.Name keys only): as when a Map
+        // converts to it, those entries are skipped
+        Object attributes = converter.convert(1L, java.util.jar.Attributes.class);
+        assertSame(java.util.jar.Attributes.class, attributes.getClass());
+        assertTrue(((Map<?, ?>) attributes).isEmpty());
     }
 
     /** A conversion the caller added for the parent type is the one used, and makes the subclass too. */

@@ -863,6 +863,8 @@ final class MapConversions {
         target.isConcurrentMapInterface = toType.getName().equals("java.util.concurrent.ConcurrentMap");
         target.isConcurrentNavigableMapInterface = toType.getName().equals("java.util.concurrent.ConcurrentNavigableMap");
         target.isGenericMap = toType == Map.class;
+        target.isSortedMapInterface = toType.isInterface() && java.util.SortedMap.class.isAssignableFrom(toType)
+                && !ConcurrentMap.class.isAssignableFrom(toType);
         
         // Types requiring constructor arguments or special null handling
         target.isTreeMap = toType == TreeMap.class;
@@ -929,6 +931,13 @@ final class MapConversions {
             return result;
         }
         
+        if (target.isSortedMapInterface) {        // SortedMap, NavigableMap: a TreeMap, in the source's order if it has one
+            Map<Object, Object> result = source.isSortedMap && source.comparator != null
+                    ? new TreeMap<>(source.comparator) : new TreeMap<>();
+            copyEntries(sourceMap, result, true, false); // Skip null keys
+            return result;
+        }
+
         if (target.isGenericMap) {
             Map<Object, Object> result = new LinkedHashMap<>();
             copyEntries(sourceMap, result, false, false);
@@ -968,7 +977,12 @@ final class MapConversions {
             return result;
             
         } catch (Exception e) {
-            // Final fallback
+            // Final fallback, when a LinkedHashMap is of the requested type (an interface such as SequencedMap, or
+            // AbstractMap). Otherwise (an abstract class, a class it cannot construct) there is no Map to give: a
+            // LinkedHashMap is not the type asked for, and the caller would fail on it.
+            if (!target.toType.isAssignableFrom(LinkedHashMap.class)) {
+                throw new IllegalArgumentException("Cannot make a " + target.toType.getName() + " to convert to", e);
+            }
             LinkedHashMap<Object, Object> result = new LinkedHashMap<>();
             copyEntries(sourceMap, result, false, false);
             return result;
@@ -1041,6 +1055,7 @@ final class MapConversions {
         boolean isConcurrentMapInterface;
         boolean isConcurrentNavigableMapInterface;
         boolean isGenericMap;
+        boolean isSortedMapInterface;
         
         // Types requiring constructor arguments or special null handling
         boolean isTreeMap;

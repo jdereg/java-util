@@ -64,6 +64,7 @@ import java.util.concurrent.atomic.AtomicLongArray;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.atomic.AtomicReferenceArray;
 import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.regex.Pattern;
 import java.util.stream.DoubleStream;
@@ -255,16 +256,17 @@ public final class Converter {
      * types whose state can be set on a new instance: Date, Timestamp, Calendar, AtomicLong, AtomicInteger,
      * AtomicBoolean and BitSet. A supertype with no maker converts as before.
      */
-    private static final Map<Class<?>, Function<Class<?>, Function<Object, Object>>> SUBTYPE_MAKERS = subtypeMakers();
+    private static final Map<Class<?>, Function<Class<?>, BiFunction<Object, Converter, Object>>> SUBTYPE_MAKERS =
+            subtypeMakers();
 
-    private static Map<Class<?>, Function<Class<?>, Function<Object, Object>>> subtypeMakers() {
-        Map<Class<?>, Function<Class<?>, Function<Object, Object>>> makers = new HashMap<>();
+    private static Map<Class<?>, Function<Class<?>, BiFunction<Object, Converter, Object>>> subtypeMakers() {
+        Map<Class<?>, Function<Class<?>, BiFunction<Object, Converter, Object>>> makers = new HashMap<>();
         makers.put(Date.class, type -> maker(type, long.class, value -> ((Date) value).getTime(),
                 (made, millis) -> ((Date) made).setTime((Long) millis)));
         makers.put(Timestamp.class, type -> {
-            Function<Object, Object> date = SUBTYPE_MAKERS.get(Date.class).apply(type);
-            return date == null ? null : value -> {
-                Timestamp made = (Timestamp) date.apply(value);
+            BiFunction<Object, Converter, Object> date = SUBTYPE_MAKERS.get(Date.class).apply(type);
+            return date == null ? null : (value, converter) -> {
+                Timestamp made = (Timestamp) date.apply(value, converter);
                 made.setNanos(((Timestamp) value).getNanos());
                 return made;
             };
@@ -289,6 +291,7 @@ public final class Converter {
                 (made, v) -> ((AtomicBoolean) made).set((Boolean) v)));
         makers.put(BitSet.class, type -> maker(type, null, value -> value,
                 (made, value) -> ((BitSet) made).or((BitSet) value)));
+        makers.put(Map.class, Converter::mapMaker);
         return makers;
     }
 
@@ -297,14 +300,15 @@ public final class Converter {
      * its constructor taking {@code stateType} (the one the JDK type has: Date(long), AtomicLong(long); null when
      * there is none to use), given {@code state} of the value. Null when it has neither constructor.
      */
-    private static Function<Object, Object> maker(Class<?> type, Class<?> stateType, Function<Object, Object> state,
-                                                  BiConsumer<Object, Object> setState) {
+    private static BiFunction<Object, Converter, Object> maker(Class<?> type, Class<?> stateType,
+                                                               Function<Object, Object> state,
+                                                               BiConsumer<Object, Object> setState) {
         Constructor<?> noArg = constructor(type);
         Constructor<?> ofState = noArg == null && stateType != null ? constructor(type, stateType) : null;
         if (noArg == null && ofState == null) {
             return null;
         }
-        return value -> {
+        return (value, converter) -> {
             if (noArg == null) {
                 return instantiate(ofState, state.apply(value));
             }
@@ -2294,12 +2298,16 @@ public final class Converter {
                 final Class<?> finalToType = toType;
                 Convert<?> objectConverter = (fromObj, converter) -> ObjectConversions.objectToMapWithTarget(fromObj, converter, finalToType);
 
-                // Execute and cache successful conversions
+                // Execute and cache successful conversions. A result that is not of the requested type (a Map type
+                // that cannot be made: abstract, say) is no conversion.
                 Object result = objectConverter.convert(from, this);
-                if (result != null) {
-                    cacheConverter(sourceType, toType, objectConverter);
+                if (result == null) {
+                    return null;
                 }
-                return (T) result;
+                if (toType.isInstance(result)) {
+                    cacheConverter(sourceType, toType, objectConverter);
+                    return (T) result;
+                }
             }
         }
 
@@ -2475,20 +2483,42 @@ public final class Converter {
         if (!isValidConversion(found)) {
             return found;
         }
-        Function<Class<?>, Function<Object, Object>> makers = null;
+        Function<Class<?>, BiFunction<Object, Converter, Object>> makers = null;
         for (Class<?> type = baseType; type != null && makers == null; type = type.getSuperclass()) {
             makers = SUBTYPE_MAKERS.get(type);
         }
         if (makers == null) {
             return found;
         }
-        Function<Object, Object> make = makers.apply(toType);
+        BiFunction<Object, Converter, Object> make = makers.apply(toType);
         if (make == null) {
             return null;
         }
         return (ConvertWithTarget<Object>) (from, converter, target) -> {
             Object value = found.convert(from, converter, toType);
-            return value == null || toType.isInstance(value) ? value : make.apply(value);
+            return value == null || toType.isInstance(value) ? value : make.apply(value, converter);
+        };
+    }
+
+    /**
+     * Makes a Map of the requested type from the Map a conversion made (a scalar converts to {_v: value}): as a Map
+     * converts to that type, so an interface gets its usual implementation (SortedMap a TreeMap, ConcurrentMap a
+     * ConcurrentHashMapNullSafe) and a Collections wrapper its factory; entries the type cannot hold are skipped, as
+     * they are then. Null -- refused -- for a class that cannot be made: abstract, or with neither a no-argument nor
+     * an (int) constructor. A result that still is not of the requested type is an IllegalArgumentException.
+     */
+    private static BiFunction<Object, Converter, Object> mapMaker(Class<?> type) {
+        boolean makeable = type.isInterface() || type.getName().startsWith("java.util.Collections$")
+                || constructor(type) != null || constructor(type, int.class) != null;
+        if (!makeable) {
+            return null;
+        }
+        return (value, converter) -> {
+            Object made = MapConversions.mapToMapWithTarget(value, converter, type);
+            if (!type.isInstance(made)) {
+                throw new IllegalArgumentException("Cannot make a " + type.getName() + " to convert to");
+            }
+            return made;
         };
     }
 

@@ -346,6 +346,31 @@ class ConverterSubtypeTargetTest {
         assertTrue(((Map<?, ?>) attributes).isEmpty());
     }
 
+    /**
+     * A collection type whose nearest factory makes something else -- TransferQueue is a BlockingQueue, whose factory
+     * makes a LinkedBlockingQueue -- gets the first factory whose product is of that type.
+     */
+    @Test
+    void aCollectionTypeGetsAFactoryThatMakesIt() {
+        java.util.List<Integer> items = java.util.Arrays.asList(3, 1, 2);
+        Class<?>[] types = {java.util.concurrent.TransferQueue.class, java.util.AbstractQueue.class,
+                java.util.AbstractSequentialList.class};
+        Class<?>[] made = {java.util.concurrent.LinkedTransferQueue.class,
+                java.util.concurrent.ConcurrentLinkedQueue.class, java.util.LinkedList.class};
+        for (int i = 0; i < types.length; i++) {
+            for (Object source : new Object[]{new java.util.ArrayList<>(items), items.toArray(), new int[]{3, 1, 2}}) {
+                Object converted = converter.convert(source, types[i]);
+                assertSame(made[i], converted.getClass(), types[i].getName());
+                assertEquals(items, new java.util.ArrayList<>((java.util.Collection<?>) converted));
+            }
+        }
+        // The types whose nearest factory was already right keep it
+        assertSame(java.util.concurrent.LinkedBlockingQueue.class,
+                converter.convert(items, java.util.concurrent.BlockingQueue.class).getClass());
+        assertSame(java.util.LinkedList.class, converter.convert(items, java.util.Queue.class).getClass());
+        assertSame(java.util.ArrayList.class, converter.convert(items, java.util.List.class).getClass());
+    }
+
     /** A conversion the caller added for the parent type is the one used, and makes the subclass too. */
     @Test
     void aCallersConversionToTheParentMakesTheSubclass() {

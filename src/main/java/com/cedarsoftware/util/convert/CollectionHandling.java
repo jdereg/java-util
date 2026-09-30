@@ -79,6 +79,8 @@ final class CollectionHandling {
     // The two tables in their order, for the plans below; the last base factory is the default (ArrayList)
     private static final CollectionFactory[] SPECIAL_FACTORY_LIST;
     private static final Function<Integer, Collection<?>>[] BASE_FACTORY_LIST;
+    // The class each base factory makes (BlockingQueue's is LinkedBlockingQueue), in the same order
+    private static final Class<?>[] BASE_PRODUCTS;
 
     static {
         // Initialize special collection handlers (most specific to most general)
@@ -98,6 +100,18 @@ final class CollectionHandling {
         }
         base[i] = ArrayList::new;       // Default factory
         BASE_FACTORY_LIST = base;
+        BASE_PRODUCTS = new Class<?>[base.length];
+        int j = 0;
+        for (Map.Entry<Class<?>, Function<Integer, Collection<?>>> entry : BASE_FACTORIES.entrySet()) {
+            Class<?> product;
+            try {
+                product = entry.getValue().apply(16).getClass();
+            } catch (IllegalArgumentException refused) {
+                product = entry.getKey();       // SynchronousQueue, DelayQueue: refused as targets
+            }
+            BASE_PRODUCTS[j++] = product;
+        }
+        BASE_PRODUCTS[j] = ArrayList.class;
     }
 
     /**
@@ -306,16 +320,28 @@ final class CollectionHandling {
         return BASE_FACTORY_LIST[plan].apply(sizeOrDefault(source));
     }
 
-    /** The index in BASE_FACTORY_LIST of the first base factory the type is assignable to, else the default's. */
+    /**
+     * The index in BASE_FACTORY_LIST of the first base factory the type is assignable to, else the default's --
+     * unless that factory's product is not of the type (TransferQueue is a BlockingQueue, whose factory makes a
+     * LinkedBlockingQueue, which is not a TransferQueue): then the first factory whose product is (a
+     * LinkedTransferQueue). With none (a JDK class it cannot make), the closest known type, as before.
+     */
     private static int closestBaseIndex(Class<?> type) {
         int i = 0;
         for (Class<?> baseType : BASE_FACTORIES.keySet()) {
             if (baseType.isAssignableFrom(type)) {
-                return i;
+                break;
             }
             i++;
         }
-        return i;       // the default (ArrayList)
+        if (!type.isAssignableFrom(BASE_PRODUCTS[i])) {
+            for (int j = 0; j < BASE_PRODUCTS.length; j++) {
+                if (type.isAssignableFrom(BASE_PRODUCTS[j])) {
+                    return j;
+                }
+            }
+        }
+        return i;
     }
 
     /**

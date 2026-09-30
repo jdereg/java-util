@@ -2634,6 +2634,7 @@ public final class ReflectionUtils {
         static final Method GET_RECORD_COMPONENTS_METHOD;
         static final Method COMPONENT_GET_NAME_METHOD;
         static final Method COMPONENT_GET_ACCESSOR_METHOD;
+        static final Class<?> RECORD_CLASS;     // java.lang.Record: every record's direct superclass
         static final boolean SUPPORTED;
 
         static {
@@ -2641,6 +2642,7 @@ public final class ReflectionUtils {
             Method getComponents = null;
             Method getName = null;
             Method getAccessor = null;
+            Class<?> recordClass = null;
             boolean supported = false;
             try {
                 isRecord = Class.class.getMethod("isRecord");
@@ -2649,6 +2651,7 @@ public final class ReflectionUtils {
                 Class<?> recordComponentClass = Class.forName("java.lang.reflect.RecordComponent");
                 getName = recordComponentClass.getMethod("getName");
                 getAccessor = recordComponentClass.getMethod("getAccessor");
+                recordClass = Class.forName("java.lang.Record");
                 supported = true;
             } catch (NoSuchMethodException | ClassNotFoundException e) {
                 // Running on Java < 14
@@ -2657,44 +2660,119 @@ public final class ReflectionUtils {
             GET_RECORD_COMPONENTS_METHOD = getComponents;
             COMPONENT_GET_NAME_METHOD = getName;
             COMPONENT_GET_ACCESSOR_METHOD = getAccessor;
+            RECORD_CLASS = recordClass;
             SUPPORTED = supported;
         }
     }
 
+    private static final Object[] NOT_A_RECORD = new Object[0];
+    private static final Object[] COMPONENTS_UNLISTED = new Object[3];
+
+    /**
+     * Per record class, read once: {components, names, accessors}, the accessors made accessible, so that a record
+     * that is not public is read too. A record whose components cannot be listed maps to COMPONENTS_UNLISTED, any
+     * other class to NOT_A_RECORD. The values are JDK types only, so this keeps no java-util class alive through a
+     * record's class.
+     */
+    private static final ClassValue<Object[]> RECORD_ACCESS = new ClassValue<Object[]>() {
+        @Override
+        protected Object[] computeValue(Class<?> c) {
+            try {
+                if (!(Boolean) RecordSupport.IS_RECORD_METHOD.invoke(c)) {
+                    return NOT_A_RECORD;
+                }
+                Object[] components = (Object[]) RecordSupport.GET_RECORD_COMPONENTS_METHOD.invoke(c);
+                String[] names = new String[components.length];
+                Method[] accessors = new Method[components.length];
+                for (int i = 0; i < components.length; i++) {
+                    names[i] = (String) RecordSupport.COMPONENT_GET_NAME_METHOD.invoke(components[i]);
+                    accessors[i] = (Method) RecordSupport.COMPONENT_GET_ACCESSOR_METHOD.invoke(components[i]);
+                    try {
+                        secureSetAccessible(accessors[i]);
+                    } catch (RuntimeException e) {
+                        // Left as it is: reading this component then fails, and each caller says how it treats that
+                    }
+                }
+                return new Object[]{components, names, accessors};
+            } catch (Exception e) {
+                return COMPONENTS_UNLISTED;
+            }
+        }
+    };
+
     /**
      * Check if a class is a Record (Java 14+).
-     * Uses reflection to maintain compatibility with Java 8.
+     * Uses reflection to maintain compatibility with Java 8; the answer is cached per class.
      *
      * @param clazz The class to check
      * @return true if the class is a Record, false otherwise or if running on Java {@code < 14}
      */
     public static boolean isRecord(Class<?> clazz) {
-        if (clazz == null || !RecordSupport.SUPPORTED) {
+        if (clazz == null || !RecordSupport.SUPPORTED || clazz.getSuperclass() != RecordSupport.RECORD_CLASS) {
             return false;
         }
-        try {
-            return (Boolean) RecordSupport.IS_RECORD_METHOD.invoke(clazz);
-        } catch (Exception e) {
-            return false;
-        }
+        return RECORD_ACCESS.get(clazz) != NOT_A_RECORD;
     }
 
     /**
      * Get the record components of a Record class (Java 14+).
-     * Uses reflection to maintain compatibility with Java 8.
+     * Uses reflection to maintain compatibility with Java 8; the components are listed once per class.
      *
      * @param clazz The Record class
-     * @return Array of RecordComponent objects, or null if not a Record or running on Java {@code < 14}
+     * @return A new array of RecordComponent objects, or null if not a Record or running on Java {@code < 14}
      */
     public static Object[] getRecordComponents(Class<?> clazz) {
         if (!isRecord(clazz)) {
             return null;
         }
-        try {
-            return (Object[]) RecordSupport.GET_RECORD_COMPONENTS_METHOD.invoke(clazz);
-        } catch (Exception e) {
-            return null;
+        Object[] components = (Object[]) RECORD_ACCESS.get(clazz)[0];
+        return components == null ? null : components.clone();
+    }
+
+    /**
+     * The component names of a record class in declaration order, or null if it is not a record or its components
+     * cannot be listed. Shared: callers must not modify it.
+     */
+    static String[] recordComponentNames(Class<?> clazz) {
+        return isRecord(clazz) ? (String[]) RECORD_ACCESS.get(clazz)[1] : null;
+    }
+
+    /**
+     * The accessors of a record class's components, made accessible where the JVM allows, in the order of
+     * {@link #recordComponentNames(Class)}. Shared: callers must not modify it.
+     */
+    static Method[] recordComponentAccessors(Class<?> clazz) {
+        return isRecord(clazz) ? (Method[]) RECORD_ACCESS.get(clazz)[2] : null;
+    }
+
+    /**
+     * The components of a record and their values, in declaration order (Java 16+). The accessors are made
+     * accessible once per record class, so a record that is not public (package-private, or nested and private) is
+     * read too.
+     *
+     * @param record a record instance
+     * @return a new map of component name to value
+     * @throws IllegalArgumentException if {@code record} is not a record, or a component cannot be read (its
+     *         accessor throws, or the record's module does not open it)
+     */
+    public static Map<String, Object> getRecordComponentValues(Object record) {
+        Class<?> clazz = record == null ? null : record.getClass();
+        String[] names = recordComponentNames(clazz);
+        if (names == null) {
+            throw new IllegalArgumentException("Not a record, or its components cannot be listed: "
+                    + (clazz == null ? "null" : clazz.getName()));
         }
+        Method[] accessors = recordComponentAccessors(clazz);
+        Map<String, Object> values = new LinkedHashMap<>(names.length * 4 / 3 + 1);
+        for (int i = 0; i < names.length; i++) {
+            try {
+                values.put(names[i], accessors[i].invoke(record));
+            } catch (Exception e) {
+                throw new IllegalArgumentException("Cannot read component '" + names[i] + "' of " + clazz.getName(),
+                        e);
+            }
+        }
+        return values;
     }
     
     /**
@@ -2739,12 +2817,8 @@ public final class ReflectionUtils {
         }
     }
 
-    /**
-     * The value of a record component, read through its accessor made accessible. Unlike
-     * {@link #getRecordComponentValue(Object, Object)}, a value that cannot be read throws rather than reading as
-     * null, so a caller comparing records can tell the two apart.
-     */
-    static Object readRecordComponent(Object recordComponent, Object recordInstance) throws Exception {
+    /** The value of a record component, read through its accessor made accessible; throws if it cannot be read. */
+    private static Object readRecordComponent(Object recordComponent, Object recordInstance) throws Exception {
         Method accessor = (Method) RecordSupport.COMPONENT_GET_ACCESSOR_METHOD.invoke(recordComponent);
         secureSetAccessible(accessor);
         return accessor.invoke(recordInstance);

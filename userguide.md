@@ -6141,7 +6141,19 @@ public static Constructor<?>[] getAllConstructors(Class<?> clazz)
 // Execution
 public static Object call(Object instance, Method method, Object... args)
 public static Object call(Object instance, String methodName, Object... args)
+
+// Records (JDK 16+; each answers false / null on JDK 8 through 15)
+public static boolean isRecord(Class<?> clazz)
+public static Object[] getRecordComponents(Class<?> clazz)
+public static String getRecordComponentName(Object recordComponent)
+public static Object getRecordComponentValue(Object recordComponent, Object recordInstance)
+public static Map<String, Object> getRecordComponentValues(Object record)
 ```
+
+A record's components, names and accessors are listed once per record class, the accessors made accessible, so a
+record that is not public (package-private, or nested and private) is read too. `getRecordComponentValues()` returns
+every component's value in declaration order and throws `IllegalArgumentException` for a value it cannot read (the
+accessor throws, or the record's module does not open it); `getRecordComponentValue()` answers `null` for one.
 
 ### Caching
 
@@ -6251,9 +6263,11 @@ private static final ClassValue<Constructor<?>[]> SORTED_CONSTRUCTORS = perClass
 // A ClassValue lookup takes no lock and writes nothing; a value is computed at most once per class and every
 // thread sees the same one.
 
-// Record support uses holder class pattern for lock-free thread safety
+// Record support uses holder class pattern for lock-free thread safety; each record class's
+// {components, names, accessors} is then a per-class ClassValue like the caches above
 private static class RecordSupport {
     static final Method IS_RECORD_METHOD;
+    static final Class<?> RECORD_CLASS;     // java.lang.Record: isRecord() checks the superclass first
     static final boolean SUPPORTED;
     static { /* one-time init guaranteed by JVM */ }
 }

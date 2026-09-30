@@ -1,6 +1,5 @@
 package com.cedarsoftware.util.convert;
 
-import java.lang.reflect.Method;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.net.URI;
@@ -51,7 +50,6 @@ import com.cedarsoftware.util.ConcurrentNavigableMapNullSafe;
 import com.cedarsoftware.util.LoggingConfig;
 import com.cedarsoftware.util.ReflectionUtils;
 import com.cedarsoftware.util.StringUtilities;
-import com.cedarsoftware.util.SystemUtilities;
 import com.cedarsoftware.util.geom.Color;
 import com.cedarsoftware.util.geom.Dimension;
 import com.cedarsoftware.util.geom.Insets;
@@ -693,97 +691,13 @@ final class MapConversions {
      * @throws IllegalArgumentException if the object is not a Record or Records are not supported
      */
     static Map<String, Object> recordToMap(Object from, Converter converter) {
-        // Verify this is actually a Record using reflection (JDK 8 compatible)
-        if (!isRecord(from.getClass())) {
+        if (!ReflectionUtils.isRecord(from.getClass())) {
             throw new IllegalArgumentException("Expected Record instance, got: " + from.getClass().getName());
         }
-        
-        Map<String, Object> target = new LinkedHashMap<>();
-        
         try {
-            // Use reflection to get record components (JDK 8 compatible)
-            Object[] components = getRecordComponents(from.getClass());
-            
-            for (Object component : components) {
-                // Get component name and accessor method
-                String name = getRecordComponentName(component);
-                Object accessor = getRecordComponentAccessor(component);
-                
-                // Invoke accessor to get the value using ReflectionUtils
-                Object value = ReflectionUtils.call(from, (Method) accessor);
-                
-                target.put(name, value);
-            }
-        } catch (Exception e) {
+            return ReflectionUtils.getRecordComponentValues(from);
+        } catch (IllegalArgumentException e) {
             throw new IllegalArgumentException("Failed to convert Record to Map: " + from.getClass().getName(), e);
-        }
-        
-        return target;
-    }
-    
-    /**
-     * JDK 8 compatible check for Record classes using SystemUtilities and ReflectionUtils caching.
-     * Package-friendly to allow access from ObjectConversions.
-     */
-    static boolean isRecord(Class<?> clazz) {
-        // Records are only available in JDK 14+
-        if (!SystemUtilities.isJavaVersionAtLeast(14, 0)) {
-            return false;
-        }
-        
-        try {
-            Method isRecord = ReflectionUtils.getMethod(Class.class, "isRecord");
-            if (isRecord != null) {
-                return (Boolean) ReflectionUtils.call(clazz, isRecord);
-            }
-            return false;
-        } catch (Exception e) {
-            return false; // JDK < 14 or method not available
-        }
-    }
-    
-    /**
-     * JDK 8 compatible method to get record components using ReflectionUtils caching.
-     */
-    private static Object[] getRecordComponents(Class<?> recordClass) {
-        try {
-            Method getRecordComponents = ReflectionUtils.getMethod(Class.class, "getRecordComponents");
-            if (getRecordComponents != null) {
-                return (Object[]) ReflectionUtils.call(recordClass, getRecordComponents);
-            }
-            throw new IllegalArgumentException("Records not supported in this JVM version");
-        } catch (Exception e) {
-            throw new IllegalArgumentException("Not a record class or Records not supported: " + recordClass.getName(), e);
-        }
-    }
-    
-    /**
-     * Gets the name of a record component using ReflectionUtils caching.
-     */
-    private static String getRecordComponentName(Object component) {
-        try {
-            Method getName = ReflectionUtils.getMethod(component.getClass(), "getName");
-            if (getName != null) {
-                return (String) ReflectionUtils.call(component, getName);
-            }
-            throw new IllegalArgumentException("Cannot get component name");
-        } catch (Exception e) {
-            throw new IllegalArgumentException("Failed to get record component name", e);
-        }
-    }
-    
-    /**
-     * Gets the accessor method of a record component using ReflectionUtils caching.
-     */
-    private static Object getRecordComponentAccessor(Object component) {
-        try {
-            Method getAccessor = ReflectionUtils.getMethod(component.getClass(), "getAccessor");
-            if (getAccessor != null) {
-                return ReflectionUtils.call(component, getAccessor);
-            }
-            throw new IllegalArgumentException("Cannot get component accessor");
-        } catch (Exception e) {
-            throw new IllegalArgumentException("Failed to get record component accessor", e);
         }
     }
 

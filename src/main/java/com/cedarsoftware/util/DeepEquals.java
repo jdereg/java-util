@@ -933,31 +933,25 @@ public class DeepEquals {
 
     private static boolean decomposeRecord(Object rec1, Object rec2, Deque<ItemsToCompare> stack, ItemsToCompare currentItem,
                                            boolean skipUnreadableFields) {
-        // Get record components using reflection (Java 14+ feature)
-        Object[] components = ReflectionUtils.getRecordComponents(rec1.getClass());
-        if (components == null) {
+        // Component names and accessors, listed once per record class by ReflectionUtils
+        String[] names = ReflectionUtils.recordComponentNames(rec1.getClass());
+        if (names == null) {
             // Fallback to regular object decomposition if record components unavailable
             return decomposeObject(rec1, rec2, stack, currentItem, Integer.MAX_VALUE, skipUnreadableFields);
         }
-        
+        Method[] accessors = ReflectionUtils.recordComponentAccessors(rec1.getClass());
+
         // Compare each record component
         int pushed = 0;
-        for (Object component : components) {
-            String componentName = ReflectionUtils.getRecordComponentName(component);
-            Object value1 = null;
-            Object value2 = null;
-            boolean readable = componentName != null;
-            if (readable) {
-                try {
-                    value1 = ReflectionUtils.readRecordComponent(component, rec1);
-                    value2 = ReflectionUtils.readRecordComponent(component, rec2);
-                } catch (Exception e) {
-                    readable = false;
-                }
-            }
-            if (!readable) {
-                // A component it cannot read (its accessor throws, or the record's module does not open it): as for a
-                // field (see decomposeObject), the record's equals() decides. Reading it as null made any two such
+        for (int i = 0; i < names.length; i++) {
+            Object value1;
+            Object value2;
+            try {
+                value1 = accessors[i].invoke(rec1);
+                value2 = accessors[i].invoke(rec2);
+            } catch (Exception e) {
+                // A component it cannot read (its accessor throws, or the record's module does not open it): as for
+                // a field (see decomposeObject), the record's equals() decides. Reading it as null made any two such
                 // records equal.
                 if (skipUnreadableFields) {
                     continue;
@@ -968,13 +962,12 @@ public class DeepEquals {
                 if (rec1.equals(rec2)) {
                     return true;
                 }
-                String name = componentName == null ? "(component)" : componentName;
-                stack.addFirst(new ItemsToCompare(rec1, rec2, name, currentItem, Difference.UNREADABLE_FIELD));
+                stack.addFirst(new ItemsToCompare(rec1, rec2, names[i], currentItem, Difference.UNREADABLE_FIELD));
                 return false;
             }
 
             // Push component values for comparison with proper naming
-            stack.addFirst(new ItemsToCompare(value1, value2, componentName, currentItem, Difference.FIELD_VALUE_MISMATCH));
+            stack.addFirst(new ItemsToCompare(value1, value2, names[i], currentItem, Difference.FIELD_VALUE_MISMATCH));
             pushed++;
         }
         
@@ -1981,19 +1974,21 @@ public class DeepEquals {
             }
 
             // Special handling for Records (Java 14+) - use record components for hashing
-            if (ReflectionUtils.isRecord(obj.getClass())) {
-                Object[] components = ReflectionUtils.getRecordComponents(obj.getClass());
-                if (components != null) {
-                    for (Object component : components) {
-                        Object value = ReflectionUtils.getRecordComponentValue(component, obj);
+            Method[] accessors = ReflectionUtils.recordComponentAccessors(obj.getClass());
+            if (accessors != null) {
+                for (Method accessor : accessors) {
+                    try {
+                        Object value = accessor.invoke(obj);
                         if (value != null) {
                             stack.addFirst(value);
                         }
+                    } catch (Exception e) {
+                        // A component it cannot read adds nothing, as a null one does
                     }
-                    continue;
                 }
-                // Fallback to field-based hashing if record components unavailable
+                continue;
             }
+            // Not a record, or its components cannot be listed: hashed by its fields
 
             Collection<Field> fields = ReflectionUtils.getAllDeclaredFields(obj.getClass());
             for (Field field : fields) {

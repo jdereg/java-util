@@ -1,7 +1,6 @@
 package com.cedarsoftware.util.convert;
 
 import java.lang.reflect.Field;
-import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -16,7 +15,6 @@ import com.cedarsoftware.util.ArrayUtilities;
 import com.cedarsoftware.util.ClassUtilities;
 import com.cedarsoftware.util.IdentitySet;
 import com.cedarsoftware.util.ReflectionUtils;
-import com.cedarsoftware.util.SystemUtilities;
 
 /**
  * Conversions for generic Object to Map transformations.
@@ -68,7 +66,7 @@ final class ObjectConversions {
         }
         
         // Handle Records specially - delegate to MapConversions
-        if (isRecord(from.getClass())) {
+        if (ReflectionUtils.isRecord(from.getClass())) {
             return MapConversions.recordToMap(from, converter);
         }
         
@@ -225,7 +223,7 @@ final class ObjectConversions {
         }
         
         // Handle Records specially - delegate to MapConversions
-        if (isRecord(valueClass)) {
+        if (ReflectionUtils.isRecord(valueClass)) {
             try {
                 return MapConversions.recordToMap(value, converter);
             } catch (Exception e) {
@@ -292,32 +290,6 @@ final class ObjectConversions {
      */
     private static boolean isPrimitiveOrWrapper(Class<?> clazz) {
         return ClassUtilities.isPrimitive(clazz);
-    }
-    
-    // Cached Method reference for Class.isRecord() — looked up once
-    private static final Method IS_RECORD_METHOD;
-    static {
-        Method m = null;
-        if (SystemUtilities.isJavaVersionAtLeast(14, 0)) {
-            try {
-                m = ReflectionUtils.getMethod(Class.class, "isRecord");
-            } catch (Exception ignored) { }
-        }
-        IS_RECORD_METHOD = m;
-    }
-
-    /**
-     * Check if a class is a Record using cached reflection.
-     */
-    private static boolean isRecord(Class<?> clazz) {
-        if (IS_RECORD_METHOD == null) {
-            return false;
-        }
-        try {
-            return (Boolean) ReflectionUtils.call(clazz, IS_RECORD_METHOD);
-        } catch (Exception e) {
-            return false;
-        }
     }
 
 }

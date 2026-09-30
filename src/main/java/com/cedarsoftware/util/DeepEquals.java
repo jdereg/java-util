@@ -944,8 +944,21 @@ public class DeepEquals {
         int pushed = 0;
         for (Object component : components) {
             String componentName = ReflectionUtils.getRecordComponentName(component);
-            if (componentName == null) {
-                // A component it cannot read: as for a field (see decomposeObject), the record's equals() decides
+            Object value1 = null;
+            Object value2 = null;
+            boolean readable = componentName != null;
+            if (readable) {
+                try {
+                    value1 = ReflectionUtils.readRecordComponent(component, rec1);
+                    value2 = ReflectionUtils.readRecordComponent(component, rec2);
+                } catch (Exception e) {
+                    readable = false;
+                }
+            }
+            if (!readable) {
+                // A component it cannot read (its accessor throws, or the record's module does not open it): as for a
+                // field (see decomposeObject), the record's equals() decides. Reading it as null made any two such
+                // records equal.
                 if (skipUnreadableFields) {
                     continue;
                 }
@@ -955,12 +968,10 @@ public class DeepEquals {
                 if (rec1.equals(rec2)) {
                     return true;
                 }
-                stack.addFirst(new ItemsToCompare(rec1, rec2, "(component)", currentItem, Difference.UNREADABLE_FIELD));
+                String name = componentName == null ? "(component)" : componentName;
+                stack.addFirst(new ItemsToCompare(rec1, rec2, name, currentItem, Difference.UNREADABLE_FIELD));
                 return false;
             }
-
-            Object value1 = ReflectionUtils.getRecordComponentValue(component, rec1);
-            Object value2 = ReflectionUtils.getRecordComponentValue(component, rec2);
 
             // Push component values for comparison with proper naming
             stack.addFirst(new ItemsToCompare(value1, value2, componentName, currentItem, Difference.FIELD_VALUE_MISMATCH));

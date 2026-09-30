@@ -2720,21 +2720,33 @@ public final class ReflectionUtils {
      * Get the value of a RecordComponent from a Record instance (Java 14+).
      * Uses reflection to maintain compatibility with Java 8.
      *
+     * The accessor is made accessible first, so a record that is not public (package-private, or nested and
+     * private) is read too.
+     *
      * @param recordComponent The RecordComponent object
      * @param recordInstance The Record instance
-     * @return The value of the component in the instance
+     * @return The value of the component in the instance, or null if it cannot be read (the accessor throws, or
+     *         the record's module does not open it)
      */
     public static Object getRecordComponentValue(Object recordComponent, Object recordInstance) {
         if (recordComponent == null || recordInstance == null || !RecordSupport.SUPPORTED) {
             return null;
         }
-
         try {
-            // RecordComponent has an accessor() method that returns the Method to get the value
-            Method accessor = (Method) RecordSupport.COMPONENT_GET_ACCESSOR_METHOD.invoke(recordComponent);
-            return accessor.invoke(recordInstance);
+            return readRecordComponent(recordComponent, recordInstance);
         } catch (Exception e) {
             return null;
         }
+    }
+
+    /**
+     * The value of a record component, read through its accessor made accessible. Unlike
+     * {@link #getRecordComponentValue(Object, Object)}, a value that cannot be read throws rather than reading as
+     * null, so a caller comparing records can tell the two apart.
+     */
+    static Object readRecordComponent(Object recordComponent, Object recordInstance) throws Exception {
+        Method accessor = (Method) RecordSupport.COMPONENT_GET_ACCESSOR_METHOD.invoke(recordComponent);
+        secureSetAccessible(accessor);
+        return accessor.invoke(recordInstance);
     }
 }

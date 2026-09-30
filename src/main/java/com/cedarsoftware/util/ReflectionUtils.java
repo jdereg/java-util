@@ -454,6 +454,18 @@ public final class ReflectionUtils {
         // - Performance optimizations
         ClassUtilities.trySetAccessible(obj);
     }
+
+    /**
+     * Makes a member accessible through the same security-checked path as ReflectionUtils' own lookups. For java-util
+     * code handed a member that may not have come from ReflectionUtils; one that is already accessible (every member
+     * ReflectionUtils hands out, vetted when it was cached) costs only the flag read.
+     */
+    @SuppressWarnings("deprecation")    // isAccessible(): canAccess(Object) needs JDK 9
+    static void makeAccessible(java.lang.reflect.AccessibleObject member) {
+        if (!member.isAccessible()) {
+            secureSetAccessible(member);
+        }
+    }
     
     /**
      * Validates that a field is safe to access via reflection.

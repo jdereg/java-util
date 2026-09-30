@@ -358,10 +358,7 @@ public class GraphComparator
                 Object fieldValue;
                 try
                 {
-                    // Always try to make field accessible
-                    if (!field.isAccessible()) {
-                        field.setAccessible(true);
-                    }
+                    ReflectionUtils.makeAccessible(field);
                     fieldValue = field.get(source);
                 }
                 catch (Exception e)
@@ -1101,16 +1098,7 @@ public class GraphComparator
                 errors.add(new DeltaError(delta.cmd + " failed, field name missing: " + delta.fieldName + ", obj id: " + delta.id, delta));
                 continue;
             }
-            
-            // Always try to make field accessible
-            if (field != null && !field.isAccessible()) {
-                try {
-                    field.setAccessible(true);
-                } catch (Exception e) {
-                    // Field cannot be made accessible - JVM/SecurityManager is in control
-                    // The delta processor will handle any access errors
-                }
-            }
+            // The field came from ReflectionUtils, which made it accessible
 
 //            if (LOG.isDebugEnabled())
 //            {
@@ -1250,10 +1238,7 @@ public class GraphComparator
 
             try
             {
-                // Always try to make field accessible
-                if (!field.isAccessible()) {
-                    field.setAccessible(true);
-                }
+                ReflectionUtils.makeAccessible(field);
                 field.set(source, newArray);
             }
             catch (Exception e)
@@ -1267,10 +1252,7 @@ public class GraphComparator
         {
             try
             {
-                // Always try to make field accessible
-                if (!field.isAccessible()) {
-                    field.setAccessible(true);
-                }
+                ReflectionUtils.makeAccessible(field);
                 field.set(source, delta.targetValue);
             }
             catch (Exception e)

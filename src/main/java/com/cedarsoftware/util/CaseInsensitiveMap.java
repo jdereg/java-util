@@ -135,6 +135,17 @@ import java.util.function.Function;
  * backing map implementation to ensure thread safety.
  * </p>
  *
+ * <h2>Equality and Hash Codes</h2>
+ * <p>
+ * Equality is case-insensitive: {@code {"Key": 1}} equals {@code {"KEY": 1}}, whether the other map is a
+ * {@code CaseInsensitiveMap} or a {@code HashMap}. For equal maps to have equal hash codes, the hash code of a String
+ * key is case-insensitive too (it hashes as its lower-case form). A {@code HashMap} hashes its keys as written, so a
+ * {@code CaseInsensitiveMap} and a {@code HashMap} can be equal with different hash codes, even when their keys are
+ * written alike ({@code "Key"}). Do not mix the two kinds of map as keys, or as elements, of one hash-based
+ * collection; among {@code CaseInsensitiveMap}s, equality and hash codes agree. The same holds for this map's entries
+ * and its key set.
+ * </p>
+ *
  * <h2>Additional Notes</h2>
  * <ul>
  *   <li>All String keys are handled uniformly regardless of length.</li>
@@ -1212,9 +1223,9 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
         /**
          * {@inheritDoc}
          * <p>
-         * For String keys, equality is based on the original String value rather than
-         * the case-insensitive representation. This ensures that entries with the same
-         * case-insensitive key but different original strings are considered distinct.
+         * For String keys, equality is case-insensitive, as the map's: an entry for {@code "Key"} equals one for
+         * {@code "KEY"} with an equal value. (An entry of a case-sensitive map compares keys as written, so it may
+         * not return the favor; see "Equality and Hash Codes" on the class.)
          *
          * @param o object to be compared for equality with this map entry
          * @return true if the specified object is equal to this map entry
@@ -1231,8 +1242,8 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
         /**
          * {@inheritDoc}
          * <p>
-         * For String keys, the hash code is computed using the original String value
-         * rather than the case-insensitive representation.
+         * For String keys, the key's hash code is case-insensitive (it hashes as its lower-case form), so that equal
+         * entries have equal hash codes; see "Equality and Hash Codes" on the class.
          *
          * @return the hash code value for this map entry
          * @see Entry#hashCode()

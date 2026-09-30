@@ -3,6 +3,8 @@ package com.cedarsoftware.util.convert;
 import java.io.Externalizable;
 import java.io.File;
 import java.io.Serializable;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Modifier;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.net.URI;
@@ -40,6 +42,7 @@ import java.util.Comparator;
 import java.util.Currency;
 import java.util.Date;
 import java.util.EnumSet;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
@@ -59,6 +62,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicLongArray;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.atomic.AtomicReferenceArray;
+import java.util.function.Function;
 import java.util.regex.Pattern;
 import java.util.stream.DoubleStream;
 import java.util.stream.IntStream;
@@ -67,6 +71,7 @@ import java.util.stream.LongStream;
 import com.cedarsoftware.util.ClassUtilities;
 import com.cedarsoftware.util.IdentitySet;
 import com.cedarsoftware.util.LRUCache;
+import com.cedarsoftware.util.ReflectionUtils;
 import com.cedarsoftware.util.TTLCache;
 import com.cedarsoftware.util.geom.Color;
 import com.cedarsoftware.util.geom.Dimension;
@@ -239,6 +244,49 @@ public final class Converter {
             return new Object[]{types, levels};
         }
     };
+    /**
+     * How to make a class the Converter has no conversion to, from the value of its nearest supertype that it has,
+     * keyed by that supertype: given the requested class, a function that makes one from the supertype's value, or
+     * null when that class cannot be made. Asked for MyDate (extends Date), the inheritance walk finds, say, Long ->
+     * Date, which makes a plain Date; the Date maker turns it into a MyDate (see toSubtype). The most specific maker on
+     * the supertype's superclass chain applies (java.sql.Date and java.sql.Time use Date's). A supertype with no maker
+     * converts as before.
+     */
+    private static final Map<Class<?>, Function<Class<?>, Function<Object, Object>>> SUBTYPE_MAKERS = subtypeMakers();
+
+    private static Map<Class<?>, Function<Class<?>, Function<Object, Object>>> subtypeMakers() {
+        Map<Class<?>, Function<Class<?>, Function<Object, Object>>> makers = new HashMap<>();
+        makers.put(Date.class, type -> dateMaker(type, false));
+        makers.put(Timestamp.class, type -> dateMaker(type, true));
+        return makers;
+    }
+
+    /**
+     * Makes a Date subclass from a Date: with its no-argument constructor and setTime, else with its (long)
+     * constructor, the one every JDK Date type has; a Timestamp's nanoseconds come along. Null when it has neither.
+     */
+    private static Function<Object, Object> dateMaker(Class<?> type, boolean nanos) {
+        Constructor<?> noArg = constructor(type);
+        Constructor<?> ofMillis = noArg == null ? constructor(type, long.class) : null;
+        if (noArg == null && ofMillis == null) {
+            return null;
+        }
+        return value -> {
+            long millis = ((Date) value).getTime();
+            Date made;
+            if (noArg != null) {
+                made = (Date) instantiate(noArg);
+                made.setTime(millis);
+            } else {
+                made = (Date) instantiate(ofMillis, millis);
+            }
+            if (nanos) {
+                ((Timestamp) made).setNanos(((Timestamp) value).getNanos());
+            }
+            return made;
+        };
+    }
+
     // Performance: All per-(source, target) lookups use ClassPairMap: a ClassValue read on one class of the pair and
     // an identity-hash probe for the other. No ConversionPair is allocated per lookup.
     private static final ClassPairMap<InheritancePair[]> cacheInheritancePairs = new ClassPairMap<>();
@@ -2378,15 +2426,64 @@ public final class Converter {
             if (checkUserDb) {
                 Convert<?> userConverter = USER_DB.get(source, target);
                 if (userConverter != null) {
-                    return userConverter;
+                    return target == toType ? userConverter : toSubtype(userConverter, target, toType);
                 }
             }
             Convert<?> tempConverter = CONVERSION_DB.get(source, target);
             if (tempConverter != null) {
-                return tempConverter;
+                return target == toType ? tempConverter : toSubtype(tempConverter, target, toType);
             }
         }
         return null;
+    }
+
+    /**
+     * The conversion to {@code toType} when the walk found {@code found}, a conversion to its supertype
+     * {@code baseType}. With a maker for baseType (see SUBTYPE_MAKERS): one that turns the found conversion's result
+     * into a toType (a result that is a toType already is returned as it is), or null -- no conversion -- when
+     * toType cannot be made. Without a maker, the found conversion, as before. The caller caches what this returns,
+     * so the constructors are looked up once per (source, toType).
+     */
+    private static Convert<?> toSubtype(Convert<?> found, Class<?> baseType, Class<?> toType) {
+        if (!isValidConversion(found)) {
+            return found;
+        }
+        Function<Class<?>, Function<Object, Object>> makers = null;
+        for (Class<?> type = baseType; type != null && makers == null; type = type.getSuperclass()) {
+            makers = SUBTYPE_MAKERS.get(type);
+        }
+        if (makers == null) {
+            return found;
+        }
+        Function<Object, Object> make = makers.apply(toType);
+        if (make == null) {
+            return null;
+        }
+        return (ConvertWithTarget<Object>) (from, converter, target) -> {
+            Object value = found.convert(from, converter, toType);
+            return value == null || toType.isInstance(value) ? value : make.apply(value);
+        };
+    }
+
+    /** The accessible constructor of a concrete class with these parameter types, or null. */
+    private static Constructor<?> constructor(Class<?> type, Class<?>... parameterTypes) {
+        if (type.isInterface() || Modifier.isAbstract(type.getModifiers())) {
+            return null;
+        }
+        try {
+            return ReflectionUtils.getConstructor(type, parameterTypes);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private static Object instantiate(Constructor<?> constructor, Object... arguments) {
+        try {
+            return constructor.newInstance(arguments);
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Cannot make a " + constructor.getDeclaringClass().getName()
+                    + " to convert to", e);
+        }
     }
 
     /**

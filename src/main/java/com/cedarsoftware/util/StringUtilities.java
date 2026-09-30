@@ -1075,10 +1075,16 @@ public final class StringUtilities {
      * This implementation is consistent with {@link String#equalsIgnoreCase(String)}: chars fold one at a
      * time, and a surrogate pair folds as one code point, as the JDK compares it from JDK 16 on.
      *
-     * <p>The fold logic is inlined rather than delegated to a helper method to ensure
-     * C2 JIT compiles the entire loop as a single compilation unit. The branch structure
-     * is ordered so that lowercase letters (the most common characters in map keys) take
-     * only two comparisons: {@code c <= 'Z'} (false) → {@code c >= 128} (false).</p>
+     * <p>An ASCII char folds by clearing its case bit ({@code c & 0xDF}), so {@code 'a'} and {@code 'A'} hash alike
+     * with no branch on which case the char is in. On keys of mixed case such a branch is mispredicted about half
+     * the time, and on large maps that cost more than the rest of the hash. Clearing the bit also joins a few pairs
+     * of ASCII symbols ({@code '@'} and {@code '`'}, {@code '['} and {@code '{'}, ...): they share a hash, and
+     * {@code equalsIgnoreCase()} still tells them apart. Any other char folds as {@code equalsIgnoreCase()} folds
+     * it; one that folds to an ASCII letter (KELVIN SIGN to {@code 'k'}, dotless {@code 'ı'} to {@code 'i'}) then
+     * has its case bit cleared too, so it hashes as that letter does.</p>
+     *
+     * <p>The value is not {@code s.toLowerCase().hashCode()}: only consistency with
+     * {@code equalsIgnoreCase()} is promised, and the value may differ between releases.</p>
      */
     public static int hashCodeIgnoreCase(String s) {
         if (s == null) return 0;
@@ -1089,34 +1095,35 @@ public final class StringUtilities {
         // per call, and measured a third slower (15 vs 10 ns for 15 chars, JDK 21 and JDK 8)
         int h = 0;
         for (int i = 0; i < n; i++) {
-            char c = s.charAt(i);
-            if (c <= 'Z') {            // digits, symbols, and uppercase all ≤ 90
-                if (c >= 'A') {         // uppercase A-Z: fold to lowercase
-                    c += 32;
-                }
-            } else if (c >= 128) {      // non-ASCII: full Unicode case fold
-                if (Character.isHighSurrogate(c) && i + 1 < n && Character.isLowSurrogate(s.charAt(i + 1))) {
+            int c = s.charAt(i);
+            if (c < 128) {
+                c &= 0xDF;          // ASCII: clear the case bit, no branch on case
+            } else {
+                if (Character.isHighSurrogate((char) c) && i + 1 < n && Character.isLowSurrogate(s.charAt(i + 1))) {
                     // A surrogate pair folds as one code point (see hashFoldedCodePoint)
-                    h = hashFoldedCodePoint(h, Character.toCodePoint(c, s.charAt(++i)));
+                    h = hashFoldedCodePoint(h, Character.toCodePoint((char) c, s.charAt(++i)));
                     continue;
                 }
-                c = Character.toLowerCase(Character.toUpperCase(c));
+                c = Character.toLowerCase(Character.toUpperCase((char) c));
+                if (c < 128) {
+                    c &= 0xDF;      // KELVIN SIGN folds to 'k', dotless i to 'i': hash as those letters do
+                }
             }
-            // else: c is 91-127 (lowercase a-z, symbols) — no folding, 2 comparisons
             h = 31 * h + c;
         }
         return h;
     }
 
     /**
-     * Case-fold a single character for hashing purposes.
+     * Case-fold a single character for hashing, as {@link #hashCodeIgnoreCase(String)} folds it.
      * Used by the CharSequence overload of hashCodeIgnoreCase.
      */
     private static char foldCaseForHash(char c) {
-        if (c <= 'Z') {
-            return (c >= 'A') ? (char) (c + 32) : c;
+        if (c < 128) {
+            return (char) (c & 0xDF);
         }
-        return c < 128 ? c : Character.toLowerCase(Character.toUpperCase(c));
+        char folded = Character.toLowerCase(Character.toUpperCase(c));
+        return folded < 128 ? (char) (folded & 0xDF) : folded;
     }
     
     /**

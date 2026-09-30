@@ -210,9 +210,11 @@ public class TrackingMapTest
         map1.put("f", "foxtrot");
         map1.put("o", "oscar");
 
-        Map<String, Object> map2 = new LinkedHashMap<>();
-        map2.put("o", "foxtrot");
-        map2.put("f", "oscar");
+        // A TrackingMap hashes as the map it wraps. (This was a LinkedHashMap with the values swapped, equal in hash
+        // to map1 only by a coincidence of the lower-case fold's values.)
+        Map<String, Object> map2 = new CaseInsensitiveMap<>();
+        map2.put("f", "foxtrot");
+        map2.put("o", "oscar");
 
         Map<String, Object> map3 = new TrackingMap<>(new CaseInsensitiveMap<>());
         map3.put("F", "foxtrot");

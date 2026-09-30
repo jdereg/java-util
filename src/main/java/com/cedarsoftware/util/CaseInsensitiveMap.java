@@ -1,6 +1,5 @@
 package com.cedarsoftware.util;
 
-import java.io.IOException;
 import java.io.Serializable;
 import java.lang.reflect.Array;
 import java.util.AbstractMap;
@@ -139,7 +138,7 @@ import java.util.function.Function;
  * <p>
  * Equality is case-insensitive: {@code {"Key": 1}} equals {@code {"KEY": 1}}, whether the other map is a
  * {@code CaseInsensitiveMap} or a {@code HashMap}. For equal maps to have equal hash codes, the hash code of a String
- * key is case-insensitive too (it hashes as its lower-case form). A {@code HashMap} hashes its keys as written, so a
+ * key is case-insensitive too (it hashes with its case folded). A {@code HashMap} hashes its keys as written, so a
  * {@code CaseInsensitiveMap} and a {@code HashMap} can be equal with different hash codes, even when their keys are
  * written alike ({@code "Key"}). Do not mix the two kinds of map as keys, or as elements, of one hash-based
  * collection; among {@code CaseInsensitiveMap}s, equality and hash codes agree. The same holds for this map's entries
@@ -1242,7 +1241,7 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
         /**
          * {@inheritDoc}
          * <p>
-         * For String keys, the key's hash code is case-insensitive (it hashes as its lower-case form), so that equal
+         * For String keys, the key's hash code is case-insensitive (it hashes with its case folded), so that equal
          * entries have equal hash codes; see "Equality and Hash Codes" on the class.
          *
          * @return the hash code value for this map entry
@@ -1429,12 +1428,12 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
         }
 
         /**
-         * Custom readObject method for serialization.
-         * This ensures we properly handle the hash field during deserialization.
+         * Rebuilds the key from its text, so its hash is the one this release computes. The stream holds the hash
+         * of the release that wrote it, and a map read back (a HashMap files each key by its hashCode()) would
+         * otherwise file keys where no lookup looks.
          */
-        private void readObject(java.io.ObjectInputStream in) throws IOException, ClassNotFoundException {
-            in.defaultReadObject();
-            // The hash field is final, but will be restored by deserialization
+        private Object readResolve() {
+            return new CaseInsensitiveString(original);
         }
     }
 

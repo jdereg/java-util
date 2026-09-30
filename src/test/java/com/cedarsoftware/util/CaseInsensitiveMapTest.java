@@ -528,8 +528,8 @@ class CaseInsensitiveMapTest
     void testEqualsAndHashCode()
     {
         Map<Object, Object> map1 = new HashMap<>();
-        map1.put("BTC", "Bitcoin");
-        map1.put("LTC", "Litecoin");
+        map1.put("Btc", "Bitcoin");
+        map1.put("Ltc", "Litecoin");
         map1.put(16, 16);
         map1.put(null, null);
 
@@ -545,8 +545,9 @@ class CaseInsensitiveMapTest
         map3.put(16, 16);
         map3.put(null, null);
 
-        assertTrue(map1.hashCode() != map2.hashCode());    // By design: case sensitive maps will [rightly] compute hash of ABC and abc differently
-        assertTrue(map1.hashCode() != map3.hashCode());    // By design: case sensitive maps will [rightly] compute hash of ABC and abc differently
+        // By design: a case-sensitive map hashes "Btc" as written, a CaseInsensitiveMap with its case folded
+        assertTrue(map1.hashCode() != map2.hashCode());
+        assertTrue(map1.hashCode() != map3.hashCode());
         assertEquals(map2.hashCode(), map3.hashCode());
 
         assertEquals(map1, map2);
@@ -1607,7 +1608,8 @@ class CaseInsensitiveMapTest
         CaseInsensitiveMap.CaseInsensitiveString ciString = new CaseInsensitiveMap.CaseInsensitiveString("John");
         assert ciString.equals("JOHN");
         assert ciString.equals("john");
-        assert ciString.hashCode() == "John".toLowerCase().hashCode();
+        assert ciString.hashCode() == new CaseInsensitiveMap.CaseInsensitiveString("JOHN").hashCode();
+        assert ciString.hashCode() == StringUtilities.hashCodeIgnoreCase("john");
         assert ciString.compareTo("JOHN") == 0;
         assert ciString.compareTo("john") == 0;
         assert ciString.compareTo("alpha") > 0;
@@ -1651,8 +1653,9 @@ class CaseInsensitiveMapTest
     @Test
     void testCaseInsensitiveStringHashcodeCollision()
     {
-        CaseInsensitiveMap.CaseInsensitiveString ciString = new CaseInsensitiveMap.CaseInsensitiveString("f608607");
-        CaseInsensitiveMap.CaseInsensitiveString ciString2 = new CaseInsensitiveMap.CaseInsensitiveString("f16010070");
+        // 'Y' and '_' fold to 89 and 95, 'Z' and '@' to 90 and 64: 89 * 31 + 95 == 90 * 31 + 64
+        CaseInsensitiveMap.CaseInsensitiveString ciString = new CaseInsensitiveMap.CaseInsensitiveString("Key_");
+        CaseInsensitiveMap.CaseInsensitiveString ciString2 = new CaseInsensitiveMap.CaseInsensitiveString("KEZ@");
         assert ciString.hashCode() == ciString2.hashCode();
         assert !ciString.equals(ciString2);
     }

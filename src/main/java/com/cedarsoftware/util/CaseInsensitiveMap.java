@@ -702,7 +702,16 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
 
         Map<?, ?> that = (Map<?, ?>) other;
         if (that.size() != size()) { return false; }
+        if (that instanceof CaseInsensitiveMap && !isMultiKeyMapBacking
+                && !((CaseInsensitiveMap<?, ?>) that).isMultiKeyMapBacking) {
+            Boolean found = entriesFoundIn(((CaseInsensitiveMap<?, ?>) that).map);
+            if (found != null) {
+                return found;
+            }
+        }
 
+        // Another kind of map may hold keys that differ only in case ("a" and "A"): its keys are normalized first,
+        // so that two of them folding to one key make the maps unequal
         Map<Object, Object> normalizedEntries = new HashMap<>(capacityFor(that.size()));
         for (Entry<?, ?> entry : that.entrySet()) {
             Object normalizedKey = normalizeKeyForEquality(entry.getKey());
@@ -720,6 +729,32 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
             if (!Objects.equals(normalizedEntries.get(normalizedKey), entry.getValue())) {
                 return false;
             }
+        }
+        return true;
+    }
+
+    /**
+     * Whether each entry of this map is in {@code thatMap}, the backing map of another CaseInsensitiveMap of the same
+     * size: its keys are already unique ignoring case, so finding every entry of this one there makes the maps equal.
+     * Each is looked up by the stored key, whose case-insensitive hash is computed already: no copy of either map.
+     * Null when a key cannot be looked up there (a sorted map holding keys of mixed types throws): the caller then
+     * compares as it does with any map.
+     */
+    private Boolean entriesFoundIn(Map<?, ?> thatMap) {
+        try {
+            for (Entry<K, V> entry : map.entrySet()) {
+                Object key = entry.getKey();
+                Object thatValue = thatMap.get(key);
+                if (thatValue == null) {
+                    if (entry.getValue() != null || !thatMap.containsKey(key)) {
+                        return false;
+                    }
+                } else if (!thatValue.equals(entry.getValue())) {
+                    return false;
+                }
+            }
+        } catch (ClassCastException | NullPointerException e) {
+            return null;
         }
         return true;
     }

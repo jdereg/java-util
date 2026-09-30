@@ -42,6 +42,7 @@ import java.util.Comparator;
 import java.util.Currency;
 import java.util.Date;
 import java.util.EnumSet;
+import java.util.GregorianCalendar;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -62,6 +63,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicLongArray;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.atomic.AtomicReferenceArray;
+import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.regex.Pattern;
 import java.util.stream.DoubleStream;
@@ -249,40 +251,65 @@ public final class Converter {
      * keyed by that supertype: given the requested class, a function that makes one from the supertype's value, or
      * null when that class cannot be made. Asked for MyDate (extends Date), the inheritance walk finds, say, Long ->
      * Date, which makes a plain Date; the Date maker turns it into a MyDate (see toSubtype). The most specific maker on
-     * the supertype's superclass chain applies (java.sql.Date and java.sql.Time use Date's). A supertype with no maker
-     * converts as before.
+     * the supertype's superclass chain applies (java.sql.Date and java.sql.Time use Date's). Makers exist for the value
+     * types whose state can be set on a new instance: Date, Timestamp, Calendar, AtomicLong, AtomicInteger,
+     * AtomicBoolean and BitSet. A supertype with no maker converts as before.
      */
     private static final Map<Class<?>, Function<Class<?>, Function<Object, Object>>> SUBTYPE_MAKERS = subtypeMakers();
 
     private static Map<Class<?>, Function<Class<?>, Function<Object, Object>>> subtypeMakers() {
         Map<Class<?>, Function<Class<?>, Function<Object, Object>>> makers = new HashMap<>();
-        makers.put(Date.class, type -> dateMaker(type, false));
-        makers.put(Timestamp.class, type -> dateMaker(type, true));
+        makers.put(Date.class, type -> maker(type, long.class, value -> ((Date) value).getTime(),
+                (made, millis) -> ((Date) made).setTime((Long) millis)));
+        makers.put(Timestamp.class, type -> {
+            Function<Object, Object> date = SUBTYPE_MAKERS.get(Date.class).apply(type);
+            return date == null ? null : value -> {
+                Timestamp made = (Timestamp) date.apply(value);
+                made.setNanos(((Timestamp) value).getNanos());
+                return made;
+            };
+        });
+        makers.put(Calendar.class, type -> maker(type, null, value -> value, (made, value) -> {
+            Calendar calendar = (Calendar) made;
+            Calendar from = (Calendar) value;
+            calendar.setLenient(from.isLenient());
+            calendar.setFirstDayOfWeek(from.getFirstDayOfWeek());
+            calendar.setMinimalDaysInFirstWeek(from.getMinimalDaysInFirstWeek());
+            if (calendar instanceof GregorianCalendar && from instanceof GregorianCalendar) {
+                ((GregorianCalendar) calendar).setGregorianChange(((GregorianCalendar) from).getGregorianChange());
+            }
+            calendar.setTimeZone(from.getTimeZone());
+            calendar.setTimeInMillis(from.getTimeInMillis());
+        }));
+        makers.put(AtomicLong.class, type -> maker(type, long.class, value -> ((AtomicLong) value).get(),
+                (made, v) -> ((AtomicLong) made).set((Long) v)));
+        makers.put(AtomicInteger.class, type -> maker(type, int.class, value -> ((AtomicInteger) value).get(),
+                (made, v) -> ((AtomicInteger) made).set((Integer) v)));
+        makers.put(AtomicBoolean.class, type -> maker(type, boolean.class, value -> ((AtomicBoolean) value).get(),
+                (made, v) -> ((AtomicBoolean) made).set((Boolean) v)));
+        makers.put(BitSet.class, type -> maker(type, null, value -> value,
+                (made, value) -> ((BitSet) made).or((BitSet) value)));
         return makers;
     }
 
     /**
-     * Makes a Date subclass from a Date: with its no-argument constructor and setTime, else with its (long)
-     * constructor, the one every JDK Date type has; a Timestamp's nanoseconds come along. Null when it has neither.
+     * Makes a subclass from its supertype's value: with its no-argument constructor and {@code setState}, else with
+     * its constructor taking {@code stateType} (the one the JDK type has: Date(long), AtomicLong(long); null when
+     * there is none to use), given {@code state} of the value. Null when it has neither constructor.
      */
-    private static Function<Object, Object> dateMaker(Class<?> type, boolean nanos) {
+    private static Function<Object, Object> maker(Class<?> type, Class<?> stateType, Function<Object, Object> state,
+                                                  BiConsumer<Object, Object> setState) {
         Constructor<?> noArg = constructor(type);
-        Constructor<?> ofMillis = noArg == null ? constructor(type, long.class) : null;
-        if (noArg == null && ofMillis == null) {
+        Constructor<?> ofState = noArg == null && stateType != null ? constructor(type, stateType) : null;
+        if (noArg == null && ofState == null) {
             return null;
         }
         return value -> {
-            long millis = ((Date) value).getTime();
-            Date made;
-            if (noArg != null) {
-                made = (Date) instantiate(noArg);
-                made.setTime(millis);
-            } else {
-                made = (Date) instantiate(ofMillis, millis);
+            if (noArg == null) {
+                return instantiate(ofState, state.apply(value));
             }
-            if (nanos) {
-                ((Timestamp) made).setNanos(((Timestamp) value).getNanos());
-            }
+            Object made = instantiate(noArg);
+            setState.accept(made, state.apply(value));
             return made;
         };
     }

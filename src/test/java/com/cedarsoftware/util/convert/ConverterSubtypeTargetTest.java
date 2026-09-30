@@ -10,12 +10,16 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
+import java.util.BitSet;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.GregorianCalendar;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.TimeZone;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 import org.junit.jupiter.api.Test;
 
@@ -75,6 +79,43 @@ class ConverterSubtypeTargetTest {
     public static class TimestampOfMillis extends Timestamp {
         public TimestampOfMillis(long time) {
             super(time);
+        }
+    }
+
+    public static class MyCalendar extends GregorianCalendar {
+        public MyCalendar() {
+        }
+    }
+
+    public static class CalendarOfZone extends GregorianCalendar {
+        public CalendarOfZone(TimeZone zone) {
+            super(zone);
+        }
+    }
+
+    public static class MyAtomicLong extends AtomicLong {
+        public MyAtomicLong() {
+        }
+    }
+
+    public static class AtomicLongOfValue extends AtomicLong {
+        public AtomicLongOfValue(long value) {
+            super(value);
+        }
+    }
+
+    public static class MyAtomicInteger extends AtomicInteger {
+        public MyAtomicInteger() {
+        }
+    }
+
+    public static class MyAtomicBoolean extends AtomicBoolean {
+        public MyAtomicBoolean() {
+        }
+    }
+
+    public static class MyBitSet extends BitSet {
+        public MyBitSet() {
         }
     }
 
@@ -169,6 +210,62 @@ class ConverterSubtypeTargetTest {
         IllegalArgumentException e = assertThrows(IllegalArgumentException.class,
                 () -> converter.convert(1L, DateOfText.class));
         assertTrue(e.getMessage().contains("Unsupported conversion"), e.getMessage());
+    }
+
+    @Test
+    void aCalendarSubclassKeepsTheInstantZoneAndRules() {
+        Calendar paris = new GregorianCalendar(TimeZone.getTimeZone("Europe/Paris"));
+        paris.setTimeInMillis(1_700_000_000_123L);
+        paris.setFirstDayOfWeek(Calendar.MONDAY);
+        paris.setMinimalDaysInFirstWeek(4);
+        paris.setLenient(false);
+        Object[] sources = {1_700_000_000_123L, "2026-01-15T10:15:30.123Z", new Date(1_700_000_000_123L), paris,
+                ZonedDateTime.of(2026, 1, 15, 10, 15, 30, 0, ZoneOffset.ofHours(5))};
+        for (Object source : sources) {
+            Calendar expected = converter.convert(source, Calendar.class);
+            Object converted = converter.convert(source, MyCalendar.class);
+            assertSame(MyCalendar.class, converted.getClass(), "from " + source.getClass().getName());
+            Calendar made = (Calendar) converted;
+            assertEquals(expected.getTimeInMillis(), made.getTimeInMillis());
+            assertEquals(expected.getTimeZone().getID(), made.getTimeZone().getID());
+            assertEquals(expected.getFirstDayOfWeek(), made.getFirstDayOfWeek());
+            assertEquals(expected.getMinimalDaysInFirstWeek(), made.getMinimalDaysInFirstWeek());
+            assertEquals(expected.isLenient(), made.isLenient());
+            assertEquals(expected.get(Calendar.HOUR_OF_DAY), made.get(Calendar.HOUR_OF_DAY));
+        }
+        // A Calendar subclass has no constructor taking a Calendar's state: without a no-argument one it is refused
+        assertFalse(converter.isConversionSupportedFor(Long.class, CalendarOfZone.class));
+    }
+
+    @Test
+    void atomicSubclassesKeepTheirValue() {
+        Object[] sources = {42L, 42, "42", new BigDecimal("42"), new AtomicLong(42)};
+        for (Object source : sources) {
+            assertAtomic(MyAtomicLong.class, 42L, converter.convert(source, MyAtomicLong.class));
+            assertAtomic(AtomicLongOfValue.class, 42L, converter.convert(source, AtomicLongOfValue.class));
+            assertAtomic(MyAtomicInteger.class, 42, converter.convert(source, MyAtomicInteger.class));
+        }
+        assertAtomic(MyAtomicBoolean.class, true, converter.convert("true", MyAtomicBoolean.class));
+        assertAtomic(MyAtomicBoolean.class, false, converter.convert(0, MyAtomicBoolean.class));
+    }
+
+    private static void assertAtomic(Class<?> type, Object expected, Object converted) {
+        assertSame(type, converted.getClass());
+        Object value = converted instanceof AtomicLong ? ((AtomicLong) converted).get()
+                : converted instanceof AtomicInteger ? ((AtomicInteger) converted).get()
+                : ((AtomicBoolean) converted).get();
+        assertEquals(expected, value);
+    }
+
+    @Test
+    void aBitSetSubclassKeepsItsBits() {
+        Object[] sources = {"101001", 41L, new int[]{0, 3, 5}, BitSet.valueOf(new long[]{41L})};
+        for (Object source : sources) {
+            BitSet expected = converter.convert(source, BitSet.class);
+            Object converted = converter.convert(source, MyBitSet.class);
+            assertSame(MyBitSet.class, converted.getClass(), "from " + source.getClass().getName());
+            assertEquals(expected, converted);
+        }
     }
 
     /** A conversion the caller added for the parent type is the one used, and makes the subclass too. */

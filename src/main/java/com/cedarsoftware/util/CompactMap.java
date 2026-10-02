@@ -1282,12 +1282,18 @@ public class CompactMap<K, V> implements Map<K, V> {
             // Set the internal storage to the two element array so that
             // size() and other methods behave correctly when
             // putInCompactArray() is invoked.
+            Object single = val;
             val = entries;
 
             // Delegate insertion of the second entry to putInCompactArray()
             // which will handle ordering (including binary search) and
             // growth of the array as needed.
-            putInCompactArray(entries, key, value);
+            try {
+                putInCompactArray(entries, key, value);
+            } catch (RuntimeException e) {
+                val = single;       // a key the ordering refuses leaves the map holding its one entry
+                throw e;
+            }
             return null;
         }
     }
@@ -3622,7 +3628,8 @@ public class CompactMap<K, V> implements Map<K, V> {
      * <ul>
      *     <li>Handles case sensitivity for String keys</li>
      *     <li>Supports natural or reverse ordering</li>
-     *     <li>Maintains consistent ordering for different key types</li>
+     *     <li>Orders keys of different classes by class name; two keys of one class that is not
+     *         {@link Comparable} have no order and throw {@link ClassCastException}, as in a TreeMap</li>
      *     <li>Properly handles null keys (always last)</li>
      * </ul>
      * Used by sorted CompactMaps and during compact array sorting.
@@ -3688,12 +3695,20 @@ public class CompactMap<K, V> implements Map<K, V> {
             else if (key1Class == key2Class && key1 instanceof Comparable) {
                 result = ((Comparable<Object>) key1).compareTo(key2);
             }
-            // 4. Fallback to class name comparison, with identity tiebreaker for same-class keys
+            // 4. Keys of different classes order by class name. Two keys of one class that is not Comparable have
+            // no order: ordered by identity, equal keys were kept as two and get() of an equal key missed. As TreeMap
+            // does, they are refused; the same instance still compares equal to itself.
             else {
                 result = key1Class.getName().compareTo(key2Class.getName());
                 if (result == 0) {
-                    // Same class but not Comparable — use identity hash as tiebreaker
-                    // to prevent distinct keys from being treated as equal in sorted maps
+                    if (key1 == key2) {
+                        return 0;
+                    }
+                    if (key1Class == key2Class) {
+                        throw new ClassCastException(key1Class.getName()
+                                + " is not Comparable: a sorted CompactMap cannot order two keys of that class");
+                    }
+                    // One name from two class loaders: two classes, so two keys -- ordered by identity, as before
                     result = Integer.compare(System.identityHashCode(key1), System.identityHashCode(key2));
                 }
             }

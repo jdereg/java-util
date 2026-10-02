@@ -93,7 +93,10 @@ class CompactMapCorrectnessTest {
 
     // ---------------------------------------------------------------
     // Bug 2: CompactMapComparator must not return 0 for distinct
-    //        non-Comparable keys of the same class
+    //        non-Comparable keys of the same class. It ordered them
+    //        by identity instead, which kept two EQUAL keys as two
+    //        entries; now, as documented and as TreeMap does, two keys
+    //        of one non-Comparable class are refused, never merged.
     // ---------------------------------------------------------------
 
     /** A non-Comparable class for testing. */
@@ -108,20 +111,19 @@ class CompactMapCorrectnessTest {
     }
 
     @Test
-    void testComparatorDistinguishesNonComparableSameClassKeys() {
+    void testComparatorRefusesTwoNonComparableKeysOfOneClass() {
         NonComparableKey k1 = new NonComparableKey("alpha");
         NonComparableKey k2 = new NonComparableKey("beta");
 
         CompactMap.CompactMapComparator comp = CompactMap.CompactMapComparator.get(false, false);
-        int result = comp.compare(k1, k2);
 
-        // Must not return 0 for distinct objects
-        assertTrue(result != 0,
-                "Comparator must not return 0 for distinct non-Comparable keys of the same class");
+        // Must never return 0 for distinct objects: it throws instead
+        assertThrows(ClassCastException.class, () -> comp.compare(k1, k2));
+        assertEquals(0, comp.compare(k1, k1));
     }
 
     @Test
-    void testSortedCompactMapPreservesDistinctNonComparableKeys() {
+    void testSortedCompactMapRefusesASecondNonComparableKeyAndKeepsTheFirst() {
         CompactMap<NonComparableKey, String> map = CompactMap.<NonComparableKey, String>builder()
                 .sortedOrder()
                 .build();
@@ -130,12 +132,11 @@ class CompactMapCorrectnessTest {
         NonComparableKey k2 = new NonComparableKey("beta");
 
         map.put(k1, "v1");
-        map.put(k2, "v2");
+        assertThrows(ClassCastException.class, () -> map.put(k2, "v2"));
 
-        // Both entries must survive — second put must NOT overwrite first
-        assertEquals(2, map.size(), "Sorted map must preserve both distinct non-Comparable keys");
+        // The second put must NOT overwrite the first
+        assertEquals(1, map.size());
         assertEquals("v1", map.get(k1));
-        assertEquals("v2", map.get(k2));
     }
 
     // ---------------------------------------------------------------

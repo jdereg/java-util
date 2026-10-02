@@ -699,8 +699,13 @@ CompactMap<String, Object> configured = CompactMap.<String, Object>builder()
 - **Ordering:** Unordered, sorted, reverse, or insertion order
 
 ### Performance Characteristics
-- Get/Put/Remove: O(n) for maps < `compactSize()`. Lookups are `O(1)` when no ordering is enforced. For `SORTED` or `REVERSE` orderings, lookups are `O(log n)` because the compact array is maintained in sorted order.
-- `compactSize()` still controls when the structure transitions to the backing map – insertion and removal costs grow quickly on large arrays. Empirical testing shows a value around 50 provides strong memory savings with good performance.
+- Get/Put/Remove: up to `compactSize()` entries, a scan of the compact array (`O(n)`); for `SORTED` or `REVERSE` orderings a binary search (`O(log n)`), the array being kept sorted. Above `compactSize()`, the backing map's cost.
+- `compactSize()` controls when the structure transitions to the backing map – lookup, insertion and removal costs grow with the array (a case-insensitive lookup takes about 2 µs at 1,000 entries). Empirical testing shows a value around 50 provides strong memory savings with good performance.
+
+### Limits
+Two limits bound what a configuration can make the JVM do -- json-io reads a `CompactMap`'s configuration from the document it parses. Neither throws; each is logged once at INFO.
+- **Compact size:** a `compactSize` above the system property `compactmap.max.compact.size` (default 1,000) is clipped to it. A larger array only makes lookups and inserts slower.
+- **Configurations:** the builder generates a class for each configuration, and a class is never unloaded. Past the system property `compactmap.max.configurations` (default 1,000) configurations, a new one keeps its case sensitivity, ordering and map type -- what decides the map's behavior -- and takes compact size 50 and single-value key `"id"`, which decide only how it stores its entries.
 - Memory Usage: Optimized based on size (Maps < compactSize() use minimal memory)
 - Iteration: Maintains configured ordering
 - Thread Safety: Safe when wrapped with Collections.synchronizedMap()

@@ -27,9 +27,11 @@ import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Supplier;
+import java.util.logging.Logger;
 
 /**
  * A memory-efficient {@code Map} implementation that adapts its internal storage structure
@@ -267,6 +269,59 @@ public class CompactMap<K, V> implements Map<K, V> {
     private static final String INNER_MAP_TYPE = "innerMapType";
     private static final TemplateClassLoader templateClassLoader = new TemplateClassLoader(ClassUtilities.getClassLoader(CompactMap.class));
     private static final Map<String, ReentrantLock> CLASS_LOCKS = new ConcurrentHashMap<>();
+
+    private static final Logger LOG = Logger.getLogger(CompactMap.class.getName());
+    static {
+        LoggingConfig.init();
+    }
+
+    /**
+     * System property bounding compactSize (default 1,000). The array is scanned on every lookup and copied on every
+     * insert, so a larger one only makes a map slower -- a case-insensitive lookup takes about 2 µs at 1,000 entries
+     * -- and json-io reads the compact size from the document it parses, which must not be able to make every insert
+     * copy millions of entries. A larger compact size is clipped to the maximum, and that is logged once.
+     */
+    public static final String MAX_COMPACT_SIZE_PROPERTY = "compactmap.max.compact.size";
+
+    /**
+     * System property bounding the configurations the builder generates a class for (default 1,000). Each is a class
+     * that is never unloaded, and json-io reads the configuration from the document it parses, which must not be able
+     * to fill the JVM with classes. Past the maximum, a new configuration keeps what decides a map's behavior -- case
+     * sensitivity, ordering, map type -- and takes the default compact size and single-value key, which decide only
+     * how it stores its entries; that is logged once.
+     */
+    public static final String MAX_CONFIGURATIONS_PROPERTY = "compactmap.max.configurations";
+
+    private static final int DEFAULT_MAX_COMPACT_SIZE = 1000;
+    private static final int DEFAULT_MAX_CONFIGURATIONS = 1000;
+    private static final AtomicBoolean COMPACT_SIZE_CLIPPED_LOGGED = new AtomicBoolean();
+    private static final AtomicBoolean CONFIGURATIONS_CAPPED_LOGGED = new AtomicBoolean();
+
+    private static int limitFromProperty(String property, int defaultValue) {
+        String text = System.getProperty(property);
+        if (text != null) {
+            try {
+                int value = Integer.parseInt(text.trim());
+                if (value >= 2) {
+                    return value;
+                }
+            } catch (NumberFormatException ignored) {
+                // the default applies
+            }
+        }
+        return defaultValue;
+    }
+
+    /** For tests: the limits log again. */
+    static void resetLimitLogs() {
+        COMPACT_SIZE_CLIPPED_LOGGED.set(false);
+        CONFIGURATIONS_CAPPED_LOGGED.set(false);
+    }
+
+    /** For tests: how many configurations have a generated class. */
+    static int generatedConfigurationCount() {
+        return templateClassLoader.definedClassCount();
+    }
 
     /**
      * Per-class cache for the isLegacyConstructed() result. This is the only configuration
@@ -2436,6 +2491,15 @@ public class CompactMap<K, V> implements Map<K, V> {
         if (compactSize < 2) {
             throw new IllegalArgumentException("compactSize must be >= 2");
         }
+        int maxCompactSize = limitFromProperty(MAX_COMPACT_SIZE_PROPERTY, DEFAULT_MAX_COMPACT_SIZE);
+        if (compactSize > maxCompactSize) {
+            if (COMPACT_SIZE_CLIPPED_LOGGED.compareAndSet(false, true)) {
+                LOG.info("CompactMap compactSize " + compactSize + " is above the maximum of " + maxCompactSize
+                        + " and was clipped to it: a larger array only makes lookups slower. Logged once; system"
+                        + " property " + MAX_COMPACT_SIZE_PROPERTY + " sets the maximum.");
+            }
+            options.put(COMPACT_SIZE, maxCompactSize);
+        }
 
         Class<? extends Map> mapType = determineMapType(options, ordering);
         if (!isAllowedMapType(mapType)) {
@@ -3095,7 +3159,29 @@ public class CompactMap<K, V> implements Map<K, V> {
             if (existing != null) {
                 return existing;
             }
+            int maxConfigurations = limitFromProperty(MAX_CONFIGURATIONS_PROPERTY, DEFAULT_MAX_CONFIGURATIONS);
+            if (templateClassLoader.definedClassCount() >= maxConfigurations && !storesByDefault(options)) {
+                // Past the maximum: keep what decides the map's behavior, take the default storage. Few
+                // configurations remain (case sensitivity x ordering x map type), so classes stay bounded.
+                if (CONFIGURATIONS_CAPPED_LOGGED.compareAndSet(false, true)) {
+                    LOG.info("CompactMap has generated classes for " + maxConfigurations + " configurations, its"
+                            + " maximum: new configurations keep their case sensitivity, ordering and map type, and"
+                            + " take compactSize " + DEFAULT_COMPACT_SIZE + " and single-value key '"
+                            + DEFAULT_SINGLE_KEY + "'. Logged once; system property " + MAX_CONFIGURATIONS_PROPERTY
+                            + " sets the maximum.");
+                }
+                Map<String, Object> storingByDefault = new HashMap<>(options);
+                storingByDefault.put(COMPACT_SIZE, DEFAULT_COMPACT_SIZE);
+                storingByDefault.put(SINGLE_KEY, DEFAULT_SINGLE_KEY);
+                return getOrCreateTemplateClass(storingByDefault);
+            }
             return generateTemplateClass(options);
+        }
+
+        /** Whether a configuration stores its entries the default way: default compact size and single-value key. */
+        private static boolean storesByDefault(Map<String, Object> options) {
+            return Objects.equals(options.getOrDefault(COMPACT_SIZE, DEFAULT_COMPACT_SIZE), DEFAULT_COMPACT_SIZE)
+                    && DEFAULT_SINGLE_KEY.equals(String.valueOf(options.getOrDefault(SINGLE_KEY, DEFAULT_SINGLE_KEY)));
         }
 
         /**
@@ -3427,6 +3513,10 @@ public class CompactMap<K, V> implements Map<K, V> {
             finally {
                 lock.unlock();
             }
+        }
+
+        private int definedClassCount() {
+            return definedClasses.size();
         }
 
         /** Makes a template class, its configuration injected, visible to {@link #findDefinedTemplateClass}. */

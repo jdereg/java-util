@@ -29,6 +29,7 @@ import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.Supplier;
 
 /**
  * A memory-efficient {@code Map} implementation that adapts its internal storage structure
@@ -324,6 +325,18 @@ public class CompactMap<K, V> implements Map<K, V> {
      */
     private static final Map<BuildKey, Class<?>> BUILT_TEMPLATES = new ConcurrentHashMap<>();
     private static final int MAX_BUILD_CACHE = 4096;
+
+    /**
+     * How each generated class makes its backing map, worked out once per class from its configuration. The class's
+     * own getNewMap() resolves the map class and its constructor reflectively on every call, which cost about 0.6 µs
+     * each time a map outgrew its array.
+     */
+    private static final ClassValue<Supplier<Map<?, ?>>> BACKING_MAP_FACTORIES = new ClassValue<Supplier<Map<?, ?>>>() {
+        @Override
+        protected Supplier<Map<?, ?>> computeValue(Class<?> type) {
+            return TemplateGenerator.backingMapFactory(type);
+        }
+    };
 
     /** A builder configuration as written: the options that pick the generated class. */
     private static final class BuildKey {
@@ -1104,6 +1117,18 @@ public class CompactMap<K, V> implements Map<K, V> {
     }
 
     /**
+     * A new backing map: a generated (builder) class's made by its factory; a subclass's from its getNewMap(), as
+     * written.
+     */
+    private Map<K, V> newBackingMap() {
+        Class<?> type = getClass();
+        if (type.getClassLoader() == templateClassLoader) {
+            return (Map<K, V>) BACKING_MAP_FACTORIES.get(type).get();
+        }
+        return getNewMap();
+    }
+
+    /**
      * Transitions storage from compact array to backing map implementation.
      * <p>
      * Creates new map instance, copies existing entries from array,
@@ -1117,7 +1142,7 @@ public class CompactMap<K, V> implements Map<K, V> {
      */
     private void switchToMap(Object[] entries, K key, V value) {
         // Get the correct map type with initial capacity
-        Map<K, V> map = getNewMap();  // This respects subclass overrides
+        Map<K, V> map = newBackingMap();  // This respects subclass overrides
 
         // Copy existing entries preserving order
         int len = entries.length;
@@ -1302,7 +1327,7 @@ public class CompactMap<K, V> implements Map<K, V> {
             if (val instanceof Map) {
                 backingMap = (Map<K, V>) val;
             } else {
-                backingMap = getNewMap();
+                backingMap = newBackingMap();
                 if (val instanceof Object[]) {   // Existing compact array
                     Object[] entries = (Object[]) val;
                     for (int i = 0; i < entries.length; i += 2) {
@@ -1554,7 +1579,7 @@ public class CompactMap<K, V> implements Map<K, V> {
                 // Create fast-access O(1) to all elements within passed in Collection.
                 // When case-insensitive, use CaseInsensitiveMap so that key lookup
                 // respects case-insensitivity (getNewMap() may return a plain HashMap).
-                Map<K, V> other = isCaseInsensitive() ? new CaseInsensitiveMap<>() : getNewMap();
+                Map<K, V> other = isCaseInsensitive() ? new CaseInsensitiveMap<>() : newBackingMap();
 
                 for (Object o : c) {
                     // Non-null sentinel: only containsKey() is consulted below, and getNewMap()
@@ -1685,7 +1710,7 @@ public class CompactMap<K, V> implements Map<K, V> {
 
                     @Override
                     protected Map<K, V> getNewMap() {
-                        return CompactMap.this.getNewMap();
+                        return CompactMap.this.newBackingMap();
                     }
                 };
                 for (Object o : c) {
@@ -3193,6 +3218,73 @@ public class CompactMap<K, V> implements Map<K, V> {
             }
 
             return patched;
+        }
+
+        /**
+         * How a generated class makes its backing map: the steps of its getNewMap(), with the classes and
+         * constructors resolved once. Read from the configuration injected into the class.
+         */
+        private static Supplier<Map<?, ?>> backingMapFactory(Class<?> templateClass) {
+            Map<String, Field> fields = new HashMap<>();
+            List<Field> statics = ReflectionUtils.getDeclaredFields(templateClass,
+                    f -> Modifier.isStatic(f.getModifiers()));
+            for (Field field : statics) {
+                fields.put(field.getName(), field);
+            }
+            String mapClassName;
+            try {
+                mapClassName = (String) fields.get("_mapClassName").get(null);
+                String innerClassName = (String) fields.get("_innerMapClassName").get(null);
+                int capacity = fields.get("_compactSize").getInt(null) + 1;
+                String ordering = (String) fields.get("_ordering").get(null);
+                boolean caseSensitive = fields.get("_caseSensitive").getBoolean(null);
+                ClassLoader loader = templateClass.getClassLoader();
+                Class<?> mapClass = Class.forName(mapClassName, false, loader);
+                if (innerClassName != null && CaseInsensitiveMap.class.getName().equals(mapClassName)) {
+                    Class<?> innerClass = Class.forName(innerClassName, false, loader);
+                    Constructor<?> sizedInner = publicConstructor(innerClass, int.class);
+                    Constructor<?> plainInner = sizedInner == null ? innerClass.getDeclaredConstructor() : null;
+                    Constructor<?> wrap = mapClass.getConstructor(Map.class);
+                    String name = mapClassName;
+                    return () -> newMap(name, wrap, sizedInner != null ? newMap(name, sizedInner, capacity)
+                            : newMap(name, plainInner));
+                }
+                Constructor<?> sized = publicConstructor(mapClass, int.class);
+                if (sized != null) {
+                    String name = mapClassName;
+                    return () -> newMap(name, sized, capacity);
+                }
+                if (SORTED.equals(ordering) || REVERSE.equals(ordering)) {
+                    Constructor<?> withComparator = publicConstructor(mapClass, Comparator.class);
+                    if (withComparator != null) {
+                        Comparator<Object> comparator =
+                                new CompactMapComparator(!caseSensitive, REVERSE.equals(ordering));
+                        String name = mapClassName;
+                        return () -> newMap(name, withComparator, comparator);
+                    }
+                }
+                Constructor<?> plain = mapClass.getDeclaredConstructor();
+                String name = mapClassName;
+                return () -> newMap(name, plain);
+            } catch (ReflectiveOperationException e) {
+                throw new IllegalStateException("Failed to create map for " + templateClass.getName(), e);
+            }
+        }
+
+        private static Constructor<?> publicConstructor(Class<?> type, Class<?> parameter) {
+            try {
+                return type.getConstructor(parameter);
+            } catch (NoSuchMethodException e) {
+                return null;
+            }
+        }
+
+        private static Map<?, ?> newMap(String mapClassName, Constructor<?> constructor, Object... args) {
+            try {
+                return (Map<?, ?>) constructor.newInstance(args);
+            } catch (Exception e) {
+                throw new IllegalStateException("Failed to create map: " + mapClassName, e);
+            }
         }
 
         /**

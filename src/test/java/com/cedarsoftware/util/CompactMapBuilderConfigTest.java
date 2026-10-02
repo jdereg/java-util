@@ -301,7 +301,7 @@ public class CompactMapBuilderConfigTest {
         // Verify reverse alphabetical order
         assertEquals("CHARLIE", keys.get(0));
         assertEquals("BETA", keys.get(1));
-        assertEquals("alpha", keys.get(2));
+        assertEquals("Alpha", keys.get(2));        // the first spelling stays, as for BETA and CHARLIE
 
         // Test that it works with CaseInsensitiveString instances too
         CaseInsensitiveMap.CaseInsensitiveString cisKey =
@@ -315,7 +315,7 @@ public class CompactMapBuilderConfigTest {
         assertEquals("DELTA", keys.get(0));
         assertEquals("CHARLIE", keys.get(1));
         assertEquals("BETA", keys.get(2));
-        assertEquals("alpha", keys.get(3));
+        assertEquals("Alpha", keys.get(3));
     }
 
     @Test

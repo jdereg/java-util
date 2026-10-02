@@ -2188,13 +2188,14 @@ public class CompactMapTest
         assert !map.isEmpty();
         assert map.containsKey("key1");
 
+        // The value is stored alone only under the single-value key as spelled: "KEY1" keeps its spelling in an entry
+        assert map.getLogicalValueType() == CompactMap.LogicalValueType.ENTRY;
+        assert map.keySet().iterator().next().equals("KEY1");
         if (singleKey.equals("key1"))
         {
+            map.remove("key1");
+            map.put("key1", null);
             assert map.getLogicalValueType() == CompactMap.LogicalValueType.OBJECT;
-        }
-        else
-        {
-            assert map.getLogicalValueType() == CompactMap.LogicalValueType.ENTRY;
         }
 
         map.remove("key1");

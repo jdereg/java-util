@@ -494,13 +494,14 @@ public class CompactMap<K, V> implements Map<K, V> {
     }
 
     /**
-     * Whether a map of one entry stores the value alone, without its key: only under the single-value key, and only
-     * for a value that cannot be taken for another state -- a Map or Object[] (the backing map, the array) or a
+     * Whether a map of one entry stores the value alone, without its key: only under the single-value key as it is
+     * spelled (in a case-insensitive map "ID" is stored with its key, which would otherwise read back as "id"), and
+     * only for a value that cannot be taken for another state -- a Map or Object[] (the backing map, the array) or a
      * CompactMapEntry (the stored entry; one from any CompactMap, such as its entrySet() hands out). An entry stored
      * as a value was read as this map's own entry: the map reported that entry's key and value instead.
      */
     private boolean storesValueAlone(Object key, Object value) {
-        return areKeysEqual(key, getSingleValueKey())
+        return Objects.equals(key, getSingleValueKey())
                 && !(value instanceof Map || value instanceof Object[] || value instanceof CompactMap.CompactMapEntry);
     }
 
@@ -1120,12 +1121,15 @@ public class CompactMap<K, V> implements Map<K, V> {
      * @return the previous value if key existed, null otherwise
      */
     private V handleSingleEntryPut(K key, V value) {
-        if (areKeysEqual(key, getLogicalSingleKey())) {   // Overwrite
+        K storedKey = getLogicalSingleKey();
+        if (areKeysEqual(key, storedKey)) {   // Overwrite: the stored key stays, as at every other size
             V save = getLogicalSingleValue();
-            if (storesValueAlone(key, value)) {
+            if (storesValueAlone(storedKey, value)) {
                 val = value;
+            } else if (val instanceof CompactMap.CompactMapEntry) {
+                ((CompactMapEntry) val).setValueOnly(value);    // in place: entries handed out stay current
             } else {
-                val = new CompactMapEntry(key, value);
+                val = new CompactMapEntry(storedKey, value);
             }
             return save;
         } else {   // Transition to Object[]
@@ -1718,6 +1722,11 @@ public class CompactMap<K, V> implements Map<K, V> {
             super.setValue(value);
             CompactMap.this.put(getKey(), value);    // "Transmit" (write-thru) to underlying Map.
             return save;
+        }
+
+        /** Sets the value without writing through: the map updating the entry it stores. */
+        void setValueOnly(V value) {
+            super.setValue(value);
         }
 
         @Override

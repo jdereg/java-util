@@ -3150,15 +3150,40 @@ public class CompactMap<K, V> implements Map<K, V> {
          * @throws IllegalStateException if template generation fails
          */
         private static Class<?> getOrCreateTemplateClass(Map<String, Object> options) {
-            String className = generateClassName(options);
-            // Template classes are defined in templateClassLoader (a child loader) — the
-            // parent/application loader can never see them, so it must not be consulted
-            // here: doing so made every build() miss, construct-and-swallow exceptions,
-            // re-patch the bytecode template, and re-inject the static config fields.
-            Class<?> existing = templateClassLoader.findDefinedTemplateClass(className);
-            if (existing != null) {
-                return existing;
+            String configuration = describeConfiguration(options);
+            // A class is named by 64 bits of its configuration's SHA-1, so two configurations could share a name: a
+            // class found by name is used only if it was made for the configuration asked for, else the next name
+            for (int salt = 0; salt < MAX_NAMES_PER_CONFIGURATION; salt++) {
+                String className = generateClassName(configuration, salt);
+                // Template classes are defined in templateClassLoader (a child loader) — the
+                // parent/application loader can never see them, so it must not be consulted
+                // here: doing so made every build() miss, construct-and-swallow exceptions,
+                // re-patch the bytecode template, and re-inject the static config fields.
+                Class<?> existing = templateClassLoader.findDefinedTemplateClass(className);
+                if (existing == null) {
+                    if (pastMaximumConfigurations(options)) {
+                        return getOrCreateTemplateClass(storingByDefault(options));
+                    }
+                    existing = generateTemplateClass(options, className, configuration);
+                }
+                if (configuration.equals(CONFIGURATION_BY_CLASS_NAME.get(className))) {
+                    return existing;
+                }
             }
+            throw new IllegalStateException("CompactMap found no class name free for configuration " + configuration);
+        }
+
+        /** The configuration each generated class was made for (see {@link #describeConfiguration}), by its name. */
+        private static final Map<String, String> CONFIGURATION_BY_CLASS_NAME = new ConcurrentHashMap<>();
+
+        /** Names tried for one configuration; a second is needed once in 2^64 configurations, a third never. */
+        private static final int MAX_NAMES_PER_CONFIGURATION = 8;
+
+        /**
+         * Whether a new configuration is past the maximum number of generated classes and does not already store its
+         * entries the default way; the first time, says so in the log.
+         */
+        private static boolean pastMaximumConfigurations(Map<String, Object> options) {
             int maxConfigurations = limitFromProperty(MAX_CONFIGURATIONS_PROPERTY, DEFAULT_MAX_CONFIGURATIONS);
             if (templateClassLoader.definedClassCount() >= maxConfigurations && !storesByDefault(options)) {
                 // Past the maximum: keep what decides the map's behavior, take the default storage. Few
@@ -3170,12 +3195,17 @@ public class CompactMap<K, V> implements Map<K, V> {
                             + DEFAULT_SINGLE_KEY + "'. Logged once; system property " + MAX_CONFIGURATIONS_PROPERTY
                             + " sets the maximum.");
                 }
-                Map<String, Object> storingByDefault = new HashMap<>(options);
-                storingByDefault.put(COMPACT_SIZE, DEFAULT_COMPACT_SIZE);
-                storingByDefault.put(SINGLE_KEY, DEFAULT_SINGLE_KEY);
-                return getOrCreateTemplateClass(storingByDefault);
+                return true;
             }
-            return generateTemplateClass(options);
+            return false;
+        }
+
+        /** A configuration with the same case sensitivity, ordering and map type, storing by default. */
+        private static Map<String, Object> storingByDefault(Map<String, Object> options) {
+            Map<String, Object> storingByDefault = new HashMap<>(options);
+            storingByDefault.put(COMPACT_SIZE, DEFAULT_COMPACT_SIZE);
+            storingByDefault.put(SINGLE_KEY, DEFAULT_SINGLE_KEY);
+            return storingByDefault;
         }
 
         /** Whether a configuration stores its entries the default way: default compact size and single-value key. */
@@ -3185,15 +3215,14 @@ public class CompactMap<K, V> implements Map<K, V> {
         }
 
         /**
-         * Generates a unique class name based on SHA-1 hash of the configuration options.
-         * <p>
-         * Format: "CompactMap$[16-char-hash]"
-         * Example: "CompactMap$a1b2c3d4e5f67890"
+         * A canonical string of the configuration: map type, case sensitivity, compact size, single-value key,
+         * ordering and, for case-insensitive wrapping, the inner map type. Distinct configurations give distinct
+         * strings: every part but the single-value key is free of ';', and the key comes before the ordering.
          *
          * @param options configuration map containing case sensitivity, ordering, map type, etc.
-         * @return the generated class name
+         * @return the configuration's description
          */
-        private static String generateClassName(Map<String, Object> options) {
+        private static String describeConfiguration(Map<String, Object> options) {
             // Build a canonical string representation of the configuration
             StringBuilder configBuilder = new StringBuilder();
 
@@ -3233,8 +3262,24 @@ public class CompactMap<K, V> implements Map<K, V> {
                 configBuilder.append(";im:").append(innerMapName);
             }
 
+            return configBuilder.toString();
+        }
+
+        /**
+         * Generates a class name from the SHA-1 hash of a configuration's description.
+         * <p>
+         * Format: "CompactMap$[16-char-hash]"
+         * Example: "CompactMap$a1b2c3d4e5f67890"
+         *
+         * @param configuration the configuration's {@link #describeConfiguration description}
+         * @param salt 0 for the configuration's own name; above 0, another name for it, used when a class made for a
+         *             different configuration holds the name
+         * @return the generated class name
+         */
+        private static String generateClassName(String configuration, int salt) {
+            String named = salt == 0 ? configuration : configuration + ";salt:" + salt;
             // Generate SHA-1 hash and take first 16 characters
-            String fullHash = EncryptionUtilities.calculateSHA1Hash(configBuilder.toString().getBytes(StandardCharsets.UTF_8));
+            String fullHash = EncryptionUtilities.calculateSHA1Hash(named.getBytes(StandardCharsets.UTF_8));
             String hash16 = fullHash.substring(0, 16).toLowerCase();
 
             return TEMPLATE_CLASS_PREFIX + hash16;
@@ -3244,11 +3289,13 @@ public class CompactMap<K, V> implements Map<K, V> {
          * Creates a new template class by patching bytecode and injecting configuration values.
          *
          * @param options configuration map containing case sensitivity, ordering, map type, etc.
-         * @return the newly generated template Class
+         * @param className the name to define it under
+         * @param configuration the configuration's {@link #describeConfiguration description}
+         * @return the newly generated template Class, or the class another thread defined under that name first
          * @throws IllegalStateException if class generation fails
          */
-        private static Class<?> generateTemplateClass(Map<String, Object> options) {
-            String className = generateClassName(options);
+        private static Class<?> generateTemplateClass(Map<String, Object> options, String className,
+                                                      String configuration) {
             String classNameSuffix = className.substring(TEMPLATE_CLASS_PREFIX.length());
 
             // Acquire lock for this class name
@@ -3270,6 +3317,7 @@ public class CompactMap<K, V> implements Map<K, V> {
 
                 // Inject static field values
                 injectStaticFields(templateClass, options);
+                CONFIGURATION_BY_CLASS_NAME.put(className, configuration);
 
                 // Only now may other threads find it: build() looks a class up without this lock, and a class
                 // published before its configuration was injected was used with compactSize 0 and no ordering.

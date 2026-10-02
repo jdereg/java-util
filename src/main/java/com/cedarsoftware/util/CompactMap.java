@@ -1016,6 +1016,36 @@ public class CompactMap<K, V> implements Map<K, V> {
     }
 
     /**
+     * Puts the entries of a backing map that has shrunk to compactSize() or fewer into the compact state their
+     * number calls for: the empty state, one entry, or an array (sorted, where the ordering asks for it). Every way
+     * of shrinking a backing map comes through here, so the map is never left in a state its size does not match:
+     * a one-pair array, which the rest of the class does not expect, read the array itself as the single value.
+     */
+    private void compactFromMap(Map<K, V> map) {
+        int size = map.size();
+        if (size == 0) {
+            val = EMPTY_MAP;
+            return;
+        }
+        if (size == 1) {
+            Entry<K, V> only = map.entrySet().iterator().next();
+            K key = only.getKey();
+            V value = only.getValue();
+            val = storesValueAlone(key, value) ? value : new CompactMapEntry(key, value);
+            return;
+        }
+        Object[] entries = new Object[size * 2];
+        int idx = 0;
+        for (Entry<K, V> entry : map.entrySet()) {
+            entries[idx] = entry.getKey();
+            entries[idx + 1] = entry.getValue();
+            idx += 2;
+        }
+        sortCompactArray(entries);
+        val = entries;
+    }
+
+    /**
      * Transitions storage from compact array to backing map implementation.
      * <p>
      * Creates new map instance, copies existing entries from array,
@@ -1162,21 +1192,8 @@ public class CompactMap<K, V> implements Map<K, V> {
             return null;
         }
 
-        if (map.isEmpty()) {
-            val = EMPTY_MAP;
-            return save;
-        }
-
-        if (map.size() == compactSize()) {   // Transition back to Object[]
-            Object[] entries = new Object[compactSize() * 2];
-            int idx = 0;
-            for (Entry<K, V> entry : map.entrySet()) {
-                entries[idx] = entry.getKey();
-                entries[idx + 1] = entry.getValue();
-                idx += 2;
-            }
-            sortCompactArray(entries);
-            val = entries;
+        if (map.size() <= compactSize()) {   // back to the compact state its size calls for
+            compactFromMap(map);
         }
         return save;
     }
@@ -1236,6 +1253,11 @@ public class CompactMap<K, V> implements Map<K, V> {
                 val = backingMap;
             }
             backingMap.putAll(map);
+            if (backingMap.size() <= compactThreshold) {
+                // Fewer than counted: keys that are equal to one another here (differing only in case, in a
+                // case-insensitive map) collapsed into one
+                compactFromMap(backingMap);
+            }
             return;
         }
 
@@ -2070,25 +2092,12 @@ public class CompactMap<K, V> implements Map<K, V> {
 
             if (mapIterator != null) {
                 mapIterator.remove();
-                int newSize = expectedSize - 1;
-                if (newSize == 0) {
+                Map<K, V> map = (Map<K, V>) val;
+                if (map.size() <= compactSize()) {
+                    // The rest go back to the compact state their number calls for (empty, one entry or an
+                    // array, in the map's iteration order); the iteration continues over it
                     mapIterator = null;
-                    val = EMPTY_MAP;
-                } else if (newSize <= compactSize()) {
-                    // Transition from Map to compact array.
-                    // The mapIterator.remove() already removed the entry from the map properly.
-                    // Now build the array from the remaining map entries.
-                    mapIterator = null;
-                    Map<K, V> map = (Map<K, V>) val;
-                    Object[] entries = new Object[map.size() * 2];
-                    int idx = 0;
-                    for (Entry<K, V> e : map.entrySet()) {
-                        entries[idx] = e.getKey();
-                        entries[idx + 1] = e.getValue();
-                        idx += 2;
-                    }
-                    sortCompactArray(entries);
-                    val = entries;
+                    compactFromMap(map);
                 }
             } else {
                 CompactMap.this.remove(current);

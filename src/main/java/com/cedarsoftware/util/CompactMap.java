@@ -494,6 +494,17 @@ public class CompactMap<K, V> implements Map<K, V> {
     }
 
     /**
+     * Whether a map of one entry stores the value alone, without its key: only under the single-value key, and only
+     * for a value that cannot be taken for another state -- a Map or Object[] (the backing map, the array) or a
+     * CompactMapEntry (the stored entry; one from any CompactMap, such as its entrySet() hands out). An entry stored
+     * as a value was read as this map's own entry: the map reported that entry's key and value instead.
+     */
+    private boolean storesValueAlone(Object key, Object value) {
+        return areKeysEqual(key, getSingleValueKey())
+                && !(value instanceof Map || value instanceof Object[] || value instanceof CompactMap.CompactMapEntry);
+    }
+
+    /**
      * Determines if this CompactMap instance was created using legacy construction (direct subclassing)
      * rather than the template-based generation system.
      * <p>
@@ -631,9 +642,8 @@ public class CompactMap<K, V> implements Map<K, V> {
         } else if (val instanceof Map) {   // Backing map storage (&gt; compactSize)
             return ((Map<K, V>) val).put(key, value);
         } else if (val == EMPTY_MAP) {   // Empty map
-            if (areKeysEqual(key, getSingleValueKey()) && !(value instanceof Map || value instanceof Object[])) {
+            if (storesValueAlone(key, value)) {
                 // Store the value directly for optimized single-entry storage
-                // (can't allow Map or Object[] because that would throw off the 'state')
                 val = value;
             } else {
                 // Create a CompactMapEntry for the first entry
@@ -1059,7 +1069,7 @@ public class CompactMap<K, V> implements Map<K, V> {
         }
 
         // Transition directly to single-entry storage, bypassing clear()+put()
-        if (areKeysEqual(remainingKey, getSingleValueKey()) && !(remainingValue instanceof Map || remainingValue instanceof Object[])) {
+        if (storesValueAlone(remainingKey, remainingValue)) {
             val = remainingValue;
         } else {
             val = new CompactMapEntry(remainingKey, remainingValue);
@@ -1082,7 +1092,7 @@ public class CompactMap<K, V> implements Map<K, V> {
     private V handleSingleEntryPut(K key, V value) {
         if (areKeysEqual(key, getLogicalSingleKey())) {   // Overwrite
             V save = getLogicalSingleValue();
-            if (areKeysEqual(key, getSingleValueKey()) && !(value instanceof Map || value instanceof Object[])) {
+            if (storesValueAlone(key, value)) {
                 val = value;
             } else {
                 val = new CompactMapEntry(key, value);

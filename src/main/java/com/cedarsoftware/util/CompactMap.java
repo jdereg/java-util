@@ -356,6 +356,58 @@ public class CompactMap<K, V> implements Map<K, V> {
     };
 
     /**
+     * Per class: whether its backing map refuses a null key (bit 1) or a null value (bit 2), as ConcurrentHashMap
+     * and ConcurrentSkipListMap do; -1 until the first null meets this class. The array accepted nulls that the
+     * backing map then refused when the map outgrew it: that put threw, and the map could grow no further. A null
+     * is now refused at once, in every state, as the backing map would. Found by asking a throwaway backing map.
+     */
+    private static final ClassValue<AtomicInteger> NULL_POLICY = new ClassValue<AtomicInteger>() {
+        @Override
+        protected AtomicInteger computeValue(Class<?> type) {
+            return new AtomicInteger(-1);
+        }
+    };
+    private static final int REFUSES_NULL_KEYS = 1;
+    private static final int REFUSES_NULL_VALUES = 2;
+
+    private int nullPolicy() {
+        AtomicInteger slot = NULL_POLICY.get(getClass());
+        int policy = slot.get();
+        if (policy < 0) {
+            policy = 0;
+            Map<Object, Object> probe = (Map<Object, Object>) newBackingMap();
+            try {
+                probe.put(null, Boolean.TRUE);
+            } catch (NullPointerException e) {
+                policy |= REFUSES_NULL_KEYS;
+            } catch (RuntimeException e) {
+                // a map that refuses the probe for another reason says nothing about nulls
+            }
+            try {
+                probe.put("nullPolicyProbe", null);
+            } catch (NullPointerException e) {
+                policy |= REFUSES_NULL_VALUES;
+            } catch (RuntimeException e) {
+                // as above
+            }
+            slot.set(policy);
+        }
+        return policy;
+    }
+
+    private void refuseNullKeyIfBackingMapDoes(Object key) {
+        if (key == null && (nullPolicy() & REFUSES_NULL_KEYS) != 0) {
+            throw new NullPointerException("This CompactMap's backing map does not accept a null key");
+        }
+    }
+
+    private void refuseNullValueIfBackingMapDoes(Object value) {
+        if (value == null && (nullPolicy() & REFUSES_NULL_VALUES) != 0) {
+            throw new NullPointerException("This CompactMap's backing map does not accept a null value");
+        }
+    }
+
+    /**
      * Per-template-class constructor cache: avoids re-scanning declared constructors
      * on every build() — the json-io factories construct a CompactMap/CompactSet per
      * deserialized instance, so this sits on a hot path. Null when there is none; newMap() then asks again, for
@@ -704,6 +756,7 @@ public class CompactMap<K, V> implements Map<K, V> {
      * @return {@code true} if this map contains a mapping for the specified key; {@code false} otherwise
      */
     public boolean containsKey(Object key) {
+        refuseNullKeyIfBackingMapDoes(key);
         if (val instanceof Object[]) {   // 2 to compactSize
             Object[] entries = (Object[]) val;
             String ordering = getOrdering();
@@ -731,6 +784,7 @@ public class CompactMap<K, V> implements Map<K, V> {
      * {@code false} otherwise
      */
     public boolean containsValue(Object value) {
+        refuseNullValueIfBackingMapDoes(value);
         if (val instanceof Object[]) {   // 2 to CompactSize
             Object[] entries = (Object[]) val;
             int len = entries.length;
@@ -763,6 +817,7 @@ public class CompactMap<K, V> implements Map<K, V> {
      * @return the value to which the specified key is mapped, or {@code null} if this map contains no mapping for the key
      */
     public V get(Object key) {
+        refuseNullKeyIfBackingMapDoes(key);
         if (val instanceof Object[]) {   // 2 to compactSize
             Object[] entries = (Object[]) val;
             String ordering = getOrdering();
@@ -798,6 +853,8 @@ public class CompactMap<K, V> implements Map<K, V> {
      */
     @Override
     public V put(K key, V value) {
+        refuseNullKeyIfBackingMapDoes(key);
+        refuseNullValueIfBackingMapDoes(value);
         if (val instanceof Object[]) {   // Compact array storage (2 to compactSize)
             return putInCompactArray((Object[]) val, key, value);
         } else if (val instanceof Map) {   // Backing map storage (&gt; compactSize)
@@ -821,6 +878,7 @@ public class CompactMap<K, V> implements Map<K, V> {
      */
     @Override
     public V remove(Object key) {
+        refuseNullKeyIfBackingMapDoes(key);
         if (val instanceof Object[]) {   // 2 to compactSize
             return removeFromCompactArray(key);
         } else if (val instanceof Map) {   // > compactSize
@@ -1885,8 +1943,10 @@ public class CompactMap<K, V> implements Map<K, V> {
         @Override
         public V setValue(V value) {
             V save = this.getValue();
+            // "Transmit" (write-thru) to underlying Map first: a value the map refuses must not be left in this
+            // entry, which is the map's storage while it holds one entry
+            CompactMap.this.put(getKey(), value);
             super.setValue(value);
-            CompactMap.this.put(getKey(), value);    // "Transmit" (write-thru) to underlying Map.
             return save;
         }
 

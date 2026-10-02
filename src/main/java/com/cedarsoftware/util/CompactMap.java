@@ -2145,14 +2145,36 @@ public class CompactMap<K, V> implements Map<K, V> {
         int compSize = getCachedLegacyConstructed() ? DEFAULT_COMPACT_SIZE : compactSize();
         config.put(COMPACT_SIZE, compSize);
         config.put(CASE_SENSITIVE, !isCaseInsensitive());
-        config.put(ORDERING, getOrdering());
+        Map<?, ?> map = unwrapped(getNewMap());
+        config.put(ORDERING, orderingKept(map));
         config.put(SINGLE_KEY, getSingleValueKey());
-        Map<?, ?> map = getNewMap();
-        if (map instanceof CaseInsensitiveMap) {
-            map = ((CaseInsensitiveMap<?, ?>) map).getWrappedMap();
-        }
         config.put(MAP_TYPE, map.getClass());
         return Collections.unmodifiableMap(config);
+    }
+
+    private static Map<?, ?> unwrapped(Map<?, ?> map) {
+        return map instanceof CaseInsensitiveMap ? ((CaseInsensitiveMap<?, ?>) map).getWrappedMap() : map;
+    }
+
+    /**
+     * The order this map keeps its entries in, given its backing map (unwrapped). A legacy subclass that does not
+     * override getOrdering() is "unordered", yet keeps an order when its backing map does: a SortedMap's (the
+     * compact array is sorted to match) or a LinkedHashMap's insertion order (the compact array's own order).
+     * CompactLinkedMap and CompactCILinkedMap are such subclasses. Worked out here, for getConfig() and
+     * withConfig(), rather than by overriding getOrdering() in them: every lookup calls getOrdering(), and the
+     * override made lookups 10-25% slower on JDK 8 in a JVM using several kinds of CompactMap. An access-ordered
+     * LinkedHashMap is not told apart from an insertion-ordered one.
+     */
+    private String orderingKept(Map<?, ?> backing) {
+        String ordering = getOrdering();
+        if (!UNORDERED.equals(ordering) || !getCachedLegacyConstructed()) {
+            return ordering;
+        }
+        int sortInfo = getCachedLegacySortInfo();
+        if (sortInfo != 0) {
+            return sortInfo == 2 ? REVERSE : SORTED;
+        }
+        return backing instanceof LinkedHashMap ? INSERTION : UNORDERED;
     }
 
     /**
@@ -2185,7 +2207,7 @@ public class CompactMap<K, V> implements Map<K, V> {
 
         // Handle ordering with proper priority
         String configOrdering = (String) config.get(ORDERING);
-        String orderingToUse = (configOrdering != null) ? configOrdering : getOrdering();
+        String orderingToUse = (configOrdering != null) ? configOrdering : orderingKept(unwrapped(getNewMap()));
 
         // Apply the determined ordering
         switch (orderingToUse) {

@@ -3043,6 +3043,10 @@ public class CompactMap<K, V> implements Map<K, V> {
                 // Inject static field values
                 injectStaticFields(templateClass, options);
 
+                // Only now may other threads find it: build() looks a class up without this lock, and a class
+                // published before its configuration was injected was used with compactSize 0 and no ordering.
+                // The ConcurrentHashMap put also makes the injected values visible to the threads that get it.
+                templateClassLoader.publishTemplateClass(className, templateClass);
                 return templateClass;
             } finally {
                 lock.unlock();
@@ -3195,11 +3199,9 @@ public class CompactMap<K, V> implements Map<K, V> {
         }
 
         /**
-         * Defines or retrieves a template class in this ClassLoader.
-         * <p>
-         * First attempts to find an existing template class. If not found,
-         * defines a new class from the provided bytecode. This method
-         * ensures template classes are only defined once.
+         * Defines a template class in this ClassLoader, or returns the one already defined under that name (left by
+         * an earlier attempt whose configuration injection failed). It is not published: the caller injects its
+         * configuration first, then calls {@link #publishTemplateClass}. Callers hold the per-name lock.
          *
          * @param name fully qualified class name for the template
          * @param bytes bytecode for the template class
@@ -3210,26 +3212,17 @@ public class CompactMap<K, V> implements Map<K, V> {
             ReentrantLock lock = classLoadLocks.computeIfAbsent(name, k -> new ReentrantLock());
             lock.lock();
             try {
-                // Check if already defined and still reachable
-                WeakReference<Class<?>> cachedRef = definedClasses.get(name);
-                if (cachedRef != null) {
-                    Class<?> cached = cachedRef.get();
-                    if (cached != null) {
-                        return cached;
-                    } else {
-                        // Class was garbage collected, remove stale reference
-                        definedClasses.remove(name);
-                    }
-                }
-
-                // Define new class
-                Class<?> definedClass = defineClass(name, bytes, 0, bytes.length);
-                definedClasses.put(name, new WeakReference<>(definedClass));
-                return definedClass;
+                Class<?> defined = findLoadedClass(name);
+                return defined != null ? defined : defineClass(name, bytes, 0, bytes.length);
             }
             finally {
                 lock.unlock();
             }
+        }
+
+        /** Makes a template class, its configuration injected, visible to {@link #findDefinedTemplateClass}. */
+        private void publishTemplateClass(String name, Class<?> templateClass) {
+            definedClasses.put(name, new WeakReference<>(templateClass));
         }
         
         /**

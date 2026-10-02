@@ -316,6 +316,55 @@ public class CompactMap<K, V> implements Map<K, V> {
         }
     };
 
+    /**
+     * The generated class for each builder configuration as the caller wrote it, before validation: a repeated
+     * build() skips the validation and the class name -- a SHA-1 of the configuration, encoded in hex -- which took
+     * three quarters of its time. The key holds names and strings only, so it keeps no class loader alive, and the
+     * cache stops growing at MAX_BUILD_CACHE configurations (many written configurations can share one class).
+     */
+    private static final Map<BuildKey, Class<?>> BUILT_TEMPLATES = new ConcurrentHashMap<>();
+    private static final int MAX_BUILD_CACHE = 4096;
+
+    /** A builder configuration as written: the options that pick the generated class. */
+    private static final class BuildKey {
+        private final Object caseSensitive;
+        private final Object compactSize;
+        private final String mapType;
+        private final String singleKey;
+        private final Object ordering;
+        private final int hash;
+
+        BuildKey(Map<String, Object> options) {
+            caseSensitive = options.get(CASE_SENSITIVE);
+            compactSize = options.get(COMPACT_SIZE);
+            Object type = options.get(MAP_TYPE);
+            mapType = type instanceof Class ? ((Class<?>) type).getName() : type == null ? null : String.valueOf(type);
+            Object key = options.get(SINGLE_KEY);
+            singleKey = key == null ? null : String.valueOf(key);
+            ordering = options.get(ORDERING);
+            hash = Objects.hash(caseSensitive, compactSize, mapType, singleKey, ordering);
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) {
+                return true;
+            }
+            if (!(o instanceof BuildKey)) {
+                return false;
+            }
+            BuildKey that = (BuildKey) o;
+            return hash == that.hash && Objects.equals(caseSensitive, that.caseSensitive)
+                    && Objects.equals(compactSize, that.compactSize) && Objects.equals(mapType, that.mapType)
+                    && Objects.equals(singleKey, that.singleKey) && Objects.equals(ordering, that.ordering);
+        }
+
+        @Override
+        public int hashCode() {
+            return hash;
+        }
+    }
+
     private int getCachedLegacySortInfo() {
         Class<?> clazz = getClass();
         if (clazz.getClassLoader() == templateClassLoader) {
@@ -2282,13 +2331,20 @@ public class CompactMap<K, V> implements Map<K, V> {
      * is required.</p>
      */
     static <K, V> CompactMap<K, V> newMap(Map<String, Object> options) {
-        // Validate and finalize options first (existing code)
-        validateAndFinalizeOptions(options);
+        // A configuration built before is a class at once -- unless a source map is given, whose ordering the
+        // validation checks against the configuration's
+        boolean cacheable = options.get(SOURCE_MAP) == null;
+        BuildKey buildKey = cacheable ? new BuildKey(options) : null;
+        Class<?> templateClass = cacheable ? BUILT_TEMPLATES.get(buildKey) : null;
+        if (templateClass == null) {
+            validateAndFinalizeOptions(options);
+            templateClass = TemplateGenerator.getOrCreateTemplateClass(options);
+            if (cacheable && BUILT_TEMPLATES.size() < MAX_BUILD_CACHE) {
+                BUILT_TEMPLATES.putIfAbsent(buildKey, templateClass);
+            }
+        }
 
         try {
-            // Get template class for these options
-            Class<?> templateClass = TemplateGenerator.getOrCreateTemplateClass(options);
-
             // Create new instance (constructor cached — build() runs per deserialized
             // instance in json-io's CompactMap/CompactSet factories)
             Constructor<?> ctor = TEMPLATE_CONSTRUCTORS.get(templateClass);

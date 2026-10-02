@@ -2073,8 +2073,33 @@ public class CompactMap<K, V> implements Map<K, V> {
             }
         }
 
+        /**
+         * Whether the map changed structurally since this iterator last looked. At size one, overwriting the value
+         * replaces the stored object (the value itself, or a new entry) without a structural change -- put() of a key
+         * the map holds is none for a HashMap -- and that is told apart by the key, which stays the same.
+         */
+        private boolean structurallyModified() {
+            if (val == expectedVal) {
+                return false;
+            }
+            if (holdsOneEntry(val) && holdsOneEntry(expectedVal)
+                    && areKeysEqual(keyOfOneEntry(val), keyOfOneEntry(expectedVal))) {
+                expectedVal = val;
+                return false;
+            }
+            return true;
+        }
+
+        private boolean holdsOneEntry(Object state) {
+            return !(state == EMPTY_MAP || state instanceof Object[] || state instanceof Map);
+        }
+
+        private Object keyOfOneEntry(Object state) {
+            return state instanceof CompactMap.CompactMapEntry ? ((CompactMapEntry) state).getKey() : getSingleValueKey();
+        }
+
         final void advance() {
-            if (val != expectedVal) {
+            if (structurallyModified()) {
                 throw new ConcurrentModificationException();
             }
             if (++index >= expectedSize) {
@@ -2095,7 +2120,7 @@ public class CompactMap<K, V> implements Map<K, V> {
             if (current == EMPTY_MAP) {
                 throw new IllegalStateException();
             }
-            if (val != expectedVal) {
+            if (structurallyModified()) {
                 throw new ConcurrentModificationException();
             }
 

@@ -494,6 +494,32 @@ public class CompactMap<K, V> implements Map<K, V> {
     }
 
     /**
+     * Index of a key in an array that is not kept sorted, or -1. The case rule is read once per lookup: called for
+     * every element, isCaseInsensitive() is a virtual call that cannot be inlined once a JVM has used more than one
+     * kind of CompactMap, and it made lookups 2-3 times slower there.
+     */
+    private int indexOfKey(Object[] entries, Object key) {
+        final int len = entries.length;
+        if (key instanceof String) {
+            final String text = (String) key;
+            final boolean caseInsensitive = isCaseInsensitive();
+            for (int i = 0; i < len; i += 2) {
+                Object k = entries[i];
+                if (k instanceof String && (caseInsensitive ? text.equalsIgnoreCase((String) k) : text.equals(k))) {
+                    return i;
+                }
+            }
+            return -1;
+        }
+        for (int i = 0; i < len; i += 2) {
+            if (Objects.equals(key, entries[i])) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    /**
      * Whether a map of one entry stores the value alone, without its key: only under the single-value key as it is
      * spelled (in a case-insensitive map "ID" is stored with its key, which would otherwise read back as "id"), and
      * only for a value that cannot be taken for another state -- a Map or Object[] (the backing map, the array) or a
@@ -540,13 +566,7 @@ public class CompactMap<K, V> implements Map<K, V> {
                 Comparator<Object> comp = CompactMapComparator.get(isCaseInsensitive(), REVERSE.equals(ordering));
                 return pairBinarySearch(entries, key, comp) >= 0;
             }
-            final int len = entries.length;
-            for (int i = 0; i < len; i += 2) {
-                if (areKeysEqual(key, entries[i])) {
-                    return true;
-                }
-            }
-            return false;
+            return indexOfKey(entries, key) >= 0;
         } else if (val instanceof Map) {   // > compactSize
             Map<K, V> map = (Map<K, V>) val;
             return map.containsKey(key);
@@ -606,13 +626,8 @@ public class CompactMap<K, V> implements Map<K, V> {
                 int pairIdx = pairBinarySearch(entries, key, comp);
                 return pairIdx >= 0 ? (V) entries[pairIdx * 2 + 1] : null;
             }
-            int len = entries.length;
-            for (int i = 0; i < len; i += 2) {
-                if (areKeysEqual(key, entries[i])) {
-                    return (V) entries[i + 1];
-                }
-            }
-            return null;
+            int idx = indexOfKey(entries, key);
+            return idx >= 0 ? (V) entries[idx + 1] : null;
         } else if (val instanceof Map) {   // > compactSize
             return ((Map<K, V>) val).get(key);
         } else if (val == EMPTY_MAP) {   // empty
@@ -736,13 +751,11 @@ public class CompactMap<K, V> implements Map<K, V> {
             }
             pairIndex = -(pairIndex + 1);
         } else {
-            for (int i = 0; i < len; i += 2) {
-                if (areKeysEqual(key, entries[i])) {
-                    int vIdx = i + 1;
-                    V oldValue = (V) entries[vIdx];
-                    entries[vIdx] = value;
-                    return oldValue;
-                }
+            int i = indexOfKey(entries, key);
+            if (i >= 0) {
+                V oldValue = (V) entries[i + 1];
+                entries[i + 1] = value;
+                return oldValue;
             }
         }
 
@@ -797,12 +810,7 @@ public class CompactMap<K, V> implements Map<K, V> {
             }
             idx = pairIdx * 2;
         } else {
-            for (int i = 0; i < len; i += 2) {
-                if (areKeysEqual(key, entries[i])) {
-                    idx = i;
-                    break;
-                }
-            }
+            idx = indexOfKey(entries, key);
             if (idx < 0) {
                 return null;
             }

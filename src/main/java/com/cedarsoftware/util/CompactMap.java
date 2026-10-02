@@ -616,7 +616,7 @@ public class CompactMap<K, V> implements Map<K, V> {
         }
 
         // 5. Check that the backing map is a HashMap.
-        return HashMap.class.equals(getNewMap().getClass());
+        return HashMap.class.equals(newBackingMap().getClass());
     }
 
     /**
@@ -2145,7 +2145,7 @@ public class CompactMap<K, V> implements Map<K, V> {
         int compSize = getCachedLegacyConstructed() ? DEFAULT_COMPACT_SIZE : compactSize();
         config.put(COMPACT_SIZE, compSize);
         config.put(CASE_SENSITIVE, !isCaseInsensitive());
-        Map<?, ?> map = unwrapped(getNewMap());
+        Map<?, ?> map = unwrapped(newBackingMap());
         config.put(ORDERING, orderingKept(map));
         config.put(SINGLE_KEY, getSingleValueKey());
         config.put(MAP_TYPE, map.getClass());
@@ -2207,7 +2207,7 @@ public class CompactMap<K, V> implements Map<K, V> {
 
         // Handle ordering with proper priority
         String configOrdering = (String) config.get(ORDERING);
-        String orderingToUse = (configOrdering != null) ? configOrdering : orderingKept(unwrapped(getNewMap()));
+        String orderingToUse = (configOrdering != null) ? configOrdering : orderingKept(unwrapped(newBackingMap()));
 
         // Apply the determined ordering
         switch (orderingToUse) {
@@ -2240,7 +2240,7 @@ public class CompactMap<K, V> implements Map<K, V> {
 
         // ISSUE 2: MAP_TYPE has same getOrDefault issue
         Class<? extends Map<String, Object>> configMapType = (Class<? extends Map<String, Object>>) config.get(MAP_TYPE);
-        Map<?, ?> thisMap = getNewMap();
+        Map<?, ?> thisMap = newBackingMap();
         Class<? extends Map> thisMapType = thisMap.getClass();
 
         // Handle CaseInsensitiveMap special case

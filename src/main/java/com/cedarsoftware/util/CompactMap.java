@@ -611,6 +611,34 @@ public class CompactMap<K, V> implements Map<K, V> {
     }
 
     /**
+     * Whether {@code key} finds the stored key {@code storedKey}, by the rule the map's lookups follow at every size.
+     * A sorted or reverse-ordered map finds keys with its comparator, in its array and in its backing map alike, so
+     * keys it compares as equal are one key, as in a TreeMap: BigDecimal 1.0 and 1.00. Any other map uses
+     * {@link #areKeysEqual}. Holding one or two entries, a sorted map matched by equality instead: get(1.00) missed
+     * 1.0, and put(1.00) left a one-entry array behind. A String key needs no ordering check: the comparator finds
+     * two Strings equal exactly when areKeysEqual does (case folded alike when case-insensitive), and a String
+     * never equals another class's key.
+     */
+    private boolean isSameKey(Object key, Object storedKey) {
+        if (!(key instanceof String) && sortsKeys(getOrdering())) {
+            return CompactMapComparator.get(isCaseInsensitive(), false).compare(key, storedKey) == 0;
+        }
+        return areKeysEqual(key, storedKey);
+    }
+
+    /**
+     * Whether an ordering keeps keys sorted ({@link #SORTED} or {@link #REVERSE}). The builder stores the constants
+     * themselves and literals are interned, so references are compared first; equals() is for a string made at run
+     * time.
+     */
+    private static boolean sortsKeys(String ordering) {
+        if (ordering == UNORDERED || ordering == INSERTION) {
+            return false;
+        }
+        return ordering == SORTED || ordering == REVERSE || SORTED.equals(ordering) || REVERSE.equals(ordering);
+    }
+
+    /**
      * Index of a key in an array that is not kept sorted, or -1. The case rule is read once per lookup: called for
      * every element, isCaseInsensitive() is a virtual call that cannot be inlined once a JVM has used more than one
      * kind of CompactMap, and it made lookups 2-3 times slower there.
@@ -692,7 +720,7 @@ public class CompactMap<K, V> implements Map<K, V> {
         }
 
         // size == 1
-        return areKeysEqual(key, getLogicalSingleKey());
+        return isSameKey(key, getLogicalSingleKey());
     }
 
     /**
@@ -752,7 +780,7 @@ public class CompactMap<K, V> implements Map<K, V> {
         }
 
         // size == 1
-        if (areKeysEqual(key, getLogicalSingleKey())) {
+        if (isSameKey(key, getLogicalSingleKey())) {
             return getLogicalSingleValue();
         }
         return null;
@@ -1224,11 +1252,11 @@ public class CompactMap<K, V> implements Map<K, V> {
         V remainingValue;
         V prevValue;
 
-        if (areKeysEqual(key, entries[0])) {
+        if (isSameKey(key, entries[0])) {
             prevValue = (V) entries[1];
             remainingKey = (K) entries[2];
             remainingValue = (V) entries[3];
-        } else if (areKeysEqual(key, entries[2])) {
+        } else if (isSameKey(key, entries[2])) {
             prevValue = (V) entries[3];
             remainingKey = (K) entries[0];
             remainingValue = (V) entries[1];
@@ -1259,7 +1287,7 @@ public class CompactMap<K, V> implements Map<K, V> {
      */
     private V handleSingleEntryPut(K key, V value) {
         K storedKey = getLogicalSingleKey();
-        if (areKeysEqual(key, storedKey)) {   // Overwrite: the stored key stays, as at every other size
+        if (isSameKey(key, storedKey)) {   // Overwrite: the stored key stays, as at every other size
             V save = getLogicalSingleValue();
             if (storesValueAlone(storedKey, value)) {
                 val = value;
@@ -1282,18 +1310,13 @@ public class CompactMap<K, V> implements Map<K, V> {
             // Set the internal storage to the two element array so that
             // size() and other methods behave correctly when
             // putInCompactArray() is invoked.
-            Object single = val;
             val = entries;
 
             // Delegate insertion of the second entry to putInCompactArray()
             // which will handle ordering (including binary search) and
-            // growth of the array as needed.
-            try {
-                putInCompactArray(entries, key, value);
-            } catch (RuntimeException e) {
-                val = single;       // a key the ordering refuses leaves the map holding its one entry
-                throw e;
-            }
+            // growth of the array as needed. A key the ordering refuses was
+            // refused above, by isSameKey(): the map still holds its one entry.
+            putInCompactArray(entries, key, value);
             return null;
         }
     }
@@ -1309,7 +1332,7 @@ public class CompactMap<K, V> implements Map<K, V> {
      * @return the value associated with the removed key, or null if key not found
      */
     private V handleSingleEntryRemove(Object key) {
-        if (areKeysEqual(key, getLogicalSingleKey())) {   // Found
+        if (isSameKey(key, getLogicalSingleKey())) {   // Found
             V save = getLogicalSingleValue();
             clear();
             return save;

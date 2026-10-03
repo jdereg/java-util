@@ -193,6 +193,43 @@ public class EncryptionUtilities {
         }
     }
 
+    /**
+     * An untouched digest of one algorithm, cloned for each caller. MessageDigest.getInstance() searches the installed
+     * security providers on every call, which costs more than hashing a short input. The prototype is never updated,
+     * so cloning it from many threads at once is safe. As with {@link #PBKDF2_FACTORY}, the provider is the one
+     * getInstance() chose the first time the algorithm was asked for. A digest its provider cannot clone is made by
+     * getInstance() each time, as before.
+     */
+    private static final class DigestPrototype {
+        private final String algorithm;
+        private volatile MessageDigest prototype;
+
+        DigestPrototype(String algorithm) {
+            this.algorithm = algorithm;
+        }
+
+        MessageDigest newDigest() {
+            MessageDigest p = prototype;
+            if (p == null) {
+                p = getDigest(algorithm);       // IllegalArgumentException if the algorithm is not available
+                prototype = p;
+            }
+            try {
+                return (MessageDigest) p.clone();
+            } catch (CloneNotSupportedException e) {
+                return getDigest(algorithm);
+            }
+        }
+    }
+
+    private static final DigestPrototype MD5_PROTOTYPE = new DigestPrototype("MD5");
+    private static final DigestPrototype SHA1_PROTOTYPE = new DigestPrototype("SHA-1");
+    private static final DigestPrototype SHA256_PROTOTYPE = new DigestPrototype("SHA-256");
+    private static final DigestPrototype SHA384_PROTOTYPE = new DigestPrototype("SHA-384");
+    private static final DigestPrototype SHA512_PROTOTYPE = new DigestPrototype("SHA-512");
+    private static final DigestPrototype SHA3_256_PROTOTYPE = new DigestPrototype("SHA3-256");
+    private static final DigestPrototype SHA3_512_PROTOTYPE = new DigestPrototype("SHA3-512");
+
     // Security configuration methods
     
     private static boolean isSecurityEnabled() {
@@ -651,12 +688,13 @@ public class EncryptionUtilities {
 
     /**
      * Creates an MD5 MessageDigest instance.
+     * Each call returns a new instance of its own (a copy of a cached, untouched one).
      *
      * @return MessageDigest configured for MD5
      * @throws IllegalArgumentException if MD5 algorithm is not available
      */
     public static MessageDigest getMD5Digest() {
-        return getDigest("MD5");
+        return MD5_PROTOTYPE.newDigest();
     }
 
     /**
@@ -671,12 +709,13 @@ public class EncryptionUtilities {
 
     /**
      * Creates a SHA-1 MessageDigest instance.
+     * Each call returns a new instance of its own (a copy of a cached, untouched one).
      *
      * @return MessageDigest configured for SHA-1
      * @throws IllegalArgumentException if SHA-1 algorithm is not available
      */
     public static MessageDigest getSHA1Digest() {
-        return getDigest("SHA-1");
+        return SHA1_PROTOTYPE.newDigest();
     }
 
     /**
@@ -691,12 +730,13 @@ public class EncryptionUtilities {
 
     /**
      * Creates a SHA-256 MessageDigest instance.
+     * Each call returns a new instance of its own (a copy of a cached, untouched one).
      *
      * @return MessageDigest configured for SHA-256
      * @throws IllegalArgumentException if SHA-256 algorithm is not available
      */
     public static MessageDigest getSHA256Digest() {
-        return getDigest("SHA-256");
+        return SHA256_PROTOTYPE.newDigest();
     }
 
     /**
@@ -711,12 +751,13 @@ public class EncryptionUtilities {
 
     /**
      * Creates a SHA-384 MessageDigest instance.
+     * Each call returns a new instance of its own (a copy of a cached, untouched one).
      *
      * @return MessageDigest configured for SHA-384
      * @throws IllegalArgumentException if SHA-384 algorithm is not available
      */
     public static MessageDigest getSHA384Digest() {
-        return getDigest("SHA-384");
+        return SHA384_PROTOTYPE.newDigest();
     }
 
     /**
@@ -731,12 +772,13 @@ public class EncryptionUtilities {
 
     /**
      * Creates a SHA-512 MessageDigest instance.
+     * Each call returns a new instance of its own (a copy of a cached, untouched one).
      *
      * @return MessageDigest configured for SHA-512
      * @throws IllegalArgumentException if SHA-512 algorithm is not available
      */
     public static MessageDigest getSHA512Digest() {
-        return getDigest("SHA-512");
+        return SHA512_PROTOTYPE.newDigest();
     }
 
     /**
@@ -751,12 +793,13 @@ public class EncryptionUtilities {
 
     /**
      * Creates a SHA3-256 MessageDigest instance.
+     * Each call returns a new instance of its own (a copy of a cached, untouched one).
      *
      * @return MessageDigest configured for SHA3-256
      * @throws IllegalArgumentException if SHA3-256 algorithm is not available
      */
     public static MessageDigest getSHA3_256Digest() {
-        return getDigest("SHA3-256");
+        return SHA3_256_PROTOTYPE.newDigest();
     }
 
     /**
@@ -771,12 +814,13 @@ public class EncryptionUtilities {
 
     /**
      * Creates a SHA3-512 MessageDigest instance.
+     * Each call returns a new instance of its own (a copy of a cached, untouched one).
      *
      * @return MessageDigest configured for SHA3-512
      * @throws IllegalArgumentException if SHA3-512 algorithm is not available
      */
     public static MessageDigest getSHA3_512Digest() {
-        return getDigest("SHA3-512");
+        return SHA3_512_PROTOTYPE.newDigest();
     }
 
     /**

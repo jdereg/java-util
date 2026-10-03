@@ -15,7 +15,6 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
@@ -158,27 +157,22 @@ public class ThreadedLRUCacheStrategy<K, V> implements Map<K, V>, Closeable {
         }
 
         /**
-         * Refreshes the recency timestamp on ~1/8 of accesses, cheaply.
-         * <p>
-         * The gate MUST use a per-access random draw, not this node's own stored
-         * {@code timestamp}. Gating on {@code (this.timestamp & 0x7) == 0} froze recency: once a
-         * node's timestamp landed on a value that is not a multiple of 8 — which happens 7/8 of
-         * the time, immediately on creation or the first refresh — the condition was false forever
-         * and the node's timestamp never advanced again, no matter how often it was accessed. That
-         * pinned every node near its INSERTION time, degrading the cache from LRU to FIFO: a
-         * hot-but-old entry would be evicted while a cold-but-recently-inserted one survived.
-         * {@link ThreadLocalRandom} is contention-free, so this keeps the ~12.5% sampling that
-         * avoids an atomic increment on every access while actually tracking access recency.
+         * Records an access: the node takes the clock's current tick. The clock advances only when a node is
+         * made, so the tick says "used after the N-th insertion", every access is recorded, and a read never
+         * writes the shared counter. Incrementing it on (a random eighth of) accesses made every reading thread
+         * contend for one cache line: 8 threads read about as fast as one. The node is written only when its
+         * tick is stale, so a hot node read between insertions is not rewritten.
          */
         void updateTimestamp() {
-            if (ThreadLocalRandom.current().nextInt(8) == 0) {
-                this.timestamp = LOGICAL_CLOCK.incrementAndGet();
+            long now = LOGICAL_CLOCK.get();
+            if (timestamp != now) {
+                timestamp = now;
             }
         }
     }
 
-    // Logical clock for LRU ordering - faster than System.nanoTime() (~5ns vs ~25ns)
-    // Higher values = more recently used
+    // Logical clock for LRU ordering - faster than System.nanoTime() (~5ns vs ~25ns). It ticks once per node made;
+    // an access stamps the current tick. Higher values = more recently used
     private static final AtomicLong LOGICAL_CLOCK = new AtomicLong(0);
 
     /**

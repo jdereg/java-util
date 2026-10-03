@@ -95,8 +95,9 @@ class ThreadedLRUCacheCleanupTest {
     /**
      * A writer faster than the cleanup cycle must not grow the cache without bound. The cleanup thread runs every
      * 500 ms, and one writer put millions of entries in between (an OutOfMemoryError within a second on a 1 GB
-     * heap). Past twice its capacity, a writer now trims the cache back, whichever method inserted the key. One
-     * new node in 32 looks at the size, so the cache can pass twice its capacity by a few dozen entries.
+     * heap). Past twice its capacity, a writer now trims the cache back, whichever method inserted the key; if the
+     * cleanup thread is evicting at that moment the writer leaves the work to it, and past four times the capacity
+     * it waits and trims. One new node in 32 looks at the size, so the cache can pass those marks by a few dozen.
      */
     @Test
     void aFastWriterCannotGrowTheCachePastTwiceItsCapacity() {
@@ -118,7 +119,7 @@ class ThreadedLRUCacheCleanupTest {
                     }
                 }
                 most = Math.max(most, cache.size());
-                assertTrue(most <= 3000, method + ": capacity 1,000, grew to " + most);
+                assertTrue(most <= 5000, method + ": capacity 1,000, grew to " + most);
             } finally {
                 cache.close();
             }
@@ -156,5 +157,42 @@ class ThreadedLRUCacheCleanupTest {
             evictor.join();
             cache.close();
         }
+    }
+
+    /**
+     * Every read is recorded. Entries read once after a hundred newer ones were inserted must count as more recent
+     * than those, so the newcomers are what sampled eviction finds oldest. Reads used to be recorded one time in
+     * eight, so most of the entries just read still looked older than the newcomers and were evicted in their
+     * place. The keys are spread over the table (a sample is ten neighbouring entries, and keys with consecutive
+     * hash codes are neighbours), so a sample holds newcomers and older entries in proportion.
+     */
+    @Test
+    void anEntryReadOnceAfterNewerInsertsCountsAsMoreRecent() {
+        ThreadedLRUCacheStrategy<Integer, Integer> cache = new ThreadedLRUCacheStrategy<>(1000);
+        try {
+            for (int i = 0; i < 1000; i++) {
+                cache.put(scattered(i), i);
+            }
+            for (int i = 1000; i < 1100; i++) {
+                cache.put(scattered(i), i);
+            }
+            for (int i = 0; i < 1000; i++) {
+                cache.get(scattered(i));
+            }
+            cache.forceCleanup();
+            int newcomersEvicted = 0;
+            for (int i = 1000; i < 1100; i++) {
+                if (!cache.containsKey(scattered(i))) {
+                    newcomersEvicted++;
+                }
+            }
+            assertTrue(newcomersEvicted >= 30, "of 100 evictions, " + newcomersEvicted + " were newcomers");
+        } finally {
+            cache.close();
+        }
+    }
+
+    private static Integer scattered(int i) {
+        return i * 0x9E3779B1;                      // Fibonacci hashing: consecutive i land far apart
     }
 }

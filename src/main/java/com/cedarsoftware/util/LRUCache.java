@@ -3,6 +3,7 @@ package com.cedarsoftware.util;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.BiFunction;
 
 import com.cedarsoftware.util.cache.LockingLRUCacheStrategy;
 import com.cedarsoftware.util.cache.ThreadedLRUCacheStrategy;
@@ -201,6 +202,11 @@ public class LRUCache<K, V> implements Map<K, V> {
     @Override
     public V putIfAbsent(K key, V value) {
         return strategy.putIfAbsent(key, value);
+    }
+
+    @Override
+    public void replaceAll(BiFunction<? super K, ? super V, ? extends V> function) {
+        strategy.replaceAll(function);
     }
 
     @Override

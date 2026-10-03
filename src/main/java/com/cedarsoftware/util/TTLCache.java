@@ -778,6 +778,22 @@ public class TTLCache<K, V> implements Map<K, V>, AutoCloseable {
     }
 
     /**
+     * An entry of the entry set: setValue writes the value to the cache (as put, so it lives a full TTL again)
+     * instead of changing only this copy. The inherited replaceAll writes through it.
+     */
+    private final class WriteThroughEntry extends AbstractMap.SimpleEntry<K, V> {
+        WriteThroughEntry(K key, V value) {
+            super(key, value);
+        }
+
+        @Override
+        public V setValue(V value) {
+            super.setValue(value);
+            return put(getKey(), value);
+        }
+    }
+
+    /**
      * Custom Iterator for the EntrySet that skips expired entries.
      */
     private class EntryIterator implements Iterator<Entry<K, V>> {
@@ -802,7 +818,7 @@ public class TTLCache<K, V> implements Map<K, V>, AutoCloseable {
                     nextCacheEntry = entry;
                     K key = cacheEntry.node.key;
                     V value = cacheEntry.node.value;
-                    nextEntry = new AbstractMap.SimpleEntry<>(key, value);
+                    nextEntry = new WriteThroughEntry(key, value);
                     return;
                 }
             }

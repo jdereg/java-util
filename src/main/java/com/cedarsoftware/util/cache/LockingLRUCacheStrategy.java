@@ -8,6 +8,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.BiFunction;
 
 import com.cedarsoftware.util.ConcurrentHashMapNullSafe;
 import com.cedarsoftware.util.MapUtilities;
@@ -247,6 +248,23 @@ public class LockingLRUCacheStrategy<K, V> implements Map<K, V> {
         }
     }
 
+    /**
+     * Replaces each value with the function's result, under the lock (the function runs under it, as in
+     * computeIfAbsent). The recency order is left as it is, as LinkedHashMap's replaceAll leaves it.
+     */
+    @Override
+    public void replaceAll(BiFunction<? super K, ? super V, ? extends V> function) {
+        Objects.requireNonNull(function);
+        lock.lock();
+        try {
+            for (Node<K, V> node = head.next; node != tail; node = node.next) {
+                node.value = function.apply(node.key, node.value);
+            }
+        } finally {
+            lock.unlock();
+        }
+    }
+
     @Override
     public V computeIfAbsent(K key, java.util.function.Function<? super K, ? extends V> mappingFunction) {
         lock.lock();
@@ -407,7 +425,7 @@ public class LockingLRUCacheStrategy<K, V> implements Map<K, V> {
             for (Node<K, V> node = head.next; node != tail; node = node.next) {
                 map.put(node.key, node.value);
             }
-            return Collections.unmodifiableSet(map.entrySet());
+            return Collections.unmodifiableMap(map).entrySet();     // read-only entries: setValue throws
         } finally {
             lock.unlock();
         }

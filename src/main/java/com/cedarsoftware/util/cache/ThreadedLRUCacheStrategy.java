@@ -19,6 +19,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.BiFunction;
 
 import com.cedarsoftware.util.ConcurrentHashMapNullSafe;
 import com.cedarsoftware.util.ConcurrentSet;
@@ -514,6 +515,20 @@ public class ThreadedLRUCacheStrategy<K, V> implements Map<K, V>, Closeable {
     }
 
     /**
+     * Replaces each value with the function's result through the map's own replaceAll, which retries an entry
+     * whose value changed meanwhile. Each entry keeps its recency: a new value is not a new use.
+     */
+    @Override
+    public void replaceAll(BiFunction<? super K, ? super V, ? extends V> function) {
+        Objects.requireNonNull(function);
+        cache.replaceAll((k, node) -> {
+            Node<K, V> replacement = new Node<>(k, function.apply(k, node.value));
+            replacement.timestamp = node.timestamp;
+            return replacement;
+        });
+    }
+
+    /**
      * Pure delegation to ConcurrentHashMap — zero eviction overhead.
      * The background "elves" handle all eviction asynchronously.
      */
@@ -621,7 +636,7 @@ public class ThreadedLRUCacheStrategy<K, V> implements Map<K, V>, Closeable {
         for (Node<K, V> node : cache.values()) {
             snapshot.put(node.key, node.value);
         }
-        return Collections.unmodifiableSet(snapshot.entrySet());
+        return Collections.unmodifiableMap(snapshot).entrySet();    // read-only entries: setValue throws
     }
 
     @Override

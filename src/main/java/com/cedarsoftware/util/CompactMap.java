@@ -276,10 +276,11 @@ public class CompactMap<K, V> implements Map<K, V> {
     }
 
     /**
-     * System property bounding compactSize (default 1,000). The array is scanned on every lookup and copied on every
-     * insert, so a larger one only makes a map slower -- a case-insensitive lookup takes about 2 µs at 1,000 entries
-     * -- and json-io reads the compact size from the document it parses, which must not be able to make every insert
-     * copy millions of entries. A larger compact size is clipped to the maximum, and that is logged once.
+     * System property bounding compactSize (default 256). The array is scanned on every lookup and copied on every
+     * insert, so a larger one only makes a map slower -- at 256 entries a lookup takes about 0.1 µs (0.34 µs
+     * case-insensitive) against 3 ns in a HashMap; CompactMap pays off for maps of a few dozen entries or fewer -- and
+     * json-io reads the compact size from the document it parses, which must not be able to make every insert copy
+     * millions of entries. A larger compact size is clipped to the maximum, and that is logged once.
      */
     public static final String MAX_COMPACT_SIZE_PROPERTY = "compactmap.max.compact.size";
 
@@ -292,7 +293,7 @@ public class CompactMap<K, V> implements Map<K, V> {
      */
     public static final String MAX_CONFIGURATIONS_PROPERTY = "compactmap.max.configurations";
 
-    private static final int DEFAULT_MAX_COMPACT_SIZE = 1000;
+    private static final int DEFAULT_MAX_COMPACT_SIZE = 256;
     private static final int DEFAULT_MAX_CONFIGURATIONS = 1000;
     private static final AtomicBoolean COMPACT_SIZE_CLIPPED_LOGGED = new AtomicBoolean();
     private static final AtomicBoolean CONFIGURATIONS_CAPPED_LOGGED = new AtomicBoolean();

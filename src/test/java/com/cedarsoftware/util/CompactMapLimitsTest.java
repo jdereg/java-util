@@ -19,7 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * json-io reads a CompactMap's configuration from the document it parses, and each configuration was a generated
  * class that is never unloaded, with no bound on the compact size: a document could fill the JVM with classes, or
- * make every insert copy and scan millions of entries. The compact size is now clipped to a maximum (1,000 by
+ * make every insert copy and scan millions of entries. The compact size is now clipped to a maximum (256 by
  * default), and past a maximum number of configurations (1,000) a new one keeps what decides its behavior -- case
  * sensitivity, ordering, map type -- and takes the default storage. Neither throws: each is logged once.
  */
@@ -68,16 +68,18 @@ class CompactMapLimitsTest {
     @Test
     void aCompactSizeAboveTheMaximumIsClippedAndLoggedOnce() {
         CompactMap<String, Object> map = CompactMap.<String, Object>builder().compactSize(5000).build();
-        assertEquals(1000, map.getConfig().get(CompactMap.COMPACT_SIZE));
-        for (int i = 0; i <= 1000; i++) {
+        assertEquals(256, map.getConfig().get(CompactMap.COMPACT_SIZE));
+        for (int i = 0; i < 256; i++) {
             map.put("k" + i, i);
         }
-        assertEquals(CompactMap.LogicalValueType.MAP, map.getLogicalValueType());     // 1,001 entries
-        assertEquals(1001, map.size());
+        assertEquals(CompactMap.LogicalValueType.ARRAY, map.getLogicalValueType());   // 256 entries
+        map.put("k256", 256);
+        assertEquals(CompactMap.LogicalValueType.MAP, map.getLogicalValueType());     // 257 entries
+        assertEquals(257, map.size());
 
         CompactMap<String, Object> another = CompactMap.<String, Object>builder().compactSize(Integer.MAX_VALUE)
                 .caseSensitive(false).build();
-        assertEquals(1000, another.getConfig().get(CompactMap.COMPACT_SIZE));
+        assertEquals(256, another.getConfig().get(CompactMap.COMPACT_SIZE));
         assertEquals(1, infoRecordsMentioning(CompactMap.MAX_COMPACT_SIZE_PROPERTY));
     }
 

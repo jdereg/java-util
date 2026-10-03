@@ -25,7 +25,7 @@ import static com.cedarsoftware.util.fastdoubleparser.FastIntegerMath.unsignedMu
  * </dl>
  * </p>
  */
-final class FastDoubleMath {
+public final class FastDoubleMath {
     /**
      * Bias used in the exponent of a double.
      */
@@ -815,12 +815,15 @@ final class FastDoubleMath {
      *     <dd><a href="https://arxiv.org/pdf/2212.06644.pdf">arxiv.org</a></dd>
      * </dl>
      *
+     * <p>
+     * Public (java-util): FloatDecimal turns a float's shortest decimal into a double with it.
+     *
      * @param isNegative  whether the number is negative
      * @param significand uint64 the significand
      * @param power       the exponent number (the power)
      * @return the computed double on success, {@link Double#NaN} on failure
      */
-    static double tryDecToDoubleWithFastAlgorithm(boolean isNegative, long significand, int power) {
+    public static double tryDecToDoubleWithFastAlgorithm(boolean isNegative, long significand, int power) {
         // we start with a fast path
         // It was described in Clinger WD (1990).
         if (-22 <= power && power <= 22 && Long.compareUnsigned(significand, (1L << DOUBLE_SIGNIFICAND_WIDTH) - 1) <= 0) {

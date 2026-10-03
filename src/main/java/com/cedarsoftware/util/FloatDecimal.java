@@ -2,6 +2,8 @@ package com.cedarsoftware.util;
 
 import java.math.BigInteger;
 
+import com.cedarsoftware.util.fastdoubleparser.FastDoubleMath;
+
 /**
  * The decimal a float prints, as a double, without printing it: the shortest decimal that reads back as the float
  * (the one closest to it when several are that short, and never fewer than two digits when a two-digit one is
@@ -14,8 +16,14 @@ import java.math.BigInteger;
  * with BigInteger. Every one of the 1,249,902,592 positive floats with a fraction was checked against
  * {@code Double.parseDouble(Float.toString(f))} on JDK 21: the same double for each, and for its negation.
  * <p>
+ * The decimal becomes a double through fastdoubleparser's FastDoubleMath (Clinger's fast path, else
+ * Eisel-Lemire), correctly rounded with no text: every one of the 645,922,816 positive floats whose decimal is
+ * beyond Clinger's reach (exponent below -22) was checked against Double.parseDouble of the decimal on JDK 21 and
+ * JDK 8, with no difference, for it and its negation.
+ * <p>
  * MultiKeyMap uses it for a float's value in value-based equality (0.1f is the 0.1 it prints). Printing with
- * Float.toString and parsing that cost 45 ns per float on JDK 21 (60-67 on JDK 8); this takes about 16.
+ * Float.toString and parsing that cost 35-43 ns per float on JDK 21 (52-54 on JDK 8); this takes about 7-8, and
+ * 10 for a float below about 1e-14.
  *
  * @author John DeRegnaucourt (jdereg@gmail.com)
  *         <br>
@@ -46,11 +54,6 @@ final class FloatDecimal {
     private static final long[] G1 = new long[K_MAX - K_MIN + 1];
     /** FLOG2_POW10[k - K_MIN]: floor(log2(10^-k)), that is r + 125. */
     private static final int[] FLOG2_POW10 = new int[K_MAX - K_MIN + 1];
-
-    /** 10^0 .. 10^22: every one an exact double. */
-    private static final double[] EXACT_POWERS_OF_TEN = {
-            1e0, 1e1, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9, 1e10, 1e11,
-            1e12, 1e13, 1e14, 1e15, 1e16, 1e17, 1e18, 1e19, 1e20, 1e21, 1e22};
 
     static {
         BigInteger two125 = BigInteger.ONE.shiftLeft(125);
@@ -96,15 +99,12 @@ final class FloatDecimal {
         long decimal = decimal(f);
         long significand = decimal >>> 8;
         int exponent = (int) (decimal & 0xFF) - 128;
-        double value;
-        if (exponent >= 0 && exponent <= 22) {
-            value = significand * EXACT_POWERS_OF_TEN[exponent];       // one rounding of exact operands
-        } else if (exponent < 0 && exponent >= -22) {
-            value = significand / EXACT_POWERS_OF_TEN[-exponent];
-        } else {
-            value = Double.parseDouble(significand + "E" + exponent);  // tiny floats only
+        double value = FastDoubleMath.tryDecToDoubleWithFastAlgorithm(f < 0, significand, exponent);
+        if (Double.isNaN(value)) {                                  // the fast algorithm could not decide
+            value = Double.parseDouble(significand + "E" + exponent);
+            return f < 0 ? -value : value;
         }
-        return f < 0 ? -value : value;
+        return value;
     }
 
     /**

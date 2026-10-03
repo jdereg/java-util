@@ -540,7 +540,7 @@ public final class DateUtilities {
     private static final String tz_Hh = "[+-]\\d{1,2}";
     private static final String tzNamedCore = "(?:GMT[+-]\\d{2}:\\d{2}|[A-Za-z][A-Za-z0-9~/._+-]{1,50})";
     private static final String tzNamed = wsOp + "(?:\\[" + tzNamedCore + "]|" + tzNamedCore + ")";
-    private static final String nano = "\\.\\d{1,9}";
+    private static final String nano = "\\.\\d+";      // past 9 digits, truncated to nanoseconds
 
     // Patterns defined in BNF influenced style using above named elements
     // Performance optimized: Added UNICODE_CHARACTER_CLASS for better Unicode handling

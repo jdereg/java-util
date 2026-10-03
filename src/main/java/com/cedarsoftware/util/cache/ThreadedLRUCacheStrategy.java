@@ -242,13 +242,14 @@ public class ThreadedLRUCacheStrategy<K, V> implements Map<K, V>, Closeable {
                 } else if (!cache.closed.get()) {
                     try {
                         cache.backgroundCleanup(deadline);
-                    } catch (Exception e) {
+                    } catch (Throwable t) {
                         // Don't let one cache's failure stop cleanup of others
                     }
                 }
             }
-        } catch (Exception e) {
-            // Catch any exception to prevent the scheduled task from dying
+        } catch (Throwable t) {
+            // Anything escaping, an Error included, would end this periodic task: the executor silently
+            // cancels a periodic task that throws, and every THREADED cache in the JVM would stop being trimmed.
         }
     }
 

@@ -9,6 +9,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.AbstractCollection;
 import java.util.AbstractMap;
 import java.util.AbstractSet;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
@@ -1719,15 +1720,12 @@ public class CompactMap<K, V> implements Map<K, V> {
 
             @Override
             public boolean retainAll(Collection c) {
-                // Create fast-access O(1) to all elements within passed in Collection.
-                // When case-insensitive, use CaseInsensitiveMap so that key lookup
-                // respects case-insensitivity (getNewMap() may return a plain HashMap).
-                Map<K, V> other = isCaseInsensitive() ? new CaseInsensitiveMap<>() : newBackingMap();
-
+                // Create fast-access O(1) to all elements within passed in Collection, matched as this map matches
+                Map<K, V> other = matchingMap();
                 for (Object o : c) {
-                    // Non-null sentinel: only containsKey() is consulted below, and getNewMap()
-                    // may return a null-value-rejecting map (e.g. ConcurrentHashMap).
-                    other.put((K) o, (V) Boolean.TRUE);
+                    if (holdsKey(o)) {
+                        other.put((K) o, (V) Boolean.TRUE);    // non-null sentinel: only containsKey() is consulted
+                    }
                 }
 
                 final int size = size();
@@ -1839,26 +1837,13 @@ public class CompactMap<K, V> implements Map<K, V> {
 
             @Override
             public boolean retainAll(Collection c) {
-                // Create fast-access O(1) to all elements within passed in Collection
-                Map<K, V> other = new CompactMap<K, V>() {   // Match outer
-                    @Override
-                    protected boolean isCaseInsensitive() {
-                        return CompactMap.this.isCaseInsensitive();
-                    }
-
-                    @Override
-                    protected int compactSize() {
-                        return CompactMap.this.compactSize();
-                    }
-
-                    @Override
-                    protected Map<K, V> getNewMap() {
-                        return CompactMap.this.newBackingMap();
-                    }
-                };
+                // The values the collection pairs with each key of this map, its keys matched as this map matches
+                // them; a key may come with several values
+                Map<Object, List<Object>> wanted = (Map<Object, List<Object>>) (Map<?, ?>) matchingMap();
                 for (Object o : c) {
-                    if (o instanceof Entry) {
-                        other.put(((Entry<K, V>) o).getKey(), ((Entry<K, V>) o).getValue());
+                    if (o instanceof Entry && holdsKey(((Entry<?, ?>) o).getKey())) {
+                        Entry<?, ?> e = (Entry<?, ?>) o;
+                        wanted.computeIfAbsent(e.getKey(), k -> new ArrayList<>(1)).add(e.getValue());
                     }
                 }
 
@@ -1868,21 +1853,38 @@ public class CompactMap<K, V> implements Map<K, V> {
                 Iterator<Entry<K, V>> i = entrySet().iterator();
                 while (i.hasNext()) {
                     Entry<K, V> entry = i.next();
-                    K key = entry.getKey();
-                    V value = entry.getValue();
-                    if (!other.containsKey(key)) {   // Key not even present, nuke the entry
+                    List<Object> values = wanted.get(entry.getKey());
+                    if (values == null || !values.contains(entry.getValue())) {
                         i.remove();
-                    } else {   // Key present, now check value match
-                        Object v = other.get(key);
-                        if (!Objects.equals(v, value)) {
-                            i.remove();
-                        }
                     }
                 }
 
                 return size() != origSize;
             }
         };
+    }
+
+    /**
+     * A map that matches keys as this one does, for retainAll() to look elements up in: a backing map of this map's
+     * kind, or a CaseInsensitiveMap when this map is case-insensitive. The entry set's used to be an anonymous
+     * CompactMap configured from whichever map called it -- one class for every map, so what is worked out once per
+     * class (whether nulls are refused, how keys sort) came from the first map that asked and applied to all.
+     */
+    private Map<K, V> matchingMap() {
+        return isCaseInsensitive() ? new CaseInsensitiveMap<>() : newBackingMap();
+    }
+
+    /**
+     * Whether this map holds a key that {@code key} finds. A lookup this map refuses -- a null where its backing map
+     * takes none, a key it cannot compare -- finds nothing: retainAll() skips such an element rather than throw, as
+     * the JDK's maps do, and what it keeps can all be compared with this map's keys.
+     */
+    private boolean holdsKey(Object key) {
+        try {
+            return containsKey(key);
+        } catch (NullPointerException | ClassCastException e) {
+            return false;
+        }
     }
 
     @Deprecated

@@ -57,7 +57,7 @@ public class ConcurrentNavigableMapNullSafe<K, V> extends AbstractConcurrentNull
     private static final Object NULL_KEY_SENTINEL = new Object();
 
     /**
-     * Tie-breakers for same-class non-Comparable keys whose identity hash codes
+     * Tie-breakers for distinct same-class non-Comparable keys whose hash codes
      * collide. Without this, colliding distinct keys compare equal and silently
      * overwrite each other. Keys are held weakly so map keys stay GC-able, and the
      * registry is only populated when a collision actually occurs (vanishingly rare),
@@ -155,34 +155,41 @@ public class ConcurrentNavigableMapNullSafe<K, V> extends AbstractConcurrentNull
 
     /**
      * Natural ordering of two non-null keys that are not two of one Comparable class: related classes by
-     * compareTo, same-class non-Comparable keys by identity, unrelated classes by class name.
+     * compareTo, keys of one class that is not Comparable (held as HashedKey) by hash code then equals, unrelated
+     * classes by class name.
      */
     @SuppressWarnings("unchecked")
     private static int compareMixed(Object o1, Object o2) {
-        Class<?> class1 = o1.getClass();
-        Class<?> class2 = o2.getClass();
+        Object k1 = o1 instanceof HashedKey ? ((HashedKey) o1).key : o1;
+        Object k2 = o2 instanceof HashedKey ? ((HashedKey) o2).key : o2;
+        Class<?> class1 = k1.getClass();
+        Class<?> class2 = k2.getClass();
 
         // Related classes are one natural order too: an enum's constants (one with a body has its own class)
         // and a Comparable class with its subclasses. Ordering those by class name split them apart.
-        if (class1 != class2 && o1 instanceof Comparable && related(o1, class1, o2, class2)) {
-            return ((Comparable<Object>) o1).compareTo(o2);
+        if (class1 != class2 && k1 instanceof Comparable && related(k1, class1, k2, class2)) {
+            return ((Comparable<Object>) k1).compareTo(k2);
         }
 
-        // Same-class, non-Comparable keys must still have a strict ordering to avoid
-        // treating distinct keys as equal and overwriting entries.
+        // Same-class keys that are not Comparable: equal keys (by equals, as a Map's keys are) are one key, and
+        // distinct keys need a strict ordering so they never overwrite each other. Hash codes first (cached in
+        // the HashedKey, so a comparison is an int compare), equals only when they tie. Identity hashes, as
+        // before, made two equal keys two keys.
         if (class1 == class2) {
-            int idCmp = Integer.compare(System.identityHashCode(o1), System.identityHashCode(o2));
-            if (idCmp != 0) {
-                return idCmp;
-            }
-            if (o1 == o2) {
+            if (k1 == k2) {
                 return 0;
             }
-            // Distinct objects with colliding identity hashes: assign stable
-            // sequence numbers so they remain distinct keys instead of one
-            // silently overwriting the other. (equals-equal keys share a
-            // registry entry and thus compare equal, as a Map requires.)
-            return Long.compare(tieBreakerFor(o1), tieBreakerFor(o2));
+            int hashCmp = Integer.compare(hashOf(o1, k1), hashOf(o2, k2));
+            if (hashCmp != 0) {
+                return hashCmp;
+            }
+            if (k1.equals(k2)) {
+                return 0;
+            }
+            // Distinct keys with colliding hash codes: assign stable sequence numbers so they remain distinct
+            // keys instead of one silently overwriting the other. (The registry is keyed by equals, so an equal
+            // key shares the entry; equal keys never get here.)
+            return Long.compare(tieBreakerFor(k1), tieBreakerFor(k2));
         }
 
         // Compare class names to provide ordering between different types
@@ -208,6 +215,40 @@ public class ConcurrentNavigableMapNullSafe<K, V> extends AbstractConcurrentNull
         return Integer.compare(System.identityHashCode(cl1), System.identityHashCode(cl2));
     }
 
+    private static int hashOf(Object masked, Object key) {
+        return masked instanceof HashedKey ? ((HashedKey) masked).hash : key.hashCode();
+    }
+
+    /**
+     * A key that is not Comparable, as a natural-order map holds it: with its hash code computed once, when the key
+     * goes in or is looked up, since such keys are ordered by hash code and every comparison would otherwise
+     * compute both. Only maskNullKey makes one and unmaskNullKey takes it apart.
+     */
+    private static final class HashedKey {
+        final Object key;
+        final int hash;
+
+        HashedKey(Object key) {
+            this.key = key;
+            this.hash = key.hashCode();
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            return o instanceof HashedKey && key.equals(((HashedKey) o).key);
+        }
+
+        @Override
+        public int hashCode() {
+            return hash;
+        }
+
+        @Override
+        public String toString() {
+            return String.valueOf(key);
+        }
+    }
+
     /**
      * Whether two keys of different classes share a natural order: constants of one enum, or instances of a
      * Comparable class and a subclass of it (the common class itself Comparable, so compareTo accepts both).
@@ -225,6 +266,9 @@ public class ConcurrentNavigableMapNullSafe<K, V> extends AbstractConcurrentNull
         if (key == null) {
             return NULL_KEY_SENTINEL;
         }
+        if (originalComparator == null && !(key instanceof Comparable)) {
+            return new HashedKey(key);              // natural order sorts such keys by hash code: compute it once
+        }
         return key;
     }
 
@@ -233,6 +277,9 @@ public class ConcurrentNavigableMapNullSafe<K, V> extends AbstractConcurrentNull
     protected K unmaskNullKey(Object maskedKey) {
         if (maskedKey == NULL_KEY_SENTINEL) {
             return null;
+        }
+        if (maskedKey instanceof HashedKey) {
+            return (K) ((HashedKey) maskedKey).key;
         }
         return (K) maskedKey;
     }

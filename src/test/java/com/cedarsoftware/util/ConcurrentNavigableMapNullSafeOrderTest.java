@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * ConcurrentNavigableMapNullSafe orders keys as its comparator() says: natural order when it returns null (for keys
@@ -144,5 +145,37 @@ class ConcurrentNavigableMapNullSafeOrderTest {
             fallback.put(k, 1);
         }
         assertEquals(Arrays.asList("a", "b", null), new ArrayList<>(fallback.keySet()));
+    }
+
+    /**
+     * Keys of one class that is not Comparable were ordered by identity hash, so two equal keys were two keys: get
+     * with an equal key found nothing, a second put added a second entry, and equals with a HashMap holding the
+     * same entries was true one way and false the other. A Map's keys are equal by equals.
+     */
+    @Test
+    void equalKeysOfANonComparableClassAreOneKey() {
+        ConcurrentNavigableMapNullSafe<Object, String> map = new ConcurrentNavigableMapNullSafe<>();
+        map.put(Arrays.asList(1, 2), "x");
+        assertEquals("x", map.get(Arrays.asList(1, 2)));
+        assertTrue(map.containsKey(Arrays.asList(1, 2)));
+        map.put(Arrays.asList(1, 2), "y");
+        assertEquals(1, map.size());
+        assertEquals("y", map.get(Arrays.asList(1, 2)));
+
+        java.util.Map<Object, String> hash = new java.util.HashMap<>();
+        hash.put(Arrays.asList(1, 2), "y");
+        assertEquals(hash, map);
+        assertEquals(map, hash);
+
+        // Distinct keys of the class stay distinct, equal hash codes or not
+        map.put(Arrays.asList(2, 1), "z");
+        map.put(new ArrayList<>(Arrays.asList(1, 2, 3)), "w");
+        assertEquals(3, map.size());
+        Object a = new Object();
+        Object b = new Object();
+        map.put(a, "a");
+        map.put(b, "b");
+        assertEquals("a", map.get(a));
+        assertEquals("b", map.get(b));
     }
 }

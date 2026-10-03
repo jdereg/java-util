@@ -461,7 +461,32 @@ public class ThreadedLRUCacheStrategy<K, V> implements Map<K, V>, Closeable {
     public V put(K key, V value) {
         Node<K, V> newNode = new Node<>(key, value);
         Node<K, V> oldNode = cache.put(key, newNode);
-        return (oldNode != null) ? oldNode.value : null;
+        if (oldNode == null) {
+            trimIfFarOverCapacity(newNode);
+            return null;
+        }
+        return oldNode.value;
+    }
+
+    /**
+     * Writers help when the cleanup thread falls behind. It runs every 500 ms, and a single writer could add
+     * millions of entries in between. Past twice the capacity, the writer that wins evictLock trims the cache
+     * back to capacity with bulk eviction, as the cleanup thread would; the other writers carry on. Only a new
+     * node whose timestamp (a tick of the shared clock, one per node made) is a multiple of 32 looks at the size:
+     * ConcurrentHashMap.size() reads every counter cell the writers update, which on every insert cost 70% more
+     * per put at 4 threads. A cache can so pass twice its capacity by a few dozen entries before a writer notices.
+     */
+    private void trimIfFarOverCapacity(Node<K, V> inserted) {
+        if ((inserted.timestamp & 31) == 0 && cache.size() - capacity > capacity && evictLock.tryLock()) {
+            try {
+                int surplus = cache.size() - capacity;
+                if (surplus > 0) {
+                    bulkEvict(surplus, Long.MAX_VALUE);
+                }
+            } finally {
+                evictLock.unlock();
+            }
+        }
     }
 
     @Override
@@ -491,7 +516,7 @@ public class ThreadedLRUCacheStrategy<K, V> implements Map<K, V>, Closeable {
      */
     @Override
     public V computeIfAbsent(K key, java.util.function.Function<? super K, ? extends V> mappingFunction) {
-        final Object[] result = new Object[1];
+        final Object[] result = new Object[2];     // the value, and the node of a new key
         cache.compute(key, (k, existing) -> {
             if (existing != null && existing.value != null) {
                 existing.updateTimestamp();
@@ -508,8 +533,17 @@ public class ThreadedLRUCacheStrategy<K, V> implements Map<K, V>, Closeable {
                 }
                 return null;
             }
-            return new Node<>(k, computed);
+            Node<K, V> node = new Node<>(k, computed);
+            if (existing == null) {
+                result[1] = node;
+            }
+            return node;
         });
+        if (result[1] != null) {
+            @SuppressWarnings("unchecked")
+            Node<K, V> inserted = (Node<K, V>) result[1];
+            trimIfFarOverCapacity(inserted);
+        }
         @SuppressWarnings("unchecked")
         V value = (V) result[0];
         return value;
@@ -527,6 +561,7 @@ public class ThreadedLRUCacheStrategy<K, V> implements Map<K, V>, Closeable {
                 Node<K, V> newNode = new Node<>(key, value);
                 Node<K, V> raced = cache.putIfAbsent(key, newNode);
                 if (raced == null) {
+                    trimIfFarOverCapacity(newNode);
                     return null;
                 }
                 existing = raced;

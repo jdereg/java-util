@@ -89,4 +89,37 @@ class ThreadedLRUCacheCleanupTest {
             cache.close();
         }
     }
+
+    /**
+     * A writer faster than the cleanup cycle must not grow the cache without bound. The cleanup thread runs every
+     * 500 ms, and one writer put millions of entries in between (an OutOfMemoryError within a second on a 1 GB
+     * heap). Past twice its capacity, a writer now trims the cache back, whichever method inserted the key. One
+     * new node in 32 looks at the size, so the cache can pass twice its capacity by a few dozen entries.
+     */
+    @Test
+    void aFastWriterCannotGrowTheCachePastTwiceItsCapacity() {
+        for (String method : new String[]{"put", "putIfAbsent", "computeIfAbsent"}) {
+            ThreadedLRUCacheStrategy<Integer, Integer> cache = new ThreadedLRUCacheStrategy<>(1000);
+            try {
+                int most = 0;
+                for (int i = 0; i < 2_000_000; i++) {
+                    Integer key = i;
+                    if (method.equals("put")) {
+                        cache.put(key, key);
+                    } else if (method.equals("putIfAbsent")) {
+                        cache.putIfAbsent(key, key);
+                    } else {
+                        cache.computeIfAbsent(key, k -> k);
+                    }
+                    if ((i & 255) == 0) {
+                        most = Math.max(most, cache.size());
+                    }
+                }
+                most = Math.max(most, cache.size());
+                assertTrue(most <= 3000, method + ": capacity 1,000, grew to " + most);
+            } finally {
+                cache.close();
+            }
+        }
+    }
 }

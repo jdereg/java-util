@@ -134,6 +134,8 @@ import java.util.regex.Pattern;
  * <h2>Special Features</h2>
  * <ul>
  *   <li>Supports Unix epoch milliseconds (e.g., "1640995200000")</li>
+ *   <li>Eight digits that make a date are that date, ISO 8601's basic form (e.g., "20240115" is 2024-01-15); other
+ *       eight digits are epoch milliseconds</li>
  *   <li>Optional day-of-week in any position (ignored in date calculation)</li>
  *   <li>Flexible date/time separator (space or 'T')</li>
  *   <li>Time can appear before or after date</li>
@@ -832,6 +834,13 @@ public final class DateUtilities {
             return dateToStringFast;
         }
 
+        // Eight digits that make a date -- "20240115", ISO 8601's basic form -- are that date: eight-digit epoch
+        // milliseconds only reach the first 28 hours of 1970
+        ZonedDateTime basicDate = tryBasicIsoDate(dateStr, defaultZoneId);
+        if (basicDate != null) {
+            return basicDate;
+        }
+
         // If purely digits => epoch millis
         if (safeMatches(allDigits, dateStr)) {
             // Security: Validate epoch milliseconds range to prevent overflow
@@ -1150,6 +1159,23 @@ public final class DateUtilities {
             }
         }
         return -1;
+    }
+
+    /**
+     * "yyyyMMdd" as the date it makes, at the start of the day in the default zone (as "yyyy-MM-dd" reads); null for
+     * any other text, including eight digits that are not a date, which stay epoch milliseconds.
+     */
+    private static ZonedDateTime tryBasicIsoDate(String s, ZoneId zone) {
+        if (s.length() != 8) {
+            return null;
+        }
+        int year = digits(s, 0, 4);
+        int month = digits(s, 4, 2);
+        int day = digits(s, 6, 2);
+        if (year < 0 || month < 1 || month > 12 || day < 1 || day > Month.of(month).length(Year.isLeap(year))) {
+            return null;
+        }
+        return ZonedDateTime.of(year, month, day, 0, 0, 0, 0, zone);
     }
 
     /** The value of {@code count} ASCII digits from {@code start}, or -1 if any is not one. */

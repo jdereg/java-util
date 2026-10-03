@@ -4073,6 +4073,14 @@ DateUtilities.parseDate("2024-01-15 20:30 Asia/Kolkata");
 DateUtilities.parseDate("1640995200000");  // 2022-01-01 00:00:00 UTC
 ```
 
+**Basic ISO date (eight digits):**
+```java
+// Eight digits that make a date are that date, at the start of the day
+DateUtilities.parseDate("20240115");       // 2024-01-15 00:00:00
+// Eight digits that are not a date (month 13, day 32...) are still epoch milliseconds
+DateUtilities.parseDate("20241315");       // 20,241,315 ms after the epoch
+```
+
 **Default Timezone Control:**
 ```java
 // Parse with specific default timezone

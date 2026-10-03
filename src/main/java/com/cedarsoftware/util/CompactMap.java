@@ -1797,7 +1797,7 @@ public class CompactMap<K, V> implements Map<K, V> {
             @Override
             public boolean removeAll(Collection c) {
                 int size = size();
-                for (Object o : c) {
+                for (Object o : c.toArray()) {      // a snapshot: c may be this key set, or a view of it
                     CompactMap.this.remove(o);
                 }
                 return size() != size;
@@ -1914,7 +1914,7 @@ public class CompactMap<K, V> implements Map<K, V> {
             @Override
             public boolean removeAll(Collection c) {
                 final int size = size();
-                for (Object o : c) {
+                for (Object o : c.toArray()) {      // a snapshot: c may be this entry set, or a view of it
                     remove(o);
                 }
                 return size() != size;

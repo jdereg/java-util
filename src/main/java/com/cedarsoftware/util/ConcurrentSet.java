@@ -227,7 +227,13 @@ public class ConcurrentSet<T> implements Set<T>, Serializable {
     public <T1> T1[] toArray(T1[] a) {
         if (!set.contains(NullSentinel.NULL_ITEM)) {
             try {
-                return set.toArray(a);
+                T1[] result = set.toArray(a);
+                // A null added after the check is in the copy as the marker. Only an array that can hold the
+                // marker (an Object[]) can have it; storing it in a typed array threw, which falls through below.
+                if (a.getClass().getComponentType().isInstance(NullSentinel.NULL_ITEM)) {
+                    unmaskNullMarker(result);
+                }
+                return result;
             } catch (ArrayStoreException ignored) {
                 // A concurrent null add can race with the sentinel check; fall through safely.
             }
@@ -249,6 +255,16 @@ public class ConcurrentSet<T> implements Set<T>, Serializable {
             a[size] = null;
         }
         return a;
+    }
+
+    /** A null element is in a copy of the backing set as the internal marker: makes it null again. */
+    private static <A> A[] unmaskNullMarker(A[] array) {
+        for (int i = 0; i < array.length; i++) {
+            if (array[i] == NullSentinel.NULL_ITEM) {
+                array[i] = null;
+            }
+        }
+        return array;
     }
 
     @Override

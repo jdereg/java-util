@@ -270,28 +270,15 @@ public class LockingLRUCacheStrategy<K, V> implements Map<K, V> {
         lock.lock();
         try {
             Node<K, V> node = cache.get(key);
-            if (node != null) {
-                if (node.value != null) {
-                    moveToHead(node);
-                    return node.value;
-                }
-                V computed = mappingFunction.apply(key);
-                if (computed != null) {
-                    node.value = computed;
-                }
+            if (node != null && node.value != null) {
                 moveToHead(node);
-                return computed;
+                return node.value;
             }
             V computed = mappingFunction.apply(key);
             if (computed != null) {
-                Node<K, V> newNode = new Node<>(key, computed);
-                cache.put(key, newNode);
-                addToHead(newNode);
-                if (cache.size() > capacity) {
-                    Node<K, V> tailToRemove = removeTail();
-                    cache.remove(tailToRemove.key);
-                    tailToRemove.value = null;
-                }
+                writeLocked(key, node, computed);
+            } else if (node != null) {
+                moveToHead(node);
             }
             return computed;
         } finally {
@@ -331,15 +318,25 @@ public class LockingLRUCacheStrategy<K, V> implements Map<K, V> {
     // The compound operations below run under the lock, so each is atomic (the Map defaults were a get, then a
     // put: concurrent updates overwrote each other). The functions run under the lock, as in computeIfAbsent.
 
-    /** Under the lock: writes value for key, at the head of the recency order, evicting past capacity. */
+    /**
+     * Under the lock: writes value for key, at the head of the recency order, evicting past capacity. node is the
+     * one read before the caller's function ran; a function that wrote the key itself (against the Map contract;
+     * the lock is reentrant) may have unlinked it or added another, so the key keeps one node either way.
+     */
     private void writeLocked(K key, Node<K, V> node, V value) {
+        if (node != null && node.prev == null) {
+            node = cache.get(key);                  // unlinked meanwhile: the key's node now, if any
+        }
         if (node != null) {
             node.value = value;
             moveToHead(node);
             return;
         }
         Node<K, V> newNode = new Node<>(key, value);
-        cache.put(key, newNode);
+        Node<K, V> displaced = cache.put(key, newNode);
+        if (displaced != null) {
+            removeNode(displaced);                  // added meanwhile: replaced, not kept as a second node
+        }
         addToHead(newNode);
         if (cache.size() > capacity) {
             Node<K, V> tailToRemove = removeTail();
@@ -348,11 +345,12 @@ public class LockingLRUCacheStrategy<K, V> implements Map<K, V> {
         }
     }
 
-    /** Under the lock: removes key's node. */
+    /** Under the lock: removes key's node, if it is still the key's node. */
     private void removeLocked(Object key, Node<K, V> node) {
-        cache.remove(key);
-        removeNode(node);
-        node.value = null;
+        if (cache.remove(key, node)) {              // Node has no equals: identity
+            removeNode(node);
+            node.value = null;
+        }
     }
 
     @Override

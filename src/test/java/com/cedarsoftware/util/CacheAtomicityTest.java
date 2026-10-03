@@ -1,7 +1,9 @@
 package com.cedarsoftware.util;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.ConcurrentModificationException;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -212,6 +214,56 @@ class CacheAtomicityTest {
                 assertTrue(!thread.isAlive(), e.getKey() + " " + op + " is still running");
                 cache.put("after", 3);
                 assertEquals(Integer.valueOf(3), cache.get("after"), e.getKey() + " " + op);
+            }
+        }
+    }
+
+    /**
+     * A function that writes the key it is computing (against the Map contract) must not leave a size-limited
+     * cache holding two entries for one key. LOCKING linked a second node for the key, past capacity for good:
+     * capacity 3 then held 4 entries after any number of puts.
+     */
+    @Test
+    void aFunctionThatWritesItsOwnKeyLeavesTheCacheWithinCapacity() {
+        Map<String, Supplier<Map<String, Integer>>> limited = new LinkedHashMap<>();
+        limited.put("LRUCache LOCKING", () -> new LRUCache<>(3, LRUCache.StrategyType.LOCKING));
+        limited.put("TTLCache size-limited", () -> new TTLCache<>(3_600_000, 3));
+        for (Map.Entry<String, Supplier<Map<String, Integer>>> e : limited.entrySet()) {
+            for (String op : new String[]{"computeIfAbsent", "compute", "merge", "computeIfPresent"}) {
+                Map<String, Integer> cache = e.getValue().get();
+                if (op.equals("merge") || op.equals("computeIfPresent")) {
+                    cache.put("k", 0);
+                }
+                if (op.equals("computeIfAbsent")) {
+                    cache.computeIfAbsent("k", k -> {
+                        cache.put("k", 1);
+                        return 2;
+                    });
+                } else if (op.equals("compute")) {
+                    cache.compute("k", (k, v) -> {
+                        cache.remove("k");
+                        cache.put("k", 1);
+                        return 2;
+                    });
+                } else if (op.equals("merge")) {
+                    cache.merge("k", 2, (a, b) -> {
+                        cache.remove("k");
+                        cache.put("k", 1);
+                        return b;
+                    });
+                } else {
+                    cache.computeIfPresent("k", (k, v) -> {
+                        cache.remove("k");
+                        cache.put("k", 1);
+                        return 2;
+                    });
+                }
+                assertEquals(Integer.valueOf(2), cache.get("k"), e.getKey() + " " + op);
+                for (int i = 0; i < 10; i++) {
+                    cache.put("x" + i, i);
+                }
+                assertEquals(3, cache.size(), e.getKey() + " " + op);
+                assertEquals(new HashSet<>(Arrays.asList("x7", "x8", "x9")), cache.keySet(), e.getKey() + " " + op);
             }
         }
     }

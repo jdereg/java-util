@@ -113,7 +113,9 @@ public class TTLCache<K, V> implements Map<K, V>, AutoCloseable {
         if (cleanupIntervalMillis < 10) {
             throw new IllegalArgumentException("cleanupIntervalMillis must be at least 10 milliseconds.");
         }
-        this.ttlMillis = ttlMillis;
+        // now + ttlMillis must not overflow (a wrapped expiry is in the past: every entry expired at birth).
+        // Half of Long.MAX_VALUE milliseconds is 146 million years, as good as forever.
+        this.ttlMillis = Math.min(ttlMillis, Long.MAX_VALUE / 2);
         this.maxSize = maxSize;
         this.lruEnabled = maxSize > -1;
         this.cacheMap = new ConcurrentHashMapNullSafe<>();

@@ -627,9 +627,8 @@ public final class DateUtilities {
         timezoneBuilder.put("CDT", "America/Chicago");     // Central Daylight Time
         // Note: CDT can also be Cuba Daylight Time (America/Havana)
 
-        // MST is ambiguous: could be Mountain Standard Time (North America) or Myanmar Standard Time
-        // Chose Myanmar Standard Time due to larger population
-        // Conflicts: America/Denver (Mountain Standard Time)
+        // MST is ambiguous: Mountain Standard Time (North America), or Malaysia Standard Time to some.
+        // Chose Mountain Standard Time (Myanmar's own abbreviation is MMT)
         timezoneBuilder.put("MST", "America/Denver");      // Mountain Standard Time
 
         timezoneBuilder.put("MDT", "America/Denver");      // Mountain Daylight Time

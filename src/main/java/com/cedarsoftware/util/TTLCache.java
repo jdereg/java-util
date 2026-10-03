@@ -329,7 +329,7 @@ public class TTLCache<K, V> implements Map<K, V>, AutoCloseable {
         node.next.prev = node.prev;
         node.prev = null;
         node.next = null;
-        node.value = null;
+        // The value stays: a reader that fetched this node just before it was replaced still returns it.
     }
 
     /**
@@ -416,9 +416,6 @@ public class TTLCache<K, V> implements Map<K, V>, AutoCloseable {
             return null;
         }
 
-        // Capture value before any concurrent purge can unlink the node and null it.
-        // The background purge thread calls unlink() which sets node.value = null,
-        // so we must read the value into a local variable first.
         V value = entry.node.value;
 
         long currentTime = System.currentTimeMillis();

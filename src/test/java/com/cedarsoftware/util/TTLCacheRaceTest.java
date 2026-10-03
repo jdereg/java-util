@@ -2,6 +2,7 @@ package com.cedarsoftware.util;
 
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.junit.jupiter.api.Test;
 
@@ -131,6 +132,48 @@ class TTLCacheRaceTest {
             key.release();
             reader.join();
             assertEquals("fresh", cache.get(key), "maxSize " + maxSize + (viaGet ? " get" : " containsKey"));
+        } finally {
+            cache.close();
+        }
+    }
+
+    /**
+     * A key that is mapped the whole time, its value replaced over and over by another thread: get() and values()
+     * must never see null. A size-limited cache unlinks the replaced node, which must not clear the value a reader
+     * already holding that node is about to return.
+     */
+    @Test
+    void aKeyMappedTheWholeTimeIsNeverReadAsNull() throws Exception {
+        TTLCache<String, Integer> cache = new TTLCache<>(3_600_000, 100, 3_600_000);
+        try {
+            cache.put("k", 0);
+            AtomicBoolean stop = new AtomicBoolean();
+            Thread writer = new Thread(() -> {
+                for (int i = 1; !stop.get(); i++) {
+                    cache.put("k", i);
+                }
+            });
+            writer.start();
+            long nullGets = 0;
+            long nullValues = 0;
+            long end = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(400);
+            try {
+                while (System.nanoTime() < end) {
+                    for (int i = 0; i < 1000; i++) {
+                        if (cache.get("k") == null) {
+                            nullGets++;
+                        }
+                    }
+                    if (cache.values().contains(null)) {
+                        nullValues++;
+                    }
+                }
+            } finally {
+                stop.set(true);
+                writer.join();
+            }
+            assertEquals(0, nullGets, "get(k) returned null");
+            assertEquals(0, nullValues, "values() held null");
         } finally {
             cache.close();
         }

@@ -900,6 +900,28 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
             }
 
             /**
+             * Removes every key that an element of the collection finds -- case-insensitively for Strings, as
+             * {@link #remove(Object)} does, and as {@link #retainAll(Collection)} matches. AbstractSet's version asked
+             * the collection's own contains() when the collection was at least as large as this set (case-sensitive
+             * for a List or HashSet) and remove() otherwise, so whether "name" removed "Name" depended on the sizes.
+             *
+             * @param c collection containing elements to be removed from this set
+             * @return true if this set changed as a result of the call
+             * @throws NullPointerException if the collection is null
+             */
+            @Override
+            public boolean removeAll(Collection<?> c) {
+                Objects.requireNonNull(c);
+                boolean modified = false;
+                for (Object o : c) {
+                    if (remove(o)) {
+                        modified = true;
+                    }
+                }
+                return modified;
+            }
+
+            /**
              * Returns an array containing all the keys in this set; the runtime type of the returned
              * array is that of the specified array. If the set fits in the specified array, it is
              * returned therein. Otherwise, a new array is allocated with the runtime type of the

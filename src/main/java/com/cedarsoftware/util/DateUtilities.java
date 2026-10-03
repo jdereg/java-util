@@ -331,7 +331,9 @@ public final class DateUtilities {
     // Pattern.matcher(input) allocates a fresh Matcher (plus internal int[] groups, locals, and
     // localsPos arrays) on every call. Reusing a single Matcher per (Pattern, Thread) and calling
     // reset(input) skips that allocation entirely. Keyed on the Pattern instance so each compiled
-    // Pattern (small, fixed set within DateUtilities) gets its own ThreadLocal<Matcher>.
+    // Pattern (small, fixed set within DateUtilities) gets its own ThreadLocal<Matcher>. A Matcher keeps the text it
+    // last matched, so callers reset it to "" when done: otherwise the last input each thread parsed -- of any size,
+    // with no length limit by default -- stayed reachable until that thread parsed again.
     private static final ConcurrentMap<Pattern, ThreadLocal<Matcher>> PATTERN_MATCHERS = new ConcurrentHashMap<>();
 
     private static Matcher reusableMatcherFor(Pattern pattern, String input) {
@@ -388,7 +390,10 @@ public final class DateUtilities {
         }
 
         if (!isRegexTimeoutProtectionEnabled()) {
-            return reusableMatcherFor(pattern, input).matches();
+            Matcher matcher = reusableMatcherFor(pattern, input);
+            boolean matches = matcher.matches();
+            matcher.reset("");      // let go of the input: the Matcher outlives this call
+            return matches;
         }
 
         long timeout = getRegexTimeoutMilliseconds();
@@ -415,10 +420,10 @@ public final class DateUtilities {
 
         if (!isRegexTimeoutProtectionEnabled()) {
             Matcher matcher = reusableMatcherFor(pattern, input);
-            if (matcher.find()) {
-                return new RegexUtilities.SafeMatchResult(matcher, input);
-            }
-            return new RegexUtilities.SafeMatchResult(null, input);
+            // SafeMatchResult takes a snapshot of the match, so the Matcher can let go of the input
+            RegexUtilities.SafeMatchResult result = new RegexUtilities.SafeMatchResult(matcher.find() ? matcher : null, input);
+            matcher.reset("");
+            return result;
         }
 
         long timeout = getRegexTimeoutMilliseconds();

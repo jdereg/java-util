@@ -333,6 +333,17 @@ public class ConcurrentSet<T> implements Set<T>, Serializable {
             clear();
             return modified;
         }
+        if (col instanceof Set && !(col instanceof HashSet)) {
+            // A set decides membership its own way (a comparator, identity, case): ask it, as the Collection
+            // contract says, rather than copy its elements into a HashSet that compares by equals.
+            boolean modified = false;
+            for (Object element : set) {
+                if (!col.contains(unwrap(element)) && set.remove(element)) {
+                    modified = true;
+                }
+            }
+            return modified;
+        }
 
         int capacity = Math.max((int) (col.size() / 0.75f) + 1, 16);
         Set<Object> wrappedCol = new HashSet<>(capacity);

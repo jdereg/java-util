@@ -827,6 +827,12 @@ public final class DateUtilities {
             return localFast;
         }
 
+        // FAST PATH: Date.toString()'s format -- "Mon Jan 15 10:30:00 EST 2024" -- read by position
+        ZonedDateTime dateToStringFast = tryDateToStringParse(dateStr);
+        if (dateToStringFast != null) {
+            return dateToStringFast;
+        }
+
         // If purely digits => epoch millis
         if (safeMatches(allDigits, dateStr)) {
             // Security: Validate epoch milliseconds range to prevent overflow
@@ -1089,6 +1095,62 @@ public final class DateUtilities {
             }
         }
         return ZonedDateTime.of(year, month, day, hour, minute, second, nanos, zone);
+    }
+
+    private static final String[] WEEKDAYS = {"mon", "tue", "wed", "thu", "fri", "sat", "sun"};
+    private static final String[] MONTH_NAMES = {"jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct",
+            "nov", "dec"};
+
+    /**
+     * Fast path for Date.toString()'s format, "Mon Jan 15 10:30:00 EST 2024": read by position and built as
+     * {@link #parseFlexible} builds it -- the day of the week ignored, the zone resolved by getTimeZone and read by
+     * honorAbbreviation. Any other shape (a space-padded day, no day of the week, a zone of more than 5 letters), an
+     * unknown day or month name, a field out of range, or a zone getTimeZone refuses returns null: the flexible path
+     * decides, and words its errors, as before.
+     */
+    private static ZonedDateTime tryDateToStringParse(String s) {
+        int len = s.length();
+        if (len < 26 || len > 30 || s.charAt(3) != ' ' || s.charAt(7) != ' ' || s.charAt(10) != ' '
+                || s.charAt(13) != ':' || s.charAt(16) != ':' || s.charAt(19) != ' ' || s.charAt(len - 5) != ' ') {
+            return null;
+        }
+        int month = indexOfName(MONTH_NAMES, s, 4) + 1;
+        if (month == 0 || indexOfName(WEEKDAYS, s, 0) < 0) {
+            return null;
+        }
+        int year = digits(s, len - 4, 4);
+        int day = digits(s, 8, 2);
+        int hour = digits(s, 11, 2);
+        int minute = digits(s, 14, 2);
+        int second = digits(s, 17, 2);
+        if (year < 0 || day < 1 || day > 28 && day > Month.of(month).length(Year.isLeap(year))
+                || hour < 0 || hour > 23 || minute < 0 || minute > 59 || second < 0 || second > 59) {
+            return null;
+        }
+        for (int i = 20; i < len - 5; i++) {
+            char c = s.charAt(i);
+            if ((c < 'A' || c > 'Z') && (c < 'a' || c > 'z')) {
+                return null;
+            }
+        }
+        String zone = s.substring(20, len - 5);
+        ZoneId zoneId;
+        try {
+            zoneId = getTimeZone(zone);
+        } catch (RuntimeException e) {
+            return null;
+        }
+        return honorAbbreviation(ZonedDateTime.of(year, month, day, hour, minute, second, 0, zoneId), zone);
+    }
+
+    /** The index of the 3-letter name {@code s} has at {@code start}, ignoring case, or -1. */
+    private static int indexOfName(String[] names, String s, int start) {
+        for (int i = 0; i < names.length; i++) {
+            if (s.regionMatches(true, start, names[i], 0, 3)) {
+                return i;
+            }
+        }
+        return -1;
     }
 
     /** The value of {@code count} ASCII digits from {@code start}, or -1 if any is not one. */

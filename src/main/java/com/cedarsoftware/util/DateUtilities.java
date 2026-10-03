@@ -664,8 +664,10 @@ public final class DateUtilities {
         timezoneBuilder.put("CET", "Europe/Berlin");       // Central European Time
         timezoneBuilder.put("CEST", "Europe/Berlin");      // Central European summer
 
-        timezoneBuilder.put("EET", "Europe/Kyiv");         // Eastern European Time
-        timezoneBuilder.put("EEST", "Europe/Kyiv");        // Eastern European summer
+        // Europe/Kyiv entered the time-zone data in 2022 (2022b); a JDK built with older data knows only Europe/Kiev
+        String kyiv = firstKnownZone(ZoneId.getAvailableZoneIds(), "Europe/Kyiv", "Europe/Kiev");
+        timezoneBuilder.put("EET", kyiv);                  // Eastern European Time
+        timezoneBuilder.put("EEST", kyiv);                 // Eastern European summer
 
         // Australia and New Zealand Time Zones
         timezoneBuilder.put("AEST", "Australia/Brisbane"); // Australian Eastern Standard Time
@@ -766,6 +768,16 @@ public final class DateUtilities {
     }
 
     private DateUtilities() {
+    }
+
+    /** The first of these zone IDs the JDK knows (the last if it knows none). */
+    static String firstKnownZone(java.util.Set<String> known, String... ids) {
+        for (String id : ids) {
+            if (known.contains(id)) {
+                return id;
+            }
+        }
+        return ids[ids.length - 1];
     }
 
     /**

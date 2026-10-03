@@ -57,11 +57,13 @@ class CompactMapConfigReportTest {
             String what = map.getClass().getName() + " " + config;
             assertSame(backingType(map), config.get(CompactMap.MAP_TYPE), what);
 
-            boolean isDefault = map.compactSize() == CompactMap.DEFAULT_COMPACT_SIZE && !map.isCaseInsensitive()
-                    && CompactMap.UNORDERED.equals(map.getOrdering())
+            boolean defaultConfiguration = map.compactSize() == CompactMap.DEFAULT_COMPACT_SIZE
+                    && !map.isCaseInsensitive() && CompactMap.UNORDERED.equals(map.getOrdering())
                     && CompactMap.DEFAULT_SINGLE_KEY.equals(map.getSingleValueKey())
                     && map.getNewMap().getClass() == HashMap.class;
-            assertEquals(isDefault, map.isDefaultCompactMap(), what);
+            assertEquals(defaultConfiguration, map.hasDefaultConfiguration(), what);
+            boolean builderMap = map.getClass().getClassLoader() != CompactMap.class.getClassLoader();
+            assertEquals(defaultConfiguration && !builderMap, map.isDefaultCompactMap(), what);
 
             map.put("b", 1);
             map.put("a", 2);

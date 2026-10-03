@@ -640,7 +640,25 @@ public class CompactMap<K, V> implements Map<K, V> {
         putAll(other);
     }
 
+    /**
+     * Whether this map is a plain {@code CompactMap} in the default configuration -- compact size 50, case-sensitive,
+     * unordered, single-value key "id", a HashMap behind it -- one a serializer can write as an ordinary object of its
+     * class and read back by that class's name. A builder map never is, whatever its configuration: its class is
+     * generated in a class loader of its own, and no reader can find it by name. json-io wrote
+     * {@code CompactMap.builder().build()} under that name and could not read it back; it now writes such a map with its
+     * configuration, as it writes every other builder map.
+     *
+     * @return true for a map that is not a builder map and has the default configuration
+     */
     public boolean isDefaultCompactMap() {
+        return getClass().getClassLoader() != templateClassLoader && hasDefaultConfiguration();
+    }
+
+    /**
+     * Whether this map has the default configuration (see {@link #isDefaultCompactMap()}), whether or not a builder
+     * made it. A {@link CompactSet} asks this of its map: the set is written under its own class's name.
+     */
+    boolean hasDefaultConfiguration() {
         // 1. Check that compactSize() is the library default (50)
         if (compactSize() != DEFAULT_COMPACT_SIZE) {
             return false;

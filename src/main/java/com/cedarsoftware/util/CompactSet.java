@@ -118,8 +118,9 @@ public class CompactSet<E> implements Set<E> {
     }
 
     public boolean isDefaultCompactSet() {
-        // Delegate to the underlying map since the logic is identical
-        return map.isDefaultCompactMap();
+        // The map's configuration decides: even new CompactSet() keeps its entries in a builder map, and the set is
+        // written under CompactSet's own name, which reads back
+        return map.hasDefaultConfiguration();
     }
     
     /* ----------------------------------------------------------------- */

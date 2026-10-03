@@ -829,6 +829,10 @@ public class TTLCache<K, V> implements Map<K, V>, AutoCloseable {
      * that does not rely on {@code entrySet().size()}, avoiding the mismatch
      * between the raw map size (which may include expired entries) and the
      * iterator (which skips them).
+     * <p>
+     * Like ConcurrentHashMap's, it is not atomic: an entry written or removed while it runs may or may not be
+     * counted. It runs the keys', values' and other map's code without holding this cache's lock, so two caches
+     * compared with each other at the same moment cannot deadlock.
      */
     @Override
     public boolean equals(Object o) {
@@ -836,66 +840,52 @@ public class TTLCache<K, V> implements Map<K, V>, AutoCloseable {
         if (!(o instanceof Map)) return false;   // covers null check too
 
         Map<?, ?> other = (Map<?, ?>) o;
-        lock.lock();
-
-        try {
-            long currentTime = System.currentTimeMillis();
-            int count = 0;
-            for (CacheEntry<K, V> entry : cacheMap.values()) {
-                if (entry.expiryTime >= currentTime) {
-                    K key = entry.node.key;
-                    V value = entry.node.value;
-                    if (!other.containsKey(key)) {
-                        return false;
-                    }
-                    if (!Objects.equals(value, other.get(key))) {
-                        return false;
-                    }
-                    count++;
+        long currentTime = System.currentTimeMillis();
+        int count = 0;
+        for (CacheEntry<K, V> entry : cacheMap.values()) {
+            if (entry.expiryTime >= currentTime) {
+                K key = entry.node.key;
+                V value = entry.node.value;
+                if (!other.containsKey(key)) {
+                    return false;
                 }
+                if (!Objects.equals(value, other.get(key))) {
+                    return false;
+                }
+                count++;
             }
-            return count == other.size();
-        } finally {
-            lock.unlock();
         }
+        return count == other.size();
     }
 
     /**
-     * Returns the hash code value for this cache, considering only non-expired entries.
+     * Returns the hash code value for this cache, considering only non-expired entries. Not atomic, as
+     * {@link #equals(Object)}; the keys' and values' code runs without this cache's lock.
      */
     @Override
     public int hashCode() {
-        lock.lock();
-        try {
-            long currentTime = System.currentTimeMillis();
-            int hash = 0;
-            for (Map.Entry<K, CacheEntry<K, V>> entry : cacheMap.entrySet()) {
-                CacheEntry<K, V> cacheEntry = entry.getValue();
-                if (cacheEntry.expiryTime >= currentTime) {
-                    K key = entry.getKey();
-                    V value = cacheEntry.node.value;
-                    int keyHash = (key == null ? 0 : key.hashCode());
-                    int valueHash = (value == null ? 0 : value.hashCode());
-                    hash += keyHash ^ valueHash;
-                }
+        long currentTime = System.currentTimeMillis();
+        int hash = 0;
+        for (Map.Entry<K, CacheEntry<K, V>> entry : cacheMap.entrySet()) {
+            CacheEntry<K, V> cacheEntry = entry.getValue();
+            if (cacheEntry.expiryTime >= currentTime) {
+                K key = entry.getKey();
+                V value = cacheEntry.node.value;
+                int keyHash = (key == null ? 0 : key.hashCode());
+                int valueHash = (value == null ? 0 : value.hashCode());
+                hash += keyHash ^ valueHash;
             }
-            return hash;
-        } finally {
-            lock.unlock();
         }
+        return hash;
     }
 
     /**
-     * Returns a string representation of this cache.
+     * Returns a string representation of this cache. Not atomic, as {@link #equals(Object)}; the keys' and
+     * values' code runs without this cache's lock.
      */
     @Override
     public String toString() {
-        lock.lock();
-        try {
-            return MapUtilities.mapToString(this);
-        } finally {
-            lock.unlock();
-        }
+        return MapUtilities.mapToString(this);
     }
 
     /**

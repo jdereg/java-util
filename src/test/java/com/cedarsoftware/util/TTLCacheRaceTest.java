@@ -2,7 +2,10 @@ package com.cedarsoftware.util;
 
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -66,6 +69,36 @@ class TTLCacheRaceTest {
         @Override
         public String toString() {
             return text;
+        }
+    }
+
+    /** A String-like key whose first hashCode() on each of the named threads waits until both threads are there. */
+    static final class RendezvousKey {
+        private final String text;
+        private final Set<Thread> threads;
+        private final CyclicBarrier barrier;
+
+        RendezvousKey(String text, Set<Thread> threads, CyclicBarrier barrier) {
+            this.text = text;
+            this.threads = threads;
+            this.barrier = barrier;
+        }
+
+        @Override
+        public int hashCode() {
+            if (threads.remove(Thread.currentThread())) {
+                try {
+                    barrier.await(5, TimeUnit.SECONDS);
+                } catch (Exception e) {
+                    throw new IllegalStateException(e);
+                }
+            }
+            return text.hashCode();
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            return o instanceof RendezvousKey && ((RendezvousKey) o).text.equals(text);
         }
     }
 
@@ -272,6 +305,96 @@ class TTLCacheRaceTest {
             assertEquals("fromPut", returned[0]);
         } finally {
             cache.close();
+        }
+    }
+
+    /**
+     * Two size-limited caches compared with each other at the same moment, each holding live an entry the other
+     * has expired. equals() held its own lock while asking the other cache, which takes the other's lock to drop
+     * its expired entry: each thread waited for the other's lock forever.
+     */
+    @Test
+    void twoCachesComparedWithEachOtherAtOnceDoNotDeadlock() throws Exception {
+        TTLCache<Object, String> a = new TTLCache<>(TTL, 10, 3_600_000);
+        TTLCache<Object, String> b = new TTLCache<>(TTL, 10, 3_600_000);
+        boolean deadlocked = false;
+        try {
+            Set<Thread> comparing = ConcurrentHashMap.newKeySet();
+            CyclicBarrier bothInside = new CyclicBarrier(2);
+            RendezvousKey x = new RendezvousKey("x", comparing, bothInside);
+            RendezvousKey y = new RendezvousKey("y", comparing, bothInside);
+            b.put(x, "v");
+            a.put(y, "v");
+            Thread.sleep(TTL + 50);
+            a.put(x, "v");                          // a: x live, y expired
+            b.put(y, "v");                          // b: y live, x expired
+            Thread first = new Thread(() -> a.equals(b));
+            Thread second = new Thread(() -> b.equals(a));
+            first.setDaemon(true);
+            second.setDaemon(true);
+            comparing.add(first);
+            comparing.add(second);
+            first.start();
+            second.start();
+            first.join(5000);
+            second.join(5000);
+            deadlocked = first.isAlive() || second.isAlive();
+            assertTrue(!deadlocked, "a.equals(b) and b.equals(a) deadlocked");
+        } finally {
+            if (!deadlocked) {                      // close() takes the lock a deadlocked thread holds
+                a.close();
+                b.close();
+            }
+        }
+    }
+
+    /**
+     * toString() and hashCode() run the values' own code. A slow one must not hold up writers: they ran under the
+     * cache lock, which every write of a size-limited cache needs.
+     */
+    @Test
+    void slowValueCodeInToStringOrHashCodeDoesNotBlockWriters() throws Exception {
+        for (boolean viaToString : new boolean[]{true, false}) {
+            TTLCache<String, Object> cache = new TTLCache<>(3_600_000, 10, 3_600_000);
+            try {
+                CountDownLatch inside = new CountDownLatch(1);
+                CountDownLatch finish = new CountDownLatch(1);
+                cache.put("slow", new Object() {
+                    @Override
+                    public String toString() {
+                        await();
+                        return "slow";
+                    }
+
+                    @Override
+                    public int hashCode() {
+                        await();
+                        return 1;
+                    }
+
+                    private void await() {
+                        inside.countDown();
+                        try {
+                            finish.await(10, TimeUnit.SECONDS);
+                        } catch (InterruptedException e) {
+                            Thread.currentThread().interrupt();
+                        }
+                    }
+                });
+                Thread reader = new Thread(viaToString ? cache::toString : cache::hashCode);
+                reader.start();
+                assertTrue(inside.await(10, TimeUnit.SECONDS));
+                Thread writer = new Thread(() -> cache.put("other", "v"));
+                writer.start();
+                writer.join(2000);
+                boolean blocked = writer.isAlive();
+                finish.countDown();
+                reader.join();
+                writer.join();
+                assertTrue(!blocked, (viaToString ? "toString" : "hashCode") + " held up a put");
+            } finally {
+                cache.close();
+            }
         }
     }
 

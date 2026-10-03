@@ -85,12 +85,14 @@ public class ThreadedLRUCacheStrategy<K, V> implements Map<K, V>, Closeable {
     private static final int DEFAULT_CLEANUP_INTERVAL_MS = 500;
     private static final int SAMPLE_SIZE = 10;  // Sample size for approximate LRU (~95-99% accuracy per Redis research)
     private static final long CYCLE_BUDGET_NS = 400_000_000L;  // 400ms global budget per 500ms cycle (~80% duty during overload)
+    private static final int BULK_STEP = 1024;      // bulk evictions per hold of evictLock
 
     private final int capacity;
     private final ConcurrentMap<K, Node<K, V>> cache;
     private final WeakReference<ThreadedLRUCacheStrategy<K, V>> selfRef;
     private final AtomicBoolean closed = new AtomicBoolean(false);
-    // One evictor at a time per cache (the cleanup thread or forceCleanup); it alone moves the sample cursor.
+    // One evictor at a time per cache (the cleanup thread, forceCleanup or a trimming writer), for one step at a
+    // time; only it moves the sample cursor.
     private final ReentrantLock evictLock = new ReentrantLock();
     private Iterator<Node<K, V>> sampleCursor;
 
@@ -243,13 +245,11 @@ public class ThreadedLRUCacheStrategy<K, V> implements Map<K, V>, Closeable {
                 ThreadedLRUCacheStrategy<?, ?> cache = ref.get();
                 if (cache == null) {
                     iter.remove();
-                } else if (!cache.closed.get() && cache.evictLock.tryLock()) {
+                } else if (!cache.closed.get()) {
                     try {
-                        cache.backgroundCleanup(deadline);
+                        cache.backgroundCleanup(deadline, false);
                     } catch (Throwable t) {
                         // Don't let one cache's failure stop cleanup of others
-                    } finally {
-                        cache.evictLock.unlock();
                     }
                 }
             }
@@ -262,11 +262,14 @@ public class ThreadedLRUCacheStrategy<K, V> implements Map<K, V>, Closeable {
     /**
      * Background cleanup — the "elves" strategy.
      * <p>
-     * Drains this cache back to capacity using one of two strategies:
+     * Drains this cache back to capacity one step at a time, each step under evictLock, so a writer trimming the
+     * cache (past twice its capacity) can take the lock between steps. Holding it for a whole pass shut the writer
+     * out while one-at-a-time sampled eviction fell behind it. Each step re-checks the surplus and uses one of
+     * two strategies:
      * <ul>
-     *   <li><b>Bulk eviction</b> (surplus &gt; capacity): Uses a single iterator pass with
-     *       {@code iterator.remove()}, avoiding per-eviction hash lookups and iterator creation.
-     *       LRU accuracy is sacrificed for speed — acceptable when 50%+ of entries must go.</li>
+     *   <li><b>Bulk eviction</b> (surplus &gt; capacity): removes the next entries at the sample cursor, up to
+     *       BULK_STEP of them, with {@code iterator.remove()}. LRU accuracy is sacrificed for speed — acceptable
+     *       when 50%+ of entries must go.</li>
      *   <li><b>Sample-10 eviction</b> (surplus &le; capacity): Samples 10 entries and evicts the
      *       oldest, providing ~95-99% LRU accuracy with O(1) cost per eviction.</li>
      * </ul>
@@ -274,57 +277,56 @@ public class ThreadedLRUCacheStrategy<K, V> implements Map<K, V>, Closeable {
      * The caller passes a deadline so that all caches share a single time budget per cycle.
      * Puts are never blocked — the user chose THREADED knowing capacity is approximate.
      *
-     * @param deadline absolute nanoTime after which the elf should stop
+     * @param deadline     absolute nanoTime after which the elf should stop
+     * @param waitForLock  true to wait for a writer's trim to finish (forceCleanup); false to leave the cache to
+     *                     that writer (the cleanup thread)
      */
-    private void backgroundCleanup(long deadline) {
-        int size = cache.size();
-        if (size <= capacity) {
-            return;
-        }
-
-        int surplus = size - capacity;
-        if (surplus > capacity) {
-            // Massive overshoot — use fast bulk eviction via iterator removal.
-            // When >50% of entries must be evicted, LRU accuracy matters less than speed.
-            bulkEvict(surplus, deadline);
-        } else {
-            // Moderate overshoot — use sample-10 for good LRU accuracy.
-            while (cache.size() > capacity) {
-                if (!evictOldestUsingSample()) {
-                    break;  // Cache is empty or eviction failed
+    private void backgroundCleanup(long deadline, boolean waitForLock) {
+        while (cache.size() > capacity && System.nanoTime() < deadline) {
+            if (waitForLock) {
+                evictLock.lock();
+            } else if (!evictLock.tryLock()) {
+                return;                             // a writer is trimming: it brings the cache back to capacity
+            }
+            try {
+                int surplus = cache.size() - capacity;
+                if (surplus > capacity) {
+                    evictNext(Math.min(surplus, BULK_STEP));
+                } else if (surplus <= 0 || !evictOldestUsingSample()) {
+                    return;                         // Cache is empty or eviction failed
                 }
-                if (System.nanoTime() >= deadline) {
-                    break;  // Global budget exhausted — resume next cycle
-                }
+            } finally {
+                evictLock.unlock();
             }
         }
     }
 
     /**
-     * Fast bulk eviction using a single iterator pass.
-     * <p>
-     * Removes entries via {@code iterator.remove()}, which operates directly on the
-     * underlying ConcurrentHashMap without a second hash lookup. The budget is checked
-     * every 1024 removals to minimize {@code System.nanoTime()} overhead.
-     * <p>
-     * This is used when the cache is massively over capacity (more than 2&times;).
-     * At that scale, ~100-300ns per removal allows millions of evictions per cycle.
+     * Removes the next {@code count} entries at the sample cursor, wrapping round at the end of the table, with
+     * {@code iterator.remove()} (no second hash lookup) and no regard for recency: for when more than half the
+     * entries must go. Continuing from the cursor keeps chunks from re-walking the bins earlier chunks emptied.
+     * Called under evictLock.
      *
-     * @param surplus  number of entries to remove
-     * @param deadline absolute nanoTime after which the elf should stop
+     * @param count number of entries to remove
      */
-    private void bulkEvict(int surplus, long deadline) {
-        Iterator<Node<K, V>> it = cache.values().iterator();
-        int removed = 0;
-        while (it.hasNext() && removed < surplus) {
+    private void evictNext(int count) {
+        Iterator<Node<K, V>> it = sampleCursor;
+        boolean wrapped = false;
+        for (int removed = 0; removed < count; removed++) {
+            if (it == null || !it.hasNext()) {
+                if (wrapped) {
+                    break;
+                }
+                it = cache.values().iterator();
+                wrapped = true;
+                if (!it.hasNext()) {
+                    break;
+                }
+            }
             it.next();
             it.remove();
-            removed++;
-            // Check budget every 1024 removals to minimize System.nanoTime() overhead
-            if ((removed & 0x3FF) == 0 && System.nanoTime() >= deadline) {
-                break;
-            }
         }
+        sampleCursor = it;
     }
 
     /**
@@ -379,12 +381,7 @@ public class ThreadedLRUCacheStrategy<K, V> implements Map<K, V>, Closeable {
      * Forces an immediate cleanup of this cache (for testing).
      */
     public void forceCleanup() {
-        evictLock.lock();
-        try {
-            backgroundCleanup(System.nanoTime() + CYCLE_BUDGET_NS);
-        } finally {
-            evictLock.unlock();
-        }
+        backgroundCleanup(System.nanoTime() + CYCLE_BUDGET_NS, true);
     }
 
     /**
@@ -471,21 +468,33 @@ public class ThreadedLRUCacheStrategy<K, V> implements Map<K, V>, Closeable {
     /**
      * Writers help when the cleanup thread falls behind. It runs every 500 ms, and a single writer could add
      * millions of entries in between. Past twice the capacity, the writer that wins evictLock trims the cache
-     * back to capacity with bulk eviction, as the cleanup thread would; the other writers carry on. Only a new
-     * node whose timestamp (a tick of the shared clock, one per node made) is a multiple of 32 looks at the size:
+     * back to capacity with bulk eviction, as the cleanup thread would; the other writers carry on, leaving the
+     * work to whoever holds the lock. Past four times the capacity a writer waits for the lock (an evictor holds
+     * it for one step, at most BULK_STEP removals): a hard bound however fast the writers. Only a new node whose
+     * timestamp (a tick of the shared clock, one per node made) is a multiple of 32 looks at the size:
      * ConcurrentHashMap.size() reads every counter cell the writers update, which on every insert cost 70% more
-     * per put at 4 threads. A cache can so pass twice its capacity by a few dozen entries before a writer notices.
+     * per put at 4 threads. A cache can so pass those marks by a few dozen entries before a writer notices.
      */
     private void trimIfFarOverCapacity(Node<K, V> inserted) {
-        if ((inserted.timestamp & 31) == 0 && cache.size() - capacity > capacity && evictLock.tryLock()) {
-            try {
-                int surplus = cache.size() - capacity;
-                if (surplus > 0) {
-                    bulkEvict(surplus, Long.MAX_VALUE);
-                }
-            } finally {
-                evictLock.unlock();
+        if ((inserted.timestamp & 31) != 0) {
+            return;
+        }
+        long surplus = cache.size() - (long) capacity;
+        if (surplus <= capacity) {
+            return;
+        }
+        if (surplus > 3L * capacity) {
+            evictLock.lock();
+        } else if (!evictLock.tryLock()) {
+            return;
+        }
+        try {
+            int remaining = cache.size() - capacity;
+            if (remaining > 0) {
+                evictNext(remaining);
             }
+        } finally {
+            evictLock.unlock();
         }
     }
 

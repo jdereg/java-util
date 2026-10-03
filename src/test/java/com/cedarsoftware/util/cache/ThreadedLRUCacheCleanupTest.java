@@ -1,5 +1,7 @@
 package com.cedarsoftware.util.cache;
 
+import java.util.concurrent.atomic.AtomicBoolean;
+
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -120,6 +122,39 @@ class ThreadedLRUCacheCleanupTest {
             } finally {
                 cache.close();
             }
+        }
+    }
+
+    /**
+     * The trimming writer and the evictor (the cleanup thread, here forceCleanup in a loop) must not shut each
+     * other out. The evictor held the eviction lock for its whole pass, up to 400 ms, evicting one sampled entry at
+     * a time, while the writer's attempts to trim found the lock taken; the cache grew to hundreds of thousands of
+     * entries. The evictor now takes the lock per step and evicts in bulk past twice the capacity, and past four
+     * times a writer waits for the lock and trims.
+     */
+    @Test
+    void aWriterStillTrimsWhileTheEvictorIsWorking() throws Exception {
+        ThreadedLRUCacheStrategy<Integer, Integer> cache = new ThreadedLRUCacheStrategy<>(1000);
+        AtomicBoolean stop = new AtomicBoolean();
+        Thread evictor = new Thread(() -> {
+            while (!stop.get()) {
+                cache.forceCleanup();
+            }
+        });
+        try {
+            evictor.start();
+            int most = 0;
+            for (int i = 0; i < 2_000_000; i++) {
+                cache.put(i, i);
+                if ((i & 255) == 0) {
+                    most = Math.max(most, cache.size());
+                }
+            }
+            assertTrue(most <= 5000, "capacity 1,000, grew to " + most);
+        } finally {
+            stop.set(true);
+            evictor.join();
+            cache.close();
         }
     }
 }

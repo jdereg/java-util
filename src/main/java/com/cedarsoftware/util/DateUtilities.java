@@ -106,8 +106,13 @@ import java.util.regex.Pattern;
  *   <tr><th>Format</th><th>Example</th><th>Description</th></tr>
  *   <tr>
  *     <td>Basic time</td>
- *     <td>13:30</td>
- *     <td>24-hour format (00-23:00-59)</td>
+ *     <td>13:30, 9:30</td>
+ *     <td>24-hour format (0-23:00-59), the hour in one or two digits</td>
+ *   </tr>
+ *   <tr>
+ *     <td>12-hour clock</td>
+ *     <td>3:30 PM, 3:30pm, 11:59:59.5 PM</td>
+ *     <td>AM or PM in any case, with or without a space; hour 1-12 (12 AM is midnight, 12 PM noon)</td>
  *   </tr>
  *   <tr>
  *     <td>With seconds</td>
@@ -572,8 +577,10 @@ public final class DateUtilities {
             Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CHARACTER_CLASS);
     
     // Performance optimized: Added UNICODE_CHARACTER_CLASS while preserving original capture group structure
+    // 12-hour clock: AM or PM in any case, with or without a space, before any zone
+    private static final String amPm = "(?:" + wsOp + "([AP]M)\\b)?";
     private static final Pattern timePattern = Pattern.compile(
-            "(" + d2 + "):(" + d2 + ")(?::(" + d2 + ")(" + nano + ")?)?(" + tz_Hh_MM_SS + "|" + tz_Hh_MM + "|" + tz_HHMM + "|" + tz_Hh + "|Z)?(" + tzNamed + ")?",
+            "(" + d1or2 + "):(" + d2 + ")(?::(" + d2 + ")(" + nano + ")?)?" + amPm + "(" + tz_Hh_MM_SS + "|" + tz_Hh_MM + "|" + tz_HHMM + "|" + tz_Hh + "|Z)?(" + tzNamed + ")?",
             Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CHARACTER_CLASS);
 
     // Performance optimized: Reordered alternatives for better matching efficiency and added UNICODE_CHARACTER_CLASS
@@ -951,11 +958,19 @@ public final class DateUtilities {
             if (result.group(4) != null) {
                 fracSec = "0" + result.group(4);
             }
-            if (result.group(5) != null) {
-                tz = result.group(5).trim();
+            if (result.group(5) != null) {      // AM / PM: hours 1-12, 12 AM is midnight and 12 PM noon
+                int h = Integer.parseInt(hour);
+                if (h < 1 || h > 12) {
+                    throw new IllegalArgumentException("Hour must be between 1 and 12 inclusive with AM/PM, time: " + dateStr);
+                }
+                boolean pm = Character.toUpperCase(result.group(5).charAt(0)) == 'P';
+                hour = String.valueOf(h % 12 + (pm ? 12 : 0));
             }
             if (result.group(6) != null) {
-                tz = stripBrackets(result.group(6).trim());
+                tz = result.group(6).trim();
+            }
+            if (result.group(7) != null) {
+                tz = stripBrackets(result.group(7).trim());
             }
         }
 

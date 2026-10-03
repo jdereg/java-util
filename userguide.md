@@ -4024,8 +4024,13 @@ DateUtilities.parseDate("Sat Jan 6 11:06:10 EST 2024");
 
 **Time Formats:**
 ```java
-// Basic time
+// Basic time (the hour in one or two digits)
 DateUtilities.parseDate("2024-01-15 13:30");
+DateUtilities.parseDate("2024-01-15 9:30");
+
+// 12-hour clock: AM or PM in any case, with or without a space (12 AM is midnight, 12 PM noon)
+DateUtilities.parseDate("Jan 5, 2024 3:30 PM");
+DateUtilities.parseDate("2024-01-15 3:30pm EST");
 
 // With seconds
 DateUtilities.parseDate("2024-01-15 13:30:45");

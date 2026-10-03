@@ -12,6 +12,7 @@ import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 import java.util.TimeZone;
 import java.util.stream.Stream;
 
@@ -588,7 +589,22 @@ class DateUtilitiesTest
         calendar.setTimeZone(TimeZone.getTimeZone(resolvedId));
         calendar.clear();
         calendar.set(2021, Calendar.JANUARY, 13, 13, 1, 54);
-        assert date.getTime() - calendar.getTime().getTime() == 674;    // less than 1000 millis
+        assert date.getTime() - meantInstant(timeZoneId, resolvedId, calendar.getTime()) == 674;    // less than 1000 millis
+    }
+
+    /**
+     * The instant a wall-clock time in a region means when written with this abbreviation: an abbreviation means its
+     * own offset, so a daylight name (BST, British Summer Time) on a date the region keeps standard time (London in
+     * January) is read an hour ahead of the region's rule.
+     */
+    private static long meantInstant(String abbreviation, String regionId, Date byRegionRule) {
+        TimeZone region = TimeZone.getTimeZone(regionId);
+        boolean daylightName = abbreviation.equals(region.getDisplayName(true, TimeZone.SHORT, Locale.US))
+                && !abbreviation.equals(region.getDisplayName(false, TimeZone.SHORT, Locale.US));
+        if (daylightName && !region.inDaylightTime(byRegionRule)) {
+            return byRegionRule.getTime() - (region.getDSTSavings() == 0 ? 3_600_000L : region.getDSTSavings());
+        }
+        return byRegionRule.getTime();
     }
 
     @Test
@@ -727,7 +743,7 @@ class DateUtilitiesTest
         calendar.setTimeZone(TimeZone.getTimeZone(resolvedId));
         calendar.clear();
         calendar.set(2024, Calendar.JANUARY, 6, 20, 6, 58);
-        assertEquals(calendar.getTime(), date);
+        assertEquals(new Date(meantInstant(timeZoneId, resolvedId, calendar.getTime())), date);
     }
 
     @Test

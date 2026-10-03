@@ -5,6 +5,8 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
+import java.time.zone.ZoneOffsetTransition;
+import java.time.zone.ZoneRules;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
@@ -932,8 +934,10 @@ public final class DateUtilities {
         }
 
         ZoneId zoneId;
+        boolean zoneFromText = false;
         try {
             zoneId = StringUtilities.isEmpty(tz) ? defaultZoneId : getTimeZone(tz);
+            zoneFromText = !StringUtilities.isEmpty(tz);
         } catch (Exception e) {
             if (ensureDateTimeAlone) {
                 // In strict mode, rethrow
@@ -944,7 +948,8 @@ public final class DateUtilities {
         }
 
         // 6) Build the ZonedDateTime
-        return getDate(dateStr, zoneId, year, month, day, hour, min, sec, fracSec);
+        ZonedDateTime parsed = getDate(dateStr, zoneId, year, month, day, hour, min, sec, fracSec);
+        return zoneFromText ? honorAbbreviation(parsed, tz) : parsed;
     }
 
     /**
@@ -1207,6 +1212,69 @@ public final class DateUtilities {
                 throw new IllegalArgumentException("Invalid timezone format: " + tz.substring(0, Math.min(tz.length(), 20)));
             }
         }
+    }
+
+    /**
+     * A zone abbreviation says which offset it means: EST is UTC-05:00 and EDT UTC-04:00, whatever the date. The region
+     * it names (America/New_York) applies its own rule for the date instead, so "12:00 EST" in July read as
+     * 12:00-04:00, an hour off. When the abbreviation is the region's standard name and the region keeps daylight time
+     * on that date (or the reverse), the time is read at the offset the abbreviation means and given in the region --
+     * the instant SimpleDateFormat parses. A date where the two agree, a region named outright, and a zone with one
+     * name for both (SAST, UTC) are left as parsed.
+     */
+    private static ZonedDateTime honorAbbreviation(ZonedDateTime parsed, String abbreviation) {
+        if (parsed.getZone() instanceof ZoneOffset || !isAbbreviation(abbreviation)) {
+            return parsed;
+        }
+        TimeZone timeZone = TimeZone.getTimeZone(parsed.getZone());
+        boolean saysStandard = abbreviation.equalsIgnoreCase(timeZone.getDisplayName(false, TimeZone.SHORT, Locale.US));
+        boolean saysDaylight = abbreviation.equalsIgnoreCase(timeZone.getDisplayName(true, TimeZone.SHORT, Locale.US));
+        if (saysStandard == saysDaylight) {
+            return parsed;          // not one of the region's names, or its only name
+        }
+        ZoneRules rules = parsed.getZone().getRules();
+        Instant instant = parsed.toInstant();
+        if (rules.isDaylightSavings(instant) == saysDaylight) {
+            return parsed;          // the region keeps the time the abbreviation names on that date
+        }
+        ZoneOffset standard = rules.getStandardOffset(instant);
+        ZoneOffset meant = saysStandard ? standard
+                : ZoneOffset.ofTotalSeconds(standard.getTotalSeconds() + daylightSavingSeconds(rules, instant));
+        return parsed.toLocalDateTime().atOffset(meant).atZoneSameInstant(parsed.getZone());
+    }
+
+    private static boolean isAbbreviation(String text) {
+        int length = text.length();
+        if (length < 2 || length > 5) {
+            return false;
+        }
+        for (int i = 0; i < length; i++) {
+            if (!Character.isLetter(text.charAt(i))) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /** How far the region moves its clocks for daylight time, near the instant: an hour if it never has. */
+    private static int daylightSavingSeconds(ZoneRules rules, Instant instant) {
+        ZoneOffsetTransition next = rules.nextTransition(instant);
+        if (next != null && rules.isDaylightSavings(next.getInstant())) {
+            return (int) rules.getDaylightSavings(next.getInstant()).getSeconds();
+        }
+        Instant before = instant;
+        for (int i = 0; i < 8; i++) {
+            ZoneOffsetTransition previous = rules.previousTransition(before);
+            if (previous == null) {
+                break;
+            }
+            before = previous.getInstant();
+            Instant justBefore = before.minusSeconds(1);
+            if (rules.isDaylightSavings(justBefore)) {
+                return (int) rules.getDaylightSavings(justBefore).getSeconds();
+            }
+        }
+        return 3600;
     }
 
     /**

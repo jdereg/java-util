@@ -18,6 +18,8 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Function;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * A cache that holds items for a specified Time-To-Live (TTL) duration.
@@ -59,6 +61,11 @@ public class TTLCache<K, V> implements Map<K, V>, AutoCloseable {
 
     // Best-effort size cleanup budget: bounded expiry checks to avoid O(n) size calls.
     private static final int SIZE_CLEANUP_SAMPLES = 4;
+
+    private static final Logger LOG = Logger.getLogger(TTLCache.class.getName());
+    static {
+        LoggingConfig.init();
+    }
 
     // Static ScheduledExecutorService with a single thread
     private static volatile ScheduledExecutorService scheduler = createScheduler();
@@ -169,8 +176,13 @@ public class TTLCache<K, V> implements Map<K, V>, AutoCloseable {
             if (cache == null) {
                 // Cache has been garbage collected; cancel the task
                 cancel();
-            } else {
+                return;
+            }
+            try {
                 cache.purgeExpiredEntries();
+            } catch (Throwable t) {
+                // Escaping, it would end this periodic task for good; the next run tries again.
+                LOG.log(Level.FINE, "TTLCache purge failed; retrying at the next interval", t);
             }
         }
 
@@ -912,9 +924,9 @@ public class TTLCache<K, V> implements Map<K, V>, AutoCloseable {
      * Shuts down the shared scheduler used by all TTLCache instances.
      * This method is primarily intended for application shutdown or testing cleanup.
      * <p>
-     * After calling this method, creating new cache instances will automatically restart
-     * the scheduler. Existing caches will no longer receive automatic purging until the
-     * scheduler is restarted.
+     * After calling this method, creating a new cache instance restarts the scheduler for the new
+     * cache. Caches that existed before the shutdown are not purged in the background again; they
+     * still never return an expired entry, and drop one when it is read.
      * <p>
      * This method waits up to 5 seconds for the scheduler to terminate gracefully.
      *

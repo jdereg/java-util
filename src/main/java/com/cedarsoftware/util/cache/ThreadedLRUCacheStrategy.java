@@ -19,6 +19,7 @@ import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.locks.ReentrantLock;
 
 import com.cedarsoftware.util.ConcurrentHashMapNullSafe;
 import com.cedarsoftware.util.ConcurrentSet;
@@ -89,6 +90,9 @@ public class ThreadedLRUCacheStrategy<K, V> implements Map<K, V>, Closeable {
     private final ConcurrentMap<K, Node<K, V>> cache;
     private final WeakReference<ThreadedLRUCacheStrategy<K, V>> selfRef;
     private final AtomicBoolean closed = new AtomicBoolean(false);
+    // One evictor at a time per cache (the cleanup thread or forceCleanup); it alone moves the sample cursor.
+    private final ReentrantLock evictLock = new ReentrantLock();
+    private Iterator<Node<K, V>> sampleCursor;
 
     // Shared infrastructure for ALL cache instances
     private static final Set<WeakReference<ThreadedLRUCacheStrategy<?, ?>>> ALL_CACHES =
@@ -239,11 +243,13 @@ public class ThreadedLRUCacheStrategy<K, V> implements Map<K, V>, Closeable {
                 ThreadedLRUCacheStrategy<?, ?> cache = ref.get();
                 if (cache == null) {
                     iter.remove();
-                } else if (!cache.closed.get()) {
+                } else if (!cache.closed.get() && cache.evictLock.tryLock()) {
                     try {
                         cache.backgroundCleanup(deadline);
                     } catch (Throwable t) {
                         // Don't let one cache's failure stop cleanup of others
+                    } finally {
+                        cache.evictLock.unlock();
                     }
                 }
             }
@@ -322,8 +328,10 @@ public class ThreadedLRUCacheStrategy<K, V> implements Map<K, V>, Closeable {
     }
 
     /**
-     * Evicts the oldest entry from a sample of SAMPLE_SIZE (10) entries.
-     * This provides ~95-99% LRU accuracy with O(1) cost (based on Redis research).
+     * Evicts the oldest entry from a sample of SAMPLE_SIZE (10) entries: the next ones in the table after the
+     * previous sample, wrapping round at the end, so successive samples sweep the whole table. Starting each sample
+     * at the front of the table looked at the same entries every time and, as evictions emptied the front bins,
+     * walked past more of them on every call. Called under evictLock.
      *
      * @return true if an entry was evicted, false if cache is empty
      */
@@ -331,16 +339,28 @@ public class ThreadedLRUCacheStrategy<K, V> implements Map<K, V>, Closeable {
         Node<K, V> oldest = null;
         long oldestTime = Long.MAX_VALUE;
         int sampled = 0;
+        Iterator<Node<K, V>> it = sampleCursor;
+        boolean wrapped = false;
 
-        for (Node<K, V> node : cache.values()) {
+        while (sampled < SAMPLE_SIZE) {
+            if (it == null || !it.hasNext()) {
+                if (wrapped) {
+                    break;                          // fewer entries than a sample
+                }
+                it = cache.values().iterator();
+                wrapped = true;
+                if (!it.hasNext()) {
+                    break;
+                }
+            }
+            Node<K, V> node = it.next();
+            sampled++;
             if (node.timestamp < oldestTime) {
                 oldest = node;
                 oldestTime = node.timestamp;
             }
-            if (++sampled >= SAMPLE_SIZE) {
-                break;
-            }
         }
+        sampleCursor = it;
 
         if (oldest != null) {
             return cache.remove(oldest.key, oldest);
@@ -359,7 +379,12 @@ public class ThreadedLRUCacheStrategy<K, V> implements Map<K, V>, Closeable {
      * Forces an immediate cleanup of this cache (for testing).
      */
     public void forceCleanup() {
-        backgroundCleanup(System.nanoTime() + CYCLE_BUDGET_NS);
+        evictLock.lock();
+        try {
+            backgroundCleanup(System.nanoTime() + CYCLE_BUDGET_NS);
+        } finally {
+            evictLock.unlock();
+        }
     }
 
     /**

@@ -30,6 +30,7 @@ import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Supplier;
 import java.util.logging.Logger;
@@ -358,6 +359,25 @@ public class CompactMap<K, V> implements Map<K, V> {
     };
 
     /**
+     * Per legacy class: the order its backing map keeps keys in when that map is a SortedMap -- its comparator, or
+     * natural order -- else NO_KEY_ORDER; empty until first asked (working it out takes an instance). In its backing
+     * map such a class finds keys by that order: BigDecimal 1.0 and 1.00 are one key, and so are any two keys a
+     * custom comparator calls equal. Its array found them by equality, and sorted them for iteration by
+     * CompactMapComparator, whatever the backing map's comparator. The value lives on the subclass itself, so it
+     * keeps no class loader alive.
+     */
+    private static final ClassValue<AtomicReference<Comparator<Object>>> LEGACY_KEY_ORDER =
+            new ClassValue<AtomicReference<Comparator<Object>>>() {
+                @Override
+                protected AtomicReference<Comparator<Object>> computeValue(Class<?> type) {
+                    return new AtomicReference<>();
+                }
+            };
+    private static final Comparator<Object> NO_KEY_ORDER = (a, b) -> { throw new UnsupportedOperationException(); };
+    @SuppressWarnings("unchecked")
+    private static final Comparator<Object> NATURAL_KEY_ORDER = (a, b) -> ((Comparable<Object>) a).compareTo(b);
+
+    /**
      * Per class: whether its backing map refuses a null key (bit 1) or a null value (bit 2), as ConcurrentHashMap
      * and ConcurrentSkipListMap do; -1 until the first null meets this class. The array accepted nulls that the
      * backing map then refused when the map outgrew it: that put threw, and the map could grow no further. A null
@@ -485,6 +505,30 @@ public class CompactMap<K, V> implements Map<K, V> {
         public int hashCode() {
             return hash;
         }
+    }
+
+    /**
+     * The order a legacy class's SortedMap backing keeps keys in (see {@link #LEGACY_KEY_ORDER}), or null: a builder
+     * map, or a legacy class whose backing map is not sorted.
+     */
+    private Comparator<Object> legacyKeyOrder() {
+        Class<?> type = getClass();
+        if (type == CompactMap.class || type == CompactLinkedMap.class || type == CompactCILinkedMap.class
+                || type == CompactCIHashMap.class || type.getClassLoader() == templateClassLoader) {
+            return null;    // the library's own legacy maps are never sorted, and builder maps sort by their ordering
+        }
+        AtomicReference<Comparator<Object>> slot = LEGACY_KEY_ORDER.get(type);
+        Comparator<Object> order = slot.get();
+        if (order == null) {
+            order = NO_KEY_ORDER;
+            Map<K, V> backing = getNewMap();
+            if (backing instanceof SortedMap) {
+                Comparator<Object> comparator = (Comparator<Object>) ((SortedMap<K, V>) backing).comparator();
+                order = comparator == null ? NATURAL_KEY_ORDER : comparator;
+            }
+            slot.set(order);
+        }
+        return order == NO_KEY_ORDER ? null : order;
     }
 
     private int getCachedLegacySortInfo() {
@@ -677,7 +721,11 @@ public class CompactMap<K, V> implements Map<K, V> {
         if (!(key instanceof String) && sortsKeys(getOrdering())) {
             return CompactMapComparator.get(isCaseInsensitive(), false).compare(key, storedKey) == 0;
         }
-        return areKeysEqual(key, storedKey);
+        if (areKeysEqual(key, storedKey)) {
+            return true;
+        }
+        Comparator<Object> order = legacyKeyOrder();        // a legacy sorted class matches as its backing map does
+        return order != null && order.compare(key, storedKey) == 0;
     }
 
     /**
@@ -708,11 +756,27 @@ public class CompactMap<K, V> implements Map<K, V> {
                     return i;
                 }
             }
-            return -1;
+            return indexByLegacyKeyOrder(entries, key);
         }
         for (int i = 0; i < len; i += 2) {
             if (Objects.equals(key, entries[i])) {
                 return i;
+            }
+        }
+        return indexByLegacyKeyOrder(entries, key);
+    }
+
+    /**
+     * After equality found no key: a legacy class whose backing map is sorted finds keys as that map does, by its
+     * comparator. A key found by equality is found by any comparator, so only a miss asks.
+     */
+    private int indexByLegacyKeyOrder(Object[] entries, Object key) {
+        Comparator<Object> order = legacyKeyOrder();
+        if (order != null) {
+            for (int i = 0; i < entries.length; i += 2) {
+                if (order.compare(key, entries[i]) == 0) {
+                    return i;
+                }
             }
         }
         return -1;
@@ -1054,7 +1118,10 @@ public class CompactMap<K, V> implements Map<K, V> {
             // computing it requires instantiating a throwaway map via getNewMap())
             int sortInfo = getCachedLegacySortInfo();
             if (sortInfo != 0) {
-                Comparator<Object> comparator = CompactMapComparator.get(isCaseInsensitive(), sortInfo == 2);
+                // One that declares a sorted ordering is binary-searched with CompactMapComparator, so is sorted by
+                // it; one that does not is scanned, and sorted only to iterate in its backing map's order
+                Comparator<Object> comparator = sortsKeys(getOrdering())
+                        ? CompactMapComparator.get(isCaseInsensitive(), sortInfo == 2) : legacyKeyOrder();
                 quickSort(array, 0, pairCount - 1, comparator);
             }
             return;

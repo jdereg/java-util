@@ -1,5 +1,6 @@
 package com.cedarsoftware.util;
 
+import java.text.DateFormatSymbols;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
@@ -530,7 +531,7 @@ public final class DateUtilities {
     private static final String ws = "\\s+";
     private static final String wsOp = "\\s*";
     private static final String wsOrComma = "[ ,]+";
-    private static final String tzUnix = "[A-Z]{1,3}";
+    private static final String tzUnix = "[A-Z]{1,5}";   // Date.toString() prints AEST, CEST, NZDT, SAST...
     private static final String tz_Hh_MM = "[+-]\\d{1,2}:\\d{2}";
     private static final String tz_Hh_MM_SS = "[+-]\\d{1,2}:\\d{2}:\\d{2}";
     private static final String tz_HHMM = "[+-]\\d{4}";
@@ -1165,7 +1166,12 @@ public final class DateUtilities {
             try {
                 TimeZone timeZone = TimeZone.getTimeZone(tz);
                 if (timeZone.getID().equals("GMT") && !tz.equalsIgnoreCase("GMT")) {
-                    // Means the JDK didn't recognize 'tz' (it fell back to "GMT")
+                    // Means the JDK didn't recognize 'tz' (it fell back to "GMT") -- unless it is an abbreviation
+                    // the JDK names a zone with (BRT, SAST), as Date.toString() prints it
+                    ZoneId named = zoneForAbbreviation(tz);
+                    if (named != null) {
+                        return named;
+                    }
                     throw zoneRulesEx;  // rethrow original ZoneRulesException
                 }
                 // Additional security check: ensure the returned timezone ID is reasonable
@@ -1200,6 +1206,72 @@ public final class DateUtilities {
                 // Security: Sanitize exception message to prevent information disclosure
                 throw new IllegalArgumentException("Invalid timezone format: " + tz.substring(0, Math.min(tz.length(), 20)));
             }
+        }
+    }
+
+    /**
+     * A region the JDK names with this abbreviation -- the short names Date.toString() prints and SimpleDateFormat
+     * parses -- for an abbreviation outside {@link #ABBREVIATION_TO_TIMEZONE}: the JVM's default zone if it has that
+     * name (as SimpleDateFormat prefers), else the first such region in alphabetical order, so that every JVM with the
+     * same zone data agrees. Null if none has it.
+     */
+    private static ZoneId zoneForAbbreviation(String abbreviation) {
+        int length = abbreviation.length();
+        if (length < 2 || length > 5) {
+            return null;
+        }
+        for (int i = 0; i < length; i++) {
+            if (!Character.isLetter(abbreviation.charAt(i))) {
+                return null;
+            }
+        }
+        String name = abbreviation.toUpperCase(Locale.ROOT);
+        TimeZone defaultZone = TimeZone.getDefault();
+        if (name.equals(defaultZone.getDisplayName(false, TimeZone.SHORT, Locale.US))
+                || name.equals(defaultZone.getDisplayName(true, TimeZone.SHORT, Locale.US))) {
+            return defaultZone.toZoneId();
+        }
+        String region = ZoneNames.FIRST_REGION.get(name);
+        return region == null ? null : ZoneId.of(region);
+    }
+
+    /** The JDK's short zone names, each with the first region (alphabetically) it names; built on first use. */
+    private static final class ZoneNames {
+        static final Map<String, String> FIRST_REGION;
+
+        static {
+            Map<String, String> first = new HashMap<>();
+            for (String[] row : DateFormatSymbols.getInstance(Locale.US).getZoneStrings()) {
+                String region = row[0];
+                if (region.indexOf('/') < 0 || region.startsWith("Etc/") || region.startsWith("SystemV/")) {
+                    continue;       // aliases such as BET or CST6CDT; Etc/GMT+3 and the like have no lettered name
+                }
+                try {
+                    ZoneId.of(region);
+                } catch (Exception e) {
+                    continue;
+                }
+                for (int column = 2; column <= 4 && column < row.length; column += 2) {     // short standard, daylight
+                    String name = row[column];
+                    if (name != null && name.length() >= 2 && name.length() <= 5 && isLetters(name)) {
+                        name = name.toUpperCase(Locale.ROOT);
+                        String chosen = first.get(name);
+                        if (chosen == null || region.compareTo(chosen) < 0) {
+                            first.put(name, region);
+                        }
+                    }
+                }
+            }
+            FIRST_REGION = Collections.unmodifiableMap(first);
+        }
+
+        private static boolean isLetters(String text) {
+            for (int i = 0; i < text.length(); i++) {
+                if (!Character.isLetter(text.charAt(i))) {
+                    return false;
+                }
+            }
+            return true;
         }
     }
 

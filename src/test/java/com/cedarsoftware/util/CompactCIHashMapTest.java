@@ -59,7 +59,7 @@ class CompactCIHashMapTest {
         assertFalse(map.isDefaultCompactMap());
         Map<String, Object> config = map.getConfig();
         assertEquals(false, config.get(CompactMap.CASE_SENSITIVE));
-        assertEquals(CompactMap.DEFAULT_COMPACT_SIZE, config.get(CompactMap.COMPACT_SIZE));
+        assertEquals(2, config.get(CompactMap.COMPACT_SIZE));     // its own, which it moved to its backing map at
         assertEquals(HashMap.class, config.get(CompactMap.MAP_TYPE));
     }
 }

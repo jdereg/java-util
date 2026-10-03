@@ -2143,8 +2143,7 @@ public class CompactMap<K, V> implements Map<K, V> {
      */
     public Map<String, Object> getConfig() {
         Map<String, Object> config = new LinkedHashMap<>();
-        int compSize = getCachedLegacyConstructed() ? DEFAULT_COMPACT_SIZE : compactSize();
-        config.put(COMPACT_SIZE, compSize);
+        config.put(COMPACT_SIZE, compactSize());
         config.put(CASE_SENSITIVE, !isCaseInsensitive());
         Map<?, ?> map = unwrapped(newBackingMap());
         config.put(ORDERING, orderingKept(map));

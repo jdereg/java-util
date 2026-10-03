@@ -2,6 +2,8 @@ package com.cedarsoftware.util;
 
 import java.text.DateFormatSymbols;
 import java.time.Instant;
+import java.time.Month;
+import java.time.Year;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
@@ -818,6 +820,13 @@ public final class DateUtilities {
             return isoFast;
         }
 
+        // FAST PATH: zone-less ISO date or date-time -- "2024-01-15", "2024-01-15T10:30", "2024-01-15 10:30:00.123"
+        // -- read by position in the default zone, exactly as the flexible path builds it, at a fraction of the cost
+        ZonedDateTime localFast = tryLocalIsoParse(dateStr, defaultZoneId);
+        if (localFast != null) {
+            return localFast;
+        }
+
         // If purely digits => epoch millis
         if (safeMatches(allDigits, dateStr)) {
             // Security: Validate epoch milliseconds range to prevent overflow
@@ -836,6 +845,14 @@ public final class DateUtilities {
             return Instant.ofEpochMilli(epochMillis).atZone(defaultZoneId);
         }
 
+        return parseFlexible(dateStr, defaultZoneId, ensureDateTimeAlone);
+    }
+
+    /**
+     * The flexible, regex-driven recognition behind {@link #parseDate(String, ZoneId, boolean)}, for the text no fast
+     * path took. Package-private so tests can hold the fast paths to it: whatever a fast path returns, this returns too.
+     */
+    static ZonedDateTime parseFlexible(String dateStr, ZoneId defaultZoneId, boolean ensureDateTimeAlone) {
         String year, day, remains, tz = null;
         int month;
 
@@ -1013,6 +1030,78 @@ public final class DateUtilities {
             zdt = zdt.withZoneSameLocal(ZoneId.ofOffset("GMT", (ZoneOffset) zdt.getZone()));
         }
         return zdt;
+    }
+
+    /** Nanoseconds per unit of a fraction with that many digits (index 1-9). */
+    private static final int[] FRACTION_SCALE = {0, 100_000_000, 10_000_000, 1_000_000, 100_000, 10_000, 1_000, 100, 10, 1};
+
+    /**
+     * Fast path for zone-less ISO text: "2024-01-15", "2024-01-15T10:30", "2024-01-15 10:30:00",
+     * "2024-01-15T10:30:00.123456789" (a 'T' or a space between date and time). Read by position, ASCII digits only,
+     * and built in the default zone as {@link #parseFlexible} builds it, with ZonedDateTime.of(...). Any other shape,
+     * a field out of range, a day the month does not have, or more than 9 fraction digits returns null: the flexible
+     * path decides, and words its errors, as before.
+     */
+    private static ZonedDateTime tryLocalIsoParse(String s, ZoneId zone) {
+        int len = s.length();
+        if ((len != 10 && len < 16) || len > 29 || s.charAt(4) != '-' || s.charAt(7) != '-') {
+            return null;
+        }
+        int year = digits(s, 0, 4);
+        int month = digits(s, 5, 2);
+        int day = digits(s, 8, 2);
+        if (year < 0 || month < 1 || month > 12 || day < 1 || day > 28 && day > Month.of(month).length(Year.isLeap(year))) {
+            return null;
+        }
+        int hour = 0;
+        int minute = 0;
+        int second = 0;
+        int nanos = 0;
+        if (len > 10) {
+            char separator = s.charAt(10);
+            if (separator != 'T' && separator != ' ' || s.charAt(13) != ':') {
+                return null;
+            }
+            hour = digits(s, 11, 2);
+            minute = digits(s, 14, 2);
+            if (hour < 0 || hour > 23 || minute < 0 || minute > 59) {
+                return null;
+            }
+            if (len > 16) {
+                if (len < 19 || s.charAt(16) != ':') {
+                    return null;
+                }
+                second = digits(s, 17, 2);
+                if (second < 0 || second > 59) {
+                    return null;
+                }
+                if (len > 19) {
+                    int fractionDigits = len - 20;          // at most 9: len is at most 29
+                    if (s.charAt(19) != '.' || fractionDigits < 1) {
+                        return null;
+                    }
+                    int fraction = digits(s, 20, fractionDigits);
+                    if (fraction < 0) {
+                        return null;
+                    }
+                    nanos = fraction * FRACTION_SCALE[fractionDigits];
+                }
+            }
+        }
+        return ZonedDateTime.of(year, month, day, hour, minute, second, nanos, zone);
+    }
+
+    /** The value of {@code count} ASCII digits from {@code start}, or -1 if any is not one. */
+    private static int digits(String s, int start, int count) {
+        int value = 0;
+        for (int i = start, end = start + count; i < end; i++) {
+            char c = s.charAt(i);
+            if (c < '0' || c > '9') {
+                return -1;
+            }
+            value = value * 10 + (c - '0');
+        }
+        return value;
     }
 
     private static ZonedDateTime getDate(String dateStr,

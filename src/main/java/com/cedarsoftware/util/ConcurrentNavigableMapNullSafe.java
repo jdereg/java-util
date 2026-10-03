@@ -9,6 +9,7 @@ import java.util.Map;
 import java.util.NavigableSet;
 import java.util.Set;
 import java.util.SortedSet;
+import java.util.Spliterator;
 import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentNavigableMap;
 import java.util.concurrent.ConcurrentSkipListMap;
@@ -411,6 +412,11 @@ public class ConcurrentNavigableMapNullSafe<K, V> extends AbstractConcurrentNull
         @Override
         public int size() {
             return internalKeys.size();
+        }
+
+        @Override
+        public Spliterator<K> spliterator() {
+            return new UnmaskingSpliterator<>(internalKeys.spliterator(), owner::unmaskNullKey, comparator());
         }
 
         @Override

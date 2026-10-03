@@ -6,6 +6,7 @@ import java.util.Comparator;
 import java.util.Iterator;
 import java.util.NavigableSet;
 import java.util.SortedSet;
+import java.util.Spliterator;
 import java.util.concurrent.ConcurrentSkipListSet;
 
 /**
@@ -219,6 +220,16 @@ public class ConcurrentNavigableSetNullSafe<E> extends AbstractSet<E> implements
     public E pollLast() {
         Object masked = internalSet.pollLast();
         return unmaskNull(masked);
+    }
+
+    /**
+     * The backing set's own spliterator, elements unmasked: weakly consistent, never sized, so a stream does not
+     * fail when the set changes meanwhile (the SortedSet default promised a fixed size). Reports this set's
+     * comparator.
+     */
+    @Override
+    public Spliterator<E> spliterator() {
+        return new UnmaskingSpliterator<>(internalSet.spliterator(), this::unmaskNull, comparator());
     }
 
     @Override

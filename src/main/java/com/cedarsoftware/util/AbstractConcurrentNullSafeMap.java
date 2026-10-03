@@ -7,6 +7,7 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.Spliterator;
 import java.util.concurrent.ConcurrentMap;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
@@ -377,6 +378,12 @@ public abstract class AbstractConcurrentNullSafeMap<K, V> implements ConcurrentM
             }
 
             @Override
+            public Spliterator<V> spliterator() {
+                return new UnmaskingSpliterator<>(internalValues.spliterator(),
+                        AbstractConcurrentNullSafeMap.this::unmaskNullValue, null);
+            }
+
+            @Override
             public boolean contains(Object o) {
                 return internalMap.containsValue(maskNullValue(o));
             }
@@ -425,6 +432,12 @@ public abstract class AbstractConcurrentNullSafeMap<K, V> implements ConcurrentM
             }
 
             @Override
+            public Spliterator<K> spliterator() {
+                return new UnmaskingSpliterator<>(internalKeys.spliterator(),
+                        AbstractConcurrentNullSafeMap.this::unmaskNullKey, null);
+            }
+
+            @Override
             public boolean contains(Object o) {
                 return internalMap.containsKey(maskNullKey(o));
             }
@@ -462,47 +475,7 @@ public abstract class AbstractConcurrentNullSafeMap<K, V> implements ConcurrentM
 
                     @Override
                     public Entry<K, V> next() {
-                        Entry<Object, Object> internalEntry = it.next();
-                        final Object keyObj = internalEntry.getKey();
-                        return new Entry<K, V>() {
-                            private Object valueObj = internalEntry.getValue();
-
-                            @Override
-                            public K getKey() {
-                                return unmaskNullKey(keyObj);
-                            }
-
-                            @Override
-                            public V getValue() {
-                                return unmaskNullValue(valueObj);
-                            }
-
-                            @Override
-                            public V setValue(V value) {
-                                Object masked = maskNullValue(value);
-                                Object old = internalMap.put(keyObj, masked);
-                                valueObj = masked;
-                                return unmaskNullValue(old);
-                            }
-
-                            @Override
-                            public boolean equals(Object o) {
-                                if (!(o instanceof Entry)) return false;
-                                Entry<?, ?> e = (Entry<?, ?>) o;
-                                return Objects.equals(getKey(), e.getKey()) &&
-                                        Objects.equals(getValue(), e.getValue());
-                            }
-
-                            @Override
-                            public int hashCode() {
-                                return Objects.hashCode(getKey()) ^ Objects.hashCode(getValue());
-                            }
-
-                            @Override
-                            public String toString() {
-                                return getKey() + "=" + getValue();
-                            }
-                        };
+                        return exposedEntry(it.next());
                     }
 
                     @Override
@@ -510,6 +483,12 @@ public abstract class AbstractConcurrentNullSafeMap<K, V> implements ConcurrentM
                         it.remove();
                     }
                 };
+            }
+
+            @Override
+            public Spliterator<Entry<K, V>> spliterator() {
+                return new UnmaskingSpliterator<>(internalEntries.spliterator(),
+                        AbstractConcurrentNullSafeMap.this::exposedEntry, null);
             }
 
             @Override
@@ -539,6 +518,50 @@ public abstract class AbstractConcurrentNullSafeMap<K, V> implements ConcurrentM
         };
         cachedEntrySet = es;
         return es;
+    }
+
+    /** An internal entry as the entry set hands it out: unmasked, with setValue writing through to the map. */
+    private Entry<K, V> exposedEntry(Entry<Object, Object> internalEntry) {
+        final Object keyObj = internalEntry.getKey();
+        return new Entry<K, V>() {
+            private Object valueObj = internalEntry.getValue();
+
+            @Override
+            public K getKey() {
+                return unmaskNullKey(keyObj);
+            }
+
+            @Override
+            public V getValue() {
+                return unmaskNullValue(valueObj);
+            }
+
+            @Override
+            public V setValue(V value) {
+                Object masked = maskNullValue(value);
+                Object old = internalMap.put(keyObj, masked);
+                valueObj = masked;
+                return unmaskNullValue(old);
+            }
+
+            @Override
+            public boolean equals(Object o) {
+                if (!(o instanceof Entry)) return false;
+                Entry<?, ?> e = (Entry<?, ?>) o;
+                return Objects.equals(getKey(), e.getKey()) &&
+                        Objects.equals(getValue(), e.getValue());
+            }
+
+            @Override
+            public int hashCode() {
+                return Objects.hashCode(getKey()) ^ Objects.hashCode(getValue());
+            }
+
+            @Override
+            public String toString() {
+                return getKey() + "=" + getValue();
+            }
+        };
     }
 
     /**

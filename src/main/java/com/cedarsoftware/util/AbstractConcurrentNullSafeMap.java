@@ -8,6 +8,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentMap;
+import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 
 /**
@@ -192,21 +193,45 @@ public abstract class AbstractConcurrentNullSafeMap<K, V> implements ConcurrentM
     @Override
     public V putIfAbsent(K key, V value) {
         Object maskedKey = maskNullKey(key);
-        Object maskedValue = maskNullValue(value);
         Object existing = internalMap.get(maskedKey);
         if (existing != null && existing != NullSentinel.NULL_VALUE) {
             return unmaskNullValue(existing);
         }
-
-        final Object[] previousHolder = new Object[1];
-        internalMap.compute(maskedKey, (k, current) -> {
-            previousHolder[0] = current;
-            if (current == null || current == NullSentinel.NULL_VALUE) {
-                return maskedValue;
+        // A key mapped to null counts as absent (Map.putIfAbsent), so a null mapping is replaced as well.
+        Object maskedValue = maskNullValue(value);
+        for (;;) {
+            Object previous = internalMap.putIfAbsent(maskedKey, maskedValue);
+            if (previous == null) {
+                return null;
             }
-            return current;
-        });
-        return unmaskNullValue(previousHolder[0]);
+            if (previous != NullSentinel.NULL_VALUE) {
+                return unmaskNullValue(previous);
+            }
+            if (internalMap.replace(maskedKey, NullSentinel.NULL_VALUE, maskedValue)) {
+                return null;
+            }
+        }
+    }
+
+    /**
+     * Runs the action on the backing map's own traversal, which a ConcurrentMap's default would repeat
+     * through the entry set's wrapped entries.
+     */
+    @Override
+    public void forEach(BiConsumer<? super K, ? super V> action) {
+        Objects.requireNonNull(action);
+        internalMap.forEach((k, v) -> action.accept(unmaskNullKey(k), unmaskNullValue(v)));
+    }
+
+    /**
+     * Replaces each value with the function's result through the backing map's own replaceAll, which retries
+     * an entry whose value changed meanwhile. The ConcurrentMap default read a value that became null as a
+     * removed key and skipped it; here a null value is a value like any other.
+     */
+    @Override
+    public void replaceAll(BiFunction<? super K, ? super V, ? extends V> function) {
+        Objects.requireNonNull(function);
+        internalMap.replaceAll((k, v) -> maskNullValue(function.apply(unmaskNullKey(k), unmaskNullValue(v))));
     }
 
     @Override

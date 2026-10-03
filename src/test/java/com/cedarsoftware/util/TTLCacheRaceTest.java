@@ -1,5 +1,7 @@
 package com.cedarsoftware.util;
 
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -174,6 +176,42 @@ class TTLCacheRaceTest {
             }
             assertEquals(0, nullGets, "get(k) returned null");
             assertEquals(0, nullValues, "values() held null");
+        } finally {
+            cache.close();
+        }
+    }
+
+    /**
+     * clear() racing a put that holds the lock. Afterwards the key is either fully in the cache or fully out of it:
+     * an entry left in the map but not in the LRU list could never be evicted, and reordering it later cut the
+     * list. After more puts the cache must hold exactly the most recent ones.
+     */
+    @Test
+    void clearRacingAPutLeavesTheCacheConsistent() throws Exception {
+        TTLCache<Object, String> cache = new TTLCache<>(3_600_000, 3, 3_600_000);
+        try {
+            GateKey key = new GateKey("k");
+            Thread putter = new Thread(() -> cache.put(key, "v"));
+            key.arm(putter, 1);                     // put pauses inside the map write, holding the cache lock
+            putter.start();
+            key.awaitReached();
+            Thread clearer = new Thread(cache::clear);
+            clearer.start();
+            long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
+            while (clearer.getState() != Thread.State.WAITING && System.nanoTime() < deadline) {
+                Thread.sleep(1);
+            }
+            key.release();
+            putter.join();
+            clearer.join();
+            for (int i = 0; i < 100; i++) {
+                cache.put("a" + i, "v");
+            }
+            cache.get(key);
+            for (int i = 0; i < 100; i++) {
+                cache.put("b" + i, "v");
+            }
+            assertEquals(new HashSet<>(Arrays.asList("b97", "b98", "b99")), cache.keySet());
         } finally {
             cache.close();
         }

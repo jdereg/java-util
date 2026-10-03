@@ -572,16 +572,25 @@ public class TTLCache<K, V> implements Map<K, V>, AutoCloseable {
      */
     @Override
     public void clear() {
-        cacheMap.clear();
-        if (lruEnabled) {
-            lock.lock();
-            try {
-                // Reset the linked list
-                head.next = tail;
-                tail.prev = head;
-            } finally {
-                lock.unlock();
+        if (!lruEnabled) {
+            cacheMap.clear();
+            return;
+        }
+        // Map and list are emptied together under the lock, so a put (which holds it) lands wholly before or
+        // after. Detached nodes get null links: a reader still holding one then leaves the new list alone.
+        lock.lock();
+        try {
+            cacheMap.clear();
+            for (Node<K, V> node = head.next; node != tail; ) {
+                Node<K, V> next = node.next;
+                node.prev = null;
+                node.next = null;
+                node = next;
             }
+            head.next = tail;
+            tail.prev = head;
+        } finally {
+            lock.unlock();
         }
     }
 

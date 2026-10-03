@@ -20,6 +20,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.BiFunction;
+import java.util.function.Function;
 
 import com.cedarsoftware.util.ConcurrentHashMapNullSafe;
 import com.cedarsoftware.util.ConcurrentSet;
@@ -599,6 +600,92 @@ public class ThreadedLRUCacheStrategy<K, V> implements Map<K, V>, Closeable {
 
             existing.updateTimestamp();
             return existing.value;
+        }
+    }
+
+    // The compound operations below are compare-and-set loops on the nodes (the Map defaults were a get, then a
+    // put: concurrent updates overwrote each other). A new value is a new node, a fresh use.
+
+    @Override
+    public V compute(K key, BiFunction<? super K, ? super V, ? extends V> remappingFunction) {
+        Objects.requireNonNull(remappingFunction);
+        return update(key, old -> remappingFunction.apply(key, old), false);
+    }
+
+    @Override
+    public V computeIfPresent(K key, BiFunction<? super K, ? super V, ? extends V> remappingFunction) {
+        Objects.requireNonNull(remappingFunction);
+        return update(key, old -> remappingFunction.apply(key, old), true);
+    }
+
+    @Override
+    public V merge(K key, V value, BiFunction<? super V, ? super V, ? extends V> remappingFunction) {
+        Objects.requireNonNull(value);
+        Objects.requireNonNull(remappingFunction);
+        return update(key, old -> old == null ? value : remappingFunction.apply(old, value), false);
+    }
+
+    /**
+     * compute, computeIfPresent and merge: a compare-and-set loop over exactly the node read (Node has no equals,
+     * so the map compares identity), retried when another write got there first; the function may then run
+     * again, as ConcurrentMap's defaults allow. A null result removes the key. With onlyIfPresent, a key absent
+     * or mapped to null is left alone.
+     */
+    private V update(K key, Function<V, V> function, boolean onlyIfPresent) {
+        while (true) {
+            Node<K, V> node = cache.get(key);
+            V old = node == null ? null : node.value;
+            if (onlyIfPresent && old == null) {
+                return null;
+            }
+            V value = function.apply(old);
+            if (value == null) {
+                if (node == null || cache.remove(key, node)) {
+                    return null;
+                }
+                continue;
+            }
+            Node<K, V> fresh = new Node<>(key, value);
+            if (node == null) {
+                if (cache.putIfAbsent(key, fresh) == null) {
+                    trimIfFarOverCapacity(fresh);
+                    return value;
+                }
+            } else if (cache.replace(key, node, fresh)) {
+                return value;
+            }
+        }
+    }
+
+    @Override
+    public V replace(K key, V value) {
+        Node<K, V> previous = cache.replace(key, new Node<>(key, value));
+        return previous == null ? null : previous.value;
+    }
+
+    @Override
+    public boolean replace(K key, V oldValue, V newValue) {
+        while (true) {
+            Node<K, V> node = cache.get(key);
+            if (node == null || !Objects.equals(node.value, oldValue)) {
+                return false;
+            }
+            if (cache.replace(key, node, new Node<>(key, newValue))) {     // Node has no equals: identity
+                return true;
+            }
+        }
+    }
+
+    @Override
+    public boolean remove(Object key, Object value) {
+        while (true) {
+            Node<K, V> node = cache.get(key);
+            if (node == null || !Objects.equals(node.value, value)) {
+                return false;
+            }
+            if (cache.remove(key, node)) {
+                return true;
+            }
         }
     }
 

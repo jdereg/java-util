@@ -210,6 +210,36 @@ public class LRUCache<K, V> implements Map<K, V> {
     }
 
     @Override
+    public V compute(K key, BiFunction<? super K, ? super V, ? extends V> remappingFunction) {
+        return strategy.compute(key, remappingFunction);
+    }
+
+    @Override
+    public V computeIfPresent(K key, BiFunction<? super K, ? super V, ? extends V> remappingFunction) {
+        return strategy.computeIfPresent(key, remappingFunction);
+    }
+
+    @Override
+    public V merge(K key, V value, BiFunction<? super V, ? super V, ? extends V> remappingFunction) {
+        return strategy.merge(key, value, remappingFunction);
+    }
+
+    @Override
+    public V replace(K key, V value) {
+        return strategy.replace(key, value);
+    }
+
+    @Override
+    public boolean replace(K key, V oldValue, V newValue) {
+        return strategy.replace(key, oldValue, newValue);
+    }
+
+    @Override
+    public boolean remove(Object key, Object value) {
+        return strategy.remove(key, value);
+    }
+
+    @Override
     public String toString() {
         return CycleSafeToString.map(this, strategy);
     }

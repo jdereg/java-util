@@ -328,6 +328,140 @@ public class LockingLRUCacheStrategy<K, V> implements Map<K, V> {
         }
     }
 
+    // The compound operations below run under the lock, so each is atomic (the Map defaults were a get, then a
+    // put: concurrent updates overwrote each other). The functions run under the lock, as in computeIfAbsent.
+
+    /** Under the lock: writes value for key, at the head of the recency order, evicting past capacity. */
+    private void writeLocked(K key, Node<K, V> node, V value) {
+        if (node != null) {
+            node.value = value;
+            moveToHead(node);
+            return;
+        }
+        Node<K, V> newNode = new Node<>(key, value);
+        cache.put(key, newNode);
+        addToHead(newNode);
+        if (cache.size() > capacity) {
+            Node<K, V> tailToRemove = removeTail();
+            cache.remove(tailToRemove.key);
+            tailToRemove.value = null;
+        }
+    }
+
+    /** Under the lock: removes key's node. */
+    private void removeLocked(Object key, Node<K, V> node) {
+        cache.remove(key);
+        removeNode(node);
+        node.value = null;
+    }
+
+    @Override
+    public V compute(K key, BiFunction<? super K, ? super V, ? extends V> remappingFunction) {
+        Objects.requireNonNull(remappingFunction);
+        lock.lock();
+        try {
+            Node<K, V> node = cache.get(key);
+            V value = remappingFunction.apply(key, node == null ? null : node.value);
+            if (value == null) {
+                if (node != null) {
+                    removeLocked(key, node);
+                }
+                return null;
+            }
+            writeLocked(key, node, value);
+            return value;
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    @Override
+    public V computeIfPresent(K key, BiFunction<? super K, ? super V, ? extends V> remappingFunction) {
+        Objects.requireNonNull(remappingFunction);
+        lock.lock();
+        try {
+            Node<K, V> node = cache.get(key);
+            if (node == null || node.value == null) {
+                return null;
+            }
+            V value = remappingFunction.apply(key, node.value);
+            if (value == null) {
+                removeLocked(key, node);
+                return null;
+            }
+            writeLocked(key, node, value);
+            return value;
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    @Override
+    public V merge(K key, V value, BiFunction<? super V, ? super V, ? extends V> remappingFunction) {
+        Objects.requireNonNull(value);
+        Objects.requireNonNull(remappingFunction);
+        lock.lock();
+        try {
+            Node<K, V> node = cache.get(key);
+            V old = node == null ? null : node.value;
+            V merged = old == null ? value : remappingFunction.apply(old, value);
+            if (merged == null) {
+                removeLocked(key, node);            // merged is null only when there was a value to merge with
+                return null;
+            }
+            writeLocked(key, node, merged);
+            return merged;
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    @Override
+    public V replace(K key, V value) {
+        lock.lock();
+        try {
+            Node<K, V> node = cache.get(key);
+            if (node == null) {
+                return null;
+            }
+            V old = node.value;
+            writeLocked(key, node, value);
+            return old;
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    @Override
+    public boolean replace(K key, V oldValue, V newValue) {
+        lock.lock();
+        try {
+            Node<K, V> node = cache.get(key);
+            if (node == null || !Objects.equals(node.value, oldValue)) {
+                return false;
+            }
+            writeLocked(key, node, newValue);
+            return true;
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    @Override
+    public boolean remove(Object key, Object value) {
+        lock.lock();
+        try {
+            Node<K, V> node = cache.get(key);
+            if (node == null || !Objects.equals(node.value, value)) {
+                return false;
+            }
+            removeLocked(key, node);
+            return true;
+        } finally {
+            lock.unlock();
+        }
+    }
+
     /**
      * Removes all mappings from this cache.
      * The cache will be empty after this call returns.

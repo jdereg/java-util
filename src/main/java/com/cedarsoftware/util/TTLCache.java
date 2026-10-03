@@ -17,6 +17,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -578,6 +579,150 @@ public class TTLCache<K, V> implements Map<K, V>, AutoCloseable {
             }
         }
         return null;
+    }
+
+    // Outcomes of a computeEntry function besides a new value (which may be null).
+    private static final Object UNCHANGED = new Object();
+    private static final Object REMOVE = new Object();
+
+    /**
+     * The compound operations' core, atomic: hands the key's live entry (null when absent or expired) to the
+     * function, which returns the new value, REMOVE, or UNCHANGED. A new value is written as put writes it: a full
+     * TTL, the most recently used. Size-limited caches do this under the lock; unbounded ones, whose put takes no
+     * lock, with a compare-and-set loop on the map. The Map defaults were a get, then a put: concurrent updates
+     * overwrote each other. Returns what the function returned.
+     */
+    @SuppressWarnings("unchecked")
+    private Object computeEntry(K key, BiFunction<K, CacheEntry<K, V>, Object> function) {
+        if (!lruEnabled) {
+            // Compare-and-set over exactly the entry read; retried when another write got there first (the
+            // function may then run again, as ConcurrentMap's defaults allow).
+            for (;;) {
+                CacheEntry<K, V> entry = cacheMap.get(key);
+                boolean live = entry != null && entry.expiryTime >= System.currentTimeMillis();
+                Object result = function.apply(key, live ? entry : null);
+                if (result == UNCHANGED) {
+                    return result;
+                }
+                if (result == REMOVE) {
+                    if (entry == null || cacheMap.remove(key, entry)) {
+                        return result;
+                    }
+                    continue;
+                }
+                CacheEntry<K, V> fresh = new CacheEntry<>(new Node<>(key, (V) result),
+                        System.currentTimeMillis() + ttlMillis);
+                if (entry == null ? cacheMap.putIfAbsent(key, fresh) == null : cacheMap.replace(key, entry, fresh)) {
+                    return result;
+                }
+            }
+        }
+        lock.lock();
+        try {
+            CacheEntry<K, V> entry = cacheMap.get(key);
+            boolean live = entry != null && entry.expiryTime >= System.currentTimeMillis();
+            Object result = function.apply(key, live ? entry : null);
+            if (result == UNCHANGED) {
+                return result;
+            }
+            if (result == REMOVE) {
+                if (entry != null && cacheMap.remove(key, entry)) {
+                    unlink(entry.node);
+                }
+                return result;
+            }
+            Node<K, V> node = new Node<>(key, (V) result);
+            CacheEntry<K, V> old = cacheMap.put(key, new CacheEntry<>(node, System.currentTimeMillis() + ttlMillis));
+            if (old != null) {
+                unlink(old.node);
+            }
+            insertAtTail(node);
+            evictOverflow();
+            return result;
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public V compute(K key, BiFunction<? super K, ? super V, ? extends V> remappingFunction) {
+        Objects.requireNonNull(remappingFunction);
+        Object result = computeEntry(key, (k, live) -> {
+            V value = remappingFunction.apply(k, live == null ? null : live.node.value);
+            return value == null ? REMOVE : value;
+        });
+        return result == REMOVE ? null : (V) result;
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public V computeIfPresent(K key, BiFunction<? super K, ? super V, ? extends V> remappingFunction) {
+        Objects.requireNonNull(remappingFunction);
+        Object result = computeEntry(key, (k, live) -> {
+            if (live == null || live.node.value == null) {
+                return UNCHANGED;
+            }
+            V value = remappingFunction.apply(k, live.node.value);
+            return value == null ? REMOVE : value;
+        });
+        return result == REMOVE || result == UNCHANGED ? null : (V) result;
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public V merge(K key, V value, BiFunction<? super V, ? super V, ? extends V> remappingFunction) {
+        Objects.requireNonNull(value);
+        Objects.requireNonNull(remappingFunction);
+        Object result = computeEntry(key, (k, live) -> {
+            V old = live == null ? null : live.node.value;
+            V merged = old == null ? value : remappingFunction.apply(old, value);
+            return merged == null ? REMOVE : merged;
+        });
+        return result == REMOVE ? null : (V) result;
+    }
+
+    @Override
+    public V replace(K key, V value) {
+        if (!lruEnabled) {                          // computeEntry's loop, without its lambda and holder array
+            CacheEntry<K, V> fresh = null;
+            for (;;) {
+                CacheEntry<K, V> entry = cacheMap.get(key);
+                if (entry == null || entry.expiryTime < System.currentTimeMillis()) {
+                    return null;
+                }
+                if (fresh == null) {
+                    fresh = new CacheEntry<>(new Node<>(key, value), System.currentTimeMillis() + ttlMillis);
+                }
+                if (cacheMap.replace(key, entry, fresh)) {
+                    return entry.node.value;
+                }
+            }
+        }
+        final Object[] previous = new Object[1];
+        computeEntry(key, (k, live) -> {
+            if (live == null) {
+                return UNCHANGED;
+            }
+            previous[0] = live.node.value;
+            return value;
+        });
+        @SuppressWarnings("unchecked")
+        V old = (V) previous[0];
+        return old;
+    }
+
+    @Override
+    public boolean replace(K key, V oldValue, V newValue) {
+        return computeEntry(key, (k, live) ->
+                live == null || !Objects.equals(live.node.value, oldValue) ? UNCHANGED : newValue) != UNCHANGED;
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public boolean remove(Object key, Object value) {
+        return computeEntry((K) key, (k, live) ->
+                live == null || !Objects.equals(live.node.value, value) ? UNCHANGED : REMOVE) != UNCHANGED;
     }
 
     /**

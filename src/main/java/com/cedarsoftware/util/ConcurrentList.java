@@ -2,6 +2,7 @@ package com.cedarsoftware.util;
 
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Deque;
 import java.util.HashSet;
@@ -134,7 +135,9 @@ import java.util.function.Consumer;
 public final class ConcurrentList<E> implements List<E>, Deque<E>, RandomAccess, Serializable {
     private static final long serialVersionUID = 1L;
 
-    private static final int BUCKET_SIZE = 1024;
+    private static final int BUCKET_SHIFT = 10;
+    private static final int BUCKET_SIZE = 1 << BUCKET_SHIFT;
+    private static final int BUCKET_MASK = BUCKET_SIZE - 1;
 
     private final ConcurrentMap<Integer, AtomicReferenceArray<Object>> buckets = new ConcurrentHashMap<>();
     private final AtomicLong head = new AtomicLong(0);
@@ -169,20 +172,31 @@ public final class ConcurrentList<E> implements List<E>, Deque<E>, RandomAccess,
     }
 
     private static int bucketIndex(long pos) {
-        // truncating division gives toward-zero; adjust when pos<0 with remainder
-        long div = pos / BUCKET_SIZE;
-        if ((pos ^ BUCKET_SIZE) < 0 && (pos % BUCKET_SIZE) != 0) {
-            div--;    // step one more bucket down for true floor
-        }
-        return (int) div;
+        return (int) (pos >> BUCKET_SHIFT);     // floor(pos / BUCKET_SIZE), negative positions included
     }
 
     private static int bucketOffset(long pos) {
-        // Java’s % is remainder, not mathematical mod; fix negatives
-        int rem = (int) (pos % BUCKET_SIZE);
-        return rem < 0
-                ? rem + BUCKET_SIZE
-                : rem;
+        return (int) (pos & BUCKET_MASK);       // the mathematical mod, never negative
+    }
+
+    /**
+     * Under a lock: copies the elements at indexes from .. from + count - 1 into dest from destPos, looking each
+     * bucket up once rather than once per element (a map lookup by a boxed Integer, which allocates past bucket
+     * 127). A typed dest checks each store, as an array store does.
+     */
+    private void copyRange(int from, int count, Object[] dest, int destPos) {
+        long pos = head.get() + from;
+        int done = 0;
+        while (done < count) {
+            AtomicReferenceArray<Object> bucket = getBucket(bucketIndex(pos));
+            int offset = bucketOffset(pos);
+            int n = Math.min(BUCKET_SIZE - offset, count - done);
+            for (int k = 0; k < n; k++) {
+                dest[destPos + done + k] = bucket.get(offset + k);
+            }
+            done += n;
+            pos += n;
+        }
     }
 
     private AtomicReferenceArray<Object> ensureBucket(int index) {
@@ -221,17 +235,7 @@ public final class ConcurrentList<E> implements List<E>, Deque<E>, RandomAccess,
     public boolean contains(Object o) {
         lock.readLock().lock();
         try {
-            int sz = size();
-            long h = head.get();
-            for (int i = 0; i < sz; i++) {
-                long pos = h + i;
-                AtomicReferenceArray<Object> bucket = getBucket(bucketIndex(pos));
-                Object element = bucket.get(bucketOffset(pos));
-                if (Objects.equals(o, element)) {
-                    return true;
-                }
-            }
-            return false;
+            return indexOfNoLock(o) >= 0;
         } finally {
             lock.readLock().unlock();
         }
@@ -275,12 +279,7 @@ public final class ConcurrentList<E> implements List<E>, Deque<E>, RandomAccess,
             // Build array directly - no intermediate ArrayList needed
             // Read lock ensures size is stable during iteration
             Object[] result = new Object[sz];
-            long h = head.get();
-            for (int i = 0; i < sz; i++) {
-                long pos = h + i;
-                AtomicReferenceArray<Object> bucket = getBucket(bucketIndex(pos));
-                result[i] = bucket.get(bucketOffset(pos));
-            }
+            copyRange(0, sz, result, 0);
             return result;
         } finally {
             lock.readLock().unlock();
@@ -304,12 +303,7 @@ public final class ConcurrentList<E> implements List<E>, Deque<E>, RandomAccess,
             T[] result = a.length >= sz ? a :
                 (T[]) java.lang.reflect.Array.newInstance(a.getClass().getComponentType(), sz);
 
-            long h = head.get();
-            for (int i = 0; i < sz; i++) {
-                long pos = h + i;
-                AtomicReferenceArray<Object> bucket = getBucket(bucketIndex(pos));
-                result[i] = (T) bucket.get(bucketOffset(pos));
-            }
+            copyRange(0, sz, result, 0);
 
             if (result.length > sz) {
                 result[sz] = null;
@@ -572,34 +566,46 @@ public final class ConcurrentList<E> implements List<E>, Deque<E>, RandomAccess,
     public int indexOf(Object o) {
         lock.readLock().lock();
         try {
-            int sz = size();
-            long h = head.get();
-            for (int i = 0; i < sz; i++) {
-                long pos = h + i;
-                AtomicReferenceArray<Object> bucket = getBucket(bucketIndex(pos));
-                Object element = bucket.get(bucketOffset(pos));
-                if (Objects.equals(o, element)) {
-                    return i;
-                }
-            }
-            return -1;
+            return indexOfNoLock(o);
         } finally {
             lock.readLock().unlock();
         }
+    }
+
+    /** Under a lock: the index of the first element equal to o, or -1; one bucket lookup per bucket. */
+    private int indexOfNoLock(Object o) {
+        int sz = size();
+        long pos = head.get();
+        int i = 0;
+        while (i < sz) {
+            AtomicReferenceArray<Object> bucket = getBucket(bucketIndex(pos));
+            int offset = bucketOffset(pos);
+            int n = Math.min(BUCKET_SIZE - offset, sz - i);
+            for (int k = 0; k < n; k++) {
+                if (Objects.equals(o, bucket.get(offset + k))) {
+                    return i + k;
+                }
+            }
+            i += n;
+            pos += n;
+        }
+        return -1;
     }
 
     @Override
     public int lastIndexOf(Object o) {
         lock.readLock().lock();
         try {
-            int sz = size();
             long h = head.get();
-            for (int i = sz - 1; i >= 0; i--) {
+            int i = size() - 1;
+            while (i >= 0) {
                 long pos = h + i;
                 AtomicReferenceArray<Object> bucket = getBucket(bucketIndex(pos));
-                Object element = bucket.get(bucketOffset(pos));
-                if (Objects.equals(o, element)) {
-                    return i;
+                int offset = bucketOffset(pos);
+                for (int k = offset; k >= 0 && i >= 0; k--, i--) {
+                    if (Objects.equals(o, bucket.get(k))) {
+                        return i;
+                    }
                 }
             }
             return -1;
@@ -1039,11 +1045,18 @@ public final class ConcurrentList<E> implements List<E>, Deque<E>, RandomAccess,
         try {
             int hash = 1;
             int sz = size();
-            long h = head.get();
-            for (int i = 0; i < sz; i++) {
-                long pos = h + i;
-                Object e = getBucket(bucketIndex(pos)).get(bucketOffset(pos));
-                hash = 31 * hash + (e == null ? 0 : e.hashCode());
+            long pos = head.get();
+            int i = 0;
+            while (i < sz) {
+                AtomicReferenceArray<Object> bucket = getBucket(bucketIndex(pos));
+                int offset = bucketOffset(pos);
+                int n = Math.min(BUCKET_SIZE - offset, sz - i);
+                for (int k = 0; k < n; k++) {
+                    Object e = bucket.get(offset + k);
+                    hash = 31 * hash + (e == null ? 0 : e.hashCode());
+                }
+                i += n;
+                pos += n;
             }
             return hash;
         } finally {
@@ -1086,31 +1099,38 @@ public final class ConcurrentList<E> implements List<E>, Deque<E>, RandomAccess,
         head.set(0);
         tail.set(0);
         sizeCounter.set(0);
-        for (E e : elements) {
-            long pos = tail.getAndIncrement();
-            AtomicReferenceArray<Object> bucket = ensureBucket(bucketIndex(pos));
-            bucket.set(bucketOffset(pos), e);  // Use set() for immediate visibility
-            sizeCounter.incrementAndGet();
-        }
+        appendNoLock(elements.toArray());
     }
 
     private void appendAllNoLock(Collection<? extends E> elements) {
-        for (E element : elements) {
-            long pos = tail.getAndIncrement();
+        appendNoLock(elements.toArray());
+    }
+
+    /**
+     * Under the write lock: appends the elements, one bucket lookup per bucket; tail and size move once, after
+     * the elements are stored (size() and isEmpty() read them without the lock).
+     */
+    private void appendNoLock(Object[] elements) {
+        long pos = tail.get();
+        int done = 0;
+        while (done < elements.length) {
             AtomicReferenceArray<Object> bucket = ensureBucket(bucketIndex(pos));
-            bucket.set(bucketOffset(pos), element);
-            sizeCounter.incrementAndGet();
+            int offset = bucketOffset(pos);
+            int n = Math.min(BUCKET_SIZE - offset, elements.length - done);
+            for (int k = 0; k < n; k++) {
+                bucket.set(offset + k, elements[done + k]);   // set() for immediate visibility
+            }
+            done += n;
+            pos += n;
         }
+        tail.set(pos);
+        sizeCounter.addAndGet(elements.length);
     }
 
     @SuppressWarnings("unchecked")
     private List<E> snapshotToListNoLock(int size) {
-        List<E> elements = new ArrayList<>(size);
-        long h = head.get();
-        for (int i = 0; i < size; i++) {
-            long pos = h + i;
-            elements.add((E) getBucket(bucketIndex(pos)).get(bucketOffset(pos)));
-        }
-        return elements;
+        Object[] elements = new Object[size];
+        copyRange(0, size, elements, 0);
+        return new ArrayList<>((List<E>) Arrays.asList(elements));
     }
 }

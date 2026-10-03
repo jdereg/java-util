@@ -478,18 +478,16 @@ public class TTLCache<K, V> implements Map<K, V>, AutoCloseable {
                         unlink(entry.node);
                     }
                 }
-                // Use internal put logic
                 long expiryTime = System.currentTimeMillis() + ttlMillis;
                 Node<K, V> node = new Node<>(key, value);
                 CacheEntry<K, V> newEntry = new CacheEntry<>(node, expiryTime);
+                if (!lruEnabled) {
+                    V winner = installUnlessOvertaken(key, entry, newEntry);
+                    return winner == null ? value : winner;
+                }
                 cacheMap.put(key, newEntry);
-                if (lruEnabled) {
-                    insertAtTail(node);
-                }
-
-                if (lruEnabled) {
-                    evictOverflow();
-                }
+                insertAtTail(node);
+                evictOverflow();
             }
             return value;
         } finally {
@@ -508,6 +506,14 @@ public class TTLCache<K, V> implements Map<K, V>, AutoCloseable {
      */
     @Override
     public V putIfAbsent(K key, V value) {
+        if (!lruEnabled) {
+            CacheEntry<K, V> entry = cacheMap.get(key);
+            if (entry != null && entry.expiryTime >= System.currentTimeMillis() && entry.node.value != null) {
+                return entry.node.value;
+            }
+            Node<K, V> node = new Node<>(key, value);
+            return installUnlessOvertaken(key, entry, new CacheEntry<>(node, System.currentTimeMillis() + ttlMillis));
+        }
         lock.lock();
         try {
             CacheEntry<K, V> entry = cacheMap.get(key);
@@ -544,6 +550,22 @@ public class TTLCache<K, V> implements Map<K, V>, AutoCloseable {
         } finally {
             lock.unlock();
         }
+    }
+
+    /**
+     * Unbounded caches only, where put() takes no lock: writes {@code fresh} over exactly the entry that was read
+     * ({@code seen}, null for none). When another write got there first and its value is live, that write stands
+     * and its value is returned; otherwise the write is retried over the newer entry. Returns null once
+     * {@code fresh} is in.
+     */
+    private V installUnlessOvertaken(K key, CacheEntry<K, V> seen, CacheEntry<K, V> fresh) {
+        while (!(seen == null ? cacheMap.putIfAbsent(key, fresh) == null : cacheMap.replace(key, seen, fresh))) {
+            seen = cacheMap.get(key);
+            if (seen != null && seen.expiryTime >= System.currentTimeMillis() && seen.node.value != null) {
+                return seen.node.value;
+            }
+        }
+        return null;
     }
 
     /**

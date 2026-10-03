@@ -218,6 +218,64 @@ class TTLCacheRaceTest {
     }
 
     /**
+     * Unbounded, put() takes no lock, so putIfAbsent() must not overwrite a put that lands between its lookup and
+     * its write: the put's value stays, and putIfAbsent reports it.
+     */
+    @Test
+    void unboundedPutIfAbsentNeverOverwritesAConcurrentPut() throws Exception {
+        TTLCache<Object, String> cache = new TTLCache<>(3_600_000, -1, 3_600_000);
+        try {
+            GateKey key = new GateKey("k");
+            String[] returned = new String[1];
+            Thread thread = new Thread(() -> returned[0] = cache.putIfAbsent(key, "fromPutIfAbsent"));
+            key.arm(thread, 2);                     // between its lookup and its write
+            thread.start();
+            key.awaitReached();
+            String previous = cache.put(key, "fromPut");
+            key.release();
+            thread.join();
+            assertEquals(null, previous);
+            assertEquals("fromPut", returned[0]);
+            assertEquals("fromPut", cache.get(key));
+        } finally {
+            cache.close();
+        }
+    }
+
+    /**
+     * Unbounded, a put() landing while computeIfAbsent() runs its function must not be overwritten by the
+     * computed value.
+     */
+    @Test
+    void unboundedComputeIfAbsentNeverOverwritesAConcurrentPut() throws Exception {
+        TTLCache<String, String> cache = new TTLCache<>(3_600_000, -1, 3_600_000);
+        try {
+            CountDownLatch computing = new CountDownLatch(1);
+            CountDownLatch proceed = new CountDownLatch(1);
+            String[] returned = new String[1];
+            Thread thread = new Thread(() -> returned[0] = cache.computeIfAbsent("k", k -> {
+                computing.countDown();
+                try {
+                    proceed.await(10, TimeUnit.SECONDS);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+                return "computed";
+            }));
+            thread.start();
+            assertTrue(computing.await(10, TimeUnit.SECONDS));
+            String previous = cache.put("k", "fromPut");
+            proceed.countDown();
+            thread.join();
+            assertEquals(null, previous);
+            assertEquals("fromPut", cache.get("k"));
+            assertEquals("fromPut", returned[0]);
+        } finally {
+            cache.close();
+        }
+    }
+
+    /**
      * The cleanup has taken expired "old" out of the map but not yet out of the LRU list when a put writes "fresh"
      * for the same key and the next put evicts. Eviction meets the stale node first: it must not take "fresh" with
      * it, and must still bring the cache down to maxSize.

@@ -106,91 +106,118 @@ public class ConcurrentNavigableMapNullSafe<K, V> extends AbstractConcurrentNull
 
     /**
      * Static method to wrap the user-provided comparator to handle sentinel keys and mixed key types.
+     * The common comparison (two non-null keys: the user comparator, or two of one Comparable class) stays small
+     * enough for the JIT to inline into the skip list; nulls and mixed classes are handled out of line.
      *
      * @param comparator the user-provided comparator
      * @return a comparator that handles sentinel keys and mixed key types
      */
     @SuppressWarnings("unchecked")
     private static <K> Comparator<Object> wrapComparator(Comparator<? super K> comparator) {
+        // Set once the user comparator throws NullPointerException for a null: nulls then go last.
+        final boolean[] comparatorRejectsNulls = new boolean[1];
         return (o1, o2) -> {
-            // Handle the sentinel value for null keys
-            boolean o1IsNullSentinel = o1 == NULL_KEY_SENTINEL;
-            boolean o2IsNullSentinel = o2 == NULL_KEY_SENTINEL;
-
-            if (o1IsNullSentinel && o2IsNullSentinel) {
-                return 0;
-            }
-            if (o1IsNullSentinel) {
-                return 1; // Null keys are considered greater than any other keys
-            }
-            if (o2IsNullSentinel) {
-                return -1;
-            }
-
-            // Handle actual nulls (should not occur)
-            if (o1 == null && o2 == null) {
-                return 0;
-            }
-            if (o1 == null) {
-                return 1;
-            }
-            if (o2 == null) {
-                return -1;
-            }
-
-            // Use the provided comparator if available
-            if (comparator != null) {
-                return comparator.compare((K) o1, (K) o2);
-            }
-
-            // Cache class lookups - getClass() is called multiple times below
-            Class<?> class1 = o1.getClass();
-            Class<?> class2 = o2.getClass();
-
-            // If keys are of the same class and Comparable, compare them
-            if (class1 == class2 && o1 instanceof Comparable) {
-                return ((Comparable<Object>) o1).compareTo(o2);
-            }
-
-            // Same-class, non-Comparable keys must still have a strict ordering to avoid
-            // treating distinct keys as equal and overwriting entries.
-            if (class1 == class2) {
-                int idCmp = Integer.compare(System.identityHashCode(o1), System.identityHashCode(o2));
-                if (idCmp != 0) {
-                    return idCmp;
+            if (o1 != NULL_KEY_SENTINEL && o2 != NULL_KEY_SENTINEL && o1 != null && o2 != null) {
+                if (comparator != null) {
+                    return comparator.compare((K) o1, (K) o2);
                 }
-                if (o1 == o2) {
-                    return 0;
+                if (o1.getClass() == o2.getClass() && o1 instanceof Comparable) {
+                    return ((Comparable<Object>) o1).compareTo(o2);
                 }
-                // Distinct objects with colliding identity hashes: assign stable
-                // sequence numbers so they remain distinct keys instead of one
-                // silently overwriting the other. (equals-equal keys share a
-                // registry entry and thus compare equal, as a Map requires.)
-                return Long.compare(tieBreakerFor(o1), tieBreakerFor(o2));
+                return compareMixed(o1, o2);
             }
-
-            // Compare class names to provide ordering between different types
-            String className1 = class1.getName();
-            String className2 = class2.getName();
-            int classComparison = className1.compareTo(className2);
-
-            if (classComparison != 0) {
-                return classComparison;
-            }
-
-            // If class names are the same but classes are different (rare), compare class loader information
-            ClassLoader cl1 = class1.getClassLoader();
-            ClassLoader cl2 = class2.getClassLoader();
-            String loader1 = cl1 == null ? "" : cl1.getClass().getName();
-            String loader2 = cl2 == null ? "" : cl2.getClass().getName();
-            int loaderCompare = loader1.compareTo(loader2);
-            if (loaderCompare != 0) {
-                return loaderCompare;
-            }
-
-            // Final tie-breaker using identity hash of the class loaders
-            return Integer.compare(System.identityHashCode(cl1), System.identityHashCode(cl2));
+            return compareWithNull(o1, o2, comparator, comparatorRejectsNulls);
         };
+    }
+
+    /**
+     * Ordering when either key is the null key. A user comparator that places null (Comparator.nullsFirst, say)
+     * decides where it goes, as comparator() reports it (as ConcurrentNavigableSetNullSafe does); otherwise, or
+     * once that comparator has thrown NullPointerException for a null, null keys are greater than any other.
+     */
+    @SuppressWarnings("unchecked")
+    private static <K> int compareWithNull(Object o1, Object o2, Comparator<? super K> comparator,
+                                           boolean[] comparatorRejectsNulls) {
+        boolean o1IsNull = o1 == NULL_KEY_SENTINEL || o1 == null;
+        boolean o2IsNull = o2 == NULL_KEY_SENTINEL || o2 == null;
+        if (comparator != null && !comparatorRejectsNulls[0]) {
+            try {
+                return comparator.compare(o1IsNull ? null : (K) o1, o2IsNull ? null : (K) o2);
+            } catch (NullPointerException npe) {
+                comparatorRejectsNulls[0] = true;
+            }
+        }
+        if (o1IsNull && o2IsNull) {
+            return 0;
+        }
+        return o1IsNull ? 1 : -1;
+    }
+
+    /**
+     * Natural ordering of two non-null keys that are not two of one Comparable class: related classes by
+     * compareTo, same-class non-Comparable keys by identity, unrelated classes by class name.
+     */
+    @SuppressWarnings("unchecked")
+    private static int compareMixed(Object o1, Object o2) {
+        Class<?> class1 = o1.getClass();
+        Class<?> class2 = o2.getClass();
+
+        // Related classes are one natural order too: an enum's constants (one with a body has its own class)
+        // and a Comparable class with its subclasses. Ordering those by class name split them apart.
+        if (class1 != class2 && o1 instanceof Comparable && related(o1, class1, o2, class2)) {
+            return ((Comparable<Object>) o1).compareTo(o2);
+        }
+
+        // Same-class, non-Comparable keys must still have a strict ordering to avoid
+        // treating distinct keys as equal and overwriting entries.
+        if (class1 == class2) {
+            int idCmp = Integer.compare(System.identityHashCode(o1), System.identityHashCode(o2));
+            if (idCmp != 0) {
+                return idCmp;
+            }
+            if (o1 == o2) {
+                return 0;
+            }
+            // Distinct objects with colliding identity hashes: assign stable
+            // sequence numbers so they remain distinct keys instead of one
+            // silently overwriting the other. (equals-equal keys share a
+            // registry entry and thus compare equal, as a Map requires.)
+            return Long.compare(tieBreakerFor(o1), tieBreakerFor(o2));
+        }
+
+        // Compare class names to provide ordering between different types
+        String className1 = class1.getName();
+        String className2 = class2.getName();
+        int classComparison = className1.compareTo(className2);
+
+        if (classComparison != 0) {
+            return classComparison;
+        }
+
+        // If class names are the same but classes are different (rare), compare class loader information
+        ClassLoader cl1 = class1.getClassLoader();
+        ClassLoader cl2 = class2.getClassLoader();
+        String loader1 = cl1 == null ? "" : cl1.getClass().getName();
+        String loader2 = cl2 == null ? "" : cl2.getClass().getName();
+        int loaderCompare = loader1.compareTo(loader2);
+        if (loaderCompare != 0) {
+            return loaderCompare;
+        }
+
+        // Final tie-breaker using identity hash of the class loaders
+        return Integer.compare(System.identityHashCode(cl1), System.identityHashCode(cl2));
+    }
+
+    /**
+     * Whether two keys of different classes share a natural order: constants of one enum, or instances of a
+     * Comparable class and a subclass of it (the common class itself Comparable, so compareTo accepts both).
+     */
+    private static boolean related(Object o1, Class<?> class1, Object o2, Class<?> class2) {
+        if (o1 instanceof Enum && o2 instanceof Enum) {
+            return ((Enum<?>) o1).getDeclaringClass() == ((Enum<?>) o2).getDeclaringClass();
+        }
+        Class<?> common = class1.isAssignableFrom(class2) ? class1 : class2.isAssignableFrom(class1) ? class2 : null;
+        return common != null && Comparable.class.isAssignableFrom(common);
     }
 
     @Override

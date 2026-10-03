@@ -212,11 +212,9 @@ public class TTLCache<K, V> implements Map<K, V>, AutoCloseable {
     private void purgeExpiredEntries() {
         long currentTime = System.currentTimeMillis();
         List<Node<K, V>> expiredNodes = lruEnabled ? new ArrayList<>() : null;
-        for (Iterator<Map.Entry<K, CacheEntry<K, V>>> it = cacheMap.entrySet().iterator(); it.hasNext(); ) {
-            Map.Entry<K, CacheEntry<K, V>> entry = it.next();
+        for (Map.Entry<K, CacheEntry<K, V>> entry : cacheMap.entrySet()) {
             CacheEntry<K, V> cacheEntry = entry.getValue();
-            if (cacheEntry.expiryTime < currentTime) {
-                it.remove();
+            if (cacheEntry.expiryTime < currentTime && cacheMap.remove(entry.getKey(), cacheEntry)) {
                 if (lruEnabled) {
                     expiredNodes.add(cacheEntry.node);
                 }
@@ -247,8 +245,7 @@ public class TTLCache<K, V> implements Map<K, V>, AutoCloseable {
              it.hasNext() && checked < SIZE_CLEANUP_SAMPLES; checked++) {
             Map.Entry<K, CacheEntry<K, V>> entry = it.next();
             CacheEntry<K, V> cacheEntry = entry.getValue();
-            if (cacheEntry.expiryTime < currentTime) {
-                it.remove();
+            if (cacheEntry.expiryTime < currentTime && cacheMap.remove(entry.getKey(), cacheEntry)) {
                 if (lruEnabled) {
                     expiredNodes.add(cacheEntry.node);
                 }
@@ -282,6 +279,40 @@ public class TTLCache<K, V> implements Map<K, V>, AutoCloseable {
             } finally {
                 lock.unlock();
             }
+        }
+    }
+
+    /**
+     * Removes the given entry if the key still maps to it. An expired entry is removed this way, so a fresh value
+     * written for the same key in the meantime survives.
+     */
+    private void removeEntryIfSame(Object cacheKey, CacheEntry<K, V> expected) {
+        if (cacheMap.remove(cacheKey, expected) && lruEnabled) {
+            lock.lock();
+            try {
+                unlink(expected.node);
+            } finally {
+                lock.unlock();
+            }
+        }
+    }
+
+    /**
+     * Evicts least recently used entries until the cache is within maxSize. Must be called under lock.
+     * A node at the head whose key no longer maps to it (its entry was removed and the remover has not yet
+     * unlinked it) is only unlinked: removing by its key would take a newer entry of the same key.
+     */
+    private void evictOverflow() {
+        while (cacheMap.size() > maxSize) {
+            Node<K, V> lruNode = head.next;
+            if (lruNode == tail) {
+                return;
+            }
+            CacheEntry<K, V> entry = cacheMap.get(lruNode.key);
+            if (entry != null && entry.node == lruNode) {
+                cacheMap.remove(lruNode.key, entry);
+            }
+            unlink(lruNode);
         }
     }
 
@@ -366,13 +397,7 @@ public class TTLCache<K, V> implements Map<K, V>, AutoCloseable {
 
             insertAtTail(node);
 
-            if (maxSize > -1 && cacheMap.size() > maxSize) {
-                // Evict the least recently used entry
-                Node<K, V> lruNode = head.next;
-                if (lruNode != tail) {
-                    removeEntry(lruNode.key);
-                }
-            }
+            evictOverflow();
 
             return oldValue;
         } finally {
@@ -384,7 +409,6 @@ public class TTLCache<K, V> implements Map<K, V>, AutoCloseable {
      * Returns the value to which the specified key is mapped, or {@code null}
      * if this cache contains no mapping for the key or if the entry has expired.
      */
-    @SuppressWarnings("unchecked")
     @Override
     public V get(Object key) {
         CacheEntry<K, V> entry = cacheMap.get(key);
@@ -399,7 +423,7 @@ public class TTLCache<K, V> implements Map<K, V>, AutoCloseable {
 
         long currentTime = System.currentTimeMillis();
         if (entry.expiryTime < currentTime) {
-            removeEntry((K)key);
+            removeEntryIfSame(key, entry);
             return null;
         }
 
@@ -464,11 +488,8 @@ public class TTLCache<K, V> implements Map<K, V>, AutoCloseable {
                     insertAtTail(node);
                 }
 
-                if (lruEnabled && cacheMap.size() > maxSize) {
-                    Node<K, V> lruNode = head.next;
-                    if (lruNode != tail) {
-                        removeEntry(lruNode.key);
-                    }
+                if (lruEnabled) {
+                    evictOverflow();
                 }
             }
             return value;
@@ -517,11 +538,8 @@ public class TTLCache<K, V> implements Map<K, V>, AutoCloseable {
                 insertAtTail(node);
             }
 
-            if (lruEnabled && cacheMap.size() > maxSize) {
-                Node<K, V> lruNode = head.next;
-                if (lruNode != tail) {
-                    removeEntry(lruNode.key);
-                }
+            if (lruEnabled) {
+                evictOverflow();
             }
             return null;
         } finally {
@@ -599,7 +617,6 @@ public class TTLCache<K, V> implements Map<K, V>, AutoCloseable {
      * Returns {@code true} if this cache contains a mapping for the specified key
      * and it has not expired.
      */
-    @SuppressWarnings("unchecked")
     @Override
     public boolean containsKey(Object key) {
         CacheEntry<K, V> entry = cacheMap.get(key);
@@ -607,7 +624,7 @@ public class TTLCache<K, V> implements Map<K, V>, AutoCloseable {
             return false;
         }
         if (entry.expiryTime < System.currentTimeMillis()) {
-            removeEntry((K)key);
+            removeEntryIfSame(key, entry);
             return false;
         }
         return true;

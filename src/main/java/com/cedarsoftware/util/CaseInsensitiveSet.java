@@ -482,7 +482,8 @@ public class CaseInsensitiveSet<E> extends AbstractSet<E> implements Set<E>, Ser
      * optimization that, when {@code this.size() <= c.size()}, iterates over {@code this} and calls
      * {@code c.contains()} — which is case-sensitive for non-CaseInsensitive collections.
      * By always iterating over {@code c} and calling {@code this.remove()}, case-insensitive
-     * semantics are preserved regardless of the collection type passed in.
+     * semantics are preserved regardless of the collection type passed in. It iterates a snapshot of
+     * {@code c}: {@code c} may be this set or a view of it, which the removals would change mid-loop.
      * </p>
      *
      * @param c the collection containing elements to be removed from this set
@@ -492,7 +493,7 @@ public class CaseInsensitiveSet<E> extends AbstractSet<E> implements Set<E>, Ser
     @Override
     public boolean removeAll(Collection<?> c) {
         boolean modified = false;
-        for (Object elem : c) {
+        for (Object elem : c.toArray()) {
             if (remove(elem)) {
                 modified = true;
             }
@@ -740,6 +741,10 @@ public class CaseInsensitiveSet<E> extends AbstractSet<E> implements Set<E>, Ser
      */
     @Deprecated
     public Set<E> minus(Iterable<E> removeMe) {
+        if (removeMe instanceof Collection) {
+            removeAll((Collection<?>) removeMe);    // a snapshot: removeMe may be this set
+            return this;
+        }
         for (Object me : removeMe) {
             remove(me);
         }

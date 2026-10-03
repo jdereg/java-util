@@ -904,6 +904,7 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
              * {@link #remove(Object)} does, and as {@link #retainAll(Collection)} matches. AbstractSet's version asked
              * the collection's own contains() when the collection was at least as large as this set (case-sensitive
              * for a List or HashSet) and remove() otherwise, so whether "name" removed "Name" depended on the sizes.
+             * It iterates a snapshot of the collection, which may be this key set or a view of it.
              *
              * @param c collection containing elements to be removed from this set
              * @return true if this set changed as a result of the call
@@ -913,7 +914,7 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
             public boolean removeAll(Collection<?> c) {
                 Objects.requireNonNull(c);
                 boolean modified = false;
-                for (Object o : c) {
+                for (Object o : c.toArray()) {
                     if (remove(o)) {
                         modified = true;
                     }

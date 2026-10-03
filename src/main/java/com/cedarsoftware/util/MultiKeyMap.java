@@ -36,6 +36,8 @@ import java.util.function.ToLongFunction;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import com.cedarsoftware.util.internal.FloatDecimal;
+
 /**
  * High-performance N-dimensional key-value Map implementation - the definitive solution for multidimensional lookups.
  *

@@ -20,6 +20,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 import com.cedarsoftware.util.MathUtilities;
+import com.cedarsoftware.util.internal.FloatDecimal;
 
 /**
  * @author Kenny Partlow (kpartlow@gmail.com)
@@ -98,12 +99,13 @@ final class NumberConversions {
      * <p>
      * {@code Float.doubleValue()} is binary-exact and therefore decimal-wrong: 3.7f becomes
      * 3.700000047683716, because the float nearest 3.7 is not 3.7 and widening preserves that error instead of the
-     * author's intent. {@code Float.toString()} produces the shortest decimal that uniquely identifies the float --
-     * "3.7" -- so parsing that gives the number the author actually wrote. The same reasoning applies to every
-     * Float source that keeps the fractional value; only the truncating targets are unaffected.
+     * author's intent. The shortest decimal that uniquely identifies the float -- "3.7", what {@code Float.toString()}
+     * prints from JDK 19 on -- is the number the author actually wrote. The same reasoning applies to every Float
+     * source that keeps the fractional value; only the truncating targets are unaffected. FloatDecimal computes that
+     * decimal's double without printing or parsing, and gives the JDK 19 decimal on every JDK.
      */
     static Double floatToDouble(Object from, Converter converter) {
-        return Double.parseDouble(from.toString());
+        return FloatDecimal.printedValue((Float) from);
     }
 
     static Double toDoubleZero(Object from, Converter converter) {

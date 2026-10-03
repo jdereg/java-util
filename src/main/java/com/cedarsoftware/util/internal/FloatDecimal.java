@@ -1,4 +1,4 @@
-package com.cedarsoftware.util;
+package com.cedarsoftware.util.internal;
 
 import java.math.BigInteger;
 
@@ -21,7 +21,8 @@ import com.cedarsoftware.util.fastdoubleparser.FastDoubleMath;
  * beyond Clinger's reach (exponent below -22) was checked against Double.parseDouble of the decimal on JDK 21 and
  * JDK 8, with no difference, for it and its negation.
  * <p>
- * MultiKeyMap uses it for a float's value in value-based equality (0.1f is the 0.1 it prints). Printing with
+ * MultiKeyMap uses it for a float's value in value-based equality (0.1f is the 0.1 it prints), and Converter for
+ * Float to Double. Internal: not part of java-util's API (the package is exported to json-io only). Printing with
  * Float.toString and parsing that cost 35-43 ns per float on JDK 21 (52-54 on JDK 8); this takes about 7-8, and
  * 10 for a float below about 1e-14.
  *
@@ -41,7 +42,7 @@ import com.cedarsoftware.util.fastdoubleparser.FastDoubleMath;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-final class FloatDecimal {
+public final class FloatDecimal {
     private static final int P = 24;                        // a float's precision, the hidden bit included
     private static final int Q_MIN = -149;                  // the least binary exponent of a float's last bit
     private static final int C_MIN = 1 << (P - 1);          // the least normal significand
@@ -92,10 +93,21 @@ final class FloatDecimal {
     }
 
     /**
-     * The double nearest the decimal {@code f} prints, for a finite float that is not a whole number (a whole float
-     * is its exact value). The float's sign is kept.
+     * The double nearest the decimal a float prints (what Float.toString prints from JDK 19 on), for every float:
+     * 0.1f is 0.1, 3.7f is 3.7 and Float.MAX_VALUE is 3.4028235E38. Zeros, infinities and NaN are themselves.
      */
-    static double valueOf(float f) {
+    public static double printedValue(float f) {
+        double w = f;
+        if (w == 0 || !Double.isFinite(w)) {
+            return w;
+        }
+        return valueOf(f);
+    }
+
+    /**
+     * The double nearest the decimal {@code f} prints, for a finite float other than zero. The float's sign is kept.
+     */
+    public static double valueOf(float f) {
         long decimal = decimal(f);
         long significand = decimal >>> 8;
         int exponent = (int) (decimal & 0xFF) - 128;

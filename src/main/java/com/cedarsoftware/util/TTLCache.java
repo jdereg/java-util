@@ -589,15 +589,16 @@ public class TTLCache<K, V> implements Map<K, V>, AutoCloseable {
      * The compound operations' core, atomic: hands the key's live entry (null when absent or expired) to the
      * function, which returns the new value, REMOVE, or UNCHANGED. A new value is written as put writes it: a full
      * TTL, the most recently used. Size-limited caches do this under the lock; unbounded ones, whose put takes no
-     * lock, with a compare-and-set loop on the map. The Map defaults were a get, then a put: concurrent updates
+     * lock, with compare-and-set on the map. The Map defaults were a get, then a put: concurrent updates
      * overwrote each other. Returns what the function returned.
      */
     @SuppressWarnings("unchecked")
     private Object computeEntry(K key, BiFunction<K, CacheEntry<K, V>, Object> function) {
         if (!lruEnabled) {
-            // Compare-and-set over exactly the entry read; retried when another write got there first (the
-            // function may then run again, as ConcurrentMap's defaults allow).
-            for (;;) {
+            // Compare-and-set over exactly the entry read, tried twice; overtaken twice, the function runs under
+            // the map's own lock for the key, which nothing overtakes. Retrying for as long as it took would spin
+            // forever on a function that writes the key it computes (a Map contract breach the map refuses).
+            for (int attempt = 0; attempt < 2; attempt++) {
                 CacheEntry<K, V> entry = cacheMap.get(key);
                 boolean live = entry != null && entry.expiryTime >= System.currentTimeMillis();
                 Object result = function.apply(key, live ? entry : null);
@@ -616,6 +617,20 @@ public class TTLCache<K, V> implements Map<K, V>, AutoCloseable {
                     return result;
                 }
             }
+            final Object[] outcome = new Object[1];
+            cacheMap.compute(key, (k, entry) -> {
+                boolean live = entry != null && entry.expiryTime >= System.currentTimeMillis();
+                Object result = function.apply(key, live ? entry : null);
+                outcome[0] = result;
+                if (result == UNCHANGED) {
+                    return entry;
+                }
+                if (result == REMOVE) {
+                    return null;
+                }
+                return new CacheEntry<>(new Node<>(key, (V) result), System.currentTimeMillis() + ttlMillis);
+            });
+            return outcome[0];
         }
         lock.lock();
         try {

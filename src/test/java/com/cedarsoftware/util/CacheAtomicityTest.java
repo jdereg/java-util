@@ -1,6 +1,7 @@
 package com.cedarsoftware.util;
 
 import java.util.ArrayList;
+import java.util.ConcurrentModificationException;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -169,6 +170,49 @@ class CacheAtomicityTest {
             assertTrue(!cache.remove("r", 2), n);
             assertTrue(cache.remove("r", 3), n);
             assertTrue(!cache.containsKey("r"), n);
+        }
+    }
+
+    /**
+     * A function that writes the key it is computing breaks the Map contract, but must not hang the caller. The
+     * compare-and-set loops retried such a function forever, since its own write overtook every attempt. After two
+     * attempts they now run it under the map's own lock for the key: it completes, or the map refuses it.
+     */
+    @Test
+    void aFunctionThatWritesItsOwnKeyCannotSpinForever() throws Exception {
+        for (Map.Entry<String, Supplier<Map<String, Integer>>> e : caches().entrySet()) {
+            for (String op : new String[]{"compute", "merge", "computeIfPresent"}) {
+                Map<String, Integer> cache = e.getValue().get();
+                cache.put("k", 0);
+                Thread thread = new Thread(() -> {
+                    try {
+                        if (op.equals("compute")) {
+                            cache.compute("k", (k, v) -> {
+                                cache.put("k", 1);
+                                return 2;
+                            });
+                        } else if (op.equals("merge")) {
+                            cache.merge("k", 2, (a, b) -> {
+                                cache.put("k", 1);
+                                return b;
+                            });
+                        } else {
+                            cache.computeIfPresent("k", (k, v) -> {
+                                cache.put("k", 1);
+                                return 2;
+                            });
+                        }
+                    } catch (IllegalStateException | ConcurrentModificationException refused) {
+                        // the backing map may refuse a function that modifies it
+                    }
+                });
+                thread.setDaemon(true);
+                thread.start();
+                thread.join(5000);
+                assertTrue(!thread.isAlive(), e.getKey() + " " + op + " is still running");
+                cache.put("after", 3);
+                assertEquals(Integer.valueOf(3), cache.get("after"), e.getKey() + " " + op);
+            }
         }
     }
 }

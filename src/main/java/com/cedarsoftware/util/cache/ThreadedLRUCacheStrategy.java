@@ -603,8 +603,8 @@ public class ThreadedLRUCacheStrategy<K, V> implements Map<K, V>, Closeable {
         }
     }
 
-    // The compound operations below are compare-and-set loops on the nodes (the Map defaults were a get, then a
-    // put: concurrent updates overwrote each other). A new value is a new node, a fresh use.
+    // The compound operations below are compare-and-set on the nodes (the Map defaults were a get, then a put:
+    // concurrent updates overwrote each other). A new value is a new node, a fresh use.
 
     @Override
     public V compute(K key, BiFunction<? super K, ? super V, ? extends V> remappingFunction) {
@@ -626,13 +626,14 @@ public class ThreadedLRUCacheStrategy<K, V> implements Map<K, V>, Closeable {
     }
 
     /**
-     * compute, computeIfPresent and merge: a compare-and-set loop over exactly the node read (Node has no equals,
-     * so the map compares identity), retried when another write got there first; the function may then run
-     * again, as ConcurrentMap's defaults allow. A null result removes the key. With onlyIfPresent, a key absent
-     * or mapped to null is left alone.
+     * compute, computeIfPresent and merge: compare-and-set over exactly the node read (Node has no equals, so the
+     * map compares identity), tried twice; a null result removes the key, and with onlyIfPresent a key absent or
+     * mapped to null is left alone. Overtaken twice, the function runs under the map's own lock for the key,
+     * which nothing overtakes: retrying for as long as it took would spin forever on a function that writes the
+     * key it computes (a Map contract breach that ConcurrentHashMap refuses).
      */
     private V update(K key, Function<V, V> function, boolean onlyIfPresent) {
-        while (true) {
+        for (int attempt = 0; attempt < 2; attempt++) {
             Node<K, V> node = cache.get(key);
             V old = node == null ? null : node.value;
             if (onlyIfPresent && old == null) {
@@ -655,6 +656,31 @@ public class ThreadedLRUCacheStrategy<K, V> implements Map<K, V>, Closeable {
                 return value;
             }
         }
+        final Object[] result = new Object[2];     // the value, and the node of a new key
+        cache.compute(key, (k, node) -> {
+            V old = node == null ? null : node.value;
+            if (onlyIfPresent && old == null) {
+                return node;
+            }
+            V value = function.apply(old);
+            result[0] = value;
+            if (value == null) {
+                return null;
+            }
+            Node<K, V> fresh = new Node<>(k, value);
+            if (node == null) {
+                result[1] = fresh;
+            }
+            return fresh;
+        });
+        if (result[1] != null) {
+            @SuppressWarnings("unchecked")
+            Node<K, V> inserted = (Node<K, V>) result[1];
+            trimIfFarOverCapacity(inserted);
+        }
+        @SuppressWarnings("unchecked")
+        V value = (V) result[0];
+        return value;
     }
 
     @Override

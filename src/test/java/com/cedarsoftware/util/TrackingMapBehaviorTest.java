@@ -156,4 +156,83 @@ class TrackingMapBehaviorTest {
         two.expungeUnused();
         assertTrue(two.isEmpty());
     }
+
+    /**
+     * putIfAbsent, replace and remove(key, value) are the wrapped map's own, so they are as atomic as it makes
+     * them. Over a non-concurrent map they did a get() then a put() under a lock only TrackingMap took: over
+     * Collections.synchronizedMap, a putIfAbsent racing the map's own putIfAbsent on the same key could see both
+     * return null (780 of 50,000 keys in the review's probe), and a HashMap subclass's own methods were never
+     * called.
+     */
+    @Test
+    void compoundWritesAreTheWrappedMapsOwn() throws Exception {
+        CountingMap plain = new CountingMap();
+        plain.put("k", null);
+        TrackingMap<String, Integer> trackingPlain = new TrackingMap<>(plain);
+        assertEquals(null, trackingPlain.putIfAbsent("k", 1));       // a null value counts as absent
+        assertEquals(Integer.valueOf(1), plain.get("k"));
+        assertFalse(trackingPlain.replace("k", 2, 3));
+        assertTrue(trackingPlain.replace("k", 1, 3));
+        assertEquals(Integer.valueOf(3), trackingPlain.replace("k", 4));
+        assertEquals(null, trackingPlain.replace("absent", 5));
+        assertFalse(plain.containsKey("absent"));
+        trackingPlain.get("k");
+        assertFalse(trackingPlain.remove("k", 3));
+        assertTrue(trackingPlain.remove("k", 4));
+        assertTrue(plain.isEmpty());
+        assertTrue(trackingPlain.keysUsed().isEmpty(), "a successful remove(key, value) forgets the read");
+        assertEquals(7, plain.ownCalls, "every compound write went to the wrapped map's own method");
+
+        Map<Integer, String> shared = Collections.synchronizedMap(new HashMap<>());
+        TrackingMap<Integer, String> tracking = new TrackingMap<>(shared);
+        int keys = 50_000;
+        String[] mine = new String[keys];
+        String[] theirs = new String[keys];
+        Thread other = new Thread(() -> {
+            for (int k = 0; k < keys; k++) {
+                theirs[k] = shared.putIfAbsent(k, "theirs");
+            }
+        });
+        other.start();
+        for (int k = 0; k < keys; k++) {
+            mine[k] = tracking.putIfAbsent(k, "mine");
+        }
+        other.join();
+        int bothWon = 0;
+        for (int k = 0; k < keys; k++) {
+            if (mine[k] == null && theirs[k] == null) {
+                bothWon++;
+            }
+        }
+        assertEquals(0, bothWon, "keys both putIfAbsent calls claimed");
+    }
+
+    /** A HashMap that counts calls to its own putIfAbsent, replace and remove(key, value). */
+    private static class CountingMap extends HashMap<String, Integer> {
+        int ownCalls;
+
+        @Override
+        public Integer putIfAbsent(String key, Integer value) {
+            ownCalls++;
+            return super.putIfAbsent(key, value);
+        }
+
+        @Override
+        public boolean replace(String key, Integer oldValue, Integer newValue) {
+            ownCalls++;
+            return super.replace(key, oldValue, newValue);
+        }
+
+        @Override
+        public Integer replace(String key, Integer value) {
+            ownCalls++;
+            return super.replace(key, value);
+        }
+
+        @Override
+        public boolean remove(Object key, Object value) {
+            ownCalls++;
+            return super.remove(key, value);
+        }
+    }
 }

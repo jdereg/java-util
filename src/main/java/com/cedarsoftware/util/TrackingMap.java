@@ -8,7 +8,6 @@ import java.util.IdentityHashMap;
 import java.util.Map;
 import java.util.NavigableMap;
 import java.util.NavigableSet;
-import java.util.Objects;
 import java.util.Set;
 import java.util.SortedMap;
 import java.util.concurrent.ConcurrentMap;
@@ -99,7 +98,6 @@ public class TrackingMap<K, V> implements Map<K, V> {
     private final boolean view;
 
     // Cached interface references to avoid repeated instanceof checks and casts
-    private final ConcurrentMap<K, V> asConcurrent;
     private final NavigableMap<K, V> asNavigable;
     private final SortedMap<K, V> asSorted;
 
@@ -117,7 +115,6 @@ public class TrackingMap<K, V> implements Map<K, V> {
         view = false;
 
         // Cache interface references for performance
-        asConcurrent = (map instanceof ConcurrentMap) ? (ConcurrentMap<K, V>) map : null;
         asNavigable = (map instanceof NavigableMap) ? (NavigableMap<K, V>) map : null;
         asSorted = (map instanceof SortedMap) ? (SortedMap<K, V>) map : null;
 
@@ -153,7 +150,6 @@ public class TrackingMap<K, V> implements Map<K, V> {
         view = true;
         readKeys = sharedReadKeys;
         unmodifiableReadKeys = Collections.unmodifiableSet(readKeys);
-        asConcurrent = (map instanceof ConcurrentMap) ? (ConcurrentMap<K, V>) map : null;
         asNavigable = (map instanceof NavigableMap) ? (NavigableMap<K, V>) map : null;
         asSorted = (map instanceof SortedMap) ? (SortedMap<K, V>) map : null;
     }
@@ -436,61 +432,37 @@ public class TrackingMap<K, V> implements Map<K, V> {
         replaceContents(map);
     }
 
-    // ===== ConcurrentMap methods (available when backing map supports them) =====
+    // ===== ConcurrentMap methods (the wrapped map's own, through the Map defaults where not overridden) =====
     
     /**
      * If the specified key is not already associated with a value,
      * associate it with the given value.
      * <p>
      * Does not mark the key as accessed since this is a write operation.
-     * Available when the backing map is a {@link ConcurrentMap}.
+     * Delegates to the wrapped map's own method, so it is as atomic as that map makes it.
      *
      * @param key key with which the specified value is to be associated
      * @param value value to be associated with the specified key
      * @return the previous value associated with the specified key, or {@code null}
      *         if there was no mapping for the key
-     * @throws UnsupportedOperationException if the wrapped map doesn't support ConcurrentMap operations
+     * @throws UnsupportedOperationException if the wrapped map does not support it
      */
     public V putIfAbsent(K key, V value) {
-        if (asConcurrent != null) {
-            return asConcurrent.putIfAbsent(key, value);
-        }
-        // Fallback for non-concurrent maps with synchronization
-        synchronized (this) {
-            V existing = internalMap.get(key);
-            if (existing == null) {
-                internalMap.put(key, value);
-            }
-            return existing;
-        }
+        return internalMap.putIfAbsent(key, value);
     }
 
     /**
      * Removes the entry for a key only if currently mapped to a given value.
      * Also removes the key from the set of accessed keys if removal succeeds.
-     * Available when the backing map is a {@link ConcurrentMap}.
+     * Delegates to the wrapped map's own method, so it is as atomic as that map makes it.
      *
      * @param key key with which the specified value is associated
      * @param value value expected to be associated with the specified key
      * @return {@code true} if the value was removed
-     * @throws UnsupportedOperationException if the wrapped map doesn't support ConcurrentMap operations
+     * @throws UnsupportedOperationException if the wrapped map does not support it
      */
     public boolean remove(Object key, Object value) {
-        boolean removed;
-        if (asConcurrent != null) {
-            removed = asConcurrent.remove(key, value);
-        } else {
-            // Fallback for non-concurrent maps with synchronization
-            synchronized (this) {
-                Object curValue = internalMap.get(key);
-                if (!Objects.equals(curValue, value) || (curValue == null && !internalMap.containsKey(key))) {
-                    removed = false;
-                } else {
-                    internalMap.remove(key);
-                    removed = true;
-                }
-            }
-        }
+        boolean removed = internalMap.remove(key, value);
         if (removed) {
             readKeys.remove(key);
         }
@@ -499,50 +471,30 @@ public class TrackingMap<K, V> implements Map<K, V> {
 
     /**
      * Replaces the entry for a key only if currently mapped to a given value.
-     * Available when the backing map is a {@link ConcurrentMap}.
+     * Delegates to the wrapped map's own method, so it is as atomic as that map makes it.
      *
      * @param key key with which the specified value is associated
      * @param oldValue value expected to be associated with the specified key
      * @param newValue value to be associated with the specified key
      * @return {@code true} if the value was replaced
-     * @throws UnsupportedOperationException if the wrapped map doesn't support ConcurrentMap operations
+     * @throws UnsupportedOperationException if the wrapped map does not support it
      */
     public boolean replace(K key, V oldValue, V newValue) {
-        if (asConcurrent != null) {
-            return asConcurrent.replace(key, oldValue, newValue);
-        }
-        // Fallback for non-concurrent maps with synchronization
-        synchronized (this) {
-            Object curValue = internalMap.get(key);
-            if (!Objects.equals(curValue, oldValue) || (curValue == null && !internalMap.containsKey(key))) {
-                return false;
-            }
-            internalMap.put(key, newValue);
-            return true;
-        }
+        return internalMap.replace(key, oldValue, newValue);
     }
 
     /**
      * Replaces the entry for a key only if currently mapped to some value.
-     * Available when the backing map is a {@link ConcurrentMap}.
+     * Delegates to the wrapped map's own method, so it is as atomic as that map makes it.
      *
      * @param key key with which the specified value is associated
      * @param value value to be associated with the specified key
      * @return the previous value associated with the specified key, or {@code null}
      *         if there was no mapping for the key
-     * @throws UnsupportedOperationException if the wrapped map doesn't support ConcurrentMap operations
+     * @throws UnsupportedOperationException if the wrapped map does not support it
      */
     public V replace(K key, V value) {
-        if (asConcurrent != null) {
-            return asConcurrent.replace(key, value);
-        }
-        // Fallback for non-concurrent maps with synchronization
-        synchronized (this) {
-            if (internalMap.containsKey(key)) {
-                return internalMap.put(key, value);
-            }
-            return null;
-        }
+        return internalMap.replace(key, value);
     }
 
     // ===== Java 8+ Map methods with tracking =====

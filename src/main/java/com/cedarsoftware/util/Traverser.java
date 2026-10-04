@@ -36,6 +36,9 @@ import java.util.logging.Logger;
  *   <li><code>traverser.max.collection.size=0</code> &mdash; Maximum collection size to process (0 = disabled)</li>
  *   <li><code>traverser.max.array.length=0</code> &mdash; Maximum array length to process (0 = disabled)</li>
  * </ul>
+ * <p>A limit that is not set is 0 (disabled); a value that is not a number uses the built-in default
+ * (stack depth 1,000,000; objects 100,000; collection size and array length 50,000). Traverser reads these
+ * properties and never writes them.</p>
  *
  * <h3>Security Features</h3>
  * <ul>
@@ -131,95 +134,46 @@ public class Traverser {
     private static final int DEFAULT_MAX_COLLECTION_SIZE = 50000;
     private static final int DEFAULT_MAX_ARRAY_LENGTH = 50000;
 
-    static {
-        // Initialize system properties with defaults if not already set (backward compatibility)
-        initializeSystemPropertyDefaults();
-    }
-
-    private static void initializeSystemPropertyDefaults() {
-        // Set default values if not explicitly configured
-        if (System.getProperty("traverser.max.stack.depth") == null) {
-            System.setProperty("traverser.max.stack.depth", "0"); // Disabled by default
-        }
-        if (System.getProperty("traverser.max.objects.visited") == null) {
-            System.setProperty("traverser.max.objects.visited", "0"); // Disabled by default
-        }
-        if (System.getProperty("traverser.max.collection.size") == null) {
-            System.setProperty("traverser.max.collection.size", "0"); // Disabled by default
-        }
-        if (System.getProperty("traverser.max.array.length") == null) {
-            System.setProperty("traverser.max.array.length", "0"); // Disabled by default
-        }
-    }
-
     // Security configuration methods
 
     private static boolean isSecurityEnabled() {
         return Boolean.parseBoolean(System.getProperty("traverser.security.enabled", "false"));
     }
 
-    private static int getMaxStackDepth() {
+    /**
+     * A security limit: 0 (disabled) while security is off or the property is not set, as documented; the value
+     * set, negatives counting as 0; {@code invalidDefault} for a value that is not a number. The properties are
+     * read, never written: Traverser used to set the unset ones to "0" when it loaded.
+     */
+    private static int limit(String property, int invalidDefault) {
         if (!isSecurityEnabled()) {
-            return 0; // Disabled
+            return 0;
         }
-        String maxDepthProp = System.getProperty("traverser.max.stack.depth");
-        if (maxDepthProp != null) {
-            try {
-                int value = Integer.parseInt(maxDepthProp);
-                return Math.max(0, value); // 0 means disabled
-            } catch (NumberFormatException e) {
-                // Fall through to default
-            }
+        String value = System.getProperty(property);
+        if (value == null) {
+            return 0;
         }
-        return DEFAULT_MAX_STACK_DEPTH;
+        try {
+            return Math.max(0, Integer.parseInt(value));
+        } catch (NumberFormatException e) {
+            return invalidDefault;
+        }
+    }
+
+    private static int getMaxStackDepth() {
+        return limit("traverser.max.stack.depth", DEFAULT_MAX_STACK_DEPTH);
     }
 
     private static int getMaxObjectsVisited() {
-        if (!isSecurityEnabled()) {
-            return 0; // Disabled
-        }
-        String maxObjectsProp = System.getProperty("traverser.max.objects.visited");
-        if (maxObjectsProp != null) {
-            try {
-                int value = Integer.parseInt(maxObjectsProp);
-                return Math.max(0, value); // 0 means disabled
-            } catch (NumberFormatException e) {
-                // Fall through to default
-            }
-        }
-        return DEFAULT_MAX_OBJECTS_VISITED;
+        return limit("traverser.max.objects.visited", DEFAULT_MAX_OBJECTS_VISITED);
     }
 
     private static int getMaxCollectionSize() {
-        if (!isSecurityEnabled()) {
-            return 0; // Disabled
-        }
-        String maxSizeProp = System.getProperty("traverser.max.collection.size");
-        if (maxSizeProp != null) {
-            try {
-                int value = Integer.parseInt(maxSizeProp);
-                return Math.max(0, value); // 0 means disabled
-            } catch (NumberFormatException e) {
-                // Fall through to default
-            }
-        }
-        return DEFAULT_MAX_COLLECTION_SIZE;
+        return limit("traverser.max.collection.size", DEFAULT_MAX_COLLECTION_SIZE);
     }
 
     private static int getMaxArrayLength() {
-        if (!isSecurityEnabled()) {
-            return 0; // Disabled
-        }
-        String maxLengthProp = System.getProperty("traverser.max.array.length");
-        if (maxLengthProp != null) {
-            try {
-                int value = Integer.parseInt(maxLengthProp);
-                return Math.max(0, value); // 0 means disabled
-            } catch (NumberFormatException e) {
-                // Fall through to default
-            }
-        }
-        return DEFAULT_MAX_ARRAY_LENGTH;
+        return limit("traverser.max.array.length", DEFAULT_MAX_ARRAY_LENGTH);
     }
     
     /**

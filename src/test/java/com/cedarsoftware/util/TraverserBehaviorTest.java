@@ -1,5 +1,7 @@
 package com.cedarsoftware.util;
 
+import java.net.URL;
+import java.net.URLClassLoader;
 import java.util.AbstractCollection;
 import java.util.AbstractMap;
 import java.util.ArrayList;
@@ -15,7 +17,9 @@ import java.util.Set;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Traverser behavior found by review.
@@ -165,6 +169,56 @@ class TraverserBehaviorTest {
         root.second = new Payload();
         assertEquals(identitiesOf(root, root.first, 1, root.second), identities(visit(root, false)),
                 "the elements read before the failure are walked");
+    }
+
+    private static final String[] LIMITS = {"traverser.max.stack.depth", "traverser.max.objects.visited",
+            "traverser.max.collection.size", "traverser.max.array.length"};
+
+    /**
+     * Loading Traverser writes no system properties, and a limit that is not set is off, as documented, whenever
+     * it was cleared. Its static initializer set every unset limit property to "0", process-wide; a limit cleared
+     * afterwards then fell back to the built-in defaults, so with security on a 60,000-element list failed the
+     * 50,000-element default.
+     */
+    @Test
+    void limitsAreReadNotWrittenAndAnUnsetLimitIsOff() throws Exception {
+        Map<String, String> saved = new HashMap<>();
+        for (String key : LIMITS) {
+            saved.put(key, System.getProperty(key));
+            System.clearProperty(key);
+        }
+        String securitySaved = System.getProperty("traverser.security.enabled");
+        try {
+            URL classes = Traverser.class.getProtectionDomain().getCodeSource().getLocation();
+            try (URLClassLoader fresh = new URLClassLoader(new URL[]{classes}, null)) {
+                Class.forName(Traverser.class.getName(), true, fresh);         // runs its static initializer
+            }
+            for (String key : LIMITS) {
+                assertNull(System.getProperty(key), key);
+            }
+
+            System.setProperty("traverser.security.enabled", "true");
+            List<Object> wide = new ArrayList<>();
+            for (int i = 0; i < 60_000; i++) {
+                wide.add(i);
+            }
+            int[] visited = {0};
+            Traverser.traverse(wide, visit -> visited[0]++, null, false);
+            assertTrue(visited[0] > 1);
+        } finally {
+            for (String key : LIMITS) {
+                if (saved.get(key) == null) {
+                    System.clearProperty(key);
+                } else {
+                    System.setProperty(key, saved.get(key));
+                }
+            }
+            if (securitySaved == null) {
+                System.clearProperty("traverser.security.enabled");
+            } else {
+                System.setProperty("traverser.security.enabled", securitySaved);
+            }
+        }
     }
 
     private static List<Object> visit(Object root, boolean collectFields) {

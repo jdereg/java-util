@@ -5653,6 +5653,8 @@ traverser.max.collection.size=0
 traverser.max.array.length=0
 ```
 
+A limit that is not set is 0 (disabled); a value that is not a number uses the built-in default (stack depth 1,000,000; objects 100,000; collection size and array length 50,000). Traverser reads these properties and never writes them.
+
 **Security Features:**
 - **Stack Depth Limiting:** Prevents stack overflow from deeply nested object graphs
 - **Object Count Limiting:** Prevents memory exhaustion from large object graphs

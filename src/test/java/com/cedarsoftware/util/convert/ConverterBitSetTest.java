@@ -172,6 +172,32 @@ class ConverterBitSetTest {
         assertThrows(IllegalArgumentException.class, () -> converter.convert(bits(0, 1), AtomicBoolean.class));
     }
 
+    /**
+     * The Map form also takes the indices of the set bits, {"value": [0, 2]}, as older json-io wrote a BitSet. It
+     * failed ("Unsupported conversion, source type [Object[]]"). An index must be a non-negative whole number below
+     * 2^24: an index costs memory to its height (bit 2,000,000,000 is 250 MB), so twelve characters of input could
+     * take that much.
+     */
+    @Test
+    void theMapFormTakesBitIndices() {
+        Map<String, Object> map = new LinkedHashMap<>();
+        map.put("value", new Object[] {0L, 2L});
+        assertEquals(bits(0, 2), converter.convert(map, BitSet.class));
+        map.put("value", Arrays.asList(5, 1, 5));
+        assertEquals(bits(1, 5), converter.convert(map, BitSet.class));
+        map.put("value", new Object[0]);
+        assertEquals(bits(), converter.convert(map, BitSet.class));
+        map.put("value", new Object[] {(1 << 24) - 1L});
+        assertEquals(bits((1 << 24) - 1), converter.convert(map, BitSet.class));
+
+        for (Object bad : new Object[] {-1L, (long) (1 << 24), 2_000_000_000L, 2.5d, "2", null, true}) {
+            map.put("value", new Object[] {0L, bad});
+            IllegalArgumentException e = assertThrows(IllegalArgumentException.class,
+                    () -> converter.convert(map, BitSet.class), String.valueOf(bad));
+            assertTrue(e.getMessage().contains("index"), e.getMessage());
+        }
+    }
+
     /** ByteBuffer holds the same bytes as byte[]; it held the bytes of the binary text. */
     @Test
     void byteBufferMatchesByteArray() {

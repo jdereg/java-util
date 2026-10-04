@@ -23,8 +23,10 @@ import java.util.Base64;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
+import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Calendar;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Currency;
 import java.util.Date;
@@ -211,8 +213,48 @@ final class MapConversions {
         return dispatch(from, converter, BigInteger.class, VALUE_KEYS);
     }
 
+    /**
+     * Map → BitSet: {@code {"value": "101"}}, the binary string, or {@code {"value": [0, 2]}}, the indices of the set
+     * bits, as older json-io wrote a BitSet (a JSON array arrives as Object[], or a Collection).
+     */
     static BitSet toBitSet(Object from, Converter converter) {
+        Map<?, ?> map = (Map<?, ?>) from;
+        Object value = map.containsKey(VALUE) ? map.get(VALUE) : map.get(V);
+        if (value instanceof Object[]) {
+            return indicesToBitSet(Arrays.asList((Object[]) value));
+        }
+        if (value instanceof Collection) {
+            return indicesToBitSet((Collection<?>) value);
+        }
         return dispatch(from, converter, BitSet.class, VALUE_KEYS);
+    }
+
+    /**
+     * The highest bit index the Map form's index list may set. A BitSet's memory follows its highest bit (bit
+     * 2,000,000,000 is 250 MB), so an index list from input -- twelve characters for that index -- is held to 2^24
+     * bits (2 MB). A larger BitSet comes as its binary string, whose size follows the input's.
+     */
+    private static final int MAX_BIT_INDEX = (1 << 24) - 1;
+
+    private static BitSet indicesToBitSet(Collection<?> indices) {
+        BitSet bitSet = new BitSet();
+        for (Object index : indices) {
+            long bit;
+            if (index instanceof Long || index instanceof Integer || index instanceof Short || index instanceof Byte) {
+                bit = ((Number) index).longValue();
+            } else if (index instanceof BigInteger && ((BigInteger) index).bitLength() < 32) {
+                bit = ((BigInteger) index).longValue();
+            } else {
+                throw new IllegalArgumentException("Unable to convert to BitSet: a bit index must be a whole number,"
+                        + " found " + (index == null ? "null" : index.getClass().getSimpleName() + " " + index));
+            }
+            if (bit < 0 || bit > MAX_BIT_INDEX) {
+                throw new IllegalArgumentException("Unable to convert to BitSet: bit index " + bit
+                        + " is outside 0 to " + MAX_BIT_INDEX + " (a larger BitSet comes as its binary string)");
+            }
+            bitSet.set((int) bit);
+        }
+        return bitSet;
     }
 
     static String toString(Object from, Converter converter) {

@@ -2,6 +2,7 @@ package com.cedarsoftware.util;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CyclicBarrier;
 import java.util.function.BiConsumer;
@@ -169,5 +170,35 @@ class ConcurrentListBulkTest {
             assertEquals(Integer.valueOf(at == 1999 ? 1998 : 1999), list.get(1998), "match at " + at);
             assertFalse(list.remove((Object) (-1)), "match at " + at);
         }
+    }
+
+    /**
+     * removeIf, replaceAll and sort (and Collections.sort) worked through the snapshot iterator's remove and set,
+     * which throw: each failed with UnsupportedOperationException. They now answer as ArrayList does.
+     */
+    @Test
+    void removeIfReplaceAllAndSortAnswerAsArrayListDoes() {
+        List<Integer> source = Arrays.asList(5, 1, 4, 1, 5, 9, 2, 6, 5, 3);
+        ConcurrentList<Integer> list = new ConcurrentList<>(source);
+        List<Integer> reference = new ArrayList<>(source);
+        assertEquals(reference.removeIf(x -> x == 5), list.removeIf(x -> x == 5));
+        assertEquals(reference, new ArrayList<>(list));
+        assertFalse(list.removeIf(x -> x > 100));
+
+        list.replaceAll(x -> x * 10);
+        reference.replaceAll(x -> x * 10);
+        assertEquals(reference, new ArrayList<>(list));
+
+        list.sort(null);
+        reference.sort(null);
+        assertEquals(reference, new ArrayList<>(list));
+
+        list.sort(Collections.reverseOrder());
+        reference.sort(Collections.reverseOrder());
+        assertEquals(reference, new ArrayList<>(list));
+
+        ConcurrentList<String> words = new ConcurrentList<>(Arrays.asList("pear", "fig", "apple"));
+        Collections.sort(words);
+        assertEquals(Arrays.asList("apple", "fig", "pear"), new ArrayList<>(words));
     }
 }

@@ -6,6 +6,7 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.Deque;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -23,6 +24,8 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReferenceArray;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Consumer;
+import java.util.function.Predicate;
+import java.util.function.UnaryOperator;
 
 /**
  * A thread-safe implementation of the {@link List}, {@link Deque}, and {@link RandomAccess} interfaces,
@@ -539,15 +542,112 @@ public final class ConcurrentList<E> implements List<E>, Deque<E>, RandomAccess,
             if (retained.size() == snapshot.length) {
                 return false;
             }
-            lock.writeLock().lock();
-            try {
-                if (holdsAt(snapshot, 0, snapshot.length)) {
-                    rebuild(retained);
-                    return true;
-                }
-            } finally {
-                lock.writeLock().unlock();
+            if (rebuildIfUnchanged(snapshot, retained)) {
+                return true;
             }
+        }
+    }
+
+    /**
+     * Removes the elements the filter accepts, deciding on a snapshot with no lock held (the filter may lock
+     * other lists), as removeAll does. The List default worked through the snapshot iterator, whose remove
+     * throws.
+     */
+    @Override
+    public boolean removeIf(Predicate<? super E> filter) {
+        Objects.requireNonNull(filter);
+        return removeWhere(filter);
+    }
+
+    /** Replaces each element with the operator's result, computed on a snapshot with no lock held. */
+    @Override
+    @SuppressWarnings("unchecked")
+    public void replaceAll(UnaryOperator<E> operator) {
+        Objects.requireNonNull(operator);
+        while (true) {
+            Object[] snapshot = toArray();
+            Object[] replaced = new Object[snapshot.length];
+            for (int i = 0; i < snapshot.length; i++) {
+                replaced[i] = operator.apply((E) snapshot[i]);
+            }
+            if (writeOverIfUnchanged(snapshot, replaced)) {
+                return;
+            }
+        }
+    }
+
+    /** Sorts the list: a snapshot is sorted with no lock held (the comparator may lock other lists). */
+    @Override
+    @SuppressWarnings("unchecked")
+    public void sort(Comparator<? super E> c) {
+        while (true) {
+            Object[] snapshot = toArray();
+            Object[] sorted = snapshot.clone();
+            Arrays.sort(sorted, (Comparator<Object>) c);
+            if (writeOverIfUnchanged(snapshot, sorted)) {
+                return;
+            }
+        }
+    }
+
+    /**
+     * Under the write lock: writes values into the list's slots if the list still holds exactly the snapshot's
+     * elements; reports whether it did.
+     */
+    private boolean writeOverIfUnchanged(Object[] snapshot, Object[] values) {
+        lock.writeLock().lock();
+        try {
+            if (!holdsAt(snapshot, 0, snapshot.length)) {
+                return false;
+            }
+            long pos = head.get();
+            int done = 0;
+            while (done < values.length) {
+                AtomicReferenceArray<Object> bucket = getBucket(bucketIndex(pos));
+                int offset = bucketOffset(pos);
+                int n = Math.min(BUCKET_SIZE - offset, values.length - done);
+                for (int k = 0; k < n; k++) {
+                    bucket.set(offset + k, values[done + k]);
+                }
+                done += n;
+                pos += n;
+            }
+            return true;
+        } finally {
+            lock.writeLock().unlock();
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private boolean removeWhere(Predicate<? super E> drop) {
+        while (true) {
+            Object[] snapshot = toArray();
+            List<E> retained = new ArrayList<>(snapshot.length);
+            for (Object element : snapshot) {
+                if (!drop.test((E) element)) {
+                    retained.add((E) element);
+                }
+            }
+            if (retained.size() == snapshot.length) {
+                return false;
+            }
+            if (rebuildIfUnchanged(snapshot, retained)) {
+                return true;
+            }
+        }
+    }
+
+    /** Under the write lock: rebuilds the list from retained if it still holds exactly the snapshot's elements. */
+    private boolean rebuildIfUnchanged(Object[] snapshot, List<E> retained) {
+        lock.writeLock().lock();
+        try {
+            if (!holdsAt(snapshot, 0, snapshot.length)) {
+                return false;
+            }
+            rebuild(retained);
+            return true;
+        } finally {
+            lock.writeLock().unlock();
         }
     }
 

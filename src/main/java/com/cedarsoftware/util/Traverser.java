@@ -435,6 +435,8 @@ public class Traverser {
                 }
                 processCollection(stack, (Collection<?>) current, classesToSkip,
                         currentDepth, maxCollectionSize, maxObjectsVisited);
+                // and the fields a user subclass declares (a JDK class is a leaf: none)
+                processFields(stack, current, classesToSkip, currentDepth, maxObjectsVisited);
             } else if (current instanceof Map) {
                 if (collectFields) {
                     nodeVisitor.accept(new NodeVisit(current, collectFieldValues(current)));
@@ -443,6 +445,8 @@ public class Traverser {
                 }
                 processMap(stack, (Map<?, ?>) current, classesToSkip,
                         currentDepth, maxCollectionSize, maxObjectsVisited);
+                // and the fields a user subclass declares (a JDK class is a leaf: none)
+                processFields(stack, current, classesToSkip, currentDepth, maxObjectsVisited);
             } else {
                 if (collectFields) {
                     Map<Field, Object> fieldValues = collectFieldValuesAndProcess(

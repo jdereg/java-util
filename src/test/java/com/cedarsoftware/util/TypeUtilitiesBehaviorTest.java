@@ -1,15 +1,21 @@
 package com.cedarsoftware.util;
 
 import java.io.Serializable;
+import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.lang.reflect.TypeVariable;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * TypeUtilities behavior found by review.
@@ -115,5 +121,40 @@ class TypeUtilitiesBehaviorTest {
         String listOfInteger = "java.util.List<java.lang.Integer>";
         assertEquals(listOfInteger, TypeUtilities.resolveType(Child.class, parentT).getTypeName());
         assertEquals(listOfInteger, TypeUtilities.resolveTypeUsingInstance(new Child(), parentT).getTypeName());
+    }
+
+    static class MapGen<T> {
+        Map<String, T> map;
+        List<? extends T> wild;
+    }
+
+    static class ConcreteMap extends MapGen<Integer> {
+    }
+
+    static class JdkTypes {
+        Map<String, Integer> map;
+        List<? extends Integer> wild;
+    }
+
+    /**
+     * TypeUtilities' own ParameterizedType and WildcardType hash as the JDK's do, so equal types hash alike and a
+     * hash set of the JDK's finds ours. Equality already held both ways, but the hashes differed.
+     */
+    @Test
+    void ownTypesHashAsTheJdksDo() throws Exception {
+        Type ours = TypeUtilities.resolveType(ConcreteMap.class, fieldType(MapGen.class, "map"));
+        Type jdk = fieldType(JdkTypes.class, "map");
+        assertNotSame(jdk.getClass(), ours.getClass());
+        assertEquals(jdk, ours);
+        assertEquals(ours, jdk);
+        assertEquals(jdk.hashCode(), ours.hashCode());
+        assertTrue(new HashSet<>(Collections.singleton(jdk)).contains(ours));
+
+        Type ourList = TypeUtilities.resolveType(ConcreteMap.class, fieldType(MapGen.class, "wild"));
+        Type ourWild = ((ParameterizedType) ourList).getActualTypeArguments()[0];
+        Type jdkWild = ((ParameterizedType) fieldType(JdkTypes.class, "wild")).getActualTypeArguments()[0];
+        assertNotSame(jdkWild.getClass(), ourWild.getClass());
+        assertEquals(jdkWild, ourWild);
+        assertEquals(jdkWild.hashCode(), ourWild.hashCode());
     }
 }

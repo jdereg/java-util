@@ -697,10 +697,8 @@ public class TypeUtilities {
 
         @Override
         public int hashCode() {
-            int result = Arrays.hashCode(args);
-            result = 31 * result + Objects.hashCode(raw);
-            result = 31 * result + Objects.hashCode(owner);
-            return result;
+            // The JDK's formula: equals() holds both ways with the JDK's ParameterizedType, so must the hash
+            return Arrays.hashCode(args) ^ Objects.hashCode(owner) ^ Objects.hashCode(raw);
         }
     }
 
@@ -804,9 +802,7 @@ public class TypeUtilities {
 
         @Override
         public int hashCode() {
-            int result = Arrays.hashCode(upperBounds);
-            result = 31 * result + Arrays.hashCode(lowerBounds);
-            return result;
+            return Arrays.hashCode(lowerBounds) ^ Arrays.hashCode(upperBounds);     // the JDK's formula, as above
         }
     }
 }

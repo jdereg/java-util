@@ -17,7 +17,6 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.TimeZone;
 
 /**
  * @author John DeRegnaucourt (jdereg@gmail.com)
@@ -139,7 +138,7 @@ public class SqlDateConversions {
         java.sql.Date sqlDate = (java.sql.Date) from;
         ZonedDateTime zdt = sqlDate.toLocalDate()
                 .atStartOfDay(converter.getOptions().getZoneId());
-        Calendar cal = Calendar.getInstance(TimeZone.getTimeZone(converter.getOptions().getZoneId()));
+        Calendar cal = Calendar.getInstance(converter.getOptions().getTimeZone());
         cal.setTimeInMillis(zdt.toInstant().toEpochMilli());
         return cal;
     }

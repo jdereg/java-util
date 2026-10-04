@@ -36,8 +36,7 @@ final class ZoneIdConversions {
     }
 
     static TimeZone toTimeZone(Object from, Converter converter) {
-        ZoneId zoneId = (ZoneId) from;
-        return TimeZone.getTimeZone(zoneId);
+        return timeZone((ZoneId) from);
     }
 
     /**

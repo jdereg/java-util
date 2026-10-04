@@ -808,7 +808,7 @@ final class StringConversions {
                             "Due to Calendar implementation limitations, years 0 and 1 cannot be reliably represented.");
         }
 
-        TimeZone timeZone = TimeZone.getTimeZone(zdt.getZone());
+        TimeZone timeZone = ZoneIdConversions.timeZone(zdt.getZone());
         Locale locale = Locale.getDefault();
 
         // Get the appropriate calendar type for the locale

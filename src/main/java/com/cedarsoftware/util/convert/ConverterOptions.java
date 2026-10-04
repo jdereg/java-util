@@ -103,7 +103,7 @@ public interface ConverterOptions {
     /**
      * @return TimeZone expected on the target when finished (only for types that support ZoneId or TimeZone).
      */
-    default TimeZone getTimeZone() { return TimeZone.getTimeZone(this.getZoneId()); }
+    default TimeZone getTimeZone() { return ZoneIdConversions.timeZone(this.getZoneId()); }
 
     /**
      * Character to return for boolean to Character conversion when the boolean is true.

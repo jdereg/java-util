@@ -19,7 +19,6 @@ import java.util.Date;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
-import com.cedarsoftware.util.MathUtilities;
 import com.cedarsoftware.util.internal.FloatDecimal;
 
 /**
@@ -154,8 +153,9 @@ final class NumberConversions {
         if (Double.isNaN(d) || Double.isInfinite(d)) {
             throw new IllegalArgumentException("Cannot convert " + d + " to BigInteger");
         }
-        String s = String.format("%.0f", (d > 0.0) ? Math.floor(d) : Math.ceil(d));
-        return MathUtilities.parseBigInteger(s);
+        // The whole part of the value as Java prints it (as String.format("%.0f") did, without its locale's digits:
+        // under ar-SA those are not ASCII, and parsing them threw)
+        return BigDecimal.valueOf(d).toBigInteger();
     }
 
     static boolean isIntTypeNotZero(Object from, Converter converter) {

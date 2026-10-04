@@ -320,7 +320,7 @@ final class StringConversions {
         }
         try {
             BigDecimal bigDec = MathUtilities.parseBigDecimal(str);
-            return bigDec.toBigInteger();
+            return BigDecimalConversions.wholePart(bigDec);
         } catch (Exception e) {
             throw new IllegalArgumentException("Value '" + from + "' not parseable as a BigInteger value.", e);
         }

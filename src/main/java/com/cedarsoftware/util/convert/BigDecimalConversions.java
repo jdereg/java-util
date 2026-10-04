@@ -115,7 +115,15 @@ final class BigDecimalConversions {
     }
 
     static BigInteger toBigInteger(Object from, Converter converter) {
-        return ((BigDecimal)from).toBigInteger();
+        return wholePart((BigDecimal) from);
+    }
+
+    /**
+     * {@code value}'s whole part, as toBigInteger() gives it; 0 at once below 1 in magnitude, where toBigInteger()
+     * divides by 10 to the power of the scale (minutes for 1e-999999999).
+     */
+    static BigInteger wholePart(BigDecimal value) {
+        return (long) value.precision() - value.scale() <= 0 ? BigInteger.ZERO : value.toBigInteger();
     }
 
     /**
@@ -134,7 +142,7 @@ final class BigDecimalConversions {
     }
 
     static UUID toUUID(Object from, Converter converter) {
-        BigInteger bigInt = ((BigDecimal) from).toBigInteger();
+        BigInteger bigInt = wholePart((BigDecimal) from);
         return BigIntegerConversions.toUUID(bigInt, converter);
     }
 

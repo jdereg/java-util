@@ -670,7 +670,7 @@ final class UniversalConversions {
      */
     static BitSet bigDecimalToBitSet(Object from, Converter converter) {
         BigDecimal value = (BigDecimal) from;
-        return bigIntegerToBitSet(value.toBigInteger(), converter);
+        return bigIntegerToBitSet(BigDecimalConversions.wholePart(value), converter);
     }
 
     /**

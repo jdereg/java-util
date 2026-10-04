@@ -2,18 +2,20 @@ package com.cedarsoftware.util.convert;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Deque;
+import java.util.HashSet;
+import java.util.IdentityHashMap;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 import com.cedarsoftware.util.ArrayUtilities;
 import com.cedarsoftware.util.ClassUtilities;
-import com.cedarsoftware.util.IdentitySet;
 import com.cedarsoftware.util.ReflectionUtils;
 
 /**
@@ -75,183 +77,240 @@ final class ObjectConversions {
     }
     
     /**
-     * Iteratively traverses object fields to build a Map representation using a work queue.
-     * Uses IdentityHashMap for visited tracking to avoid stack overflow on deep object graphs.
+     * An object's fields as a Map, walked depth first without recursion, so a deep graph cannot overflow the stack.
+     * A value (a primitive or wrapper, String, enum, a type the Converter treats as simple, a JDK class that is not a
+     * container) stays a value; an object, Collection, Map or array becomes a Map or List. An object reached a second
+     * time is the same Map in both places; one reached from inside itself (a cycle) is null. A field the class
+     * hides (one its superclass declares under the same name) is left out, as Java hides it; a null field too.
      */
     private static Map<String, Object> traverseObjectFields(Object rootObj, Converter converter) {
         if (rootObj == null) {
             return null;
         }
-        
-        // Use IdentitySet for visited tracking (object identity, not equals)
-        Set<Object> visited = new IdentitySet<>();
-        
-        // Work queue for iterative processing
-        Deque<WorkItem> workQueue = new LinkedList<>();
-        Map<String, Object> rootResult = new LinkedHashMap<>();
-        
-        // Add root object to work queue
-        workQueue.add(new WorkItem(rootObj, null, null));
-        
-        while (!workQueue.isEmpty()) {
-            WorkItem current = workQueue.removeFirst();
-            Object obj = current.obj;
-            
-            // Skip if already visited (prevents cycles)
-            if (visited.contains(obj)) {
-                if (current.targetMap != null && current.fieldName != null) {
-                    current.targetMap.put(current.fieldName, null); // or reference marker
-                }
+        // Each object begun, with its Frame: one not yet done is on the current path, so reaching it is a cycle
+        Map<Object, Frame> converted = new IdentityHashMap<>(8);
+        Deque<Frame> path = new ArrayDeque<>(8);
+        Map<String, Object> rootMap = new LinkedHashMap<>();
+        Frame root = new Frame(rootObj, rootMap);
+        converted.put(rootObj, root);
+        path.push(root);
+
+        while (!path.isEmpty()) {
+            Frame frame = path.peek();
+            if (!frame.advance()) {
+                path.pop().done = true;
                 continue;
             }
-            visited.add(obj);
-            
-            // Process the current object's fields
-            Map<String, Object> currentMap = (current.targetMap == null) ? rootResult : new LinkedHashMap<>();
-            
-            try {
-                Class<?> clazz = obj.getClass();
-                
-                // Get all declared fields including from superclasses using ReflectionUtils
-                Collection<Field> fields = ReflectionUtils.getAllDeclaredFields(clazz);
-                
-                for (Field field : fields) {
-                    // Skip static, transient, and synthetic fields
-                    if (shouldSkipField(field)) {
-                        continue;
-                    }
-                    
+            Object child = frame.childValue;
+            Object out;
+            if (child == null) {
+                out = null;
+            } else if (isValue(child, converter)) {
+                out = valueOf(child);
+            } else {
+                Frame seen = converted.get(child);
+                if (seen != null) {
+                    out = seen.done ? seen.container : null;         // reached again: the same Map; a cycle: null
+                } else if (ReflectionUtils.isRecord(child.getClass())) {
+                    Frame record = new Frame(child, recordToMap(child, converter));
+                    converted.put(child, record);
+                    out = record.container;
+                } else {
+                    Frame childFrame = new Frame(child, null);
+                    converted.put(child, childFrame);
+                    path.push(childFrame);
+                    out = childFrame.container;
+                }
+            }
+            frame.put(out);
+        }
+        return rootMap;
+    }
+
+    private static Object recordToMap(Object record, Converter converter) {
+        try {
+            return MapConversions.recordToMap(record, converter);
+        } catch (Exception e) {
+            return record.toString();
+        }
+    }
+
+    /** True for what stays as it is in the Map, rather than becoming a Map or List of its own. */
+    private static boolean isValue(Object value, Converter converter) {
+        Class<?> c = value.getClass();
+        if (value instanceof String || value instanceof Enum || isPrimitiveOrWrapper(c)) {
+            return true;
+        }
+        if (value instanceof Collection || value instanceof Map || c.isArray()) {
+            return false;
+        }
+        // BigDecimal, Date, LocalDate, UUID...: walking their fields gave {} on JDK 17+ and internals on JDK 8
+        return converter.isSimpleTypeConversionSupported(c, c) || c.getClassLoader() == null;
+    }
+
+    private static Object valueOf(Object value) {
+        return value instanceof String || value instanceof Enum || !isPrimitiveOrWrapper(value.getClass())
+                ? value : convertToJsonCompatible(value);
+    }
+
+    /**
+     * A class's fields as its Map holds them, worked out once per class: not static, transient or synthetic, and
+     * of two with one name (a subclass hiding its superclass's), the subclass's, as Java resolves the name.
+     */
+    private static final ClassValue<Field[]> MAPPED_FIELDS = new ClassValue<Field[]>() {
+        @Override
+        protected Field[] computeValue(Class<?> c) {
+            List<Field> mapped = new ArrayList<>();
+            Set<String> names = new HashSet<>();
+            for (Field field : ReflectionUtils.getAllDeclaredFields(c)) {      // the class's own first
+                if (!shouldSkipField(field) && names.add(field.getName())) {
+                    mapped.add(field);
+                }
+            }
+            return mapped.toArray(new Field[0]);
+        }
+    };
+
+    /** One object, Collection, Map or array being converted: walks its children and fills its Map or List. */
+    private static final class Frame {
+        private static final int FIELDS = 0;
+        private static final int ENTRIES = 1;
+        private static final int ELEMENTS = 2;
+
+        final Object source;
+        final Object container;             // a LinkedHashMap<String, Object>, or an ArrayList<Object> for elements
+        private final int kind;
+        private final Iterator<?> children;     // entries or elements
+        private Field[] fields;                 // or fields
+        private int fieldIndex;
+        private String key;
+        Object childValue;
+        boolean done;
+
+        /** A record, already converted: nothing left to walk. */
+        Frame(Object source, Object converted) {
+            this.source = source;
+            this.container = converted;
+            this.kind = ELEMENTS;
+            this.children = java.util.Collections.emptyIterator();
+            this.done = true;
+        }
+
+
+        Frame(Object source, Map<String, Object> rootMap) {
+            this.source = source;
+            Iterator<?> it;
+            int k;
+            Object out;
+            if (rootMap == null && source instanceof Collection) {
+                k = ELEMENTS;
+                it = iteratorOf((Collection<?>) source);
+                out = new ArrayList<>();
+            } else if (rootMap == null && source instanceof Map) {
+                k = ENTRIES;
+                it = entriesOf((Map<?, ?>) source);
+                out = new LinkedHashMap<String, Object>();
+            } else if (rootMap == null && source.getClass().isArray()) {
+                k = ELEMENTS;
+                it = new ArrayIterator(source);
+                out = new ArrayList<>();
+            } else {
+                k = FIELDS;
+                it = null;
+                fields = MAPPED_FIELDS.get(source.getClass());
+                out = rootMap != null ? rootMap : new LinkedHashMap<String, Object>();
+            }
+            kind = k;
+            children = it;
+            container = out;
+        }
+
+        /** Moves to the next child to convert; false when there is none (or the source cannot be read further). */
+        @SuppressWarnings("unchecked")
+        boolean advance() {
+            if (kind == FIELDS) {
+                while (fieldIndex < fields.length) {
+                    Field field = fields[fieldIndex++];
+                    Object value;
                     try {
-                        // Get field value - ReflectionUtils already made fields accessible
-                        Object value = field.get(obj);
-                        
-                        if (value != null) {
-                            Object convertedValue = convertFieldValueIterative(value, converter, workQueue, currentMap, field.getName());
-                            if (convertedValue != null) {
-                                currentMap.put(field.getName(), convertedValue);
-                            }
-                        }
+                        value = field.get(source);          // ReflectionUtils already made fields accessible
                     } catch (Exception e) {
-                        // Skip fields that can't be accessed
+                        continue;                           // a field that cannot be read is left out
+                    }
+                    if (value != null) {
+                        key = field.getName();
+                        childValue = value;
+                        return true;
                     }
                 }
-                
-                // Place the result in the parent map if this isn't the root
-                if (current.targetMap != null && current.fieldName != null) {
-                    current.targetMap.put(current.fieldName, currentMap);
-                }
-                
-            } catch (Exception e) {
-                // Skip objects that can't be processed
-                if (current.targetMap != null && current.fieldName != null) {
-                    current.targetMap.put(current.fieldName, null);
-                }
+                return false;
             }
-        }
-        
-        return rootResult;
-    }
-    
-    /**
-     * Work item for iterative object traversal.
-     */
-    private static class WorkItem {
-        final Object obj;
-        final Map<String, Object> targetMap;
-        final String fieldName;
-        
-        WorkItem(Object obj, Map<String, Object> targetMap, String fieldName) {
-            this.obj = obj;
-            this.targetMap = targetMap;
-            this.fieldName = fieldName;
-        }
-    }
-    
-    /**
-     * Converts a field value for iterative processing, adding complex objects to the work queue.
-     */
-    private static Object convertFieldValueIterative(Object value, Converter converter, Deque<WorkItem> workQueue, 
-                                                  Map<String, Object> parentMap, String fieldName) {
-        if (value == null) {
-            return null;
-        }
-        
-        Class<?> valueClass = value.getClass();
-        
-        // Handle primitives and wrappers
-        if (isPrimitiveOrWrapper(valueClass)) {
-            return convertToJsonCompatible(value);
-        }
-        
-        // Handle Strings
-        if (value instanceof String) {
-            return value;
-        }
-        
-        // Handle Collections
-        if (value instanceof Collection) {
-            Collection<?> collection = (Collection<?>) value;
-            List<Object> result = new ArrayList<>();
-            for (Object item : collection) {
-                result.add(convertElement(item, converter));
-            }
-            return result;
-        }
-
-        // Handle Maps
-        if (value instanceof Map) {
-            Map<?, ?> map = (Map<?, ?>) value;
-            Map<String, Object> result = new LinkedHashMap<>();
-            for (Map.Entry<?, ?> entry : map.entrySet()) {
-                String key = entry.getKey() != null ? entry.getKey().toString() : null;
-                if (key != null) {
-                    result.put(key, convertElement(entry.getValue(), converter));
-                }
-            }
-            return result;
-        }
-
-        // Handle arrays
-        if (valueClass.isArray()) {
-            List<Object> result = new ArrayList<>();
-            int length = ArrayUtilities.getLength(value);
-            for (int i = 0; i < length; i++) {
-                Object item = ArrayUtilities.getElement(value, i);
-                result.add(convertElement(item, converter));
-            }
-            return result;
-        }
-        
-        // Handle Records specially - delegate to MapConversions
-        if (ReflectionUtils.isRecord(valueClass)) {
             try {
-                return MapConversions.recordToMap(value, converter);
-            } catch (Exception e) {
-                return value.toString();
+                while (children.hasNext()) {
+                    Object next = children.next();
+                    if (kind == ENTRIES) {
+                        Map.Entry<?, ?> entry = (Map.Entry<?, ?>) next;
+                        if (entry.getKey() == null) {
+                            continue;
+                        }
+                        key = entry.getKey().toString();
+                        childValue = entry.getValue();
+                        return true;
+                    }
+                    childValue = next;
+                    return true;
+                }
+            } catch (RuntimeException e) {
+                // a container that fails while being read (a lazy proxy without its session): what was read stays
+            }
+            return false;
+        }
+
+        @SuppressWarnings("unchecked")
+        void put(Object out) {
+            if (kind == ELEMENTS) {
+                ((List<Object>) container).add(out);
+            } else {
+                ((Map<String, Object>) container).put(key, out);
             }
         }
-        
-        // Handle complex objects - add to work queue for processing
-        workQueue.add(new WorkItem(value, parentMap, fieldName));
-        return null; // Will be filled in when the work item is processed
+
+        private static Iterator<?> entriesOf(Map<?, ?> map) {
+            try {
+                return map.entrySet().iterator();
+            } catch (RuntimeException e) {
+                return java.util.Collections.emptyIterator();      // one that cannot be read: left empty
+            }
+        }
+
+        private static Iterator<?> iteratorOf(Collection<?> collection) {
+            try {
+                return collection.iterator();
+            } catch (RuntimeException e) {
+                return java.util.Collections.emptyIterator();      // one that cannot be read: left empty
+            }
+        }
     }
-    
-    /**
-     * Converts a single element (from a collection, map value, or array) to its map-compatible form.
-     * Complex objects are recursively converted to Maps instead of losing structure via toString().
-     */
-    private static Object convertElement(Object item, Converter converter) {
-        if (item == null) {
-            return null;
+
+    private static final class ArrayIterator implements Iterator<Object> {
+        private final Object array;
+        private final int length;
+        private int index;
+
+        ArrayIterator(Object array) {
+            this.array = array;
+            this.length = ArrayUtilities.getLength(array);
         }
-        if (item instanceof String) {
-            return item;
+
+        @Override
+        public boolean hasNext() {
+            return index < length;
         }
-        if (isPrimitiveOrWrapper(item.getClass())) {
-            return convertToJsonCompatible(item);
+
+        @Override
+        public Object next() {
+            return ArrayUtilities.getElement(array, index++);
         }
-        // Complex objects: recursively convert to Map representation
-        return objectToMapWithTarget(item, converter, Map.class);
     }
 
     /**

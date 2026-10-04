@@ -19,6 +19,7 @@ import java.security.cert.X509Certificate;
 import java.text.ParseException;
 import java.util.Date;
 import java.util.Iterator;
+import java.util.Locale;
 import java.util.Map;
 import java.util.StringTokenizer;
 import java.util.concurrent.ConcurrentHashMap;
@@ -481,7 +482,7 @@ public final class UrlUtilities {
         }
         
         // Security: Block suspicious cookie names that could be used for attacks
-        String lowerName = cookieName.toLowerCase();
+        String lowerName = cookieName.toLowerCase(Locale.ROOT);
         if (lowerName.startsWith("__secure-") || lowerName.startsWith("__host-")) {
             // These are browser-reserved prefixes that applications shouldn't create
             LOG.warning("Cookie name uses reserved prefix: " + cookieName);
@@ -523,8 +524,8 @@ public final class UrlUtilities {
         }
         
         // Security: Prevent domain hijacking by ensuring cookie domain matches request host
-        String normalizedDomain = cookieDomain.toLowerCase().trim();
-        String normalizedHost = requestHost.toLowerCase().trim();
+        String normalizedDomain = cookieDomain.toLowerCase(Locale.ROOT).trim();
+        String normalizedHost = requestHost.toLowerCase(Locale.ROOT).trim();
         
         // Remove leading dot from domain if present  
         if (normalizedDomain.startsWith(".")) {
@@ -619,7 +620,8 @@ public final class UrlUtilities {
                         String token = st.nextToken().trim();
                         int pos = token.indexOf(NAME_VALUE_SEPARATOR);
                         if (pos != -1) {
-                            String key = token.substring(0, pos).toLowerCase().trim();
+                            // Locale.ROOT: a Turkish default lowers DOMAIN to "domaın", which skipped the domain check
+                            String key = token.substring(0, pos).toLowerCase(Locale.ROOT).trim();
                             String value = token.substring(pos + 1).trim();
                             
                             // Security: Validate cookie attributes

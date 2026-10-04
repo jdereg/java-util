@@ -23,6 +23,7 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -152,7 +153,7 @@ public final class ReflectionUtils {
         }
         Set<String> set = new HashSet<>();
         for (String pattern : currentProperty.split(",")) {
-            String processed = pattern.trim().toLowerCase();
+            String processed = pattern.trim().toLowerCase(Locale.ROOT);
             if (!processed.isEmpty()) {
                 set.add(processed);
             }
@@ -480,7 +481,8 @@ public final class ReflectionUtils {
         }
         
         Class<?> declaringClass = field.getDeclaringClass();
-        String fieldName = field.getName().toLowerCase();
+        // Locale.ROOT: a Turkish default lowers API_KEY to "apı_key" (dotless i), which no pattern matches
+        String fieldName = field.getName().toLowerCase(Locale.ROOT);
         String className = declaringClass.getName();
         
         // Check if the declaring class is dangerous (if dangerous class validation is enabled)

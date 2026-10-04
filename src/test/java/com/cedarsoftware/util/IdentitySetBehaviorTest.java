@@ -2,9 +2,12 @@ package com.cedarsoftware.util;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.ConcurrentModificationException;
+import java.util.IdentityHashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 
 import org.junit.jupiter.api.Test;
 
@@ -93,5 +96,53 @@ class IdentitySetBehaviorTest {
         assertTrue(it3.hasNext());
         it3.next();
         assertFalse(it3.hasNext());
+    }
+
+    /**
+     * removeAll keeps what the argument does not contain by the argument's own rule, as the JDK's identity set
+     * does, whatever the sizes. The inherited AbstractSet.removeAll asked the argument when this set was no
+     * larger, and removed the argument's elements by identity otherwise: a string equal to (not the same as) an
+     * element was removed from a one-element set but not from a two-element one.
+     */
+    @Test
+    void removeAllAnswersTheSameWhateverTheSizes() {
+        String s1 = new String("k");
+        for (int extra = 0; extra < 3; extra++) {
+            IdentitySet<Object> set = new IdentitySet<>();
+            Set<Object> jdk = Collections.newSetFromMap(new IdentityHashMap<>());
+            set.add(s1);
+            jdk.add(s1);
+            for (int i = 0; i < extra; i++) {
+                Object o = new Object();
+                set.add(o);
+                jdk.add(o);
+            }
+            List<Object> equalStranger = Collections.singletonList(new String("k"));
+            assertEquals(jdk.removeAll(equalStranger), set.removeAll(equalStranger), "extra " + extra);
+            assertEquals(jdk.contains(s1), set.contains(s1), "extra " + extra);
+            assertEquals(jdk.size(), set.size(), "extra " + extra);
+        }
+    }
+
+    /**
+     * hashCode is the sum of the elements' identity hash codes, as the JDK's identity set's is, so equal sets of
+     * either kind hash alike; it called each element's own hashCode(), which also overflowed the stack for a set
+     * that contains itself.
+     */
+    @Test
+    void hashCodeIsTheJdkIdentitySetsHashCode() {
+        IdentitySet<Object> set = new IdentitySet<>();
+        Set<Object> jdk = Collections.newSetFromMap(new IdentityHashMap<>());
+        for (Object o : Arrays.asList("a", 7, new Object(), new ArrayList<>())) {
+            set.add(o);
+            jdk.add(o);
+        }
+        assertEquals(jdk.hashCode(), set.hashCode());
+        assertEquals(jdk, set);
+        assertEquals(set, jdk);
+
+        IdentitySet<Object> self = new IdentitySet<>();
+        self.add(self);
+        assertEquals(System.identityHashCode(self), self.hashCode());
     }
 }

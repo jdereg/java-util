@@ -303,6 +303,64 @@ public class IdentitySet<T> extends AbstractSet<T> {
     }
 
     /**
+     * Removes the elements that {@code c} contains, by {@code c}'s own rule, as the JDK's identity set does
+     * (an {@code IdentityHashMap}'s key set). AbstractSet's version removed {@code c}'s elements by identity when
+     * this set was the larger, and asked {@code c} otherwise, so the answer depended on the sizes.
+     *
+     * @param c the elements to remove
+     * @return true if this set changed
+     */
+    @Override
+    public boolean removeAll(Collection<?> c) {
+        if (c == null) {
+            throw new NullPointerException();
+        }
+        boolean modified = false;
+        if (c instanceof IdentitySet && c.size() < size) {
+            // Both sides compare by identity, so removing c's elements one by one gives the same answer, faster
+            for (Object o : c) {
+                if (remove(o)) {
+                    modified = true;
+                }
+            }
+            return modified;
+        }
+        final Object[] e = elements;
+        for (int i = 0; i < e.length; i++) {
+            Object element = e[i];
+            if (element != null && element != DELETED && c.contains(element)) {
+                e[i] = DELETED;
+                size--;
+                deletedCount++;
+                modified = true;
+            }
+        }
+        if (modified) {
+            modCount++;
+        }
+        return modified;
+    }
+
+    /**
+     * The sum of the elements' identity hash codes, as the JDK's identity set's hash code is, so that equal sets
+     * of either kind hash alike. An element's own hashCode() is never called (it may be costly, or recurse back
+     * here for a set that contains itself).
+     *
+     * @return the hash code
+     */
+    @Override
+    public int hashCode() {
+        int h = 0;
+        final Object[] e = elements;
+        for (Object element : e) {
+            if (element != null && element != DELETED) {
+                h += System.identityHashCode(element);
+            }
+        }
+        return h;
+    }
+
+    /**
      * Returns true if this set contains no elements.
      *
      * @return true if empty, false otherwise

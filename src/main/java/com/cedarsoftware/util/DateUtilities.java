@@ -1,7 +1,9 @@
 package com.cedarsoftware.util;
 
 import java.text.DateFormatSymbols;
+import java.time.DateTimeException;
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.time.Month;
 import java.time.Year;
 import java.time.ZoneId;
@@ -886,7 +888,7 @@ public final class DateUtilities {
      * path took. Package-private so tests can hold the fast paths to it: whatever a fast path returns, this returns too.
      */
     static ZonedDateTime parseFlexible(String dateStr, ZoneId defaultZoneId, boolean ensureDateTimeAlone) {
-        String year, day, remains, tz = null;
+        String year, day, remains, tz = null, statedOffset = null;
         int month;
 
         // 1) Try matching ISO or numeric style date
@@ -982,6 +984,7 @@ public final class DateUtilities {
                 tz = result.group(6).trim();
             }
             if (result.group(7) != null) {
+                statedOffset = tz;      // an offset written before the zone name
                 tz = stripBrackets(result.group(7).trim());
             }
         }
@@ -1007,7 +1010,37 @@ public final class DateUtilities {
 
         // 6) Build the ZonedDateTime
         ZonedDateTime parsed = getDate(dateStr, zoneId, year, month, day, hour, min, sec, fracSec);
-        return zoneFromText ? honorAbbreviation(parsed, tz) : parsed;
+        if (!zoneFromText) {
+            return parsed;
+        }
+        if (statedOffset != null) {
+            ZonedDateTime atOffset = atStatedOffset(parsed, statedOffset);
+            if (atOffset != null) {
+                return atOffset;
+            }
+        }
+        return honorAbbreviation(parsed, tz);
+    }
+
+    /**
+     * The time at the offset written before the zone name -- "2025-11-02T01:30:00-05:00[America/New_York]", as
+     * ZonedDateTime.toString() writes it -- when the zone has that offset at that local time. In the hour a fall-back
+     * repeats, the offset says which of the two times is meant; the zone's rule alone answers the earlier. Null when
+     * the zone does not have that offset there (an offset truncated to the minute against local mean time, or text
+     * that contradicts its zone): the time is then read as the zone, or the abbreviation, reads it.
+     */
+    private static ZonedDateTime atStatedOffset(ZonedDateTime parsed, String offsetText) {
+        ZoneOffset offset;
+        try {
+            offset = ZoneOffset.of(offsetText);
+        } catch (DateTimeException e) {
+            return null;
+        }
+        LocalDateTime local = parsed.toLocalDateTime();
+        if (!parsed.getZone().getRules().isValidOffset(local, offset)) {
+            return null;
+        }
+        return ZonedDateTime.ofLocal(local, parsed.getZone(), offset);
     }
 
     /**

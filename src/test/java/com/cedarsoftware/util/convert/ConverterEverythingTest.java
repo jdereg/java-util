@@ -2828,9 +2828,9 @@ class ConverterEverythingTest {
 
                 // Edge cases (using the "seconds" key with a BigDecimal value)
                 { mapOf(DURATION, new BigDecimal(Long.MAX_VALUE + ".999999999")), Duration.ofSeconds(Long.MAX_VALUE, 999999999) },
-                // ".0": json-io 4.111.0, which this test round-trips through, hands a typed BigDecimal inside a Map to
-                // the Converter as its text, and integer text is milliseconds (ConverterNumberTextTest has the
-                // integral BigDecimal without json-io)
+                // ".0": json-io 4.112.0, which this test round-trips through, hands a typed BigDecimal inside a Map to
+                // the Converter as its text, and integer text is milliseconds; json-io 4.113.0 keeps the type, so drop
+                // the ".0" once version.json-io reaches it (ConverterNumberTextTest has the integral BigDecimal)
                 { mapOf(DURATION, new BigDecimal(Long.MIN_VALUE + ".0")), Duration.ofSeconds(Long.MIN_VALUE, 0) },
 
                 // Mixed formats:

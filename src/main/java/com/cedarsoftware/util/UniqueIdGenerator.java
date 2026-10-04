@@ -27,7 +27,8 @@ import static java.lang.System.currentTimeMillis;
  * <ol>
  *   <li>Environment variable {@code JAVA_UTIL_CLUSTERID}</li>
  *   <li>Indirect environment variable via {@code SystemUtilities.getExternalVariable(JAVA_UTIL_CLUSTERID)} (value is another env var name)</li>
- *   <li>Kubernetes pod ordinal (last dash-separated token of {@code HOSTNAME})</li>
+ *   <li>Kubernetes pod ordinal (last dash-separated token of {@code HOSTNAME}), inside Kubernetes only
+ *       ({@code KUBERNETES_SERVICE_HOST} set); elsewhere {@code HOSTNAME} is hashed (step 6)</li>
  *   <li>VMware Tanzu instance ID ({@code VMWARE_TANZU_INSTANCE_ID})</li>
  *   <li>Cloud Foundry instance index ({@code CF_INSTANCE_INDEX})</li>
  *   <li>Hash of {@code HOSTNAME} modulo 100</li>
@@ -52,7 +53,9 @@ import static java.lang.System.currentTimeMillis;
  * <ul>
  *   <li>IDs are strictly monotonically increasing within a process.</li>
  *   <li>Clock regressions are handled by not allowing time to go backwards in the ID stream.</li>
- *   <li>When per-millisecond capacity is exhausted, generation waits for the next millisecond (no “future” timestamps).</li>
+ *   <li>When per-millisecond capacity is exhausted, generation waits for the next millisecond (no “future” timestamps).
+ *       If the wall clock has stepped back behind ids already issued, it waits one real millisecond and moves on by
+ *       one millisecond of its own: never more than one millisecond's capacity per real millisecond.</li>
  *   <li>Server ID is preserved in the last two digits of every ID; no arithmetic “+1” leaks into serverId.</li>
  *   <li><b>Note:</b> Strict uniqueness across JVM restarts on the same machine is best-effort unless you persist the last
  *       seen millisecond and restart from {@code max(persistedMs, now)}.</li>
@@ -84,6 +87,7 @@ public final class UniqueIdGenerator {
     // ---- Public environment variable names ----
     public static final String JAVA_UTIL_CLUSTERID = "JAVA_UTIL_CLUSTERID";
     public static final String KUBERNETES_POD_NAME = "HOSTNAME";                 // K8s commonly injects pod name into HOSTNAME
+    private static final String KUBERNETES_SERVICE_HOST = "KUBERNETES_SERVICE_HOST";   // set in every Kubernetes pod
     public static final String TANZU_INSTANCE_ID   = "VMWARE_TANZU_INSTANCE_ID";
     public static final String CF_INSTANCE_INDEX   = "CF_INSTANCE_INDEX";
 
@@ -134,12 +138,14 @@ public final class UniqueIdGenerator {
             }
         }
 
-        // 3. K8s pod ordinal from HOSTNAME (e.g., service-abc-0 -> 0)
+        // 3. K8s pod ordinal from HOSTNAME (e.g., service-abc-0 -> 0), inside Kubernetes only: elsewhere a hostname
+        // ending in -digits is no ordinal (EC2's ip-10-0-1-23 and ip-172-31-40-223 would both be 23) and is hashed.
         // Cache hostname for potential reuse in hash fallback
         String hostName = null;
         if (id == -1) {
             hostName = SystemUtilities.getExternalVariable(KUBERNETES_POD_NAME);
-            if (StringUtilities.hasContent(hostName)) {
+            if (StringUtilities.hasContent(hostName)
+                    && StringUtilities.hasContent(SystemUtilities.getExternalVariable(KUBERNETES_SERVICE_HOST))) {
                 try {
                     int dash = hostName.lastIndexOf('-');
                     if (dash >= 0 && dash + 1 < hostName.length()) {

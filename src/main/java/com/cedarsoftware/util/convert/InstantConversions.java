@@ -61,9 +61,8 @@ final class InstantConversions {
 
         // Default to milliseconds if no override specified
         if (Converter.PRECISION_NANOS.equals(precision)) {
-            BigInteger seconds = BigInteger.valueOf(instant.getEpochSecond());
-            BigInteger nanos = BigInteger.valueOf(instant.getNano());
-            return seconds.multiply(BigInteger.valueOf(1_000_000_000L)).add(nanos).longValue();
+            // exact: an instant past 2262-04-11 does not fit a long in nanoseconds, and wrapped to 1715
+            return Math.addExact(Math.multiplyExact(instant.getEpochSecond(), 1_000_000_000L), instant.getNano());
         } else {
             return instant.toEpochMilli(); // Default: milliseconds
         }

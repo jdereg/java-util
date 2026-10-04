@@ -43,7 +43,8 @@ final class ZonedDateTimeConversions {
     private ZonedDateTimeConversions() {}
 
     static long toLong(Object from, Converter converter) {
-        return ((ZonedDateTime) from).toInstant().toEpochMilli();   // speed over shorter code.
+        // as Instant does, honoring modern.time.long.precision (long -> ZonedDateTime does too)
+        return InstantConversions.toLong(((ZonedDateTime) from).toInstant(), converter);
     }
 
     static double toDouble(Object from, Converter converter) {

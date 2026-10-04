@@ -40,7 +40,8 @@ final class OffsetDateTimeConversions {
     }
 
     static long toLong(Object from, Converter converter) {
-        return toInstant(from, converter).toEpochMilli();
+        // as Instant does, honoring modern.time.long.precision (long -> OffsetDateTime does too)
+        return InstantConversions.toLong(toInstant(from, converter), converter);
     }
 
     static double toDouble(Object from, Converter converter) {

@@ -342,12 +342,13 @@ final class StringConversions {
         if (StringUtilities.isEmpty(str)) {
             return BigInteger.ZERO;
         }
+        BigDecimal bigDec;
         try {
-            BigDecimal bigDec = MathUtilities.parseBigDecimal(str);
-            return BigDecimalConversions.wholePart(bigDec);
+            bigDec = MathUtilities.parseBigDecimal(str);
         } catch (Exception e) {
             throw new IllegalArgumentException("Value '" + from + "' not parseable as a BigInteger value.", e);
         }
+        return BigDecimalConversions.wholePart(bigDec, converter);    // refuses "1e999999999" from its digit count
     }
 
     static BigDecimal toBigDecimal(Object from, Converter converter) {

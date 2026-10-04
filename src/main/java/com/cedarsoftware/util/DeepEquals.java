@@ -2954,11 +2954,11 @@ public class DeepEquals {
 
             // For values between -1 and 1, ensure we don't use scientific notation
             if (Math.abs(doubleValue) <= 1) {
-                return bd.stripTrailingZeros().toPlainString();
+                return MathUtilities.toPlainString(bd.stripTrailingZeros(), 1000);
             }
 
             // For other values, use regular decimal notation
-            return bd.stripTrailingZeros().toPlainString();
+            return MathUtilities.toPlainString(bd.stripTrailingZeros(), 1000);
         }
 
         if (value instanceof Double || value instanceof Float) {

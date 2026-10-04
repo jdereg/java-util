@@ -129,4 +129,15 @@ public interface ConverterOptions {
      * @return the maximum allowed length for enum names (default 1000)
      */
     default int getMaxEnumNameLength() { return 1000; }
+
+    /**
+     * The most digits a number is written out in, or built as a whole number, beyond the digits it already has.
+     * A BigDecimal whose plain form -- every digit, ignoring the decimal point -- takes at most this many digits, or no
+     * more than its own significant digits, converts to a plain String ("999000000000000" for 9.99E14) and to a
+     * BigInteger. Past that it is written with its exponent ("1E+1000"), and converting it to a BigInteger, a UUID or
+     * a BitSet is an IllegalArgumentException: "1e999999999" is 11 characters, and written out a billion digits. Money
+     * and every ordinary number fall well inside the default.
+     * @return the most digits a number is written out in (default 1000)
+     */
+    default int getMaxPlainDigits() { return 1000; }
 }

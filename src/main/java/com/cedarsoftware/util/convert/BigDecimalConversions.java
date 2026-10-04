@@ -16,6 +16,8 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.UUID;
 
+import com.cedarsoftware.util.MathUtilities;
+
 /**
  * @author John DeRegnaucourt (jdereg@gmail.com)
  *         <br>
@@ -82,7 +84,7 @@ final class BigDecimalConversions {
         try {
             return LocalTime.ofNanoOfDay(NumberConversions.timeUnits(nanos, from, "LocalTime"));
         } catch (Exception e) {
-            throw new IllegalArgumentException("Input value [" + seconds.toPlainString() + "] for conversion to LocalTime must be >= 0 && <= 86399.999999999", e);
+            throw new IllegalArgumentException("Input value [" + plain(seconds, converter) + "] for conversion to LocalTime must be >= 0 && <= 86399.999999999", e);
         }
     }
 
@@ -104,7 +106,7 @@ final class BigDecimalConversions {
             Instant instant = Instant.ofEpochSecond(wholeSecs, nanos);
             return OffsetTime.ofInstant(instant, converter.getOptions().getZoneId());
         } catch (Exception e) {
-            throw new IllegalArgumentException("Input value [" + seconds.toPlainString() + "] for conversion to LocalTime must be >= 0 && <= 86399.999999999", e);
+            throw new IllegalArgumentException("Input value [" + plain(seconds, converter) + "] for conversion to LocalTime must be >= 0 && <= 86399.999999999", e);
         }
     }
     
@@ -133,15 +135,31 @@ final class BigDecimalConversions {
     }
 
     static BigInteger toBigInteger(Object from, Converter converter) {
-        return wholePart((BigDecimal) from);
+        return wholePart((BigDecimal) from, converter);
     }
 
     /**
      * {@code value}'s whole part, as toBigInteger() gives it; 0 at once below 1 in magnitude, where toBigInteger()
-     * divides by 10 to the power of the scale (minutes for 1e-999999999).
+     * divides by 10 to the power of the scale (minutes for 1e-999999999). A whole part longer than
+     * {@link ConverterOptions#getMaxPlainDigits()} allows (and than the value's own digits) is refused from its digit
+     * count, without building it: 1e999999999 is about 415 MB as a BigInteger.
      */
-    static BigInteger wholePart(BigDecimal value) {
-        return (long) value.precision() - value.scale() <= 0 ? BigInteger.ZERO : value.toBigInteger();
+    static BigInteger wholePart(BigDecimal value, Converter converter) {
+        long wholeDigits = (long) value.precision() - value.scale();
+        if (wholeDigits <= 0) {
+            return BigInteger.ZERO;
+        }
+        int maxDigits = converter.getOptions().getMaxPlainDigits();
+        if (wholeDigits > Math.max(maxDigits, value.precision())) {
+            throw new IllegalArgumentException("Unable to convert " + value + " to a whole number: it would take "
+                    + wholeDigits + " digits, more than " + maxDigits + " (ConverterOptions.getMaxPlainDigits())");
+        }
+        return value.toBigInteger();
+    }
+
+    /** {@code value} for text: plain digits, or its exponent form past the Converter's plain-digit limit. */
+    static String plain(BigDecimal value, Converter converter) {
+        return MathUtilities.toPlainString(value, converter.getOptions().getMaxPlainDigits());
     }
 
     /**
@@ -152,15 +170,22 @@ final class BigDecimalConversions {
      * tenth -- and discarding it broke round-tripping: BigDecimal -> String -> BigDecimal returned a value that was
      * not {@code equals()} to the original, because BigDecimal equality includes scale.
      * <p>
-     * {@code toPlainString()} rather than {@code toString()} so a large or small scale never comes back in
-     * scientific notation, which is the property the previous implementation was really relying on.
+     * {@code toPlainString()} rather than {@code toString()} so a large or small scale does not come back in
+     * scientific notation, which is the property the previous implementation was really relying on -- up to
+     * {@link ConverterOptions#getMaxPlainDigits()} digits (1,000 by default; money is far inside it). Past that the
+     * exponent form is written: {@code 1E+999999999} written out is a billion digits.
      */
     static String toString(Object from, Converter converter) {
-        return ((BigDecimal) from).toPlainString();
+        BigDecimal value = (BigDecimal) from;
+        int scale = value.scale();
+        if (scale >= 0 && scale < converter.getOptions().getMaxPlainDigits()) {
+            return value.toPlainString();       // the common case, called here directly: JDK 8 inlines it at this depth
+        }
+        return plain(value, converter);
     }
 
     static UUID toUUID(Object from, Converter converter) {
-        BigInteger bigInt = wholePart((BigDecimal) from);
+        BigInteger bigInt = wholePart((BigDecimal) from, converter);
         return BigIntegerConversions.toUUID(bigInt, converter);
     }
 

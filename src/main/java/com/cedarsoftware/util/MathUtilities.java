@@ -673,6 +673,50 @@ public final class MathUtilities
      * Parses a {@link BigDecimal}. Materially faster than {@code new BigDecimal(String)}
      * for long mantissas; uses recursive multiplication for the digit accumulation.
      */
+    /**
+     * How many digits {@code value} takes written out in full, as {@link BigDecimal#toPlainString()} writes it,
+     * ignoring the sign and the decimal point: {@code 1E+3} is 4 ("1000"), {@code 0.05} is 3 ("0.05"), {@code 12.5} is
+     * 3. Computed from the precision and scale, without writing anything.
+     *
+     * @param value the number
+     * @return its digit count written out in full
+     */
+    public static long plainDigits(BigDecimal value) {
+        long precision = value.precision();
+        long scale = value.scale();
+        return scale <= 0 ? precision - scale : Math.max(precision, scale + 1);
+    }
+
+    /**
+     * Whether {@code value} may be written out in full: its plain form takes at most {@code maxDigits} digits, or no
+     * more than its own significant digits (so an exponent would save nothing). 999 trillion to the cent is 17 digits;
+     * {@code 1E+999999999}, 12 characters, is a billion digits written out.
+     *
+     * @param value     the number
+     * @param maxDigits the most digits an exponent may expand it to
+     * @return true if its plain form is within the limit
+     */
+    public static boolean fitsPlainDigits(BigDecimal value, int maxDigits) {
+        int scale = value.scale();
+        if (scale >= 0 && scale < maxDigits) {
+            return true;    // its plain form is its own digits, or a fraction of fewer than maxDigits: no count needed
+        }
+        return plainDigits(value) <= Math.max(maxDigits, value.precision());
+    }
+
+    /**
+     * {@code value} as text: its plain digits, as {@link BigDecimal#toPlainString()} writes them, while
+     * {@link #fitsPlainDigits(BigDecimal, int)}; past that, {@link BigDecimal#toString()}'s exponent form
+     * ({@code "1E+999999999"} rather than a billion digits). Either reads back as the same BigDecimal.
+     *
+     * @param value     the number
+     * @param maxDigits the most digits an exponent may expand it to (the Converter's default is 1,000)
+     * @return its plain form, or its exponent form when the plain one would be longer than that
+     */
+    public static String toPlainString(BigDecimal value, int maxDigits) {
+        return fitsPlainDigits(value, maxDigits) ? value.toPlainString() : value.toString();
+    }
+
     public static BigDecimal parseBigDecimal(CharSequence s) {
         return JavaBigDecimalParser.parseBigDecimal(s);
     }

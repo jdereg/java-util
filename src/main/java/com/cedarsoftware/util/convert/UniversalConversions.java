@@ -95,7 +95,7 @@ final class UniversalConversions {
      */
     static Map<String, Object> bigDecimalToMap(Object from, Converter converter) {
         Map<String, Object> target = new LinkedHashMap<>();
-        target.put(MapConversions.V, ((BigDecimal) from).toPlainString());
+        target.put(MapConversions.V, BigDecimalConversions.plain((BigDecimal) from, converter));
         return target;
     }
 
@@ -678,7 +678,7 @@ final class UniversalConversions {
      */
     static BitSet bigDecimalToBitSet(Object from, Converter converter) {
         BigDecimal value = (BigDecimal) from;
-        BigInteger whole = BigDecimalConversions.wholePart(value);
+        BigInteger whole = BigDecimalConversions.wholePart(value, converter);
         if (value.compareTo(new BigDecimal(whole)) != 0) {
             // 5.5 became {0, 2} (5) without a word
             // toString, not toPlainString: 1e-9999999 in plain notation is ten million characters

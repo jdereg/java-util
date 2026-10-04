@@ -131,6 +131,9 @@ public class IdentitySet<T> extends AbstractSet<T> {
             throw new NullPointerException("IdentitySet does not support null elements");
         }
         if (size >= threshold) {
+            if (contains(element)) {
+                return false;           // already present: no reason to grow (checked only at the threshold)
+            }
             resize();
         } else if (deletedCount > 0 && (size + deletedCount) >= threshold) {
             rehash(elements.length);

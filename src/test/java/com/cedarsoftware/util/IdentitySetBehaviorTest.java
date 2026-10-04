@@ -145,4 +145,27 @@ class IdentitySetBehaviorTest {
         self.add(self);
         assertEquals(System.identityHashCode(self), self.hashCode());
     }
+
+    /**
+     * Adding an element already present does not grow the table. At the resize threshold, add() doubled the table
+     * before finding the element was there: 16 slots became 32 for an add that returned false.
+     */
+    @Test
+    void addingAnElementAlreadyPresentDoesNotGrowTheTable() throws Exception {
+        IdentitySet<Object> set = new IdentitySet<>();
+        List<Object> twelve = new ArrayList<>();
+        for (int i = 0; i < 12; i++) {                // the default 16 slots at load factor 0.75: the threshold
+            Object o = new Object();
+            twelve.add(o);
+            set.add(o);
+        }
+        java.lang.reflect.Field elements = IdentitySet.class.getDeclaredField("elements");
+        elements.setAccessible(true);
+        int before = ((Object[]) elements.get(set)).length;
+        assertFalse(set.add(twelve.get(5)));
+        assertEquals(before, ((Object[]) elements.get(set)).length);
+        assertEquals(12, set.size());
+        assertTrue(set.add(new Object()));            // a new element still grows it
+        assertEquals(before * 2, ((Object[]) elements.get(set)).length);
+    }
 }

@@ -666,8 +666,8 @@ final class StringConversions {
         if (StringUtilities.isEmpty(str)) {
             return null;
         }
-        // Parse the string into components
-        return Locale.forLanguageTag(str);
+        // A language tag; Locale.toString()'s "_" between the parts read as BCP 47's "-" ("en_US" gave "und")
+        return Locale.forLanguageTag(str.replace('_', '-'));
     }
 
     static ZonedDateTime toZonedDateTime(Object from, Converter converter) {

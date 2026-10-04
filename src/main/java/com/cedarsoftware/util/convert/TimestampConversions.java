@@ -38,6 +38,19 @@ import java.util.Map;
 final class TimestampConversions {
     private TimestampConversions() {}
 
+    /** A copy, nanoseconds included: java.util.Date's conversion (new Timestamp(getTime())) kept only milliseconds. */
+    static Timestamp toTimestamp(Object from, Converter converter) {
+        Timestamp timestamp = (Timestamp) from;
+        Timestamp copy = new Timestamp(timestamp.getTime());
+        copy.setNanos(timestamp.getNanos());
+        return copy;
+    }
+
+    /** In the converter's zone, nanoseconds included (Date's conversion went through getTime(), milliseconds only). */
+    static ZonedDateTime toZonedDateTime(Object from, Converter converter) {
+        return ((Timestamp) from).toInstant().atZone(converter.getOptions().getZoneId());
+    }
+
     static double toDouble(Object from, Converter converter) {
         Duration d = toDuration(from, converter);
         return BigDecimalConversions.secondsAndNanosToDouble(d.getSeconds(), d.getNano()).doubleValue();

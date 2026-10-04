@@ -1156,7 +1156,7 @@ public final class Converter {
         CONVERSION_DB.put(Double.class, Timestamp.class, DoubleConversions::toTimestamp);
         CONVERSION_DB.put(BigInteger.class, Timestamp.class, BigIntegerConversions::toTimestamp);
         CONVERSION_DB.put(BigDecimal.class, Timestamp.class, BigDecimalConversions::toTimestamp);
-        CONVERSION_DB.put(Timestamp.class, Timestamp.class, DateConversions::toTimestamp);
+        CONVERSION_DB.put(Timestamp.class, Timestamp.class, TimestampConversions::toTimestamp);
         CONVERSION_DB.put(java.sql.Date.class, Timestamp.class, SqlDateConversions::toTimestamp);
         CONVERSION_DB.put(Date.class, Timestamp.class, DateConversions::toTimestamp);
         CONVERSION_DB.put(Duration.class, Timestamp.class, DurationConversions::toTimestamp);
@@ -1233,7 +1233,7 @@ public final class Converter {
         CONVERSION_DB.put(BigInteger.class, ZonedDateTime.class, BigIntegerConversions::toZonedDateTime);
         CONVERSION_DB.put(BigDecimal.class, ZonedDateTime.class, BigDecimalConversions::toZonedDateTime);
         CONVERSION_DB.put(java.sql.Date.class, ZonedDateTime.class, SqlDateConversions::toZonedDateTime);
-        CONVERSION_DB.put(Timestamp.class, ZonedDateTime.class, DateConversions::toZonedDateTime);
+        CONVERSION_DB.put(Timestamp.class, ZonedDateTime.class, TimestampConversions::toZonedDateTime);
         CONVERSION_DB.put(Date.class, ZonedDateTime.class, DateConversions::toZonedDateTime);
         CONVERSION_DB.put(Instant.class, ZonedDateTime.class, InstantConversions::toZonedDateTime);
         CONVERSION_DB.put(LocalDate.class, ZonedDateTime.class, LocalDateConversions::toZonedDateTime);
@@ -1886,7 +1886,7 @@ public final class Converter {
                     new SurrogatePrimaryPair(Date.class, ZonedDateTime.class,
                             DateConversions::toZonedDateTime, null),
                     new SurrogatePrimaryPair(Timestamp.class, ZonedDateTime.class,
-                            DateConversions::toZonedDateTime, null)
+                            TimestampConversions::toZonedDateTime, null)
             );
         }
         return SURROGATE_TO_PRIMARY_PAIRS;

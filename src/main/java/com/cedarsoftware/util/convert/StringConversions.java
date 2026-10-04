@@ -101,15 +101,16 @@ final class StringConversions {
         if (StringUtilities.isEmpty(str)) {
             return (byte)0;
         }
-        try {
-            return Byte.valueOf(str);
-        } catch (NumberFormatException e) {
-            Long value = toLong(str, bigDecimalMinByte, bigDecimalMaxByte);
-            if (value == null) {
-                throw new IllegalArgumentException("Value '" + str + "' not parseable as a byte value or outside " + Byte.MIN_VALUE + " to " + Byte.MAX_VALUE, e);
-            }
-            return value.byteValue();
+        long whole = parseWhole(str, Byte.MIN_VALUE, Byte.MAX_VALUE);
+        if (whole != NOT_WHOLE) {
+            return (byte) whole;
         }
+        // anything else: decimal text, out of range, or not a number
+        Long value = toLong(str, bigDecimalMinByte, bigDecimalMaxByte);
+        if (value == null) {
+            throw new IllegalArgumentException("Value '" + str + "' not parseable as a byte value or outside " + Byte.MIN_VALUE + " to " + Byte.MAX_VALUE);
+        }
+        return value.byteValue();
     }
 
     static Short toShort(Object from, Converter converter) {
@@ -117,15 +118,16 @@ final class StringConversions {
         if (StringUtilities.isEmpty(str)) {
             return (short)0;
         }
-        try {
-            return Short.valueOf(str);
-        } catch (Exception e) {
-            Long value = toLong(str, bigDecimalMinShort, bigDecimalMaxShort);
-            if (value == null) {
-                throw new IllegalArgumentException("Value '" + from + "' not parseable as a short value or outside " + Short.MIN_VALUE + " to " + Short.MAX_VALUE, e);
-            }
-            return value.shortValue();
+        long whole = parseWhole(str, Short.MIN_VALUE, Short.MAX_VALUE);
+        if (whole != NOT_WHOLE) {
+            return (short) whole;
         }
+        // anything else: decimal text, out of range, or not a number
+        Long value = toLong(str, bigDecimalMinShort, bigDecimalMaxShort);
+        if (value == null) {
+            throw new IllegalArgumentException("Value '" + from + "' not parseable as a short value or outside " + Short.MIN_VALUE + " to " + Short.MAX_VALUE);
+        }
+        return value.shortValue();
     }
 
     static Integer toInt(Object from, Converter converter) {
@@ -133,15 +135,16 @@ final class StringConversions {
         if (StringUtilities.isEmpty(str)) {
             return 0;
         }
-        try {
-            return Integer.valueOf(str);
-        } catch (NumberFormatException e) {
-            Long value = toLong(str, bigDecimalMinInteger, bigDecimalMaxInteger);
-            if (value == null) {
-                throw new IllegalArgumentException("Value '" + from + "' not parseable as an int value or outside " + Integer.MIN_VALUE + " to " + Integer.MAX_VALUE, e);
-            }
-            return value.intValue();
+        long whole = parseWhole(str, Integer.MIN_VALUE, Integer.MAX_VALUE);
+        if (whole != NOT_WHOLE) {
+            return (int) whole;
         }
+        // anything else: decimal text, out of range, or not a number
+        Long value = toLong(str, bigDecimalMinInteger, bigDecimalMaxInteger);
+        if (value == null) {
+            throw new IllegalArgumentException("Value '" + from + "' not parseable as an int value or outside " + Integer.MIN_VALUE + " to " + Integer.MAX_VALUE);
+        }
+        return value.intValue();
     }
 
     static Long toLong(Object from, Converter converter) {
@@ -150,15 +153,53 @@ final class StringConversions {
             return 0L;
         }
 
-        try {
-            return Long.valueOf(str);
-        } catch (Exception e) {
-            Long value = toLong(str, bigDecimalMinLong, bigDecimalMaxLong);
-            if (value == null) {
-                throw new IllegalArgumentException("Value '" + from + "' not parseable as a long value or outside " + Long.MIN_VALUE + " to " + Long.MAX_VALUE, e);
-            }
-            return value;
+        long whole = parseWhole(str, Long.MIN_VALUE + 1, Long.MAX_VALUE);
+        if (whole != NOT_WHOLE) {
+            return whole;
         }
+        // anything else: decimal text, out of range, or not a number
+        Long value = toLong(str, bigDecimalMinLong, bigDecimalMaxLong);
+        if (value == null) {
+            throw new IllegalArgumentException("Value '" + from + "' not parseable as a long value or outside " + Long.MIN_VALUE + " to " + Long.MAX_VALUE);
+        }
+        return value;
+    }
+
+    private static final long NOT_WHOLE = Long.MIN_VALUE;
+
+    /**
+     * {@code s} as Long.parseLong reads it (an optional sign, then decimal digits, Unicode digits included) if it is
+     * within [min, max], else NOT_WHOLE. One pass and no exception: valueOf() threw for any other text, and building
+     * that exception was nearly all the cost of "12345.0" -> Integer (281 ns). {@code min} must exceed
+     * Long.MIN_VALUE (which then takes the decimal path).
+     */
+    private static long parseWhole(String s, long min, long max) {
+        int length = s.length();
+        int i = 0;
+        boolean negative = false;
+        char first = s.charAt(0);
+        if (first == '-' || first == '+') {
+            if (length == 1) {
+                return NOT_WHOLE;
+            }
+            negative = first == '-';
+            i = 1;
+        }
+        long limit = negative ? -min : max;         // the magnitude allowed
+        long multmax = limit / 10;
+        long result = 0;
+        for (; i < length; i++) {
+            int digit = Character.digit(s.charAt(i), 10);
+            if (digit < 0 || result > multmax) {
+                return NOT_WHOLE;
+            }
+            result *= 10;
+            if (result > limit - digit) {
+                return NOT_WHOLE;
+            }
+            result += digit;
+        }
+        return negative ? -result : result;
     }
 
     private static Long toLong(String s, BigDecimal low, BigDecimal high) {

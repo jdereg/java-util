@@ -1792,9 +1792,24 @@ public final class Converter {
 
         // BitSet ↔ AtomicBoolean handled by surrogate system via Boolean
 
-        // BitSet ↔ String bridges (binary string format)
+        // BitSet ↔ String bridges (binary string format, 0s and 1s only)
         CONVERSION_DB.put(BitSet.class, String.class, UniversalConversions::bitSetToString);
         CONVERSION_DB.put(String.class, BitSet.class, UniversalConversions::stringToBitSet);
+
+        // BitSet ↔ ByteBuffer bridges (the same bytes as byte[])
+        CONVERSION_DB.put(BitSet.class, ByteBuffer.class, UniversalConversions::bitSetToByteBuffer);
+        CONVERSION_DB.put(ByteBuffer.class, BitSet.class, UniversalConversions::byteBufferToBitSet);
+
+        // BitSet → CharBuffer, and BitSet ↔ char[] / Character[] bridges (the binary string's characters)
+        CONVERSION_DB.put(BitSet.class, CharBuffer.class, UniversalConversions::bitSetToCharBuffer);
+        CONVERSION_DB.put(BitSet.class, char[].class, UniversalConversions::bitSetToCharArray);
+        CONVERSION_DB.put(char[].class, BitSet.class, UniversalConversions::charArrayToBitSet);
+        CONVERSION_DB.put(BitSet.class, Character[].class, UniversalConversions::bitSetToCharacterArray);
+        CONVERSION_DB.put(Character[].class, BitSet.class, UniversalConversions::characterArrayToBitSet);
+
+        // BitSet → Map ({"value": "<binary string>"}, which Map → BitSet reads); null → BitSet is null
+        CONVERSION_DB.put(BitSet.class, Map.class, UniversalConversions::bitSetToMap);
+        CONVERSION_DB.put(Void.class, BitSet.class, VoidConversions::toNull);
 
         // ========================================
         // Stream Bridges
@@ -1866,10 +1881,6 @@ public final class Converter {
                     new SurrogatePrimaryPair(CharSequence.class, String.class,
                             UniversalConversions::charSequenceToString, null),
 
-                    // BitSet -> String (lossless binary form)
-                    new SurrogatePrimaryPair(BitSet.class, String.class,
-                            UniversalConversions::bitSetToString, null),
-
                     // Resource identifiers → URI (lossless via URL.toURI())
                     new SurrogatePrimaryPair(URL.class, URI.class,
                             UrlConversions::toURI, null),
@@ -1934,10 +1945,6 @@ public final class Converter {
                             UniversalConversions::stringToStringBuilder),
                     new SurrogatePrimaryPair(String.class, CharSequence.class, null,
                             UniversalConversions::stringToCharSequence),
-
-                    // String -> BitSet (inverse of binary BitSet string form)
-                    new SurrogatePrimaryPair(String.class, BitSet.class, null,
-                            UniversalConversions::stringToBitSet),
 
                     // URI → URL (convert URI to URL for legacy compatibility)
                     new SurrogatePrimaryPair(URI.class, URL.class, null,

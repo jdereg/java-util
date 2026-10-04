@@ -6748,47 +6748,34 @@ class ConverterEverythingTest {
                 {bitSet123, BigDecimal.valueOf(42)}, // BitSet bits 1,3,5 = binary 101010 = decimal 42
                 {new BitSet(), BigDecimal.ZERO},
         });
-        TEST_DB.put(pair(BitSet.class, double.class), new Object[][]{
-                {bitSet123, 101010.0d}, // via BitSet->String "101010" -> double
-                {new BitSet(), 0.0d},
-        });
-        TEST_DB.put(pair(double.class, BitSet.class), new Object[][]{
-                {42.0d, new BitSet()}, // via double->String "42.0" -> BitSet (non-binary chars ignored)
-                {0.0d, new BitSet()},
-        });
-        TEST_DB.put(pair(BitSet.class, float.class), new Object[][]{
-                {bitSet123, 101010.0f}, // via BitSet->String "101010" -> float
-                {new BitSet(), 0.0f},
-        });
-        TEST_DB.put(pair(float.class, BitSet.class), new Object[][]{
-                {42.0f, new BitSet()}, // via float->String "42.0" -> BitSet (non-binary chars ignored)
-                {0.0f, new BitSet()},
-        });
         TEST_DB.put(pair(BigDecimal.class, BitSet.class), new Object[][]{
                 {BigDecimal.valueOf(42), bitSet123}, // BigDecimal 42 = binary 101010 = bits 1,3,5 set
                 {BigDecimal.ZERO, new BitSet()},
         });
-        TEST_DB.put(pair(BitSet.class, AtomicBoolean.class), new Object[][]{
-                {bitSet123, new AtomicBoolean(true)}, // Non-empty BitSet = true
-                {new BitSet(), new AtomicBoolean(false)}, // Empty BitSet = false
-        });
         BitSet bitSet0 = new BitSet();
         bitSet0.set(0);
+        TEST_DB.put(pair(BitSet.class, AtomicBoolean.class), new Object[][]{
+                {bitSet0, new AtomicBoolean(true)}, // one bit: {0} = true
+                {new BitSet(), new AtomicBoolean(false)}, // Empty BitSet = false
+                {bitSet123, new IllegalArgumentException("bit 5 is set, and boolean holds 1 bit")},
+        });
         TEST_DB.put(pair(AtomicBoolean.class, BitSet.class), new Object[][]{
                 {new AtomicBoolean(true), bitSet0}, // AtomicBoolean(true) = bit 0 set
                 {new AtomicBoolean(false), new BitSet()}, // AtomicBoolean(false) = empty
         });
         TEST_DB.put(pair(BitSet.class, Boolean.class), new Object[][]{
-                {bitSet123, true}, // Non-empty BitSet = true
+                {bitSet0, true}, // one bit: {0} = true
                 {new BitSet(), false}, // Empty BitSet = false
+                {bitSet123, new IllegalArgumentException("bit 5 is set, and boolean holds 1 bit")},
         });
         TEST_DB.put(pair(Boolean.class, BitSet.class), new Object[][]{
                 {true, bitSet0}, // Boolean(true) = bit 0 set
                 {false, new BitSet()}, // Boolean(false) = empty
         });
         TEST_DB.put(pair(BitSet.class, boolean.class), new Object[][]{
-                {bitSet123, true}, // Non-empty BitSet = true
+                {bitSet0, true}, // one bit: {0} = true
                 {new BitSet(), false}, // Empty BitSet = false
+                {bitSet123, new IllegalArgumentException("bit 5 is set, and boolean holds 1 bit")},
         });
         TEST_DB.put(pair(boolean.class, BitSet.class), new Object[][]{
                 {true, bitSet0}, // boolean true = bit 0 set

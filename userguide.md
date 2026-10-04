@@ -3941,7 +3941,17 @@ bits.set(0); bits.set(2);
 boolean[] boolArray = converter.convert(bits, boolean[].class); // [true, false, true]
 int[] indices = converter.convert(bits, int[].class);           // [0, 2]
 byte[] bytes = converter.convert(bits, byte[].class);           // Raw representation
+String text = converter.convert(bits, String.class);            // "101" (rightmost character is bit 0)
+long mask = converter.convert(bits, long.class);                // 5
 ```
+A `BitSet` converts to and from:
+- **Its binary text** (`String`, `StringBuilder`, `StringBuffer`, `CharSequence`, `CharBuffer`, `char[]`, `Character[]`): only `0` and `1`, after trimming; `""` is the empty set. Any other character is an `IllegalArgumentException` naming the character and its index.
+- **The integer types** (`long`, `int`, `short`, `byte`, their wrappers, `AtomicLong`, `AtomicInteger`, `LongAdder`): the bits as a two's-complement pattern of the type's width, so `-1L` ↔ 64 set bits. A set bit beyond the width (bit 40 for an `int`) is an `IllegalArgumentException`.
+- **`BigInteger` and `BigDecimal`**: a non-negative whole number of any size. A negative number, or a `BigDecimal` with a fraction, is an `IllegalArgumentException`.
+- **`Boolean`** (and `AtomicBoolean`): one bit. `{}` is `false` and `{0}` is `true`; a higher bit is an `IllegalArgumentException`.
+- **`byte[]`, `ByteBuffer`** (little-endian bytes, as `BitSet.toByteArray()`), **`int[]`** (the set indices), **`boolean[]`** (one per bit), and **`Map`** (`{"value": "101"}`).
+
+Nothing else: floating-point types, dates and times, characters, `File`, `Path`, `URI`, `Pattern`, `Locale` and `TimeZone` are unsupported.
 
 **Stream API Support:**
 ```java
@@ -3954,7 +3964,6 @@ Color color = converter.convert(stream, Color.class); // Through int[] bridge
 **Universal Array Access:**
 Each array-like type gains access to the entire universal array conversion ecosystem. For example:
 - `AtomicIntegerArray` → `int[]` → `Color` (RGB interpretation)
-- `BitSet` → `boolean[]` → `String` (comma-separated values)
 - `IntBuffer` → `int[]` → `LocalDate` (year/month/day interpretation)
 
 This bridge system expands total conversion pairs by 39% to over 1,500 supported conversions.

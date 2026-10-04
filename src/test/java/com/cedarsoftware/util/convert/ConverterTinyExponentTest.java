@@ -9,11 +9,13 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTimeout;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * A value with a tiny exponent (below 1 in magnitude) converts to BigInteger, and through it to UUID and BitSet, at
- * once: its whole part is 0.
+ * A value with a tiny exponent (below 1 in magnitude) converts to BigInteger, and through it to UUID, at once: its
+ * whole part is 0. To BitSet, which takes whole numbers only, it is refused at once.
  */
 class ConverterTinyExponentTest {
 
@@ -24,7 +26,9 @@ class ConverterTinyExponentTest {
         BigDecimal value = new BigDecimal(tiny);
         assertEquals(BigInteger.ZERO, converter.convert(value, BigInteger.class));
         assertEquals(new UUID(0, 0), converter.convert(value, UUID.class));
-        assertEquals(new BitSet(), converter.convert(value, BitSet.class));
+        String message = assertThrows(IllegalArgumentException.class,
+                () -> converter.convert(value, BitSet.class)).getMessage();
+        assertTrue(message.length() < 100, message.length() + " characters");
     }
 
     /**

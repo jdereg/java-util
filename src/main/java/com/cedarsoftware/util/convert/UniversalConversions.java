@@ -2,6 +2,8 @@ package com.cedarsoftware.util.convert;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.nio.ByteBuffer;
+import java.nio.CharBuffer;
 import java.nio.DoubleBuffer;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
@@ -533,13 +535,11 @@ final class UniversalConversions {
 
     /**
      * BitSet → long conversion.
-     * Interprets the BitSet as a bitmask and returns the long value.
-     * For BitSets with more than 64 bits, only the lower 64 bits are returned.
+     * Interprets the BitSet as a 64-bit two's-complement bitmask (bit 63 is the sign).
+     * @throws IllegalArgumentException if a bit at index 64 or above is set
      */
     static long bitSetToLong(Object from, Converter converter) {
-        BitSet bitSet = (BitSet) from;
-        long[] longs = bitSet.toLongArray();
-        return longs.length == 0 ? 0L : longs[0];
+        return bitSetBits((BitSet) from, 64, "long");
     }
 
     /**
@@ -596,13 +596,11 @@ final class UniversalConversions {
 
     /**
      * BitSet → int conversion.
-     * Returns the lower 32 bits of the BitSet as an int.
-     * For BitSets with more than 32 bits, only the lower 32 bits are returned.
+     * Interprets the BitSet as a 32-bit two's-complement bitmask (bit 31 is the sign).
+     * @throws IllegalArgumentException if a bit at index 32 or above is set
      */
     static int bitSetToInt(Object from, Converter converter) {
-        BitSet bitSet = (BitSet) from;
-        long[] longs = bitSet.toLongArray();
-        return longs.length == 0 ? 0 : (int) longs[0];
+        return (int) bitSetBits((BitSet) from, 32, "int");
     }
 
     /**
@@ -616,13 +614,11 @@ final class UniversalConversions {
 
     /**
      * BitSet → short conversion.
-     * Returns the lower 16 bits of the BitSet as a short.
-     * For BitSets with more than 16 bits, only the lower 16 bits are returned.
+     * Interprets the BitSet as a 16-bit two's-complement bitmask (bit 15 is the sign).
+     * @throws IllegalArgumentException if a bit at index 16 or above is set
      */
     static short bitSetToShort(Object from, Converter converter) {
-        BitSet bitSet = (BitSet) from;
-        long[] longs = bitSet.toLongArray();
-        return longs.length == 0 ? 0 : (short) longs[0];
+        return (short) bitSetBits((BitSet) from, 16, "short");
     }
 
     /**
@@ -636,13 +632,25 @@ final class UniversalConversions {
 
     /**
      * BitSet → byte conversion.
-     * Returns the lower 8 bits of the BitSet as a byte.
-     * For BitSets with more than 8 bits, only the lower 8 bits are returned.
+     * Interprets the BitSet as a 8-bit two's-complement bitmask (bit 7 is the sign).
+     * @throws IllegalArgumentException if a bit at index 8 or above is set
      */
     static byte bitSetToByte(Object from, Converter converter) {
-        BitSet bitSet = (BitSet) from;
-        long[] longs = bitSet.toLongArray();
-        return longs.length == 0 ? 0 : (byte) longs[0];
+        return (byte) bitSetBits((BitSet) from, 8, "byte");
+    }
+
+    /**
+     * The BitSet's bits as a pattern {@code width} bits wide, whose top bit is the sign once the caller narrows it
+     * (long: as is). A set bit at {@code width} or above does not fit: it was dropped without a word, so a BitSet
+     * with bit 40 set came out as an int from its lower 32 bits.
+     */
+    private static long bitSetBits(BitSet bitSet, int width, String type) {
+        int length = bitSet.length();       // highest set bit + 1
+        if (length > width) {
+            throw new IllegalArgumentException("Unable to convert BitSet to " + type + ": bit " + (length - 1)
+                    + " is set, and " + type + " holds " + width + (width == 1 ? " bit" : " bits"));
+        }
+        return length == 0 ? 0L : bitSet.toLongArray()[0];
     }
 
     /**
@@ -670,16 +678,23 @@ final class UniversalConversions {
      */
     static BitSet bigDecimalToBitSet(Object from, Converter converter) {
         BigDecimal value = (BigDecimal) from;
-        return bigIntegerToBitSet(BigDecimalConversions.wholePart(value), converter);
+        BigInteger whole = BigDecimalConversions.wholePart(value);
+        if (value.compareTo(new BigDecimal(whole)) != 0) {
+            // 5.5 became {0, 2} (5) without a word
+            // toString, not toPlainString: 1e-9999999 in plain notation is ten million characters
+            throw new IllegalArgumentException("Unable to convert " + value
+                    + " to BitSet: it is not a whole number");
+        }
+        return bigIntegerToBitSet(whole, converter);
     }
 
     /**
-     * BitSet → Boolean conversion.
-     * Returns true if any bit is set, false if empty.
+     * BitSet → Boolean conversion: one bit. {} is false and {0} is true.
+     * @throws IllegalArgumentException if a bit at index 1 or above is set
      */
     static Boolean bitSetToBoolean(Object from, Converter converter) {
-        BitSet bitSet = (BitSet) from;
-        return !bitSet.isEmpty();
+        // one bit: {} is false, {0} is true
+        return bitSetBits((BitSet) from, 1, "boolean") != 0;
     }
 
     /**
@@ -715,9 +730,11 @@ final class UniversalConversions {
     }
 
     /**
-     * String → BitSet conversion.
-     * Parses a binary string where rightmost character is bit 0.
-     * Example: "101010" → BitSet with bits 1,3,5 set
+     * String → BitSet conversion: the binary text {@link #bitSetToString} writes, rightmost character bit 0
+     * ({@code "101010"} has bits 1, 3 and 5 set). Surrounding whitespace is ignored and leading zeros are allowed; ""
+     * is the empty BitSet.
+     * @throws IllegalArgumentException for any character other than 0 and 1: "hello" and "5.0" became the empty
+     *         BitSet, and "102" {2}, without a word
      */
     static BitSet stringToBitSet(Object from, Converter converter) {
         String binaryStr = ((String) from).trim();
@@ -727,10 +744,70 @@ final class UniversalConversions {
             char ch = binaryStr.charAt(i);
             if (ch == '1') {
                 bitSet.set(len - 1 - i);
+            } else if (ch != '0') {
+                String shown = binaryStr.length() > 100 ? binaryStr.substring(0, 100) + "..." : binaryStr;
+                throw new IllegalArgumentException("Unable to convert '" + shown + "' to BitSet: only 0 and 1 are"
+                        + " allowed, found '" + ch + "' at index " + i);
             }
         }
         return bitSet;
     }
+
+    /** BitSet → CharBuffer: its binary string. */
+    static CharBuffer bitSetToCharBuffer(Object from, Converter converter) {
+        return CharBuffer.wrap(bitSetToString(from, converter));
+    }
+
+    /** BitSet → char[]: the characters of its binary string. */
+    static char[] bitSetToCharArray(Object from, Converter converter) {
+        return bitSetToString(from, converter).toCharArray();
+    }
+
+    /** char[] → BitSet: the characters read as a binary string, as {@link #stringToBitSet}. */
+    static BitSet charArrayToBitSet(Object from, Converter converter) {
+        return stringToBitSet(new String((char[]) from), converter);
+    }
+
+    /** BitSet → Character[]: the characters of its binary string. */
+    static Character[] bitSetToCharacterArray(Object from, Converter converter) {
+        String text = bitSetToString(from, converter);
+        Character[] chars = new Character[text.length()];
+        for (int i = 0; i < chars.length; i++) {
+            chars[i] = text.charAt(i);
+        }
+        return chars;
+    }
+
+    /** Character[] → BitSet: the characters read as a binary string, as {@link #stringToBitSet}; null is not one. */
+    static BitSet characterArrayToBitSet(Object from, Converter converter) {
+        Character[] chars = (Character[]) from;
+        StringBuilder text = new StringBuilder(chars.length);
+        for (Character c : chars) {
+            if (c == null) {
+                throw new IllegalArgumentException("Unable to convert Character[] to BitSet: it holds a null");
+            }
+            text.append(c.charValue());
+        }
+        return stringToBitSet(text.toString(), converter);
+    }
+
+    /** BitSet → Map: {@code {"value": "<binary string>"}}, which Map → BitSet reads back. */
+    static Map<String, Object> bitSetToMap(Object from, Converter converter) {
+        Map<String, Object> map = new LinkedHashMap<>();
+        map.put(MapConversions.VALUE, bitSetToString(from, converter));
+        return map;
+    }
+
+    /** BitSet → ByteBuffer: the bytes {@link #bitSetToByteArray} gives, little-endian ({0, 2} is {5}). */
+    static ByteBuffer bitSetToByteBuffer(Object from, Converter converter) {
+        return ByteBuffer.wrap(((BitSet) from).toByteArray());
+    }
+
+    /** ByteBuffer → BitSet: the remaining bytes, little-endian, as {@link #byteArrayToBitSet}; the buffer is not moved. */
+    static BitSet byteBufferToBitSet(Object from, Converter converter) {
+        return BitSet.valueOf((ByteBuffer) from);
+    }
+
 
     // ========================================
     // Stream Bridge Methods

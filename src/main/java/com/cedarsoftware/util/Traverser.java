@@ -282,8 +282,9 @@ public class Traverser {
         void process(Object o);
     }
 
-    private final IdentitySet<Object> objVisited = new IdentitySet<>();
-    private final IdentitySet<Object> objQueued = new IdentitySet<>();
+    // Every object ever queued: added when queued, never removed. An object is queued at most once, so no
+    // object is visited twice, and the queued-but-unvisited ones are exactly those on the stack.
+    private final IdentitySet<Object> seen = new IdentitySet<>();
     // One traversal, one thread: a plain map (a ClassValueMap would attach a slot to every class visited, per traversal)
     private final Map<Class<?>, Boolean> skipClassCache = new HashMap<>();
     private final Consumer<NodeVisit> nodeVisitor;
@@ -366,7 +367,7 @@ public class Traverser {
 
         Deque<TraversalNode> stack = new ArrayDeque<>();
         stack.add(new TraversalNode(root, 1));
-        objQueued.add(root);
+        seen.add(root);
         objectsVisited = 0;
 
         // Hoist ALL security limits: they don't change during traversal
@@ -379,11 +380,6 @@ public class Traverser {
             TraversalNode node = stack.pollFirst();
             Object current = node.object;
             int currentDepth = node.depth;
-            objQueued.remove(current);
-
-            if (current == null || objVisited.contains(current)) {
-                continue;
-            }
 
             Class<?> clazz = current.getClass();
             if (shouldSkipClass(clazz, classesToSkip)) {
@@ -395,7 +391,6 @@ public class Traverser {
                 throw new SecurityException("Stack depth exceeded limit (max " + maxStackDepth + "): " + currentDepth);
             }
 
-            objVisited.add(current);
             objectsVisited++;
 
             // Security: Check objects visited limit
@@ -590,7 +585,7 @@ public class Traverser {
 
     private void enqueueNode(Deque<TraversalNode> stack, Object value,
                              Set<Class<?>> classesToSkip, int depth, int maxObjectsVisited) {
-        if (value == null || objVisited.contains(value) || objQueued.contains(value)) {
+        if (value == null || seen.contains(value)) {
             return;
         }
         if (shouldSkipClass(value.getClass(), classesToSkip)) {
@@ -598,13 +593,13 @@ public class Traverser {
         }
 
         // Security: prevent unbounded frontier expansion when object-visit limits are active.
-        if (maxObjectsVisited > 0 && objectsVisited + objQueued.size() >= maxObjectsVisited) {
-            int projected = objectsVisited + objQueued.size() + 1;
+        if (maxObjectsVisited > 0 && objectsVisited + stack.size() >= maxObjectsVisited) {
+            int projected = objectsVisited + stack.size() + 1;
             throw new SecurityException("Objects visited exceeded limit (max " +
                     maxObjectsVisited + "): " + projected);
         }
 
         stack.addFirst(new TraversalNode(value, depth));
-        objQueued.add(value);
+        seen.add(value);
     }
 }

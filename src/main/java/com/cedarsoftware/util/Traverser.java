@@ -492,7 +492,25 @@ public class Traverser {
     }
 
     // The loader of the JDK's non-bootstrap classes: the platform loader on JDK 9+, the extension loader on 8.
-    private static final ClassLoader JDK_PLATFORM_LOADER = ClassLoader.getSystemClassLoader().getParent();
+    private static final ClassLoader JDK_PLATFORM_LOADER = platformLoader(ClassLoader.getSystemClassLoader());
+
+    /**
+     * The JDK's platform loader (JDK 9+), or on JDK 8 the extension loader: the topmost loader above
+     * {@code systemLoader}. Not {@code systemLoader.getParent()}: under a custom system class loader
+     * ({@code -Djava.system.class.loader}) that is the application loader, and every application class would
+     * count as a JDK class.
+     */
+    static ClassLoader platformLoader(ClassLoader systemLoader) {
+        try {
+            return (ClassLoader) ClassLoader.class.getMethod("getPlatformClassLoader").invoke(null);
+        } catch (ReflectiveOperationException jdk8) {
+            ClassLoader loader = systemLoader;
+            while (loader.getParent() != null) {
+                loader = loader.getParent();
+            }
+            return loader;
+        }
+    }
 
     /**
      * A JDK class is traversed as a LEAF: it is visited, and its field values are reported, but those

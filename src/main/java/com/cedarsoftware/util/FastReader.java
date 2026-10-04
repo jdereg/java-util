@@ -553,19 +553,17 @@ public final class FastReader extends Reader {
         while (total < maxLen) {
             if (pos >= lim) {
                 // refill() does not read `position` (it writes pos=0 unconditionally
-                // on success), so no write-back is needed before the call.
-                if (refill() == -1) {
+                // on success), so no write-back is needed before the call. At the end
+                // of input (limit -1) the underlying reader is not asked again.
+                if (lim == -1 || refill() == -1) {
                     return total > 0 ? total : -1;
                 }
                 pos = position;
                 lim = limit;
             }
 
-            int end = lim;
-            int remaining = maxLen - total;
-            if (pos + remaining < end) {
-                end = pos + remaining;
-            }
+            // pos + (maxLen - total) could overflow for a maxLen near Integer.MAX_VALUE
+            int end = pos + Math.min(maxLen - total, lim - pos);
 
             // Tight scan loop — single array load per iteration. The outer c <= '\r' check is
             // a performance prefilter (printable chars > 13 need only ONE comparison); only

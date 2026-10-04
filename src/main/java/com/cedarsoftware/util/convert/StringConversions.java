@@ -9,6 +9,7 @@ import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
 import java.nio.charset.Charset;
 import java.sql.Timestamp;
+import java.time.DateTimeException;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -594,7 +595,17 @@ final class StringConversions {
             return null;
         }
 
-        return TimeZone.getTimeZone(str);
+        TimeZone zone = TimeZone.getTimeZone(str);
+        if ("GMT".equals(zone.getID()) && !"GMT".equalsIgnoreCase(str)) {
+            // getTimeZone answers GMT for an ID it does not know, as its Javadoc says, and so it read "+05:00" or "Z"
+            // as GMT. What ZoneId reads is read as that zone; an ID neither knows stays GMT.
+            try {
+                return TimeZone.getTimeZone(ZoneId.of(str));
+            } catch (DateTimeException e) {
+                return zone;
+            }
+        }
+        return zone;
     }
 
     static Calendar toCalendar(Object from, Converter converter) {

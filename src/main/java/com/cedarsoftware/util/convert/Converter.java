@@ -2827,11 +2827,19 @@ public final class Converter {
      * @param from The object for which to generate a name.
      * @return A descriptive name of the object.
      */
+    /**
+     * The source as an error message shows it: its type, and its value cut to the first 100 characters, so that a
+     * large collection does not put its whole content into every log that records the exception.
+     */
     static private String name(Object from) {
         if (from == null) {
             return "null";
         }
-        return getShortName(from.getClass()) + " (" + from + ")";
+        String value = String.valueOf(from);
+        if (value.length() > 100) {
+            value = value.substring(0, Character.isHighSurrogate(value.charAt(99)) ? 99 : 100) + "...";
+        }
+        return getShortName(from.getClass()) + " (" + value + ")";
     }
 
     /**

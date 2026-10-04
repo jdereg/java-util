@@ -1090,7 +1090,7 @@ final class StringConversions {
      * @throws IllegalArgumentException if the string cannot be parsed as a color
      */
     static Color toColor(Object from, Converter converter) {
-        String str = ((String) from).trim().toLowerCase();
+        String str = ((String) from).trim().toLowerCase(Locale.ROOT);    // Turkish lowers WHITE's I to a dotless i
         
         if (StringUtilities.isEmpty(str)) {
             throw new IllegalArgumentException("Cannot convert empty/null string to Color");
@@ -1136,7 +1136,7 @@ final class StringConversions {
 
         // Try rgb(r,g,b) format
         String original = ((String) from).trim();
-        String lower = original.toLowerCase();
+        String lower = original.toLowerCase(Locale.ROOT);
         if (lower.startsWith("rgb(") && lower.endsWith(")")) {
             String values = original.substring(4, original.length() - 1);
             String[] components = values.split(",");

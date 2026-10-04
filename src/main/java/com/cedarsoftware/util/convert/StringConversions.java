@@ -400,20 +400,106 @@ final class StringConversions {
         }
     }
 
-    // Precompile the pattern for decimal numbers: optional minus, digits, optional decimal point with digits.
-    private static final Pattern DECIMAL_PATTERN = Pattern.compile("-?\\d+(\\.\\d+)?");
+    /**
+     * Text that is a number, converted to the date or time type {@code type} as that number would be: integer text
+     * ("1500") as a Long -- milliseconds, or nanoseconds under the precision setting -- and decimal text ("1.5") as a
+     * BigDecimal, seconds. Null for any other text, which the caller parses as a date, a time or a duration. With
+     * {@code dateRule}, eight digits are left to the parser, which reads "20240115" as that date. "1500" was 25
+     * minutes as a Duration (seconds) but 1.5 s as an Instant (milliseconds), and as a LocalTime the time of day of an
+     * instant in the Converter's zone; decimal text did not convert to an Instant, a Date or a LocalTime.
+     */
+    private static <T> T fromNumberText(Object from, Class<T> type, boolean dateRule, Converter converter) {
+        String str = (String) from;
+        int kind = numberTextKind(str);
+        if (kind == NOT_A_NUMBER || (kind == EIGHT_DIGITS && dateRule)) {
+            return null;                // a date, a time, a duration; or eight digits that make a date (DateUtilities)
+        }
+        return convertNumberText(str.trim(), kind == DECIMAL, type, converter);
+    }
+
+    private static final int NOT_A_NUMBER = 0;
+    private static final int INTEGER = 1;
+    private static final int EIGHT_DIGITS = 2;
+    private static final int DECIMAL = 3;
+
+    /**
+     * What number text {@code str} is -- {@link #INTEGER}, {@link #EIGHT_DIGITS} (unsigned), {@link #DECIMAL} -- or
+     * {@link #NOT_A_NUMBER}, with surrounding whitespace ignored. Small, so the parse of a date (which fails at its
+     * first separator, "2024-") pays next to nothing for it.
+     */
+    private static int numberTextKind(String str) {
+        // one pass, reading each character once: a date stops it at its first separator ("2024-")
+        int len = str.length();
+        int i = 0;
+        char c = 0;
+        while (i < len && (c = str.charAt(i)) <= ' ') {
+            i++;
+        }
+        if (i == len) {
+            return NOT_A_NUMBER;
+        }
+        boolean signed = c == '-' || c == '+';
+        if (signed) {
+            if (++i == len) {
+                return NOT_A_NUMBER;
+            }
+            c = str.charAt(i);
+        }
+        int digits = 0;
+        boolean point = false;
+        while (true) {
+            if (c >= '0' && c <= '9') {
+                digits++;
+            } else if (c == '.' && !point) {
+                point = true;
+            } else if (c <= ' ') {
+                break;                  // trailing whitespace; nothing else may follow
+            } else {
+                return NOT_A_NUMBER;
+            }
+            if (++i == len) {
+                break;
+            }
+            c = str.charAt(i);
+        }
+        for (; i < len; i++) {
+            if (str.charAt(i) > ' ') {
+                return NOT_A_NUMBER;
+            }
+        }
+        if (digits == 0) {
+            return NOT_A_NUMBER;
+        }
+        if (point) {
+            return DECIMAL;
+        }
+        return digits == 8 && !signed ? EIGHT_DIGITS : INTEGER;
+    }
+
+    private static <T> T convertNumberText(String str, boolean decimal, Class<T> type, Converter converter) {
+        if (decimal) {
+            return converter.convert(new BigDecimal(str), type);
+        }
+        long number;
+        try {
+            number = Long.parseLong(str);
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("Unable to convert '" + NumberConversions.shown(str) + "' to "
+                    + type.getSimpleName() + ": it is outside " + Long.MIN_VALUE + " to " + Long.MAX_VALUE);
+        }
+        return converter.convert(number, type);
+    }
 
     static Duration toDuration(Object from, Converter converter) {
         if (!(from instanceof String)) {
             throw new IllegalArgumentException("Expected a String, but got: " + from);
         }
+        Duration number = fromNumberText(from, Duration.class, false, converter);
+        if (number != null) {
+            return number;
+        }
         String str = ((String) from).trim();
         try {
-            // If the string matches a plain decimal number, treat it as seconds.
-            if (DECIMAL_PATTERN.matcher(str).matches()) {
-                BigDecimal seconds = MathUtilities.parseBigDecimal(str);
-                return BigDecimalConversions.toDuration(seconds, converter);   // longValue() wrapped 20 digits
-            }
             // Otherwise, try ISO-8601 parsing.
             return parseIsoDuration(str);
         } catch (Exception e) {
@@ -541,7 +627,11 @@ final class StringConversions {
     }
 
     static Date toDate(Object from, Converter converter) {
-        ZonedDateTime zdt = toZonedDateTime(from, converter);
+        Date number = fromNumberText(from, Date.class, true, converter);
+        if (number != null) {
+            return number;
+        }
+        ZonedDateTime zdt = parseZoned(from, converter);
         if (zdt == null) {
             return null;
         }
@@ -559,6 +649,10 @@ final class StringConversions {
         if (str.isEmpty()) {
             return null;
         }
+        java.sql.Time number = fromNumberText(str, java.sql.Time.class, false, converter);
+        if (number != null) {
+            return number;
+        }
         try {
             return LocalTimeConversions.toSqlTime(LocalTime.parse(str), converter);
         } catch (DateTimeParseException e) {
@@ -569,6 +663,10 @@ final class StringConversions {
 
     static java.sql.Date toSqlDate(Object from, Converter converter) {
         String dateStr = ((String) from).trim();
+        java.sql.Date number = fromNumberText(dateStr, java.sql.Date.class, true, converter);
+        if (number != null) {
+            return number;
+        }
 
         // First try simple date format (yyyy-MM-dd)
         if (!dateStr.contains("T") && SIMPLE_DATE.matcher(dateStr).matches()) {
@@ -593,10 +691,15 @@ final class StringConversions {
     }
 
     static Timestamp toTimestamp(Object from, Converter converter) {
-        Instant instant = toInstant(from, converter);
-        if (instant == null) {
+        Timestamp number = fromNumberText(from, Timestamp.class, true, converter);
+        if (number != null) {
+            return number;
+        }
+        ZonedDateTime zdt = parseZoned(from, converter);
+        if (zdt == null) {
             return null;
         }
+        Instant instant = zdt.toInstant();
 
         // Check if the year is before 0001
         if (instant.getEpochSecond() < -62135596800L) {  // 0001-01-01T00:00:00Z
@@ -628,7 +731,11 @@ final class StringConversions {
     }
 
     static Calendar toCalendar(Object from, Converter converter) {
-        ZonedDateTime zdt = toZonedDateTime(from, converter);
+        Calendar number = fromNumberText(from, Calendar.class, true, converter);
+        if (number != null) {
+            return number;
+        }
+        ZonedDateTime zdt = parseZoned(from, converter);
         if (zdt == null) {
             return null;
         }
@@ -650,7 +757,11 @@ final class StringConversions {
     }
 
     static LocalDate toLocalDate(Object from, Converter converter) {
-        ZonedDateTime zdt = toZonedDateTime(from, converter);
+        LocalDate number = fromNumberText(from, LocalDate.class, true, converter);
+        if (number != null) {
+            return number;
+        }
+        ZonedDateTime zdt = parseZoned(from, converter);
         if (zdt == null) {
             return null;
         }
@@ -658,7 +769,11 @@ final class StringConversions {
     }
 
     static LocalDateTime toLocalDateTime(Object from, Converter converter) {
-        ZonedDateTime zdt = toZonedDateTime(from, converter);
+        LocalDateTime number = fromNumberText(from, LocalDateTime.class, true, converter);
+        if (number != null) {
+            return number;
+        }
+        ZonedDateTime zdt = parseZoned(from, converter);
         if (zdt == null) {
             return null;
         }
@@ -667,10 +782,14 @@ final class StringConversions {
 
     static LocalTime toLocalTime(Object from, Converter converter) {
         String str = (String) from;
+        LocalTime number = fromNumberText(str, LocalTime.class, false, converter);
+        if (number != null) {
+            return number;
+        }
         try {
             return LocalTime.parse(str);
         } catch (Exception e) {
-            ZonedDateTime zdt = toZonedDateTime(str, converter);
+            ZonedDateTime zdt = parseZoned(str, converter);
             if (zdt == null) {
                 return null;
             }
@@ -701,7 +820,16 @@ final class StringConversions {
     }
 
     static ZonedDateTime toZonedDateTime(Object from, Converter converter) {
-        return DateUtilities.parseDate((String)from, converter.getOptions().getZoneId(), true);
+        ZonedDateTime number = fromNumberText(from, ZonedDateTime.class, true, converter);
+        if (number != null) {
+            return number;
+        }
+        return parseZoned(from, converter);
+    }
+
+    /** The date-time text names, read by DateUtilities, for a caller that has already ruled out number text. */
+    private static ZonedDateTime parseZoned(Object from, Converter converter) {
+        return DateUtilities.parseDate((String) from, converter.getOptions().getZoneId(), true);
     }
 
     static ZoneId toZoneId(Object from, Converter converter) {
@@ -734,7 +862,11 @@ final class StringConversions {
     }
 
     static OffsetDateTime toOffsetDateTime(Object from, Converter converter) {
-        ZonedDateTime zdt = toZonedDateTime(from, converter);
+        OffsetDateTime number = fromNumberText(from, OffsetDateTime.class, true, converter);
+        if (number != null) {
+            return number;
+        }
+        ZonedDateTime zdt = parseZoned(from, converter);
         if (zdt == null) {
             return null;
         }
@@ -743,15 +875,19 @@ final class StringConversions {
 
     static OffsetTime toOffsetTime(Object from, Converter converter) {
         String str = (String) from;
+        OffsetTime number = fromNumberText(str, OffsetTime.class, false, converter);
+        if (number != null) {
+            return number;
+        }
         try {
             return OffsetTime.parse(str, DateTimeFormatter.ISO_OFFSET_TIME);
         } catch (Exception e) {
             try {
-                OffsetDateTime dateTime = toOffsetDateTime(from, converter);
+                ZonedDateTime dateTime = parseZoned(from, converter);
                 if (dateTime == null) {
                     return null;
                 }
-                return dateTime.toOffsetTime();
+                return dateTime.toOffsetDateTime().toOffsetTime();
             } catch (Exception ex) {
                 throw new IllegalArgumentException("Unable to parse '" + str + "' as an OffsetTime", e);
             }
@@ -759,7 +895,11 @@ final class StringConversions {
     }
 
     static Instant toInstant(Object from, Converter converter) {
-        ZonedDateTime zdt = toZonedDateTime(from, converter);
+        Instant number = fromNumberText(from, Instant.class, true, converter);
+        if (number != null) {
+            return number;
+        }
+        ZonedDateTime zdt = parseZoned(from, converter);
         if (zdt == null) {
             return null;
         }

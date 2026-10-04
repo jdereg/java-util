@@ -2827,15 +2827,17 @@ class ConverterEverythingTest {
 
                 // Edge cases (using the "seconds" key with a BigDecimal value)
                 { mapOf(DURATION, new BigDecimal(Long.MAX_VALUE + ".999999999")), Duration.ofSeconds(Long.MAX_VALUE, 999999999) },
-                { mapOf(DURATION, new BigDecimal(Long.toString(Long.MIN_VALUE))), Duration.ofSeconds(Long.MIN_VALUE, 0) },
+                // ".0": json-io 4.111.0, which this test round-trips through, hands a typed BigDecimal inside a Map to
+                // the Converter as its text, and integer text is milliseconds (ConverterNumberTextTest has the
+                // integral BigDecimal without json-io)
+                { mapOf(DURATION, new BigDecimal(Long.MIN_VALUE + ".0")), Duration.ofSeconds(Long.MIN_VALUE, 0) },
 
                 // Mixed formats:
                 { mapOf(DURATION, "PT1H"), Duration.ofHours(1) },   // ISO string in seconds field (converter should detect the ISO 8601 pattern)
                 { mapOf(DURATION, new BigDecimal("1.5")), Duration.ofMillis(1500) }, // Decimal value in seconds field
 
                 // Optional nanos (when only seconds are provided using the "seconds" key)
-                { mapOf(DURATION, new BigDecimal("123")), Duration.ofSeconds(123) },
-                { mapOf(DURATION, new BigDecimal("123")), Duration.ofSeconds(123) }
+                { mapOf(DURATION, new BigDecimal("123.0")), Duration.ofSeconds(123) }
         });
     }
 

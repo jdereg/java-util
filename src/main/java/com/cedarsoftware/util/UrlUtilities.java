@@ -598,6 +598,7 @@ public final class UrlUtilities {
                     // in the string is the cookie name and value, so let's handle
                     // them as a special case:
 
+                    String name = null;
                     if (st.hasMoreTokens()) {
                         String token = st.nextToken().trim();
                         int sepIndex = token.indexOf(NAME_VALUE_SEPARATOR);
@@ -612,7 +613,7 @@ public final class UrlUtilities {
                         validateCookieName(key);
                         validateCookieValue(value);
                         
-                        domainStore.put(key, cookie);
+                        name = key;
                         cookie.put(key, value);
                     }
 
@@ -637,6 +638,11 @@ public final class UrlUtilities {
                             
                             cookie.put(key, value);
                         }
+                    }
+                    // Stored once every attribute has passed: a cookie whose domain is rejected is ignored entirely
+                    // (RFC 6265, 5.3), and no other thread sees one half read
+                    if (name != null) {
+                        domainStore.put(name, cookie);
                     }
                 } catch (SecurityException e) {
                     // Security: Log and skip dangerous cookies rather than failing completely

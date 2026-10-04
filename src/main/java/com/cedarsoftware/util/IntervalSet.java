@@ -4,6 +4,7 @@ import java.time.DateTimeException;
 import java.time.Duration;
 import java.time.temporal.Temporal;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
@@ -780,25 +781,28 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
      * Returns a set of all start keys in the interval set.
      * <p>
      * This method uses {@link NavigableMap#navigableKeySet()} to provide efficient key operations.
-     * The returned set supports range operations and is backed by the interval set.
+     * The returned set supports range operations and is backed by the interval set. It is read-only
+     * (change the set through its own methods, which keep intervals merged and take its lock) and,
+     * like {@link #iterator()}, weakly consistent.
      * </p>
      *
-     * @return a navigable set of start keys
+     * @return a read-only navigable set of start keys
      */
     public NavigableSet<T> keySet() {
-        return intervals.navigableKeySet();
+        return Collections.unmodifiableNavigableSet(intervals.navigableKeySet());
     }
 
     /**
      * Returns a set of all start keys in descending order.
      * <p>
      * This method uses {@link NavigableMap#descendingKeySet()} for efficient reverse key iteration.
+     * Like {@link #keySet()}, the returned set is a read-only, weakly consistent view.
      * </p>
      *
-     * @return a navigable set of start keys in descending order
+     * @return a read-only navigable set of start keys in descending order
      */
     public NavigableSet<T> descendingKeySet() {
-        return intervals.descendingKeySet();
+        return Collections.unmodifiableNavigableSet(intervals.descendingKeySet());
     }
 
     /**

@@ -50,7 +50,9 @@ import java.util.function.Function;
  * <b>Thread Safety:</b> This class is thread-safe when wrapping concurrent map implementations 
  * ({@link ConcurrentMap}, {@link ConcurrentNavigableMap}). The thread safety is provided by using
  * a concurrent tracking set and delegating all operations to the underlying concurrent map. 
- * When wrapping non-concurrent maps, external synchronization is required.
+ * When wrapping non-concurrent maps, external synchronization is required. {@link #expungeUnused()} must not
+ * run while other threads read: a {@code get()} running during it can return a value whose entry it then
+ * removes.
  * </p>
  * 
  * <p>
@@ -61,9 +63,12 @@ import java.util.function.Function;
  * </p>
  *
  * <p>
- * <b>Note:</b> The {@link #expungeUnused()} method removes all entries that have not been accessed via
- * {@link #get(Object)} or {@link #containsKey(Object)} since the map was created or since the last call to
- * {@code expungeUnused()}.
+ * <b>Note:</b> The {@link #expungeUnused()} method removes the entries whose keys have not been read (by
+ * {@link #get(Object)}, {@link #containsKey(Object)} or the other reading methods) since the map was created
+ * or since they were last removed. Entries that survive stay marked as read: a second {@code expungeUnused()}
+ * with no reads in between removes nothing. Removing an entry through {@link #keySet()}, {@link #entrySet()}
+ * or {@link #values()} does not forget its read, as {@link #remove(Object)} does, so if its key is put back and
+ * not read again, {@code expungeUnused()} keeps it.
  * </p>
  *
  * @param <K> the type of keys maintained by this map
@@ -306,28 +311,33 @@ public class TrackingMap<K, V> implements Map<K, V> {
     }
 
     /**
-     * @return a {@link Collection} view of the values contained in this map
+     * @return a {@link Collection} view of the values contained in this map (removing through it does not forget
+     *         the removed keys' reads; see the class notes)
      */
     public Collection<V> values() {
         return internalMap.values();
     }
 
     /**
-     * @return a {@link Set} view of the keys contained in this map
+     * @return a {@link Set} view of the keys contained in this map (removing through it does not forget the
+     *         removed keys' reads; see the class notes)
      */
     public Set<K> keySet() {
         return internalMap.keySet();
     }
 
     /**
-     * @return a {@link Set} view of the mappings contained in this map
+     * @return a {@link Set} view of the mappings contained in this map (removing through it does not forget the
+     *         removed keys' reads; see the class notes)
      */
     public Set<Entry<K, V>> entrySet() {
         return internalMap.entrySet();
     }
 
     /**
-     * Remove the entries from the Map that have not been accessed by .get() or .containsKey().
+     * Remove the entries whose keys have not been read (by {@code get()}, {@code containsKey()} or the other
+     * reading methods) since the map was created or since they were last removed. Survivors stay marked as read.
+     * Not to be run while other threads read: see the class notes.
      */
     public void expungeUnused() {
         Set<K> keys = internalMap.keySet();

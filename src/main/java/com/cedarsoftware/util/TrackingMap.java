@@ -154,6 +154,16 @@ public class TrackingMap<K, V> implements Map<K, V> {
     }
 
     /**
+     * Records a read of {@code key}. A key already recorded is only looked up: a concurrent set's add() writes
+     * (locking a hash bin) even when the key is present, and re-reads of the same keys are the common case.
+     */
+    private void markRead(Object key) {
+        if (!readKeys.contains(key)) {
+            readKeys.add(key);
+        }
+    }
+
+    /**
      * Retrieves the value associated with the specified key and marks the key as accessed.
      *
      * @param key the key whose associated value is to be returned
@@ -161,7 +171,7 @@ public class TrackingMap<K, V> implements Map<K, V> {
      */
     public V get(Object key) {
         V value = internalMap.get(key);
-        readKeys.add(key);
+        markRead(key);
         return value;
     }
 
@@ -186,7 +196,7 @@ public class TrackingMap<K, V> implements Map<K, V> {
      */
     public boolean containsKey(Object key) {
         boolean containsKey = internalMap.containsKey(key);
-        readKeys.add(key);
+        markRead(key);
         return containsKey;
     }
 
@@ -521,7 +531,7 @@ public class TrackingMap<K, V> implements Map<K, V> {
      */
     public V computeIfAbsent(K key, Function<? super K, ? extends V> mappingFunction) {
         V result = internalMap.computeIfAbsent(key, mappingFunction);
-        readKeys.add(key);
+        markRead(key);
         return result;
     }
 
@@ -541,7 +551,7 @@ public class TrackingMap<K, V> implements Map<K, V> {
             return remappingFunction.apply(k, v);
         });
         if (remapped[0] || internalMap.containsKey(key)) {
-            readKeys.add(key);
+            markRead(key);
         }
         return result;
     }
@@ -557,7 +567,7 @@ public class TrackingMap<K, V> implements Map<K, V> {
      */
     public V compute(K key, BiFunction<? super K, ? super V, ? extends V> remappingFunction) {
         V result = internalMap.compute(key, remappingFunction);
-        readKeys.add(key);
+        markRead(key);
         return result;
     }
 
@@ -576,7 +586,7 @@ public class TrackingMap<K, V> implements Map<K, V> {
      */
     public V merge(K key, V value, BiFunction<? super V, ? super V, ? extends V> remappingFunction) {
         V result = internalMap.merge(key, value, remappingFunction);
-        readKeys.add(key);
+        markRead(key);
         return result;
     }
 
@@ -592,7 +602,7 @@ public class TrackingMap<K, V> implements Map<K, V> {
      */
     public V getOrDefault(Object key, V defaultValue) {
         V result = internalMap.getOrDefault(key, defaultValue);
-        readKeys.add(key);
+        markRead(key);
         return result;
     }
 
@@ -635,7 +645,7 @@ public class TrackingMap<K, V> implements Map<K, V> {
         }
         Map.Entry<K, V> entry = asNavigable.lowerEntry(key);
         if (entry != null) {
-            readKeys.add(entry.getKey());
+            markRead(entry.getKey());
         }
         return entry;
     }
@@ -655,7 +665,7 @@ public class TrackingMap<K, V> implements Map<K, V> {
         }
         K result = asNavigable.lowerKey(key);
         if (result != null) {
-            readKeys.add(result);
+            markRead(result);
         }
         return result;
     }
@@ -676,7 +686,7 @@ public class TrackingMap<K, V> implements Map<K, V> {
         }
         Map.Entry<K, V> entry = asNavigable.floorEntry(key);
         if (entry != null) {
-            readKeys.add(entry.getKey());
+            markRead(entry.getKey());
         }
         return entry;
     }
@@ -696,7 +706,7 @@ public class TrackingMap<K, V> implements Map<K, V> {
         }
         K result = asNavigable.floorKey(key);
         if (result != null) {
-            readKeys.add(result);
+            markRead(result);
         }
         return result;
     }
@@ -717,7 +727,7 @@ public class TrackingMap<K, V> implements Map<K, V> {
         }
         Map.Entry<K, V> entry = asNavigable.ceilingEntry(key);
         if (entry != null) {
-            readKeys.add(entry.getKey());
+            markRead(entry.getKey());
         }
         return entry;
     }
@@ -737,7 +747,7 @@ public class TrackingMap<K, V> implements Map<K, V> {
         }
         K result = asNavigable.ceilingKey(key);
         if (result != null) {
-            readKeys.add(result);
+            markRead(result);
         }
         return result;
     }
@@ -758,7 +768,7 @@ public class TrackingMap<K, V> implements Map<K, V> {
         }
         Map.Entry<K, V> entry = asNavigable.higherEntry(key);
         if (entry != null) {
-            readKeys.add(entry.getKey());
+            markRead(entry.getKey());
         }
         return entry;
     }
@@ -778,7 +788,7 @@ public class TrackingMap<K, V> implements Map<K, V> {
         }
         K result = asNavigable.higherKey(key);
         if (result != null) {
-            readKeys.add(result);
+            markRead(result);
         }
         return result;
     }
@@ -798,7 +808,7 @@ public class TrackingMap<K, V> implements Map<K, V> {
         }
         Map.Entry<K, V> entry = asNavigable.firstEntry();
         if (entry != null) {
-            readKeys.add(entry.getKey());
+            markRead(entry.getKey());
         }
         return entry;
     }
@@ -818,7 +828,7 @@ public class TrackingMap<K, V> implements Map<K, V> {
         }
         Map.Entry<K, V> entry = asNavigable.lastEntry();
         if (entry != null) {
-            readKeys.add(entry.getKey());
+            markRead(entry.getKey());
         }
         return entry;
     }
@@ -1015,7 +1025,7 @@ public class TrackingMap<K, V> implements Map<K, V> {
         }
         K result = asSorted.firstKey();
         if (result != null) {
-            readKeys.add(result);
+            markRead(result);
         }
         return result;
     }
@@ -1034,7 +1044,7 @@ public class TrackingMap<K, V> implements Map<K, V> {
         }
         K result = asSorted.lastKey();
         if (result != null) {
-            readKeys.add(result);
+            markRead(result);
         }
         return result;
     }

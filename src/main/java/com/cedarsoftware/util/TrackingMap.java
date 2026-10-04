@@ -85,6 +85,7 @@ import java.util.function.Function;
  *         limitations under the License.
  */
 public class TrackingMap<K, V> implements Map<K, V> {
+    private static final int PRESIZE_LIMIT = 1024;
     private final Map<K, V> internalMap;
     /**
      * Tracks all keys that were read via {@link #get(Object)} or
@@ -136,10 +137,10 @@ public class TrackingMap<K, V> implements Map<K, V> {
         if (map instanceof ConcurrentMap) {
             return new ConcurrentSet<>();
         }
-        // Pre-size the HashSet with load-factor headroom (capacity = size/0.75 + 1) so
-        // tracking every key of a fully-read map never rehashes — new HashSet<>(size)
-        // under-sizes the table and rehashes at 0.75*size.
-        return new HashSet<>(Math.max(16, (int) (map.size() / 0.75f) + 1));
+        // Pre-size for up to PRESIZE_LIMIT keys, with load-factor headroom (capacity = size/0.75 + 1), so
+        // tracking every key of a fully-read map that size never rehashes. A larger map's set grows as its keys
+        // are read: pre-sizing for a million entries allocated a 2M-slot table on the first get().
+        return new HashSet<>(Math.max(16, (int) (Math.min(map.size(), PRESIZE_LIMIT) / 0.75f) + 1));
     }
 
     /**

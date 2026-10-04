@@ -76,8 +76,14 @@ public final class FastWriter extends Writer {
         if (out == null) {
             ExceptionUtilities.uncheckedThrow(new IOException("FastWriter stream is closed"));
         }
-        cb[nextChar++] = (char) c;
-        if (nextChar >= cb.length) {
+        int n = nextChar;
+        if (n >= cb.length) {       // only after an earlier flush of the full buffer failed: retry it first
+            flushBuffer();
+            n = 0;
+        }
+        cb[n++] = (char) c;
+        nextChar = n;
+        if (n >= cb.length) {
             flushBuffer();
         }
     }
@@ -143,8 +149,8 @@ public final class FastWriter extends Writer {
             off += available;
             len -= available;
             nextChar = cb.length;
-            flushBuffer();
         }
+        flushBuffer();      // also sends a buffer left full by an earlier failed flush, before it is reused
 
         // Write full buffer chunks directly - ensures buffer alignment
         try {
@@ -178,21 +184,35 @@ public final class FastWriter extends Writer {
         }
     }
 
+    /**
+     * Flushes and closes the underlying writer. The writer is closed afterwards even if either fails; a flush
+     * failure is thrown with the close failure suppressed into it, as BufferedWriter does.
+     */
     @Override
     public void close() {
-        if (out == null) {
+        Writer w = out;
+        if (w == null) {
             return;
         }
+        Throwable primary = null;
         try {
             flushBuffer();
-        } finally {
-            try {
-                out.close();
-            } catch (IOException e) {
-                ExceptionUtilities.uncheckedThrow(e);
+        } catch (Throwable t) {
+            primary = t;
+        }
+        out = null;
+        cb = null;
+        try {
+            w.close();
+        } catch (Throwable t) {
+            if (primary == null) {
+                primary = t;
+            } else {
+                primary.addSuppressed(t);
             }
-            out = null;
-            cb = null;
+        }
+        if (primary != null) {
+            ExceptionUtilities.uncheckedThrow(primary);
         }
     }
 }

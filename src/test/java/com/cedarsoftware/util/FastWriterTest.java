@@ -455,8 +455,8 @@ public class FastWriterTest {
         // At this point the buffer is full and already flushed (String write behavior)
         assertEquals(fillContent, stringWriter.toString());
 
-        // Now nextChar is 0 (empty buffer), we'll make it full without flushing
-        // by accessing the buffer directly using reflection
+        // Now nextChar is 0 (empty buffer). Mark the buffer full without flushing it, by reflection: the state a
+        // failed flush of the full buffer leaves (its contents, still "abcdefghijklmnop", not yet sent)
         try {
             java.lang.reflect.Field nextCharField = FastWriter.class.getDeclaredField("nextChar");
             nextCharField.setAccessible(true);
@@ -466,11 +466,11 @@ public class FastWriterTest {
             String additionalContent = "MoreContent";
             fastWriter.write(additionalContent, 0, additionalContent.length());
 
-            // Since available was 0, it skipped the first if-block
-            assertEquals(fillContent, stringWriter.toString());
+            // The full buffer is sent before it is reused, not written over (which lost its characters)
+            assertEquals(fillContent + fillContent, stringWriter.toString());
 
             fastWriter.flush();
-            assertEquals(fillContent + additionalContent, stringWriter.toString());
+            assertEquals(fillContent + fillContent + additionalContent, stringWriter.toString());
         } catch (Exception e) {
             fail("Test failed due to reflection error: " + e.getMessage());
         }

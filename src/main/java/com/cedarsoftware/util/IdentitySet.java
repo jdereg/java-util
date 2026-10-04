@@ -2,6 +2,7 @@ package com.cedarsoftware.util;
 
 import java.util.AbstractSet;
 import java.util.Collection;
+import java.util.ConcurrentModificationException;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
 
@@ -66,6 +67,7 @@ public class IdentitySet<T> extends AbstractSet<T> {
     private int threshold;
     private int mask;
     private final float loadFactor;
+    private int modCount;   // adds, removes and clears: lets an iterator detect a change it did not make
 
     /**
      * Creates a new IdentitySet with default initial capacity (16).
@@ -153,6 +155,7 @@ public class IdentitySet<T> extends AbstractSet<T> {
                     deletedCount--;
                 }
                 size++;
+                modCount++;
                 return true;
             }
             if (existing == DELETED) {
@@ -168,6 +171,7 @@ public class IdentitySet<T> extends AbstractSet<T> {
             e[firstDeleted] = element;
             deletedCount--;
             size++;
+            modCount++;
             return true;
         }
         throw new IllegalStateException("IdentitySet is full and cannot accept additional elements");
@@ -229,6 +233,7 @@ public class IdentitySet<T> extends AbstractSet<T> {
                 e[index] = DELETED;
                 size--;
                 deletedCount++;
+                modCount++;
                 return true;
             }
             index = (index + 1) & mask;
@@ -274,6 +279,7 @@ public class IdentitySet<T> extends AbstractSet<T> {
         }
         size = 0;
         deletedCount = 0;
+        modCount++;
     }
 
     /**
@@ -318,12 +324,15 @@ public class IdentitySet<T> extends AbstractSet<T> {
     }
 
     /**
-     * Iterator implementation that skips null and DELETED slots.
+     * Iterator implementation that skips null and DELETED slots. Fail-fast: a change to the set made other than
+     * through this iterator throws ConcurrentModificationException from next() and remove(), as the JDK's
+     * identity set does. Going on would read a table that may have been rebuilt.
      */
     private class IdentitySetIterator implements Iterator<T> {
         private int index = 0;
         private int remaining = size;
         private int lastReturnedIndex = -1;
+        private int expectedModCount = modCount;
 
         @Override
         public boolean hasNext() {
@@ -333,6 +342,9 @@ public class IdentitySet<T> extends AbstractSet<T> {
         @Override
         @SuppressWarnings("unchecked")
         public T next() {
+            if (modCount != expectedModCount) {
+                throw new ConcurrentModificationException();
+            }
             if (remaining <= 0) {
                 throw new NoSuchElementException();
             }
@@ -355,9 +367,13 @@ public class IdentitySet<T> extends AbstractSet<T> {
             if (lastReturnedIndex < 0) {
                 throw new IllegalStateException();
             }
+            if (modCount != expectedModCount) {
+                throw new ConcurrentModificationException();
+            }
             elements[lastReturnedIndex] = DELETED;
             size--;
             deletedCount++;
+            expectedModCount = ++modCount;
             lastReturnedIndex = -1;
         }
     }

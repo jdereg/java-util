@@ -55,9 +55,9 @@ class PatternConversionsTest {
         assertPattern("^abc$", "abc");
         assertPattern("\\Aabc\\Z", "abc");
 
-        // Should trim input string
+        // Whitespace is part of the regex: not trimmed
         Pattern p = converter.convert(" \\d+ ", Pattern.class);
-        assertEquals("\\d+", p.pattern());
+        assertEquals(" \\d+ ", p.pattern());
     }
 
     @Test
@@ -66,9 +66,9 @@ class PatternConversionsTest {
         assertThat(converter.convert(Pattern.compile("\\d+"), String.class)).isEqualTo("\\d+");
         assertThat(converter.convert(Pattern.compile("\\w+"), String.class)).isEqualTo("\\w+");
 
-        // With flags
+        // With flags, written inline
         assertThat(converter.convert(Pattern.compile("abc", Pattern.CASE_INSENSITIVE), String.class))
-                .isEqualTo("abc");
+                .isEqualTo("(?i)abc");
 
         // Complex patterns
         assertThat(converter.convert(Pattern.compile("(foo|bar)[0-9]+"), String.class))

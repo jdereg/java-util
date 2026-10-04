@@ -982,8 +982,9 @@ final class StringConversions {
         }
     }
 
+    // not trimmed: whitespace is part of a regex
     static Pattern toPattern(Object from, Converter converter) {
-        String patternString = ((String) from).trim();
+        String patternString = (String) from;
         Pattern pattern = RegexUtilities.getCachedPattern(patternString);
         if (pattern == null) {
             throw new IllegalArgumentException("Invalid regex pattern: " + patternString);

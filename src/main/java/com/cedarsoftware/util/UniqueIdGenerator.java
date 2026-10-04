@@ -328,8 +328,15 @@ public final class UniqueIdGenerator {
     private static long waitForNextMillis(long lastMs) {
         long ts = currentTimeMillis();
         int parkCount = 0;
+        final long waitStart = System.nanoTime();
 
         while (ts <= lastMs) {
+            // The wall clock is behind ids already issued (it stepped back): after one real millisecond, move the
+            // stream on by one millisecond of its own instead of waiting for the wall clock to catch up. The stream
+            // still issues no more than one millisecond's ids per real millisecond.
+            if (System.nanoTime() - waitStart >= 1_000_000L) {
+                return lastMs + 1;
+            }
             // Spin phase: do multiple spin-waits before checking time (reduces syscall overhead)
             // Check time every 8 iterations instead of every iteration
             for (int i = 0; i < 64; i++) {

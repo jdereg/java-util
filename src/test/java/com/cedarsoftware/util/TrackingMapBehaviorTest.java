@@ -235,4 +235,20 @@ class TrackingMapBehaviorTest {
             return super.remove(key, value);
         }
     }
+
+    /**
+     * replaceContents() given the map itself, its wrapped map, or a view of it replaces the contents with what that
+     * map held. It cleared first, which also emptied the source, and printed {}.
+     */
+    @Test
+    void replaceContentsFromItselfOrAViewKeepsThoseContents() {
+        TrackingMap<String, Integer> tracking = new TrackingMap<>(abcd());
+        tracking.replaceContents(tracking);
+        assertEquals(abcd(), tracking);
+        tracking.replaceContents(tracking.getWrappedMap());
+        assertEquals(abcd(), tracking);
+        tracking.replaceContents(tracking.headMap("c"));
+        assertEquals(Arrays.asList("a", "b"), new ArrayList<>(tracking.keySet()));
+        assertEquals("{a=1, b=2}", tracking.toString());
+    }
 }

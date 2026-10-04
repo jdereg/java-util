@@ -5,13 +5,16 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.NavigableMap;
 import java.util.NavigableSet;
 import java.util.Set;
 import java.util.SortedMap;
+import java.util.TreeMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ConcurrentNavigableMap;
+import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Function;
@@ -413,14 +416,35 @@ public class TrackingMap<K, V> implements Map<K, V> {
 
     /**
      * Replace all contents of the wrapped map with those from the provided map.
-     * The underlying map instance remains the same.
+     * The underlying map instance remains the same. {@code map} may be this map, its wrapped map,
+     * or a view of either: their contents are copied before this map is cleared.
      *
      * @param map map providing new contents; must not be {@code null}
      */
+    @SuppressWarnings("unchecked")
     public void replaceContents(Map<K, V> map) {
         Convention.throwIfNull(map, "Cannot replace contents with null");
+        if (map instanceof TrackingMap) {
+            map = ((TrackingMap<K, V>) map).internalMap;
+        }
+        if (map == internalMap || (asNavigable != null && map instanceof SortedMap && !isWholeMap(map))) {
+            map = copyOf(map);      // this map, or perhaps a view of it, which clear() would empty
+        }
         clear();
-        putAll(map);
+        internalMap.putAll(map);
+    }
+
+    /** A TreeMap or ConcurrentSkipListMap itself, never a view of another map (their views are other classes). */
+    private static boolean isWholeMap(Map<?, ?> map) {
+        return map.getClass() == TreeMap.class || map.getClass() == ConcurrentSkipListMap.class;
+    }
+
+    /** A copy that keeps {@code map}'s key matching; a sorted copy builds, and is put back, in linear time. */
+    private static <K, V> Map<K, V> copyOf(Map<K, V> map) {
+        if (map instanceof SortedMap) {
+            return new TreeMap<>((SortedMap<K, V>) map);
+        }
+        return map instanceof IdentityHashMap ? new IdentityHashMap<>(map) : new LinkedHashMap<>(map);
     }
 
     /**

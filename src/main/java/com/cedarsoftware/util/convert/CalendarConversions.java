@@ -108,8 +108,10 @@ final class CalendarConversions {
         ZonedDateTime zdt = toZonedDateTime(from, converter);
         String zoneId = zdt.getZone().getId();
 
-        // If the zoneId does NOT contain "/", assume it's an abbreviation.
-        if (!zoneId.contains("/")) {
+        // If the zoneId does NOT contain "/", assume it's an abbreviation, and write the region it is read back as
+        // (CET as Europe/Berlin), so the text keeps the instant even where the two once differed. GMT is read back as
+        // GMT: written as Europe/London it gained London's summer time (12:00 GMT became 13:00+01:00 in July).
+        if (!zoneId.contains("/") && !"GMT".equals(zoneId)) {
             String fullZone = DateUtilities.ABBREVIATION_TO_TIMEZONE.get(zoneId);
             if (fullZone != null) {
                 // Adjust the ZonedDateTime to use the full zone name.

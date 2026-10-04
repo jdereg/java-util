@@ -1935,7 +1935,8 @@ class ConverterTest
             public ZoneId getZoneId() { return ZoneId.of("GMT"); }
         });
         assertEquals("2015-01-17T08:34:49.000Z", converter1.convert(cal.getTime(), String.class));
-        assertEquals("2015-01-17T08:34:49Z[Europe/London]", converter1.convert(cal, String.class));
+        // a GMT Calendar keeps GMT: as Europe/London it would gain London's summer time in July
+        assertEquals("2015-01-17T08:34:49Z[GMT]", converter1.convert(cal, String.class));
     }
 
     @Test

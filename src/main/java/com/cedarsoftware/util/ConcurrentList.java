@@ -320,21 +320,94 @@ public final class ConcurrentList<E> implements List<E>, Deque<E>, RandomAccess,
         return true;
     }
 
+    /**
+     * Removes the first occurrence. o's equals runs outside this list's locks (it may lock another list: running
+     * it under the write lock deadlocked two lists removing from each other). Elements are copied out under the
+     * read lock in doubling chunks and compared with no lock held, so finding index i copies about i elements.
+     * The removal is made under the write lock if indexes 0 .. i still hold the elements compared; a miss is
+     * reported once the whole list is seen to hold exactly the elements compared. Otherwise the search runs again.
+     */
     @Override
     public boolean remove(Object o) {
-        lock.writeLock().lock();
-        try {
-            // Single direct scan instead of get(i) per index (each of which
-            // re-acquired the read lock and redid the bucket math)
-            int i = indexOf(o);
-            if (i < 0) {
-                return false;
+        while (true) {
+            Object[] seen = new Object[16];
+            int count = 0;
+            int match = -1;
+            while (match < 0) {
+                int from = count;
+                lock.readLock().lock();
+                try {
+                    int n = Math.min(size() - from, Math.max(16, from));
+                    if (n <= 0) {
+                        break;
+                    }
+                    if (from + n > seen.length) {
+                        seen = Arrays.copyOf(seen, Math.max(seen.length * 2, from + n));
+                    }
+                    copyRange(from, n, seen, from);
+                    count = from + n;
+                } finally {
+                    lock.readLock().unlock();
+                }
+                for (int i = from; i < count; i++) {
+                    if (Objects.equals(o, seen[i])) {
+                        match = i;
+                        break;
+                    }
+                }
             }
-            remove(i);
-            return true;
-        } finally {
-            lock.writeLock().unlock();
+            if (match < 0) {
+                lock.readLock().lock();
+                try {
+                    if (holdsAt(seen, count, 0, count)) {
+                        return false;
+                    }
+                } finally {
+                    lock.readLock().unlock();
+                }
+                continue;
+            }
+            lock.writeLock().lock();
+            try {
+                if (holdsAt(seen, -1, 0, match + 1)) {     // the prefix only: the list may go on past the copy
+                    remove(match);
+                    return true;
+                }
+            } finally {
+                lock.writeLock().unlock();
+            }
         }
+    }
+
+    /** {@link #holdsAt(Object[], int, int, int)} for a snapshot that fills its array. */
+    private boolean holdsAt(Object[] snapshot, int from, int to) {
+        return holdsAt(snapshot, snapshot.length, from, to);
+    }
+
+    /**
+     * Under a lock: whether indexes from .. to - 1 hold exactly (by identity) the snapshot's elements at those
+     * indexes, and the list is length long when the range reaches length (-1: whatever its length).
+     */
+    private boolean holdsAt(Object[] snapshot, int length, int from, int to) {
+        int sz = size();
+        if (sz < to || (to == length && sz != length)) {
+            return false;
+        }
+        long pos = head.get() + from;
+        int i = from;
+        while (i < to) {
+            AtomicReferenceArray<Object> bucket = getBucket(bucketIndex(pos));
+            int offset = bucketOffset(pos);
+            int n = Math.min(BUCKET_SIZE - offset, to - i);
+            for (int k = 0; k < n; k++) {
+                if (bucket.get(offset + k) != snapshot[i + k]) {
+                    return false;
+                }
+            }
+            i += n;
+            pos += n;
+        }
+        return true;
     }
 
     @Override
@@ -350,12 +423,13 @@ public final class ConcurrentList<E> implements List<E>, Deque<E>, RandomAccess,
     @Override
     public boolean addAll(Collection<? extends E> c) {
         Objects.requireNonNull(c, "collection cannot be null");
+        Object[] additions = c.toArray();   // c's code runs before this list's lock is held (c may lock this list)
+        if (additions.length == 0) {
+            return false;
+        }
         lock.writeLock().lock();
         try {
-            if (c.isEmpty()) {
-                return false;
-            }
-            appendAllNoLock(c);
+            appendNoLock(additions);
             return true;
         } finally {
             lock.writeLock().unlock();
@@ -363,26 +437,26 @@ public final class ConcurrentList<E> implements List<E>, Deque<E>, RandomAccess,
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     public boolean addAll(int index, Collection<? extends E> c) {
         Objects.requireNonNull(c, "collection cannot be null");
+        Object[] additions = c.toArray();   // c's code runs before this list's lock is held (c may lock this list)
         lock.writeLock().lock();
         try {
             int currentSize = size();
             if (index < 0 || index > currentSize) {
                 throw new IndexOutOfBoundsException("Index: " + index + ", Size: " + currentSize);
             }
-            if (c.isEmpty()) {
+            if (additions.length == 0) {
                 return false;
             }
-
-            List<E> additions = new ArrayList<>(c);
             if (index == currentSize) {
-                appendAllNoLock(additions);
+                appendNoLock(additions);
                 return true;
             }
 
             List<E> elements = snapshotToListNoLock(currentSize);
-            elements.addAll(index, additions);
+            elements.addAll(index, (List<E>) Arrays.asList(additions));
             rebuild(elements);
             return true;
         } finally {
@@ -393,72 +467,59 @@ public final class ConcurrentList<E> implements List<E>, Deque<E>, RandomAccess,
     @Override
     public boolean removeAll(Collection<?> c) {
         Objects.requireNonNull(c, "collection cannot be null");
-        lock.writeLock().lock();
-        try {
-            int sz = size();
-            if (sz == 0 || c.isEmpty()) {
-                return false;
-            }
-
-            Set<?> removeSet = c instanceof Set ? (Set<?>) c : new HashSet<>(c);
-            List<E> retained = new ArrayList<>(sz);
-            long h = head.get();
-            boolean modified = false;
-            for (int i = 0; i < sz; i++) {
-                long pos = h + i;
-                @SuppressWarnings("unchecked")
-                E element = (E) getBucket(bucketIndex(pos)).get(bucketOffset(pos));
-                if (removeSet.contains(element)) {
-                    modified = true;
-                } else {
-                    retained.add(element);
-                }
-            }
-
-            if (modified) {
-                rebuild(retained);
-            }
-            return modified;
-        } finally {
-            lock.writeLock().unlock();
+        if (c.isEmpty()) {
+            return false;
         }
+        return removeMatching(c, true);
     }
 
     @Override
     public boolean retainAll(Collection<?> c) {
         Objects.requireNonNull(c, "collection cannot be null");
-        lock.writeLock().lock();
-        try {
-            int sz = size();
-            if (sz == 0) {
-                return false;
-            }
-            if (c.isEmpty()) {
+        if (c.isEmpty()) {
+            lock.writeLock().lock();
+            try {
+                if (size() == 0) {
+                    return false;
+                }
                 clear();
                 return true;
+            } finally {
+                lock.writeLock().unlock();
             }
+        }
+        return removeMatching(c, false);
+    }
 
-            Set<?> retainedSet = c instanceof Set ? (Set<?>) c : new HashSet<>(c);
-            List<E> retained = new ArrayList<>(sz);
-            long h = head.get();
-            boolean modified = false;
-            for (int i = 0; i < sz; i++) {
-                long pos = h + i;
-                @SuppressWarnings("unchecked")
-                E element = (E) getBucket(bucketIndex(pos)).get(bucketOffset(pos));
-                if (retainedSet.contains(element)) {
-                    retained.add(element);
-                } else {
-                    modified = true;
+    /**
+     * removeAll and retainAll. Which elements go is decided on a snapshot, asking c outside this list's locks
+     * (c's code may lock another list: running it under the write lock deadlocked two lists working on each
+     * other), and the decision is applied under the write lock if the list still holds exactly the snapshot's
+     * elements; otherwise it is decided again.
+     */
+    @SuppressWarnings("unchecked")
+    private boolean removeMatching(Collection<?> c, boolean removeContained) {
+        Collection<?> lookup = c instanceof Set ? c : new HashSet<>(c);
+        while (true) {
+            Object[] snapshot = toArray();
+            List<E> retained = new ArrayList<>(snapshot.length);
+            for (Object element : snapshot) {
+                if (lookup.contains(element) != removeContained) {
+                    retained.add((E) element);
                 }
             }
-
-            if (modified) {
-                rebuild(retained);
+            if (retained.size() == snapshot.length) {
+                return false;
             }
-            return modified;
-        } finally {
-            lock.writeLock().unlock();
+            lock.writeLock().lock();
+            try {
+                if (holdsAt(snapshot, 0, snapshot.length)) {
+                    rebuild(retained);
+                    return true;
+                }
+            } finally {
+                lock.writeLock().unlock();
+            }
         }
     }
 
@@ -923,19 +984,27 @@ public final class ConcurrentList<E> implements List<E>, Deque<E>, RandomAccess,
         return remove(o);
     }
 
+    /** Removes the last occurrence: searched on a snapshot as {@link #remove(Object)} searches. */
     @Override
     public boolean removeLastOccurrence(Object o) {
-        lock.writeLock().lock();
-        try {
-            // Single direct scan instead of get(i) per index
-            int i = lastIndexOf(o);
+        while (true) {
+            Object[] snapshot = toArray();
+            int i = snapshot.length - 1;
+            while (i >= 0 && !Objects.equals(o, snapshot[i])) {
+                i--;
+            }
             if (i < 0) {
                 return false;
             }
-            remove(i);
-            return true;
-        } finally {
-            lock.writeLock().unlock();
+            lock.writeLock().lock();
+            try {
+                if (holdsAt(snapshot, i, snapshot.length)) {
+                    remove(i);
+                    return true;
+                }
+            } finally {
+                lock.writeLock().unlock();
+            }
         }
     }
 
@@ -1099,10 +1168,6 @@ public final class ConcurrentList<E> implements List<E>, Deque<E>, RandomAccess,
         head.set(0);
         tail.set(0);
         sizeCounter.set(0);
-        appendNoLock(elements.toArray());
-    }
-
-    private void appendAllNoLock(Collection<? extends E> elements) {
         appendNoLock(elements.toArray());
     }
 

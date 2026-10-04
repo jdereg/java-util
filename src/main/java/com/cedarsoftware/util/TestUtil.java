@@ -7,6 +7,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Locale;
 
 /**
  * Useful Test utilities for common tasks
@@ -44,10 +45,10 @@ public class TestUtil
      * are passed in.
      */
     public static void assertContainsIgnoreCase(String source, String... contains) {
-        String lowerSource = source.toLowerCase();
+        String lowerSource = source.toLowerCase(Locale.ROOT);
         int offset = 0;
         for (String contain : contains) {
-            String lowerContain = contain.toLowerCase();
+            String lowerContain = contain.toLowerCase(Locale.ROOT);
             int idx = lowerSource.indexOf(lowerContain, offset);
             if (idx < 0) {
                 throw new AssertionError("'" + contain + "' not found in '" + source + "' (searching from position " + offset + ")");
@@ -71,10 +72,10 @@ public class TestUtil
      * are passed in.
      */
     public static boolean checkContainsIgnoreCase(String source, String... contains) {
-        String lowerSource = source.toLowerCase();
+        String lowerSource = source.toLowerCase(Locale.ROOT);
         int offset = 0;
         for (String contain : contains) {
-            String lowerContain = contain.toLowerCase();
+            String lowerContain = contain.toLowerCase(Locale.ROOT);
             int idx = lowerSource.indexOf(lowerContain, offset);
             if (idx == -1) {
                 return false;

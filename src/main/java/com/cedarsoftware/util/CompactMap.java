@@ -20,6 +20,7 @@ import java.util.IdentityHashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Objects;
@@ -551,7 +552,7 @@ public class CompactMap<K, V> implements Map<K, V> {
                     if (!reverse) {
                         Comparator<?> legacyComp = ((SortedMap<?, ?>) mapInstance).comparator();
                         if (legacyComp != null) {
-                            reverse = legacyComp.getClass().getName().toLowerCase().contains("reverse");
+                            reverse = legacyComp.getClass().getName().toLowerCase(Locale.ROOT).contains("reverse");
                         }
                     }
                     info = reverse ? 2 : 1;
@@ -2798,8 +2799,9 @@ public class CompactMap<K, V> implements Map<K, V> {
                     EnumMap.class.isAssignableFrom(rawMapType)) {
                 ordering = INSERTION;
             } else if (SortedMap.class.isAssignableFrom(rawMapType)) {
-                ordering = rawMapType.getName().toLowerCase().contains(REVERSE) ||
-                        rawMapType.getName().toLowerCase().contains("descending")
+                // Locale.ROOT: a Turkish default lowers DESCENDING to "descendıng" (dotless i)
+                String typeName = rawMapType.getName().toLowerCase(Locale.ROOT);
+                ordering = typeName.contains(REVERSE) || typeName.contains("descending")
                         ? REVERSE : SORTED;
             } else {
                 ordering = UNORDERED;
@@ -3478,7 +3480,7 @@ public class CompactMap<K, V> implements Map<K, V> {
             String named = salt == 0 ? configuration : configuration + ";salt:" + salt;
             // Generate SHA-1 hash and take first 16 characters
             String fullHash = EncryptionUtilities.calculateSHA1Hash(named.getBytes(StandardCharsets.UTF_8));
-            String hash16 = fullHash.substring(0, 16).toLowerCase();
+            String hash16 = fullHash.substring(0, 16).toLowerCase(Locale.ROOT);
 
             return TEMPLATE_CLASS_PREFIX + hash16;
         }

@@ -4104,6 +4104,16 @@ DateUtilities.parseDate("2024-01-15 10:30 America/New_York");
 DateUtilities.parseDate("2024-01-15 20:30 Asia/Kolkata");
 ```
 
+**An offset and a zone together** (`"2024-07-01T12:00+02:00[Europe/Berlin]"`, as `ZonedDateTime.toString()` writes
+it): the offset fixes the instant, and the result is shown in the zone, as java.time reads it. That covers the hour
+that repeats when clocks go back, and text written before a zone's rules changed. One exception: the zone's own offset
+cut to whole minutes (`"+00:53"` for Berlin's local mean time of `+00:53:28`, before 1893) means the zone's exact
+offset.
+```java
+DateUtilities.parseDate("2024-07-01T12:00+05:00[Europe/Berlin]");  // 07:00Z, shown as 09:00+02:00 in Berlin
+DateUtilities.parseDate("2024-10-27T02:30+01:00[Europe/Berlin]");  // the second 02:30, 01:30Z
+```
+
 ### Special Features
 
 **Unix Epoch:**

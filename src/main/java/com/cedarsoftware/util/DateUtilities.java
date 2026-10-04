@@ -1013,12 +1013,13 @@ public final class DateUtilities {
         }
 
         // 6) Build the ZonedDateTime
-        ZonedDateTime parsed = getDate(dateStr, zoneId, year, month, day, hour, min, sec, fracSec);
+        LocalDateTime local = getLocalDateTime(dateStr, year, month, day, hour, min, sec, fracSec);
+        ZonedDateTime parsed = ZonedDateTime.of(local, zoneId);
         if (!zoneFromText) {
             return parsed;
         }
         if (statedOffset != null) {
-            ZonedDateTime atOffset = atStatedOffset(parsed, statedOffset);
+            ZonedDateTime atOffset = atStatedOffset(parsed, local, statedOffset);
             if (atOffset != null) {
                 return atOffset;
             }
@@ -1028,23 +1029,33 @@ public final class DateUtilities {
 
     /**
      * The time at the offset written before the zone name -- "2025-11-02T01:30:00-05:00[America/New_York]", as
-     * ZonedDateTime.toString() writes it -- when the zone has that offset at that local time. In the hour a fall-back
-     * repeats, the offset says which of the two times is meant; the zone's rule alone answers the earlier. Null when
-     * the zone does not have that offset there (an offset truncated to the minute against local mean time, or text
-     * that contradicts its zone): the time is then read as the zone, or the abbreviation, reads it.
+     * ZonedDateTime.toString() writes it. In the hour a fall-back repeats, the offset says which of the two times is
+     * meant; the zone's rule alone answers the earlier. An offset the zone does not have at that local time wins too,
+     * as java.time reads it: the instant the text states, shown in the zone, so text written before the zone's rules
+     * changed keeps its instant. The exception is the zone's own offset cut to whole minutes, as "XXX" patterns write
+     * the local mean time of old dates ("+00:53" for Berlin's +00:53:28): null, and the time is read as the zone reads
+     * it. Null too when the offset cannot be read.
      */
-    private static ZonedDateTime atStatedOffset(ZonedDateTime parsed, String offsetText) {
+    private static ZonedDateTime atStatedOffset(ZonedDateTime parsed, LocalDateTime local, String offsetText) {
+        // local is the time as written: in the hour clocks skip, parsed has already moved it forward
         ZoneOffset offset;
         try {
             offset = ZoneOffset.of(offsetText);
         } catch (DateTimeException e) {
             return null;
         }
-        LocalDateTime local = parsed.toLocalDateTime();
-        if (!parsed.getZone().getRules().isValidOffset(local, offset)) {
-            return null;
+        ZoneRules rules = parsed.getZone().getRules();
+        if (rules.isValidOffset(local, offset)) {
+            return ZonedDateTime.ofLocal(local, parsed.getZone(), offset);
         }
-        return ZonedDateTime.ofLocal(local, parsed.getZone(), offset);
+        int seconds = offset.getTotalSeconds();
+        if (seconds % 60 == 0) {
+            ZoneOffset zones = rules.getOffset(local);
+            if (zones.getTotalSeconds() % 60 != 0 && zones.getTotalSeconds() / 60 * 60 == seconds) {
+                return null;    // the zone's offset without its seconds
+            }
+        }
+        return ZonedDateTime.ofInstant(local, offset, parsed.getZone());
     }
 
     /**
@@ -1257,16 +1268,15 @@ public final class DateUtilities {
         return value;
     }
 
-    private static ZonedDateTime getDate(String dateStr,
-                                ZoneId zoneId,
-                                String year,
-                                int month,
-                                String day,
-                                String hour,
-                                String min,
-                                String sec,
-                                String fracSec) {
-        // Build Calendar from date, time, and timezone components, and retrieve Date instance from Calendar.
+    private static LocalDateTime getLocalDateTime(String dateStr,
+                                                  String year,
+                                                  int month,
+                                                  String day,
+                                                  String hour,
+                                                  String min,
+                                                  String sec,
+                                                  String fracSec) {
+        // The date and time as written, validated; the caller places it in its zone.
         int y = Integer.parseInt(year);
         int d = Integer.parseInt(day);
 
@@ -1282,7 +1292,7 @@ public final class DateUtilities {
         }
 
         if (hour == null) { // no [valid] time portion
-            return ZonedDateTime.of(y, month, d, 0, 0, 0, 0, zoneId);
+            return LocalDateTime.of(y, month, d, 0, 0, 0, 0);
         } else {
             // Regex prevents these from ever failing to parse.
             int h = Integer.parseInt(hour);
@@ -1300,7 +1310,7 @@ public final class DateUtilities {
                 throw new IllegalArgumentException("Second must be between 0 and 59 inclusive, time: " + dateStr);
             }
 
-            return ZonedDateTime.of(y, month, d, h, mn, s, (int) nanoOfSec, zoneId);
+            return LocalDateTime.of(y, month, d, h, mn, s, (int) nanoOfSec);
         }
     }
 

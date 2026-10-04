@@ -43,13 +43,13 @@ final class CalendarConversions {
     private static final DateTimeFormatter OFFSET_FMT = new DateTimeFormatterBuilder()
             .appendPattern("yyyy-MM-dd'T'HH:mm:ss")
             .appendFraction(ChronoField.NANO_OF_SECOND, 0, 9, true)
-            .appendPattern("XXX")
+            .appendPattern("XXXXX")      // the offset's seconds when it has any (local mean time, before 1972)
             .toFormatter();
 
     private static final DateTimeFormatter ZONE_FMT = new DateTimeFormatterBuilder()
             .appendPattern("yyyy-MM-dd'T'HH:mm:ss")
             .appendFraction(ChronoField.NANO_OF_SECOND, 0, 9, true)
-            .appendPattern("XXX'['VV']'")
+            .appendPattern("XXXXX'['VV']'")
             .toFormatter();
 
     private CalendarConversions() {}

@@ -808,11 +808,8 @@ final class StringConversions {
                             "Due to Calendar implementation limitations, years 0 and 1 cannot be reliably represented.");
         }
 
-        TimeZone timeZone = ZoneIdConversions.timeZone(zdt.getZone());
-        Locale locale = Locale.getDefault();
-
-        // Get the appropriate calendar type for the locale
-        Calendar calendar = Calendar.getInstance(timeZone, locale);
+        // the calendar system of the default FORMAT locale, as Calendar.getInstance and every other conversion use
+        Calendar calendar = Calendar.getInstance(ZoneIdConversions.timeZone(zdt.getZone()));
         calendar.setTimeInMillis(zdt.toInstant().toEpochMilli());
 
         return calendar;

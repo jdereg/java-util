@@ -12,8 +12,9 @@ import java.util.NavigableMap;
 import java.util.NavigableSet;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentSkipListMap;
-import java.util.concurrent.locks.ReentrantLock;
+import java.util.concurrent.locks.StampedLock;
 import java.util.function.BiFunction;
+import java.util.function.Function;
 
 import static com.cedarsoftware.util.EncryptionUtilities.finalizeHash;
 
@@ -26,7 +27,8 @@ import static com.cedarsoftware.util.EncryptionUtilities.finalizeHash;
  * </p>
  * <ul>
  *   <li><b>O(log n) performance</b> - Uses {@link ConcurrentSkipListMap} for efficient lookups, insertions, and range queries</li>
- *   <li><b>Thread-safe</b> - Lock-free reads with minimal locking for writes only</li>
+ *   <li><b>Thread-safe</b> - Each read answers for the set as it stood between writes; reads take no lock
+ *       unless a write overlaps them</li>
  *   <li><b>Auto-merging behavior</b> - Overlapping or adjacent intervals are automatically merged</li>
  *   <li><b>Intelligent interval splitting</b> - Automatically splits intervals during removal operations</li>
  *   <li><b>Rich query API</b> - Comprehensive set of methods for finding, filtering, and navigating intervals</li>
@@ -191,12 +193,18 @@ import static com.cedarsoftware.util.EncryptionUtilities.finalizeHash;
  *
  * <h2>Thread Safety</h2>
  * <p>
- * IntervalSet is fully thread-safe with an optimized locking strategy:
+ * IntervalSet is fully thread-safe:
  * </p>
  * <ul>
- *   <li><b>Lock-free reads:</b> All query operations (contains, navigation, iteration) require no locking</li>
- *   <li><b>Minimal write locking:</b> Only mutation operations acquire the internal ReentrantLock</li>
- *   <li><b>Weakly consistent iteration:</b> Iterators don't throw ConcurrentModificationException</li>
+ *   <li><b>Writes</b> (add, remove, clear, ...) hold the internal {@link StampedLock} exclusively, one at a time.</li>
+ *   <li><b>Reads see whole writes:</b> contains, the navigation methods, the range lists, {@link #snapshot()},
+ *       copies, the set operations, equals, hashCode, toString and totalDuration each answer for the set as it
+ *       stood before or after any write, never partway through one. A read runs without locking and is kept if no
+ *       write overlapped it; otherwise it runs again under the read lock, or over a copy taken under it (so the
+ *       bounds' own hashCode, equals, toString and a caller's function never run under the lock).</li>
+ *   <li><b>Weakly consistent iteration:</b> {@link #iterator()}, {@link #descendingIterator()} and the key sets
+ *       walk the live set without locking and never throw ConcurrentModificationException, so they can show part
+ *       of a concurrent write. Use {@link #snapshot()} for a consistent list.</li>
  * </ul>
  *
  * <h2>Common Use Cases</h2>
@@ -278,7 +286,12 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
 
         @Override
         public int hashCode() {
-            return finalizeHash(Objects.hash(start, end));
+            return hash(start, end);
+        }
+
+        /** {@code finalizeHash(Objects.hash(start, end))}, without the varargs array. */
+        static int hash(Object start, Object end) {
+            return finalizeHash(31 * (31 + start.hashCode()) + end.hashCode());
         }
 
         @Override
@@ -301,8 +314,9 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
     // ──────────────────────────────────────────────────────────────────────────
     // State
     // ──────────────────────────────────────────────────────────────────────────
-    private final ConcurrentSkipListMap<T, T> intervals = new ConcurrentSkipListMap<>();
-    private final transient ReentrantLock lock = new ReentrantLock();   // guards writes only
+    private final ConcurrentSkipListMap<T, T> intervals;
+    // Writers hold it exclusively. Readers validate an optimistic stamp against it (see read).
+    private final transient StampedLock lock = new StampedLock();
 
     // ──────────────────────────────────────────────────────────────────────────
     // Constructors
@@ -313,6 +327,7 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
      * Overlapping or adjacent intervals will be automatically merged when added.
      */
     public IntervalSet() {
+        intervals = new ConcurrentSkipListMap<>();
     }
 
     /**
@@ -321,7 +336,7 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
      * @param other the IntervalSet to copy
      */
     public IntervalSet(IntervalSet<T> other) {
-        this.intervals.putAll(other.intervals);
+        intervals = other.copy();
     }
 
     /**
@@ -348,6 +363,7 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
      */
     public IntervalSet(List<Interval<T>> intervals) {
         Objects.requireNonNull(intervals, "intervals");
+        this.intervals = new ConcurrentSkipListMap<>();
         for (Interval<T> interval : intervals) {
             Objects.requireNonNull(interval, "interval");
             add(interval.getStart(), interval.getEnd());
@@ -382,22 +398,22 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
             return;  // Empty interval, ignore
         }
 
-        lock.lock();
+        long stamp = lock.writeLock();
         try {
             addWithMerge(start, end);
         } finally {
-            lock.unlock();
+            lock.unlockWrite(stamp);
         }
     }
 
     /**
      * Add an interval with merging logic.
      * <p>
-     * Mutation order matters for the lock-free readers: the merged interval is always
-     * written (put) <i>before</i> any absorbed interval is removed, so at every instant
-     * the union of stored entries is a superset of the pre-existing coverage. Without
-     * this ordering, a concurrent {@link #contains} could transiently report a value
-     * uncovered even though it is covered both before and after the merge.
+     * Readers do not act on the steps in between, with one exception: {@link #contains}
+     * trusts a covering entry it finds mid-write. That is sound because every step here
+     * stores only coverage the merged set will have: the merged interval grows toward its
+     * final end, and absorbed intervals lie inside it. The merged interval is also written
+     * (put) <i>before</i> any absorbed interval is removed, so coverage never dips.
      * </p>
      */
     private void addWithMerge(T start, T end) {
@@ -474,7 +490,7 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
     public boolean removeExact(T start, T end) {
         Objects.requireNonNull(start);
         Objects.requireNonNull(end);
-        lock.lock();
+        long stamp = lock.writeLock();
         try {
             T existingEnd = intervals.get(start);
             if (existingEnd != null && existingEnd.equals(end)) {
@@ -483,7 +499,7 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
             }
             return false;
         } finally {
-            lock.unlock();
+            lock.unlockWrite(stamp);
         }
     }
 
@@ -516,22 +532,22 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
             return;
         }
 
-        lock.lock();
+        long stamp = lock.writeLock();
         try {
             removeRangeWithSplitting(start, end);
         } finally {
-            lock.unlock();
+            lock.unlockWrite(stamp);
         }
     }
 
     /**
      * Remove range with interval splitting.
      * <p>
-     * Mutation order matters for the lock-free readers: any retained fragment (coverage
-     * outside [start, end)) is written <i>before</i> the interval it came from is removed
-     * or trimmed, so retained coverage is never transiently invisible. The range being
-     * removed may appear covered until the operation completes — the removal simply
-     * linearizes at its end, which is the correct semantic for a lock-guarded write.
+     * Readers do not act on the steps in between, with one exception: {@link #contains}
+     * trusts a covering entry it finds mid-write. That is sound because every step here
+     * stores only coverage the set already had: a retained fragment is carved from an
+     * interval still stored, and trims and removals only shrink. The range being removed
+     * may read as covered until the operation completes, which linearizes it at its end.
      * </p>
      */
     private void removeRangeWithSplitting(T start, T end) {
@@ -574,15 +590,29 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
      */
     public boolean contains(T value) {
         Objects.requireNonNull(value);
-        Map.Entry<T, T> e = intervals.floorEntry(value);
-        return e != null && e.getValue().compareTo(value) > 0;
+        long stamp = lock.tryOptimisticRead();
+        if (covers(intervals.floorEntry(value), value) != null) {
+            // Trusted without validation: every step of a write leaves the stored intervals covering no more
+            // than the set did before or will after it (see addWithMerge, removeRangeWithSplitting), so a value
+            // found covered is covered in a state the set really held. Only "not covered" can be an artifact.
+            return true;
+        }
+        if (stamp != 0L && lock.validate(stamp)) {
+            return false;
+        }
+        stamp = lock.readLock();
+        try {
+            return covers(intervals.floorEntry(value), value) != null;
+        } finally {
+            lock.unlockRead(stamp);
+        }
     }
 
     /**
      * Return the interval covering the specified <code>value</code>, or {@code null} if no interval contains it.
      * <p>Intervals are half-open ([start, end)), so a value v is contained
-     * in an interval {@code if start <= v < end }. This method performs a lock-free read
-     * via {@link ConcurrentSkipListMap#floorEntry(Object)} and does not mutate the underlying set.</p>
+     * in an interval {@code if start <= v < end }. This method reads the set as it stood between writes
+     * (see the class's Thread Safety notes) via {@link ConcurrentSkipListMap#floorEntry(Object)}.</p>
      * <p>
      * <b>Performance:</b> O(log n)
      * </p>
@@ -593,24 +623,21 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
      */
     public Interval<T> intervalContaining(T value) {
         Objects.requireNonNull(value);
-        Map.Entry<T, T> e = intervals.floorEntry(value);
-        return (e != null && e.getValue().compareTo(value) > 0) ? new Interval<>(e.getKey(), e.getValue()) : null;
+        return toInterval(entry(CONTAINING, value));
     }
 
     /**
      * Returns the <i>first</i> (lowest key) interval or {@code null}.
      */
     public Interval<T> first() {
-        Map.Entry<T, T> e = intervals.firstEntry();
-        return e == null ? null : new Interval<>(e.getKey(), e.getValue());
+        return toInterval(entry(FIRST, null));
     }
 
     /**
      * Returns the <i>last</i> (highest key) interval or {@code null}.
      */
     public Interval<T> last() {
-        Map.Entry<T, T> e = intervals.lastEntry();
-        return e == null ? null : new Interval<>(e.getKey(), e.getValue());
+        return toInterval(entry(LAST, null));
     }
 
     /**
@@ -626,15 +653,7 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
      */
     public Interval<T> nextInterval(T value) {
         Objects.requireNonNull(value);
-
-        Interval<T> containing = intervalContaining(value);
-        if (containing != null) {
-            return containing;
-        }
-
-        // Value is not contained, find the next interval that starts at or after the value
-        Map.Entry<T, T> entry = intervals.ceilingEntry(value);
-        return entry != null ? new Interval<>(entry.getKey(), entry.getValue()) : null;
+        return toInterval(entry(NEXT, value));
     }
 
     /**
@@ -648,8 +667,7 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
      */
     public Interval<T> higherInterval(T value) {
         Objects.requireNonNull(value);
-        Map.Entry<T, T> entry = intervals.higherEntry(value);
-        return entry != null ? new Interval<>(entry.getKey(), entry.getValue()) : null;
+        return toInterval(entry(HIGHER, value));
     }
 
     /**
@@ -665,8 +683,7 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
      */
     public Interval<T> previousInterval(T value) {
         Objects.requireNonNull(value);
-        Map.Entry<T, T> entry = intervals.floorEntry(value);
-        return entry != null ? new Interval<>(entry.getKey(), entry.getValue()) : null;
+        return toInterval(entry(FLOOR, value));
     }
 
     /**
@@ -680,8 +697,7 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
      */
     public Interval<T> lowerInterval(T value) {
         Objects.requireNonNull(value);
-        Map.Entry<T, T> entry = intervals.lowerEntry(value);
-        return entry != null ? new Interval<>(entry.getKey(), entry.getValue()) : null;
+        return toInterval(entry(LOWER, value));
     }
 
     /**
@@ -703,11 +719,7 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
             throw new IllegalArgumentException("toKey < fromKey");
         }
 
-        List<Interval<T>> result = new ArrayList<>();
-        for (Map.Entry<T, T> entry : intervals.subMap(fromKey, true, toKey, true).entrySet()) {
-            result.add(new Interval<>(entry.getKey(), entry.getValue()));
-        }
-        return result;
+        return read((map, from) -> toList(map.subMap(from, true, toKey, true), new ArrayList<>()), fromKey);
     }
 
     /**
@@ -721,11 +733,7 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
      */
     public List<Interval<T>> getIntervalsBefore(T toKey) {
         Objects.requireNonNull(toKey);
-        List<Interval<T>> result = new ArrayList<>();
-        for (Map.Entry<T, T> entry : intervals.headMap(toKey, false).entrySet()) {
-            result.add(new Interval<>(entry.getKey(), entry.getValue()));
-        }
-        return result;
+        return read((map, to) -> toList(map.headMap(to, false), new ArrayList<>()), toKey);
     }
 
     /**
@@ -739,11 +747,7 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
      */
     public List<Interval<T>> getIntervalsFrom(T fromKey) {
         Objects.requireNonNull(fromKey);
-        List<Interval<T>> result = new ArrayList<>();
-        for (Map.Entry<T, T> entry : intervals.tailMap(fromKey, true).entrySet()) {
-            result.add(new Interval<>(entry.getKey(), entry.getValue()));
-        }
-        return result;
+        return read((map, from) -> toList(map.tailMap(from, true), new ArrayList<>()), fromKey);
     }
 
     /**
@@ -816,7 +820,7 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
             throw new IllegalArgumentException("toKey < fromKey");
         }
 
-        lock.lock();
+        long stamp = lock.writeLock();
         try {
             NavigableMap<T, T> subMap = intervals.subMap(fromKey, true, toKey, true);
             int count = 0;
@@ -827,7 +831,7 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
             }
             return count;
         } finally {
-            lock.unlock();
+            lock.unlockWrite(stamp);
         }
     }
 
@@ -856,19 +860,19 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
      * </p>
      */
     public void clear() {
-        lock.lock();
+        long stamp = lock.writeLock();
         try {
             intervals.clear();
         } finally {
-            lock.unlock();
+            lock.unlockWrite(stamp);
         }
     }
 
     /**
      * Returns a snapshot copy of all intervals at the time of invocation.
      * <p>
-     * This method provides a consistent point-in-time view of all intervals by acquiring
-     * the internal write lock and creating a complete copy of the interval set. The returned
+     * This method provides a consistent point-in-time view of all intervals: a complete copy
+     * of the interval set as it stood between writes. The returned
      * list is completely independent of the original IntervalSet and will not reflect any
      * subsequent modifications.
      * </p>
@@ -882,11 +886,9 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
      * the iteration order of this IntervalSet.
      * </p>
      * <p>
-     * <b>Thread Safety:</b> This is the only "read" method that acquires the internal
-     * write lock to ensure the atomicity of the snapshot operation. All other query operations
-     * (contains, navigation, iteration) are lock-free. This method locks as a convenience
-     * to provide a guaranteed atomic snapshot rather than requiring users to manage
-     * external synchronization themselves.
+     * <b>Thread Safety:</b> The copy is taken without locking and kept if no write overlapped
+     * it; otherwise it is taken again under the read lock. Unlike {@link #iterator()}, it never
+     * shows part of a concurrent write.
      * </p>
      * <p>
      * <b>Performance:</b> O(n) where n is the number of intervals. The method creates
@@ -902,16 +904,7 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
      * ordered by start key. Never returns null; returns empty list if no intervals.
      */
     public List<Interval<T>> snapshot() {
-        lock.lock();
-        try {
-            List<Interval<T>> result = new ArrayList<>(intervals.size());
-            for (Map.Entry<T, T> entry : intervals.entrySet()) {
-                result.add(new Interval<>(entry.getKey(), entry.getValue()));
-            }
-            return result;
-        } finally {
-            lock.unlock();
-        }
+        return read((map, unused) -> toList(map, new ArrayList<>(map.size())), null);
     }
 
     /**
@@ -967,19 +960,23 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
      * <p>
      * The caller provides a <code>toDuration</code> function that maps each interval's
      * start and end values to a {@link Duration}. This method sums those Durations
-     * over all intervals in key order. This method uses the underlying set's lock-free
-     * iterator and may reflect concurrent modifications made during iteration.
+     * over all intervals in key order, as they stood between writes. If a write overlaps
+     * the call, {@code toDuration} may be applied to an interval more than once (as a
+     * {@link ConcurrentSkipListMap#compute} function may be), but only one pass is summed.
      * </p>
      *
      * @param toDuration a function that converts an interval [start, end) to a Duration
      * @return the sum of all interval durations
      */
     public Duration totalDuration(BiFunction<T, T, Duration> toDuration) {
-        Duration d = Duration.ZERO;
-        for (Interval<T> interval : this) {
-            d = d.plus(toDuration.apply(interval.getStart(), interval.getEnd()));
-        }
-        return d;
+        Objects.requireNonNull(toDuration, "toDuration");
+        return readWhole(map -> {
+            Duration d = Duration.ZERO;
+            for (Map.Entry<T, T> entry : map.entrySet()) {
+                d = d.plus(toDuration.apply(entry.getKey(), entry.getValue()));
+            }
+            return d;
+        });
     }
 
     /**
@@ -992,7 +989,9 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
      * </p>
      * <p>
      * The iterator reflects the state of the IntervalSet at the time of iteration
-     * and may see concurrent modifications.
+     * and may see concurrent modifications, including part of a write in progress
+     * (e.g. both halves of an interval being split, or neither). Use {@link #snapshot()}
+     * for a list that never does.
      * </p>
      *
      * @return an iterator over the intervals in this set, ordered by start key
@@ -1027,7 +1026,7 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
      */
     public IntervalSet<T> union(IntervalSet<T> other) {
         IntervalSet<T> result = new IntervalSet<>(this);
-        for (Interval<T> i : other) {
+        for (Interval<T> i : other.snapshot()) {
             result.add(i.getStart(), i.getEnd());
         }
         return result;
@@ -1044,38 +1043,7 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
      */
     public IntervalSet<T> intersection(IntervalSet<T> other) {
         Objects.requireNonNull(other, "other");
-        IntervalSet<T> result = new IntervalSet<>();
-        Iterator<Map.Entry<T, T>> it1 = intervals.entrySet().iterator();
-        Iterator<Map.Entry<T, T>> it2 = other.intervals.entrySet().iterator();
-        Map.Entry<T, T> a = it1.hasNext() ? it1.next() : null;
-        Map.Entry<T, T> b = it2.hasNext() ? it2.next() : null;
-
-        while (a != null && b != null) {
-            T aStart = a.getKey();
-            T aEnd = a.getValue();
-            T bStart = b.getKey();
-            T bEnd = b.getValue();
-
-            if (aEnd.compareTo(bStart) <= 0) {
-                a = it1.hasNext() ? it1.next() : null;
-                continue;
-            }
-            if (bEnd.compareTo(aStart) <= 0) {
-                b = it2.hasNext() ? it2.next() : null;
-                continue;
-            }
-            T maxStart = greaterOf(aStart, bStart);
-            T minEnd = aEnd.compareTo(bEnd) <= 0 ? aEnd : bEnd;
-            if (maxStart.compareTo(minEnd) < 0) {
-                result.add(maxStart, minEnd);
-            }
-            if (aEnd.compareTo(bEnd) <= 0) {
-                a = it1.hasNext() ? it1.next() : null;
-            } else {
-                b = it2.hasNext() ? it2.next() : null;
-            }
-        }
-        return result;
+        return readBoth(other, IntervalSet::intersect);
     }
 
     /**
@@ -1089,7 +1057,7 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
      */
     public IntervalSet<T> difference(IntervalSet<T> other) {
         IntervalSet<T> result = new IntervalSet<>(this);
-        for (Interval<T> interval : other) {
+        for (Interval<T> interval : other.snapshot()) {
             result.removeRange(interval.getStart(), interval.getEnd());
         }
         return result;
@@ -1121,8 +1089,202 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
      */
     public boolean intersects(IntervalSet<T> other) {
         Objects.requireNonNull(other, "other");
-        Iterator<Map.Entry<T, T>> it1 = intervals.entrySet().iterator();
-        Iterator<Map.Entry<T, T>> it2 = other.intervals.entrySet().iterator();
+        return readBoth(other, IntervalSet::overlap);
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // Equality, HashCode, toString
+    // ──────────────────────────────────────────────────────────────────────────
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        @SuppressWarnings("unchecked")
+        IntervalSet<T> that = (IntervalSet<T>) o;     // only equals() is asked of its bounds
+        return readBoth(that, IntervalSet::sameIntervals);
+    }
+
+    @Override
+    public int hashCode() {
+        return finalizeHash(readWhole(map -> {
+            int hash = 1;                                  // List.hashCode of the intervals
+            for (Map.Entry<T, T> entry : map.entrySet()) {
+                hash = 31 * hash + Interval.hash(entry.getKey(), entry.getValue());
+            }
+            return hash;
+        }));
+    }
+
+    @Override
+    public String toString() {
+        return readWhole(map -> {
+            StringBuilder sb = new StringBuilder("{");
+            boolean first = true;
+            for (Map.Entry<T, T> entry : map.entrySet()) {
+                if (!first) {
+                    sb.append(", ");
+                }
+                sb.append("[").append(entry.getKey()).append("-").append(entry.getValue()).append(")");
+                first = false;
+            }
+            return sb.append("}").toString();
+        });
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // Utilities
+    // ──────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Runs {@code lookup} against the map as it stood between writes. A lookup over several entries, or even one
+     * {@code floorEntry} (it finds a node, then reads its end), can see part of a write: while an interval is split,
+     * a value in its right half could read as uncovered. So the lookup runs without locking and its answer is kept
+     * if no write started or finished meanwhile (the skip list is safe to read during a write); otherwise it runs
+     * again under the read lock. {@code lookup} may run twice, so it must have no side effects, and it must not
+     * call back into this set.
+     */
+    private <R> R read(BiFunction<ConcurrentSkipListMap<T, T>, T, R> lookup, T value) {
+        long stamp = lock.tryOptimisticRead();     // 0 while a write holds the lock
+        if (stamp != 0L) {
+            R result = lookup.apply(intervals, value);
+            if (lock.validate(stamp)) {
+                return result;
+            }
+        }
+        stamp = lock.readLock();
+        try {
+            return lookup.apply(intervals, value);
+        } finally {
+            lock.unlockRead(stamp);
+        }
+    }
+
+    // The single-entry lookups entry() runs. A switch, not a lambda: a lambda per reader, passed through one
+    // shared method, cost JDK 8 12% to 50% per lookup.
+    private static final int FLOOR = 0;
+    private static final int LOWER = 1;
+    private static final int HIGHER = 2;
+    private static final int FIRST = 3;
+    private static final int LAST = 4;
+    private static final int CONTAINING = 5;
+    private static final int NEXT = 6;
+
+    /** {@link #read} for a single-entry lookup: the entry {@code lookup} names, as the set stood between writes. */
+    private Map.Entry<T, T> entry(int lookup, T value) {
+        long stamp = lock.tryOptimisticRead();     // 0 while a write holds the lock
+        if (stamp != 0L) {
+            Map.Entry<T, T> e = lookup(lookup, value);
+            if (lock.validate(stamp)) {
+                return e;
+            }
+        }
+        stamp = lock.readLock();
+        try {
+            return lookup(lookup, value);
+        } finally {
+            lock.unlockRead(stamp);
+        }
+    }
+
+    private Map.Entry<T, T> lookup(int lookup, T value) {
+        switch (lookup) {
+            case FLOOR:
+                return intervals.floorEntry(value);
+            case LOWER:
+                return intervals.lowerEntry(value);
+            case HIGHER:
+                return intervals.higherEntry(value);
+            case FIRST:
+                return intervals.firstEntry();
+            case LAST:
+                return intervals.lastEntry();
+            case CONTAINING:
+                return covers(intervals.floorEntry(value), value);
+            default: {                              // NEXT: the interval containing value, else the next one
+                Map.Entry<T, T> e = covers(intervals.floorEntry(value), value);
+                return e != null ? e : intervals.ceilingEntry(value);
+            }
+        }
+    }
+
+    /**
+     * Runs {@code f} over the whole map as it stood between writes: without locking, kept if no write started or
+     * finished meanwhile, otherwise run again over a {@link #copy()}. For readers that call the bounds' own
+     * methods (hashCode, toString, a caller's function), which therefore never run under this set's lock.
+     */
+    private <R> R readWhole(Function<NavigableMap<T, T>, R> f) {
+        long stamp = lock.tryOptimisticRead();
+        if (stamp != 0L) {
+            try {
+                R result = f.apply(intervals);
+                if (lock.validate(stamp)) {
+                    return result;
+                }
+            } catch (RuntimeException e) {
+                if (lock.validate(stamp)) {
+                    throw e;                       // not an artifact of a concurrent write
+                }
+            }
+        }
+        return f.apply(copy());
+    }
+
+    /**
+     * {@link #readWhole} over two sets: each map as it stood between its own writes. Kept if neither set was
+     * written meanwhile, otherwise run again over a {@link #copy()} of each. It never holds both sets' locks, so
+     * {@code a.intersects(b)} and {@code b.intersects(a)} cannot deadlock against waiting writers.
+     */
+    private <R> R readBoth(IntervalSet<T> other, BiFunction<NavigableMap<T, T>, NavigableMap<T, T>, R> f) {
+        long mine = lock.tryOptimisticRead();
+        long theirs = other.lock.tryOptimisticRead();
+        if (mine != 0L && theirs != 0L) {
+            try {
+                R result = f.apply(intervals, other.intervals);
+                if (lock.validate(mine) && other.lock.validate(theirs)) {
+                    return result;
+                }
+            } catch (RuntimeException e) {
+                if (lock.validate(mine) && other.lock.validate(theirs)) {
+                    throw e;
+                }
+            }
+        }
+        return f.apply(copy(), other.copy());
+    }
+
+    /** A copy of the map as it stood between writes, built in linear time (no comparisons). */
+    private ConcurrentSkipListMap<T, T> copy() {
+        return read((map, unused) -> new ConcurrentSkipListMap<>(map), null);
+    }
+
+    /** {@code floor} if its interval contains {@code value} (floor = the entry at or below it), else null. */
+    private static <T extends Comparable<? super T>> Map.Entry<T, T> covers(Map.Entry<T, T> floor, T value) {
+        return floor != null && floor.getValue().compareTo(value) > 0 ? floor : null;
+    }
+
+    private static <T extends Comparable<? super T>> Interval<T> toInterval(Map.Entry<T, T> e) {
+        return e == null ? null : new Interval<>(e.getKey(), e.getValue());
+    }
+
+    private static <T extends Comparable<? super T>> List<Interval<T>> toList(NavigableMap<T, T> map,
+                                                                              List<Interval<T>> result) {
+        for (Map.Entry<T, T> entry : map.entrySet()) {
+            result.add(new Interval<>(entry.getKey(), entry.getValue()));
+        }
+        return result;
+    }
+
+    /** The overlapping parts of two maps' intervals, merged into a new set (two-pointer walk, O(n + m)). */
+    private static <T extends Comparable<? super T>> IntervalSet<T> intersect(NavigableMap<T, T> mine,
+                                                                              NavigableMap<T, T> theirs) {
+        IntervalSet<T> result = new IntervalSet<>();
+        Iterator<Map.Entry<T, T>> it1 = mine.entrySet().iterator();
+        Iterator<Map.Entry<T, T>> it2 = theirs.entrySet().iterator();
         Map.Entry<T, T> a = it1.hasNext() ? it1.next() : null;
         Map.Entry<T, T> b = it2.hasNext() ? it2.next() : null;
 
@@ -1140,63 +1302,56 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
                 b = it2.hasNext() ? it2.next() : null;
                 continue;
             }
+            T maxStart = greaterOf(aStart, bStart);
+            T minEnd = aEnd.compareTo(bEnd) <= 0 ? aEnd : bEnd;
+            if (maxStart.compareTo(minEnd) < 0) {
+                result.add(maxStart, minEnd);
+            }
+            if (aEnd.compareTo(bEnd) <= 0) {
+                a = it1.hasNext() ? it1.next() : null;
+            } else {
+                b = it2.hasNext() ? it2.next() : null;
+            }
+        }
+        return result;
+    }
+
+    /** True if any interval of one map overlaps one of the other (two-pointer walk, stops at the first). */
+    private static <T extends Comparable<? super T>> boolean overlap(NavigableMap<T, T> mine,
+                                                                     NavigableMap<T, T> theirs) {
+        Iterator<Map.Entry<T, T>> it1 = mine.entrySet().iterator();
+        Iterator<Map.Entry<T, T>> it2 = theirs.entrySet().iterator();
+        Map.Entry<T, T> a = it1.hasNext() ? it1.next() : null;
+        Map.Entry<T, T> b = it2.hasNext() ? it2.next() : null;
+
+        while (a != null && b != null) {
+            if (a.getValue().compareTo(b.getKey()) <= 0) {
+                a = it1.hasNext() ? it1.next() : null;
+                continue;
+            }
+            if (b.getValue().compareTo(a.getKey()) <= 0) {
+                b = it2.hasNext() ? it2.next() : null;
+                continue;
+            }
             return true;
         }
         return false;
     }
 
-    // ──────────────────────────────────────────────────────────────────────────
-    // Equality, HashCode, toString
-    // ──────────────────────────────────────────────────────────────────────────
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) {
-            return true;
-        }
-        if (o == null || getClass() != o.getClass()) {
-            return false;
-        }
-        IntervalSet<?> that = (IntervalSet<?>) o;
-
-        Iterator<Interval<T>> thisIt = iterator();
-        Iterator<? extends Interval<?>> thatIt = that.iterator();
-
-        while (thisIt.hasNext() && thatIt.hasNext()) {
-            if (!thisIt.next().equals(thatIt.next())) {
+    /** True if both maps hold equal intervals in the same order. */
+    private static <T extends Comparable<? super T>> boolean sameIntervals(NavigableMap<T, T> mine,
+                                                                           NavigableMap<T, T> theirs) {
+        Iterator<Map.Entry<T, T>> it1 = mine.entrySet().iterator();
+        Iterator<Map.Entry<T, T>> it2 = theirs.entrySet().iterator();
+        while (it1.hasNext() && it2.hasNext()) {
+            Map.Entry<T, T> a = it1.next();
+            Map.Entry<T, T> b = it2.next();
+            if (!a.getKey().equals(b.getKey()) || !a.getValue().equals(b.getValue())) {
                 return false;
             }
         }
-        return !thisIt.hasNext() && !thatIt.hasNext();
+        return !it1.hasNext() && !it2.hasNext();
     }
-
-    @Override
-    public int hashCode() {
-        int hash = 1;
-        for (Interval<T> interval : this) {
-            hash = 31 * hash + interval.hashCode();
-        }
-        return finalizeHash(hash);
-    }
-
-    @Override
-    public String toString() {
-        StringBuilder sb = new StringBuilder("{");
-        boolean first = true;
-        for (Interval<T> i : this) {
-            if (!first) {
-                sb.append(", ");
-            }
-            sb.append("[").append(i.getStart()).append("-").append(i.getEnd()).append(")");
-            first = false;
-        }
-        sb.append("}");
-        return sb.toString();
-    }
-
-    // ──────────────────────────────────────────────────────────────────────────
-    // Utilities
-    // ──────────────────────────────────────────────────────────────────────────
 
     /**
      * Returns the greater of two comparable values.

@@ -223,13 +223,12 @@ public class IdentitySet<T> extends AbstractSet<T> {
                 return false;
             }
             if (existing == element) {  // Identity comparison - found it
+                // A tombstone, even when this empties the set: clearing a table that stays as large as the set
+                // ever was made each emptying remove cost a pass over every slot. add() rehashes away
+                // tombstones once live plus deleted slots reach the threshold.
                 e[index] = DELETED;
                 size--;
-                if (size == 0) {
-                    clear();
-                } else {
-                    deletedCount++;
-                }
+                deletedCount++;
                 return true;
             }
             index = (index + 1) & mask;
@@ -358,11 +357,7 @@ public class IdentitySet<T> extends AbstractSet<T> {
             }
             elements[lastReturnedIndex] = DELETED;
             size--;
-            if (size == 0) {
-                clear();
-            } else {
-                deletedCount++;
-            }
+            deletedCount++;
             lastReturnedIndex = -1;
         }
     }

@@ -618,30 +618,161 @@ public class TypeUtilities {
     public static Type inferElementType(Type container, Type fieldGenericType) {
         if (container instanceof ParameterizedType) {
             ParameterizedType pt = (ParameterizedType) container;
-            Type[] typeArgs = typeArguments(pt);
             Class<?> raw = getRawClass(pt.getRawType());
+            Type element;
             if (Map.class.isAssignableFrom(raw)) {
-                // For maps, expect two type arguments; the value type is at index 1.
-                if (typeArgs.length >= 2) {
-                    fieldGenericType = typeArgs[1];
-                }
+                ContainerArguments known = CONTAINER_ARGUMENTS.get(raw);
+                element = known.argument(known.mapValue, known.mapValueIndex, typeArguments(pt));
             } else if (Collection.class.isAssignableFrom(raw)) {
-                // For collections, expect one type argument.
-                if (typeArgs.length >= 1) {
-                    fieldGenericType = typeArgs[0];
-                }
+                ContainerArguments known = CONTAINER_ARGUMENTS.get(raw);
+                element = known.argument(known.collectionElement, known.collectionElementIndex, typeArguments(pt));
             } else if (raw.isArray()) {
                 // For custom ParameterizedType implementations with array raw types.
                 // Standard Java arrays cannot be parameterized, but custom implementations may use this.
-                if (typeArgs.length >= 1) {
-                    fieldGenericType = typeArgs[0];
-                }
+                Type[] typeArgs = typeArguments(pt);
+                element = typeArgs.length >= 1 ? typeArgs[0] : null;
             } else {
-                // For other types, default to Object.class.
-                fieldGenericType = Object.class;
+                return Object.class;            // for other types, Object
+            }
+            return element != null ? element : fieldGenericType;
+        }
+        Type component = extractArrayComponentType(container);
+        return component != null ? component : fieldGenericType;
+    }
+
+    /**
+     * Per container class: its type parameters, and Map's value type and Collection's element type in terms of
+     * them (HashMap: its V; MultiMap<K, V> extends HashMap<K, List<V>>: List<V>), worked out once, since walking
+     * the generic supertypes costs 40-80 ns. Each refers only to the class's own type variables.
+     */
+    private static final class ContainerArguments {
+        final TypeVariable<?>[] params;
+        final Type mapValue;
+        final Type collectionElement;
+        final int mapValueIndex;            // which of params mapValue is, or -1 (then it is substituted)
+        final int collectionElementIndex;
+
+        ContainerArguments(Class<?> raw) {
+            params = raw.getTypeParameters();
+            mapValue = Map.class.isAssignableFrom(raw) ? typeArgumentOf(raw, params, Map.class, 1, 0) : null;
+            collectionElement = Collection.class.isAssignableFrom(raw)
+                    ? typeArgumentOf(raw, params, Collection.class, 0, 0) : null;
+            mapValueIndex = indexOf(mapValue);
+            collectionElementIndex = indexOf(collectionElement);
+        }
+
+        private int indexOf(Type type) {
+            for (int i = 0; i < params.length; i++) {
+                if (params[i].equals(type)) {
+                    return i;
+                }
+            }
+            return -1;
+        }
+
+        /** {@code type} for a container with these arguments: the index-th argument, or by substitution. */
+        Type argument(Type type, int index, Type[] args) {
+            if (index >= 0) {
+                return index < args.length ? args[index] : null;
+            }
+            return substitute(type, params, args);
+        }
+    }
+
+    private static final ClassValue<ContainerArguments> CONTAINER_ARGUMENTS = new ClassValue<ContainerArguments>() {
+        @Override
+        protected ContainerArguments computeValue(Class<?> raw) {
+            return new ContainerArguments(raw);
+        }
+    };
+
+    /**
+     * The {@code index}-th type argument that {@code target} (Map, Collection) receives from {@code raw} given
+     * {@code args}, following the arguments up the hierarchy by substitution only (StringMap<V> extends
+     * Map<String, V>: Map's value type is StringMap's first argument). A variable no argument binds stays a variable,
+     * never its bound. Null if a raw supertype on the way leaves it unknown.
+     */
+    private static Type typeArgumentOf(Class<?> raw, Type[] args, Class<?> target, int index, int depth) {
+        if (raw == target) {
+            return args != null && index < args.length ? args[index] : null;
+        }
+        if (depth > 32) {
+            return null;
+        }
+        TypeVariable<?>[] params = raw.getTypeParameters();
+        Type superclass = raw.getGenericSuperclass();
+        Type[] interfaces = raw.getGenericInterfaces();
+        for (int i = -1; i < interfaces.length; i++) {
+            Type supertype = i < 0 ? superclass : interfaces[i];
+            Class<?> superRaw = supertype == null ? null : getRawClass(supertype);
+            if (superRaw == null || !target.isAssignableFrom(superRaw)) {
+                continue;
+            }
+            Type[] superArgs = null;
+            if (supertype instanceof ParameterizedType) {
+                Type[] declared = typeArguments((ParameterizedType) supertype);
+                superArgs = new Type[declared.length];
+                for (int k = 0; k < declared.length; k++) {
+                    superArgs[k] = substitute(declared[k], params, args);
+                }
+            }
+            Type found = typeArgumentOf(superRaw, superArgs, target, index, depth + 1);
+            if (found != null) {
+                return found;
             }
         }
-        return fieldGenericType;
+        return null;
+    }
+
+    /** {@code type} with each of {@code params} replaced by the matching one of {@code args}, where there is one. */
+    private static Type substitute(Type type, TypeVariable<?>[] params, Type[] args) {
+        if (type == null) {
+            return null;
+        }
+        if (type instanceof TypeVariable) {
+            for (int i = 0; i < params.length; i++) {
+                if (params[i].equals(type)) {
+                    return args != null && i < args.length ? args[i] : type;
+                }
+            }
+            return type;
+        }
+        if (type instanceof ParameterizedType) {
+            ParameterizedType pt = (ParameterizedType) type;
+            Type[] typeArgs = typeArguments(pt);
+            Type[] substituted = new Type[typeArgs.length];
+            boolean changed = false;
+            for (int i = 0; i < typeArgs.length; i++) {
+                substituted[i] = substitute(typeArgs[i], params, args);
+                changed |= substituted[i] != typeArgs[i];
+            }
+            Type owner = pt.getOwnerType() == null ? null : substitute(pt.getOwnerType(), params, args);
+            changed |= owner != pt.getOwnerType();
+            return changed ? new ParameterizedTypeImpl((Class<?>) pt.getRawType(), substituted, owner) : type;
+        }
+        if (type instanceof GenericArrayType) {
+            Type component = ((GenericArrayType) type).getGenericComponentType();
+            Type substituted = substitute(component, params, args);
+            return substituted != component ? new GenericArrayTypeImpl(substituted) : type;
+        }
+        if (type instanceof WildcardType) {
+            WildcardType wildcard = (WildcardType) type;
+            Type[] upper = wildcard.getUpperBounds();
+            Type[] lower = wildcard.getLowerBounds();
+            boolean changed = false;
+            for (int i = 0; i < upper.length; i++) {
+                Type t = substitute(upper[i], params, args);
+                changed |= t != upper[i];
+                upper[i] = t;
+            }
+            for (int i = 0; i < lower.length; i++) {
+                Type t = substitute(lower[i], params, args);
+                changed |= t != lower[i];
+                lower[i] = t;
+            }
+            return changed ? new WildcardTypeImpl(upper, lower) : type;
+        }
+        return type;
     }
 
     // --- Internal implementations of Type interfaces ---

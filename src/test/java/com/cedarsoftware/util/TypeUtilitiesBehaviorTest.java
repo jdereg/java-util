@@ -7,9 +7,11 @@ import java.lang.reflect.Type;
 import java.lang.reflect.TypeVariable;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
 
@@ -212,5 +214,54 @@ class TypeUtilitiesBehaviorTest {
                     TypeUtilities.resolveType(Concrete.class, new FreshListType()).getTypeName());
         }
         assertEquals(before, onConcrete.get(Concrete.class).size(), "cache entries added for fresh Type objects");
+    }
+
+    interface StringMap<V> extends Map<String, V> {
+    }
+
+    static class MultiMap<K, V> extends HashMap<K, List<V>> {
+    }
+
+    static class IdList<I, E> extends ArrayList<E> {
+    }
+
+    static class Containers<T> {
+        StringMap<Integer> stringMap;
+        MultiMap<String, Integer> multiMap;
+        IdList<Long, String> idList;
+        Map<String, Double> plainMap;
+        HashMap<String, List<Long>> hashMap;
+        List<String>[] listArray;
+        Map<String, T> unresolvedMap;
+        List<T> unresolvedList;
+        Optional<String> notAContainer;
+    }
+
+    private static Type element(String field) throws Exception {
+        return TypeUtilities.inferElementType(fieldType(Containers.class, field), null);
+    }
+
+    /**
+     * The element type of a container is found by following its own type arguments up to Map's value type or
+     * Collection's element type. It was taken by position, which only works when a container's parameters line
+     * up with Map's or Collection's: StringMap<Integer> gave null, MultiMap<String, Integer> gave Integer (not
+     * List<Integer>), IdList<Long, String> gave Long, and an array gave null although the Javadoc promises its
+     * component type.
+     */
+    @Test
+    void theElementTypeFollowsTheContainersOwnTypeArguments() throws Exception {
+        assertEquals(Integer.class, element("stringMap"));
+        assertEquals("java.util.List<java.lang.Integer>", element("multiMap").getTypeName());
+        assertEquals(String.class, element("idList"));
+        assertEquals("java.util.List<java.lang.String>", element("listArray").getTypeName());
+        assertEquals(Integer.class, TypeUtilities.inferElementType(Integer[].class, null));
+
+        // unchanged: containers whose parameters line up, a variable left unresolved, and what is not a container
+        assertEquals(Double.class, element("plainMap"));
+        assertEquals("java.util.List<java.lang.Long>", element("hashMap").getTypeName());
+        assertEquals("T", element("unresolvedMap").getTypeName());
+        assertEquals("T", element("unresolvedList").getTypeName());
+        assertEquals(Object.class, element("notAContainer"));
+        assertEquals(String.class, TypeUtilities.inferElementType(ArrayList.class, String.class));
     }
 }

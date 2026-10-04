@@ -245,6 +245,7 @@ class ConverterEverythingTest {
         loadInstantTests();
         loadDateTests();
         loadSqlDateTests();
+        loadSqlTimeTests();
         loadCalendarTests();
         loadDurationTests();
         loadOffsetDateTimeTests();
@@ -2844,6 +2845,124 @@ class ConverterEverythingTest {
     /**
      * java.sql.Date
      */
+    /**
+     * java.sql.Time: JDBC's time of day, a Date whose text and LocalTime are read in the JVM's default zone, as
+     * Time.valueOf() and Time.toString() read them; every source that reaches a Date reaches a Time at the same
+     * instant. (LongAdder and DoubleAdder sources wait for the test-scope json-io 4.113.0, which reads them back.)
+     */
+    private static void loadSqlTimeTests() {
+        java.sql.Time t = java.sql.Time.valueOf("13:14:15");
+        java.sql.Time t123 = new java.sql.Time(t.getTime() + 123);
+        java.sql.Time t500 = new java.sql.Time(t.getTime() + 500);
+        TEST_DB.put(pair(Void.class, java.sql.Time.class), new Object[][]{
+                {null, null},
+        });
+        TEST_DB.put(pair(java.sql.Time.class, java.sql.Time.class), new Object[][]{
+                {t123, t123},
+        });
+        TEST_DB.put(pair(java.sql.Time.class, String.class), new Object[][]{
+                {t, "13:14:15", true},
+                {t123, "13:14:15.123", true},
+                {new java.sql.Time(t.getTime() + 5), "13:14:15.005", true},
+                {new java.sql.Time(t.getTime() + 50), "13:14:15.050", true},
+        });
+        TEST_DB.put(pair(java.sql.Time.class, CharSequence.class), new Object[][]{
+                {t123, "13:14:15.123"},
+        });
+        TEST_DB.put(pair(java.sql.Time.class, StringBuilder.class), new Object[][]{
+                {t123, new StringBuilder("13:14:15.123")},
+        });
+        TEST_DB.put(pair(java.sql.Time.class, StringBuffer.class), new Object[][]{
+                {t123, new StringBuffer("13:14:15.123")},
+        });
+        TEST_DB.put(pair(java.sql.Time.class, LocalTime.class), new Object[][]{
+                {t123, LocalTime.of(13, 14, 15, 123_000_000), true},
+                {t, LocalTime.of(13, 14, 15), true},
+        });
+        TEST_DB.put(pair(java.sql.Time.class, Map.class), new Object[][]{
+                {t123, mapOf("sqlTime", "13:14:15.123"), true},
+        });
+        TEST_DB.put(pair(Long.class, java.sql.Time.class), new Object[][]{
+                {t123.getTime(), t123},
+        });
+        TEST_DB.put(pair(long.class, java.sql.Time.class), new Object[][]{
+                {t123.getTime(), t123},
+        });
+        TEST_DB.put(pair(AtomicLong.class, java.sql.Time.class), new Object[][]{
+                {new AtomicLong(t123.getTime()), t123},
+        });
+        TEST_DB.put(pair(Double.class, java.sql.Time.class), new Object[][]{
+                {t500.getTime() / 1000.0, t500},      // seconds
+        });
+        TEST_DB.put(pair(double.class, java.sql.Time.class), new Object[][]{
+                {t500.getTime() / 1000.0, t500},
+        });
+        TEST_DB.put(pair(BigInteger.class, java.sql.Time.class), new Object[][]{
+                {BigInteger.valueOf(t123.getTime()), t123},    // milliseconds, as for Date
+        });
+        TEST_DB.put(pair(BigDecimal.class, java.sql.Time.class), new Object[][]{
+                {BigDecimal.valueOf(t123.getTime(), 3), t123},  // seconds
+        });
+        TEST_DB.put(pair(Date.class, java.sql.Time.class), new Object[][]{
+                {new Date(t123.getTime()), t123},
+        });
+        TEST_DB.put(pair(Timestamp.class, java.sql.Time.class), new Object[][]{
+                {new Timestamp(t123.getTime()), t123},
+        });
+        TEST_DB.put(pair(java.sql.Date.class, java.sql.Time.class), new Object[][]{
+                // a java.sql.Date is a calendar date: its start of day in the Converter's zone, as for LocalDate
+                {java.sql.Date.valueOf("2026-09-27"),
+                        new java.sql.Time(LocalDate.of(2026, 9, 27).atStartOfDay(TOKYO_Z).toInstant().toEpochMilli())},
+        });
+        TEST_DB.put(pair(Instant.class, java.sql.Time.class), new Object[][]{
+                {Instant.ofEpochMilli(t123.getTime()), t123},
+        });
+        TEST_DB.put(pair(Calendar.class, java.sql.Time.class), new Object[][]{
+                {(Supplier<Calendar>) () -> {
+                    Calendar cal = Calendar.getInstance(TOKYO_TZ);
+                    cal.setTimeInMillis(t123.getTime());
+                    return cal;
+                }, t123},
+        });
+        ZonedDateTime zdt = ZonedDateTime.of(2026, 9, 27, 13, 14, 15, 123_000_000, TOKYO_Z);
+        TEST_DB.put(pair(ZonedDateTime.class, java.sql.Time.class), new Object[][]{
+                {zdt, new java.sql.Time(zdt.toInstant().toEpochMilli())},
+        });
+        TEST_DB.put(pair(OffsetDateTime.class, java.sql.Time.class), new Object[][]{
+                {zdt.toOffsetDateTime(), new java.sql.Time(zdt.toInstant().toEpochMilli())},
+        });
+        TEST_DB.put(pair(LocalDateTime.class, java.sql.Time.class), new Object[][]{
+                {zdt.toLocalDateTime(), new java.sql.Time(zdt.toInstant().toEpochMilli())},     // in the Converter's zone
+        });
+        TEST_DB.put(pair(LocalDate.class, java.sql.Time.class), new Object[][]{
+                {zdt.toLocalDate(), new java.sql.Time(zdt.toLocalDate().atStartOfDay(TOKYO_Z).toInstant().toEpochMilli())},
+        });
+        TEST_DB.put(pair(Duration.class, java.sql.Time.class), new Object[][]{
+                {Duration.ofMillis(t123.getTime()), t123},
+        });
+        TEST_DB.put(pair(LocalTime.class, java.sql.Time.class), new Object[][]{
+                {LocalTime.of(13, 14, 15, 123_456_789), t123},
+                {LocalTime.of(13, 14, 15), t},
+        });
+        TEST_DB.put(pair(String.class, java.sql.Time.class), new Object[][]{
+                {"13:14:15", t},
+                {"13:14:15.123", t123},
+                {"13:14", java.sql.Time.valueOf("13:14:00")},
+                {"  13:14:15  ", t},
+                {"2026-09-27T13:14:15+09:00", t},       // a date-time keeps its time of day, in its own zone
+                {"", null},
+        });
+        TEST_DB.put(pair(CharSequence.class, java.sql.Time.class), new Object[][]{
+                {new StringBuilder("13:14:15.123"), t123},
+        });
+        TEST_DB.put(pair(Map.class, java.sql.Time.class), new Object[][]{
+                {mapOf("sqlTime", "13:14:15.123"), t123},
+                {mapOf(VALUE, "13:14:15"), t},
+                {mapOf("epochMillis", t123.getTime()), t123},
+                {mapOf("date", t123.getTime()), t123},          // json-io wrote a Time as {"date": epochMillis}
+        });
+    }
+
     private static void loadSqlDateTests() {
         TEST_DB.put(pair(Void.class, java.sql.Date.class), new Object[][]{
                 {null, null}

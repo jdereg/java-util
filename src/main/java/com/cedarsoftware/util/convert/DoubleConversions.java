@@ -66,9 +66,14 @@ final class DoubleConversions {
     
     static LocalTime toLocalTime(Object from, Converter converter) {
         double seconds = (double) from;
-        double nanos = seconds * 1_000_000_000.0;
+        // rounded to the nearest nanosecond, as toInstant does (truncating made 1.001 s 00:00:01.000999999); a value
+        // within half a nanosecond of midnight is the day's last nanosecond, not 24:00
+        long nanos = Math.round(seconds * 1_000_000_000.0);
+        if (nanos == 86_400_000_000_000L && seconds < 86_400.0) {
+            nanos--;
+        }
         try {
-            return LocalTime.ofNanoOfDay((long)nanos);
+            return LocalTime.ofNanoOfDay(nanos);
         }
         catch (Exception e) {
             throw new IllegalArgumentException("Input value [" + seconds + "] for conversion to LocalTime must be >= 0 && <= 86399.999999999", e);
@@ -91,7 +96,7 @@ final class DoubleConversions {
         double seconds = (double) from;
         long wholeSecs = (long) seconds;  // gets whole number of seconds
         double frac = seconds - wholeSecs;  // gets just the fractional part
-        long nanos = (long) (frac * 1_000_000_000.0);  // converts fraction to nanos
+        long nanos = Math.round(frac * 1_000_000_000.0);  // fraction to nanos, rounded as toInstant does
 
         try {
             Instant instant = Instant.ofEpochSecond(wholeSecs, nanos);
@@ -114,7 +119,7 @@ final class DoubleConversions {
         double d = (Double) from;
         // Separate whole seconds and nanoseconds
         long seconds = (long) d;
-        long nanoAdjustment = (long) ((d - seconds) * 1_000_000_000L);
+        long nanoAdjustment = Math.round((d - seconds) * 1_000_000_000L);    // rounded, as toInstant does
         return Duration.ofSeconds(seconds, nanoAdjustment);
     }
 }

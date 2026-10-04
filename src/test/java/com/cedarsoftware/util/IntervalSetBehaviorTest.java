@@ -1,6 +1,8 @@
 package com.cedarsoftware.util;
 
 import java.math.BigDecimal;
+import java.math.BigInteger;
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.NavigableSet;
 
@@ -48,5 +50,38 @@ class IntervalSetBehaviorTest {
         assertFalse(set.removeExact(new BigDecimal("1.0"), new BigDecimal("2.01")));
         assertTrue(set.removeExact(new BigDecimal("1.00"), new BigDecimal("2.00")));
         assertTrue(set.isEmpty());
+    }
+
+    /**
+     * The default totalDuration() throws ArithmeticException when a numeric difference does not fit a long, as
+     * documented. longValue() wrapped a BigInteger ([0, 2^64 + 5) was 5 ns) and saturated a double ([0, 1e30)
+     * was Long.MAX_VALUE ns).
+     */
+    @Test
+    void defaultTotalDurationThrowsWhenADifferenceDoesNotFitALong() {
+        BigInteger twoTo64 = BigInteger.ONE.shiftLeft(64);
+        IntervalSet<BigInteger> wide = new IntervalSet<>();
+        wide.add(BigInteger.ZERO, twoTo64.add(BigInteger.valueOf(5)));
+        assertThrows(ArithmeticException.class, wide::totalDuration);
+        IntervalSet<Double> huge = new IntervalSet<>();
+        huge.add(0.0, 1e30);
+        assertThrows(ArithmeticException.class, huge::totalDuration);
+        IntervalSet<Double> infinite = new IntervalSet<>();
+        infinite.add(0.0, Double.POSITIVE_INFINITY);
+        assertThrows(ArithmeticException.class, infinite::totalDuration);
+
+        IntervalSet<BigInteger> far = new IntervalSet<>();         // the bounds do not fit a long; the difference does
+        far.add(twoTo64, twoTo64.add(BigInteger.valueOf(5)));
+        assertEquals(Duration.ofNanos(5), far.totalDuration());
+        IntervalSet<Double> fractional = new IntervalSet<>();      // whole parts, as before: 3 - 0
+        fractional.add(0.5, 3.7);
+        assertEquals(Duration.ofNanos(3), fractional.totalDuration());
+        IntervalSet<BigDecimal> decimal = new IntervalSet<>();
+        decimal.add(new BigDecimal("0.5"), new BigDecimal("3.7"));
+        assertEquals(Duration.ofNanos(3), decimal.totalDuration());
+        IntervalSet<Long> longs = new IntervalSet<>();
+        longs.add(Long.MIN_VALUE, 0L);
+        longs.add(1L, Long.MAX_VALUE);
+        assertThrows(ArithmeticException.class, longs::totalDuration);
     }
 }

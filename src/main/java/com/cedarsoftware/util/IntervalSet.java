@@ -1,5 +1,7 @@
 package com.cedarsoftware.util;
 
+import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.time.DateTimeException;
 import java.time.Duration;
 import java.time.temporal.Temporal;
@@ -917,7 +919,8 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
      * <p>
      * This overload uses a default BiFunction based on the type of T:
      * - If T is Temporal (and supports SECONDS unit, e.g., Instant, LocalDateTime, etc.), uses Duration.between(start, end).
-     * - If T is Number, computes (end.longValue() - start.longValue()) and maps to Duration.ofNanos(diff) (arbitrary unit).
+     * - If T is Number, computes end - start over the bounds' whole parts (as longValue() takes them), exactly,
+     *   and maps it to Duration.ofNanos(diff) (arbitrary unit).
      * - If T is Date (or subclasses), computes Duration.ofMillis(end.getTime() - start.getTime()).
      * - If T is Character, computes (end - start) and maps to Duration.ofNanos(diff) (arbitrary unit).
      * - If T is Duration, computes end.minus(start).
@@ -932,7 +935,9 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
      * @return the sum of all interval durations
      * @throws UnsupportedOperationException if no default mapping for type T
      * @throws DateTimeException             if Temporal type does not support Duration.between
-     * @throws ArithmeticException           if numeric/date-time subtraction overflows long
+     * @throws ArithmeticException           if numeric/date-time subtraction overflows long (a BigInteger or
+     *                                       BigDecimal difference past a long, a double bound past a long, NaN
+     *                                       or infinite, included)
      */
     public Duration totalDuration() {
         return totalDuration(this::defaultToDuration);
@@ -942,8 +947,7 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
         if (start instanceof Temporal && end instanceof Temporal) {
             return Duration.between((Temporal) start, (Temporal) end);
         } else if (start instanceof Number && end instanceof Number) {
-            long diff = Math.subtractExact(((Number) end).longValue(), ((Number) start).longValue());
-            return Duration.ofNanos(diff);
+            return Duration.ofNanos(wholeDifference((Number) start, (Number) end));
         } else if (start instanceof Date && end instanceof Date) {
             long startMillis = ((Date) start).getTime();
             long endMillis = ((Date) end).getTime();
@@ -958,6 +962,36 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
         } else {
             throw new UnsupportedOperationException("No default duration mapping for type " + start.getClass());
         }
+    }
+
+    /**
+     * {@code end - start} over the bounds' whole parts (each as {@code longValue()} takes it), exactly: a difference
+     * that does not fit a long, or a bound that is NaN, infinite or past a long, throws ArithmeticException instead
+     * of wrapping or saturating as {@code longValue()} does.
+     */
+    private static long wholeDifference(Number start, Number end) {
+        if (start instanceof BigInteger || start instanceof BigDecimal
+                || end instanceof BigInteger || end instanceof BigDecimal) {
+            return whole(end).subtract(whole(start)).longValueExact();
+        }
+        return Math.subtractExact(exactLong(end), exactLong(start));
+    }
+
+    private static BigInteger whole(Number n) {
+        if (n instanceof BigDecimal) {
+            return ((BigDecimal) n).toBigInteger();
+        }
+        return n instanceof BigInteger ? (BigInteger) n : BigInteger.valueOf(exactLong(n));
+    }
+
+    private static long exactLong(Number n) {
+        if (n instanceof Double || n instanceof Float) {
+            double d = n.doubleValue();
+            if (!(d >= -0x1p63 && d < 0x1p63)) {          // NaN, infinite, or past a long
+                throw new ArithmeticException("Interval bound outside the long range: " + n);
+            }
+        }
+        return n.longValue();
     }
 
     /**

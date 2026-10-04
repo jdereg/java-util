@@ -7258,7 +7258,7 @@ Type suggested = TypeUtilities.inferElementType(suggestedType, fieldType);
 
 ---
 ## UniqueIdGenerator
-UniqueIdGenerator is a utility class that generates guaranteed unique, time-based, monotonically increasing 64-bit IDs suitable for distributed environments. It provides two ID generation methods with different characteristics and throughput capabilities.
+UniqueIdGenerator is a utility class that generates unique, time-based, monotonically increasing 64-bit IDs suitable for distributed environments, unique across processes as long as each process has its own server ID. Two JVMs on one host with the same environment derive the same server ID; set `JAVA_UTIL_CLUSTERID` per process when several run on one host. It provides two ID generation methods with different characteristics and throughput capabilities.
 
 ### Features
 - Distributed-safe unique IDs

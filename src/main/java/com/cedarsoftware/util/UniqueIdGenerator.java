@@ -14,7 +14,8 @@ import static java.lang.Integer.parseInt;
 import static java.lang.System.currentTimeMillis;
 
 /**
- * Generates guaranteed unique, time-based, strictly monotonically increasing IDs for distributed systems.
+ * Generates unique, time-based, strictly monotonically increasing IDs for distributed systems: unique across
+ * processes as long as each process has its own server ID (see Cluster Support).
  * Each ID encodes:
  * <ul>
  *   <li><b>Timestamp</b> - milliseconds since epoch</li>
@@ -57,6 +58,9 @@ import static java.lang.System.currentTimeMillis;
  *       If the wall clock has stepped back behind ids already issued, it waits one real millisecond and moves on by
  *       one millisecond of its own: never more than one millisecond's capacity per real millisecond.</li>
  *   <li>Server ID is preserved in the last two digits of every ID; no arithmetic “+1” leaks into serverId.</li>
+ *   <li>Uniqueness across processes needs a server ID unique to each process, not merely to each host: two JVMs on
+ *       one host with the same environment derive the same server ID and issue nearly the same IDs. Set
+ *       {@code JAVA_UTIL_CLUSTERID} per process when several run on one host.</li>
  *   <li><b>Note:</b> Strict uniqueness across JVM restarts on the same machine is best-effort unless you persist the last
  *       seen millisecond and restart from {@code max(persistedMs, now)}.</li>
  * </ul>

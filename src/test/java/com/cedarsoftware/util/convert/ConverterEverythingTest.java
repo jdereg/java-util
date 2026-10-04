@@ -5218,13 +5218,17 @@ class ConverterEverythingTest {
     private static void assertStreamsYieldSame(Object expected, Object actual, String source, String target) {
         String msg = "Stream contents differ for " + source + " ==> " + target;
         if (expected instanceof IntStream) {
-            org.junit.jupiter.api.Assertions.assertArrayEquals(((IntStream) expected).toArray(), ((IntStream) actual).toArray(), msg);
+            org.junit.jupiter.api.Assertions.assertArrayEquals(((IntStream) expected).toArray(),
+                    ((IntStream) actual).toArray(), msg);
         } else if (expected instanceof LongStream) {
-            org.junit.jupiter.api.Assertions.assertArrayEquals(((LongStream) expected).toArray(), ((LongStream) actual).toArray(), msg);
+            org.junit.jupiter.api.Assertions.assertArrayEquals(((LongStream) expected).toArray(),
+                    ((LongStream) actual).toArray(), msg);
         } else if (expected instanceof DoubleStream) {
-            org.junit.jupiter.api.Assertions.assertArrayEquals(((DoubleStream) expected).toArray(), ((DoubleStream) actual).toArray(), msg);
+            org.junit.jupiter.api.Assertions.assertArrayEquals(((DoubleStream) expected).toArray(),
+                    ((DoubleStream) actual).toArray(), msg);
         } else {
-            org.junit.jupiter.api.Assertions.assertArrayEquals(((Stream<?>) expected).toArray(), ((Stream<?>) actual).toArray(), msg);
+            org.junit.jupiter.api.Assertions.assertArrayEquals(((Stream<?>) expected).toArray(),
+                    ((Stream<?>) actual).toArray(), msg);
         }
     }
 
@@ -5436,7 +5440,8 @@ class ConverterEverythingTest {
                 // A test that returns a Throwable, as opposed to throwing it.
                 actual = converter.convert(source, targetClass);
                 Throwable actualExceptionReturnValue = (Throwable) actual;
-                assert java.util.Objects.equals(actualExceptionReturnValue.getMessage(), ((Throwable) target).getMessage());
+                assert java.util.Objects.equals(actualExceptionReturnValue.getMessage(),
+                        ((Throwable) target).getMessage());
                 assert actualExceptionReturnValue.getClass().equals(target.getClass());
                 updateStat(pair(sourceClass, targetClass), true);
             } catch (Throwable e) {

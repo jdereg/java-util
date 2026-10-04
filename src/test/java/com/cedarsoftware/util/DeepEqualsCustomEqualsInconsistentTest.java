@@ -108,16 +108,20 @@ class DeepEqualsCustomEqualsInconsistentTest {
         Map<String, Object> options = new HashMap<>();
         assertFalse(DeepEquals.deepEquals(Collections.singletonList(new IdentityEquals()),
                 Collections.singletonList(new IdentityEquals()), options));
-        assertTrue(String.valueOf(options.get("diff")).contains("custom equals() returned false"), String.valueOf(options.get("diff")));
+        assertTrue(String.valueOf(options.get("diff")).contains("custom equals() returned false"),
+                String.valueOf(options.get("diff")));
 
         options.clear();
         assertFalse(DeepEquals.deepEquals(Collections.singletonMap("k", new IdentityEquals()),
                 Collections.singletonMap("k", new IdentityEquals()), options));
-        assertTrue(String.valueOf(options.get("diff")).contains("custom equals() returned false"), String.valueOf(options.get("diff")));
+        assertTrue(String.valueOf(options.get("diff")).contains("custom equals() returned false"),
+                String.valueOf(options.get("diff")));
 
         options.clear();
-        assertFalse(DeepEquals.deepEquals(new Object[] {new IdentityEquals()}, new Object[] {new IdentityEquals()}, options));
-        assertTrue(String.valueOf(options.get("diff")).contains("custom equals() returned false"), String.valueOf(options.get("diff")));
+        assertFalse(DeepEquals.deepEquals(new Object[] {new IdentityEquals()}, new Object[] {new IdentityEquals()},
+                options));
+        assertTrue(String.valueOf(options.get("diff")).contains("custom equals() returned false"),
+                String.valueOf(options.get("diff")));
     }
 
     /** A custom-equals object inside another: the innermost one is reported. */

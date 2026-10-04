@@ -75,7 +75,8 @@ class InetAddressConversionsTest {
      * accepts, so it would try DNS. Both are refused before any lookup.
      */
     @ParameterizedTest
-    @ValueSource(strings = {"localhost", "example.com", "10.0.0.300", "10.0.0", "1.2.3.4.5", "10..0.1", "h/example.com"})
+    @ValueSource(strings = {"localhost", "example.com", "10.0.0.300", "10.0.0", "1.2.3.4.5", "10..0.1",
+            "h/example.com"})
     void anythingButAnIpAddressIsRefusedWithoutALookup(String text) {
         IllegalArgumentException e = assertThrows(IllegalArgumentException.class,
                 () -> converter.convert(text, InetAddress.class));

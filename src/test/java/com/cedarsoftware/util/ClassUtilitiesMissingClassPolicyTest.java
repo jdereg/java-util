@@ -45,7 +45,8 @@ class ClassUtilitiesMissingClassPolicyTest {
 
     private static byte[] lateBytes() {
         String resource = LATE.replace('.', '/') + ".class";
-        try (InputStream in = ClassUtilitiesMissingClassPolicyTest.class.getClassLoader().getResourceAsStream(resource)) {
+        try (InputStream in = ClassUtilitiesMissingClassPolicyTest.class.getClassLoader()
+                .getResourceAsStream(resource)) {
             return IOUtilities.inputStreamToBytes(in);
         } catch (IOException e) {
             throw new IllegalStateException(e);

@@ -15,9 +15,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * A builder map in the default configuration -- {@code CompactMap.builder().build()} -- said it was a default
  * CompactMap, so json-io wrote it as an ordinary object of its class, under the generated class's name
- * ({@code CompactMap$d1b04c6f91811170}), which no reader can load: the document could not be read back. A builder map is
- * no longer a "default CompactMap", so json-io writes it with its configuration, as it writes every other builder map.
- * A CompactSet still asks only its map's configuration: the set is written under its own class's name.
+ * ({@code CompactMap$d1b04c6f91811170}), which no reader can load: the document could not be read back. A builder map
+ * is no longer a "default CompactMap", so json-io writes it with its configuration, as it writes every other builder
+ * map. A CompactSet still asks only its map's configuration: the set is written under its own class's name.
  */
 class CompactMapDefaultRoundTripTest {
 

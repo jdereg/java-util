@@ -96,7 +96,8 @@ class CompactMapNullPolicyTest {
 
     @Test
     void mapsWhoseBackingMapTakesNullsStillTakeThem() {
-        for (CompactMap<Object, Object> map : new CompactMap[]{new CompactMap<>(), CompactMap.builder().sortedOrder().build(),
+        for (CompactMap<Object, Object> map : new CompactMap[]{new CompactMap<>(),
+                CompactMap.builder().sortedOrder().build(),
                 CompactMap.builder().caseSensitive(false).insertionOrder().build()}) {
             map.put(null, 1);
             map.put("v", null);

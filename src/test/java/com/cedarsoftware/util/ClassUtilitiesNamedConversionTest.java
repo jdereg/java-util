@@ -167,7 +167,8 @@ class ClassUtilitiesNamedConversionTest {
             if (i > 0) {
                 json.append(',');
             }
-            json.append("{\"name\":\"n").append(i).append("\",\"age\":").append(i).append(",\"inner\":{\"x\":\"y").append(i).append("\"}}");
+            json.append("{\"name\":\"n").append(i).append("\",\"age\":").append(i)
+                    .append(",\"inner\":{\"x\":\"y").append(i).append("\"}}");
         }
         Outer[] read = JsonIo.toJava(json.append(']').toString(), null).asClass(Outer[].class);
         assertEquals(20, read.length);

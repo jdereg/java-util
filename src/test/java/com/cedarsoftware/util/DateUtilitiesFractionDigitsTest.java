@@ -22,8 +22,10 @@ class DateUtilitiesFractionDigitsTest {
     @Test
     void digitsPastNanosecondsAreTruncated() {
         assertEquals(ZonedDateTime.parse("2024-01-15T10:00:00.123456789Z"), utc("2024-01-15T10:00:00.1234567891Z"));
-        assertEquals(ZonedDateTime.parse("2024-01-15T10:00:00.123456789Z[UTC]"), utc("2024-01-15 10:00:00.123456789987"));
-        assertEquals(ZonedDateTime.parse("2024-01-15T10:00:00.999999999Z[UTC]"), utc("Jan 15, 2024 10:00:00.99999999999"));
+        assertEquals(ZonedDateTime.parse("2024-01-15T10:00:00.123456789Z[UTC]"),
+                utc("2024-01-15 10:00:00.123456789987"));
+        assertEquals(ZonedDateTime.parse("2024-01-15T10:00:00.999999999Z[UTC]"),
+                utc("Jan 15, 2024 10:00:00.99999999999"));
     }
 
     @Test

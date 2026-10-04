@@ -44,8 +44,10 @@ class EncryptionUtilitiesDigestReuseTest {
             new Algorithm("SHA-256", EncryptionUtilities::getSHA256Digest, EncryptionUtilities::calculateSHA256Hash),
             new Algorithm("SHA-384", EncryptionUtilities::getSHA384Digest, EncryptionUtilities::calculateSHA384Hash),
             new Algorithm("SHA-512", EncryptionUtilities::getSHA512Digest, EncryptionUtilities::calculateSHA512Hash),
-            new Algorithm("SHA3-256", EncryptionUtilities::getSHA3_256Digest, EncryptionUtilities::calculateSHA3_256Hash),
-            new Algorithm("SHA3-512", EncryptionUtilities::getSHA3_512Digest, EncryptionUtilities::calculateSHA3_512Hash)};
+            new Algorithm("SHA3-256", EncryptionUtilities::getSHA3_256Digest,
+                    EncryptionUtilities::calculateSHA3_256Hash),
+            new Algorithm("SHA3-512", EncryptionUtilities::getSHA3_512Digest,
+                    EncryptionUtilities::calculateSHA3_512Hash)};
 
     private static MessageDigest fresh(String algorithm) {
         try {
@@ -72,11 +74,13 @@ class EncryptionUtilitiesDigestReuseTest {
                 for (int size : new int[]{0, 1, 31, 32, 64, 1000, 65536}) {
                     byte[] bytes = new byte[size];
                     random.nextBytes(bytes);
-                    assertEquals(expected(algorithm.name, bytes), algorithm.hash.apply(bytes), algorithm.name + " " + size);
+                    assertEquals(expected(algorithm.name, bytes), algorithm.hash.apply(bytes),
+                            algorithm.name + " " + size);
                     MessageDigest digest = algorithm.digest.get();
                     assertEquals(algorithm.name, digest.getAlgorithm());
                     digest.update(bytes);
-                    assertEquals(expected(algorithm.name, bytes), ByteUtilities.encode(digest.digest()), algorithm.name);
+                    assertEquals(expected(algorithm.name, bytes), ByteUtilities.encode(digest.digest()),
+                            algorithm.name);
                 }
             }
         }

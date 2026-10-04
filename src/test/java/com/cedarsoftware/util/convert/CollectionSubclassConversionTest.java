@@ -17,8 +17,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Converting to a concrete Collection class of the caller's own returns an instance of that class. It returned the
- * closest known type instead -- converting to {@code MyList extends ArrayList} gave an {@code ArrayList}, which is not a
- * {@code MyList} -- while converting to a Map subclass already returned the subclass. Interfaces, abstract types, the
+ * closest known type instead -- converting to {@code MyList extends ArrayList} gave an {@code ArrayList}, which is not
+ * a {@code MyList} -- while converting to a Map subclass already returned the subclass. Interfaces, abstract types, the
  * types with a factory of their own, and classes without a no-argument constructor are converted as before.
  */
 class CollectionSubclassConversionTest {

@@ -435,7 +435,8 @@ public final class DateUtilities {
         if (!isRegexTimeoutProtectionEnabled()) {
             Matcher matcher = reusableMatcherFor(pattern, input);
             // SafeMatchResult takes a snapshot of the match, so the Matcher can let go of the input
-            RegexUtilities.SafeMatchResult result = new RegexUtilities.SafeMatchResult(matcher.find() ? matcher : null, input);
+            RegexUtilities.SafeMatchResult result =
+                    new RegexUtilities.SafeMatchResult(matcher.find() ? matcher : null, input);
             matcher.reset("");
             return result;
         }
@@ -582,7 +583,8 @@ public final class DateUtilities {
     // 12-hour clock: AM or PM in any case, with or without a space, before any zone
     private static final String amPm = "(?:" + wsOp + "([AP]M)\\b)?";
     private static final Pattern timePattern = Pattern.compile(
-            "(" + d1or2 + "):(" + d2 + ")(?::(" + d2 + ")(" + nano + ")?)?" + amPm + "(" + tz_Hh_MM_SS + "|" + tz_Hh_MM + "|" + tz_HHMM + "|" + tz_Hh + "|Z)?(" + tzNamed + ")?",
+            "(" + d1or2 + "):(" + d2 + ")(?::(" + d2 + ")(" + nano + ")?)?" + amPm
+                    + "(" + tz_Hh_MM_SS + "|" + tz_Hh_MM + "|" + tz_HHMM + "|" + tz_Hh + "|Z)?(" + tzNamed + ")?",
             Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CHARACTER_CLASS);
 
     // Performance optimized: Reordered alternatives for better matching efficiency and added UNICODE_CHARACTER_CLASS
@@ -885,7 +887,8 @@ public final class DateUtilities {
 
     /**
      * The flexible, regex-driven recognition behind {@link #parseDate(String, ZoneId, boolean)}, for the text no fast
-     * path took. Package-private so tests can hold the fast paths to it: whatever a fast path returns, this returns too.
+     * path took. Package-private so tests can hold the fast paths to it: whatever a fast path returns, this
+     * returns too.
      */
     static ZonedDateTime parseFlexible(String dateStr, ZoneId defaultZoneId, boolean ensureDateTimeAlone) {
         String year, day, remains, tz = null, statedOffset = null;
@@ -975,7 +978,8 @@ public final class DateUtilities {
             if (result.group(5) != null) {      // AM / PM: hours 1-12, 12 AM is midnight and 12 PM noon
                 int h = Integer.parseInt(hour);
                 if (h < 1 || h > 12) {
-                    throw new IllegalArgumentException("Hour must be between 1 and 12 inclusive with AM/PM, time: " + dateStr);
+                    throw new IllegalArgumentException("Hour must be between 1 and 12 inclusive with AM/PM, time: "
+                            + dateStr);
                 }
                 boolean pm = Character.toUpperCase(result.group(5).charAt(0)) == 'P';
                 hour = String.valueOf(h % 12 + (pm ? 12 : 0));
@@ -1107,7 +1111,8 @@ public final class DateUtilities {
     }
 
     /** Nanoseconds per unit of a fraction with that many digits (index 1-9). */
-    private static final int[] FRACTION_SCALE = {0, 100_000_000, 10_000_000, 1_000_000, 100_000, 10_000, 1_000, 100, 10, 1};
+    private static final int[] FRACTION_SCALE = {0, 100_000_000, 10_000_000, 1_000_000, 100_000, 10_000, 1_000, 100,
+            10, 1};
 
     /**
      * Fast path for zone-less ISO text: "2024-01-15", "2024-01-15T10:30", "2024-01-15 10:30:00",
@@ -1124,7 +1129,8 @@ public final class DateUtilities {
         int year = digits(s, 0, 4);
         int month = digits(s, 5, 2);
         int day = digits(s, 8, 2);
-        if (year < 0 || month < 1 || month > 12 || day < 1 || day > 28 && day > Month.of(month).length(Year.isLeap(year))) {
+        if (year < 0 || month < 1 || month > 12 || day < 1
+                || day > 28 && day > Month.of(month).length(Year.isLeap(year))) {
             return null;
         }
         int hour = 0;

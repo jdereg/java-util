@@ -39,7 +39,8 @@ class CaseInsensitiveSetSelfRemovalTest {
     private static void removesEverything(String what, Function<CaseInsensitiveSet<String>, Collection<?>> self) {
         for (Collection<String> source : sources()) {
             CaseInsensitiveSet<String> set = new CaseInsensitiveSet<>(source);
-            String label = what + " over " + ((CaseInsensitiveMap<?, ?>) set.getBackingMap()).getWrappedMap().getClass().getSimpleName();
+            String label = what + " over "
+                    + ((CaseInsensitiveMap<?, ?>) set.getBackingMap()).getWrappedMap().getClass().getSimpleName();
             assertTrue(set.removeAll(self.apply(set)), label);
             assertTrue(set.isEmpty(), label);
             assertFalse(set.removeAll(self.apply(set)), label);

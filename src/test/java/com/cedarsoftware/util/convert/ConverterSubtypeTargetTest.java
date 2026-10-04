@@ -439,7 +439,8 @@ class ConverterSubtypeTargetTest {
         assertRefused(5L, java.util.concurrent.atomic.DoubleAccumulator.class);
 
         java.util.SimpleTimeZone simple = new java.util.SimpleTimeZone(3_600_000, "Plus1");
-        assertSame(java.util.SimpleTimeZone.class, converter.convert(simple, java.util.SimpleTimeZone.class).getClass());
+        assertSame(java.util.SimpleTimeZone.class,
+                converter.convert(simple, java.util.SimpleTimeZone.class).getClass());
         assertRefused("UTC", java.util.SimpleTimeZone.class);
 
         assertRefused("abc", java.nio.MappedByteBuffer.class);

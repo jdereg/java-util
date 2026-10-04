@@ -289,7 +289,9 @@ public class ClassUtilities {
         return millis == 0 ? MISSES_NOT_KEPT : TimeUnit.MILLISECONDS.toNanos(millis);
     }
 
-    /** The system class loader or one of its ancestors, when its class is the JDK's (loaded by the bootstrap loader). */
+    /**
+     * The system class loader or one of its ancestors, when its class is the JDK's (loaded by the bootstrap loader).
+     */
     private static boolean isJdkLoader(ClassLoader loader) {
         try {
             for (ClassLoader l = ClassLoader.getSystemClassLoader(); l != null; l = l.getParent()) {
@@ -538,7 +540,8 @@ public class ClassUtilities {
     private static final Map<Class<?>, Map<Class<?>, Integer>> PRIMITIVE_WIDENING_DISTANCES;
 
     // Cache for OSGi ClassLoader to avoid repeated reflection calls (set only when one is found)
-    private static volatile ClassValue<AtomicReference<ClassLoader>> osgiClassLoaders = perClass(c -> new AtomicReference<>());
+    private static volatile ClassValue<AtomicReference<ClassLoader>> osgiClassLoaders =
+            perClass(c -> new AtomicReference<>());
     // False once OSGi's FrameworkUtil proved not loadable from this class's loader: every later look failed the same
     // way, at the cost of a ClassNotFoundException each time
     private static volatile boolean osgiPresent = true;
@@ -605,7 +608,8 @@ public class ClassUtilities {
     private static final ClassValueMap<Supplier<Object>> DIRECT_CLASS_MAPPING = new ClassValueMap<>();
     private static final Map<Class<?>, Supplier<Object>> ASSIGNABLE_CLASS_MAPPING = new LinkedHashMap<>();
     // Per class, the ASSIGNABLE_CLASS_MAPPING supplier for it (Optional.empty() for none), so the O(n) scan runs once
-    private static volatile ClassValue<Optional<Supplier<Object>>> assignableTypes = perClass(ClassUtilities::findAssignableSupplier);
+    private static volatile ClassValue<Optional<Supplier<Object>>> assignableTypes =
+            perClass(ClassUtilities::findAssignableSupplier);
     /**
      * A cache that maps a Class<?> to its associated enum type (if any).
      */
@@ -622,8 +626,10 @@ public class ClassUtilities {
      * - Optional.empty() = no constructor works, go directly to unsafe or fail
      * - null (not in map) = not yet determined
      */
-    private static volatile ClassValue<AtomicReference<Optional<Constructor<?>>>> successfulConstructors = perClass(c -> new AtomicReference<>());
-    private static volatile ClassValue<Map<ArgumentShapeKey, Optional<ConstructorPlan>>> constructorPlans = perClass(c -> new ConcurrentHashMap<>());
+    private static volatile ClassValue<AtomicReference<Optional<Constructor<?>>>> successfulConstructors =
+            perClass(c -> new AtomicReference<>());
+    private static volatile ClassValue<Map<ArgumentShapeKey, Optional<ConstructorPlan>>> constructorPlans =
+            perClass(c -> new ConcurrentHashMap<>());
 
     /**
      * A per-class cache: each class's value is computed on first use and kept inside the class itself (a
@@ -851,7 +857,8 @@ public class ClassUtilities {
      * Per class, its hierarchy information (see perClass). It was a ClassValueMap, which kept every class ever passed
      * to forName(), newInstance() or a security check -- and its ClassLoader -- alive for the life of the JVM.
      */
-    private static volatile ClassValue<ClassHierarchyInfo> classHierarchies = perClass(ClassUtilities::computeClassHierarchyInfo);
+    private static volatile ClassValue<ClassHierarchyInfo> classHierarchies =
+            perClass(ClassUtilities::computeClassHierarchyInfo);
 
     static {
         // DIRECT_CLASS_MAPPING for concrete types
@@ -2230,10 +2237,12 @@ public class ClassUtilities {
         boolean[] valueUsed = new boolean[valueArray.length];
 
         // PHASE 1: Find exact type matches - highest priority
-        findExactMatches(valueArray, valueUsed, parameters, paramOffset, paramCount, parameterMatched, result, 0, valueArray.length, binding);
+        findExactMatches(valueArray, valueUsed, parameters, paramOffset, paramCount, parameterMatched, result, 0,
+                valueArray.length, binding);
 
         // PHASE 2: Find assignable type matches with inheritance (includes primitive/wrapper via ClassHierarchyInfo)
-        findInheritanceMatches(valueArray, valueUsed, parameters, paramOffset, paramCount, parameterMatched, result, 0, valueArray.length, binding);
+        findInheritanceMatches(valueArray, valueUsed, parameters, paramOffset, paramCount, parameterMatched, result,
+                0, valueArray.length, binding);
 
         // PHASE 3: Find convertible type matches
         findConvertibleMatches(converter, valueArray, valueUsed, parameters, paramOffset, paramCount, parameterMatched, result, 0, valueArray.length);
@@ -2332,8 +2341,10 @@ public class ClassUtilities {
         boolean[] valueUsed = new boolean[values.length];
         boolean[] parameterMatched = new boolean[fixedParamCount];
 
-        findExactMatches(values, valueUsed, parameters, paramOffset, fixedParamCount, parameterMatched, result, valueStartInclusive, valueEndExclusive, null);
-        findInheritanceMatches(values, valueUsed, parameters, paramOffset, fixedParamCount, parameterMatched, result, valueStartInclusive, valueEndExclusive, null);
+        findExactMatches(values, valueUsed, parameters, paramOffset, fixedParamCount, parameterMatched, result,
+                valueStartInclusive, valueEndExclusive, null);
+        findInheritanceMatches(values, valueUsed, parameters, paramOffset, fixedParamCount, parameterMatched, result,
+                valueStartInclusive, valueEndExclusive, null);
         findConvertibleMatches(converter, values, valueUsed, parameters, paramOffset, fixedParamCount, parameterMatched, result, valueStartInclusive, valueEndExclusive);
         fillRemainingParameters(converter, parameters, paramOffset, fixedParamCount, parameterMatched, result, allowNulls);
     }
@@ -2348,8 +2359,10 @@ public class ClassUtilities {
                                              Object[] result, boolean allowNulls) {
         boolean[] parameterMatched = new boolean[fixedParamCount];
 
-        findExactMatches(values, valueUsed, parameters, paramOffset, fixedParamCount, parameterMatched, result, valueStartInclusive, valueEndExclusive, null);
-        findInheritanceMatches(values, valueUsed, parameters, paramOffset, fixedParamCount, parameterMatched, result, valueStartInclusive, valueEndExclusive, null);
+        findExactMatches(values, valueUsed, parameters, paramOffset, fixedParamCount, parameterMatched, result,
+                valueStartInclusive, valueEndExclusive, null);
+        findInheritanceMatches(values, valueUsed, parameters, paramOffset, fixedParamCount, parameterMatched, result,
+                valueStartInclusive, valueEndExclusive, null);
         findConvertibleMatches(converter, values, valueUsed, parameters, paramOffset, fixedParamCount, parameterMatched, result, valueStartInclusive, valueEndExclusive);
         fillRemainingParameters(converter, parameters, paramOffset, fixedParamCount, parameterMatched, result, allowNulls);
     }
@@ -2867,7 +2880,8 @@ public class ClassUtilities {
      * {@code [String[] keys as iterated, int[] indexes in sorted key order]}. JDK types only (see
      * namedConstructors). Every lookup compares the keys, so a memo from another Map is never misapplied.
      */
-    private static final ClassValue<AtomicReference<Object[]>> POSITIONAL_KEY_ORDER = new ClassValue<AtomicReference<Object[]>>() {
+    private static final ClassValue<AtomicReference<Object[]>> POSITIONAL_KEY_ORDER =
+            new ClassValue<AtomicReference<Object[]>>() {
         @Override
         protected AtomicReference<Object[]> computeValue(Class<?> type) {
             return new AtomicReference<>();
@@ -3029,7 +3043,8 @@ public class ClassUtilities {
      * Arguments for one constructor, taken from the map by parameter name, or {@code null} when a
      * parameter is missing from the map or its value will not convert.
      */
-    private static Object[] matchNamedArguments(Converter converter, Parameter[] parameters, Map<String, Object> namedParams) {
+    private static Object[] matchNamedArguments(Converter converter, Parameter[] parameters,
+                                                Map<String, Object> namedParams) {
         Object[] args = new Object[parameters.length];
         for (int i = 0; i < parameters.length; i++) {
             Parameter parameter = parameters[i];
@@ -3246,7 +3261,8 @@ public class ClassUtilities {
         }
 
         // Check if we have a previously cached result for this class
-        Optional<Constructor<?>> cachedResult = suppliedArgs.length == 0 && !innerClass ? successfulConstructors.get(c).get() : null;
+        Optional<Constructor<?>> cachedResult = suppliedArgs.length == 0 && !innerClass
+                ? successfulConstructors.get(c).get() : null;
 
         if (cachedResult != null) {
             if (!cachedResult.isPresent()) {
@@ -3338,7 +3354,8 @@ public class ClassUtilities {
                                 } else {
                                     // Complex case: takes enclosing instance plus more arguments
                                     // Create arguments array with enclosing instance first
-                                    Object[] restArgs = matchArgumentsToParameters(converter, otherArgs, params, 1, params.length - 1, false);
+                                    Object[] restArgs = matchArgumentsToParameters(converter, otherArgs, params, 1,
+                                            params.length - 1, false);
                                     Object[] allArgs = new Object[params.length];
                                     allArgs[0] = enclosingInstance;
                                     System.arraycopy(restArgs, 0, allArgs, 1, restArgs.length);

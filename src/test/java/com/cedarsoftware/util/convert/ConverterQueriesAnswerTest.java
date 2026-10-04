@@ -76,7 +76,8 @@ class ConverterQueriesAnswerTest {
                 }
             }
         }
-        assertTrue(threw.isEmpty(), threw.size() + " queries threw, e.g. " + threw.subList(0, Math.min(5, threw.size())));
+        assertTrue(threw.isEmpty(),
+                threw.size() + " queries threw, e.g. " + threw.subList(0, Math.min(5, threw.size())));
     }
 
     @Test
@@ -115,8 +116,9 @@ class ConverterQueriesAnswerTest {
         Field targetField = pairClass.getDeclaredField("target");
         targetField.setAccessible(true);
 
-        Class<?>[][] cases = {{ArrayList.class, Double.class}, {TreeSet.class, Long.class}, {java.sql.Timestamp.class, java.util.Date.class},
-                {Integer.class, Long.class}, {StringBuilder.class, CharSequence.class}, {LinkedHashSet.class, Collection.class},
+        Class<?>[][] cases = {{ArrayList.class, Double.class}, {TreeSet.class, Long.class},
+                {java.sql.Timestamp.class, java.util.Date.class}, {Integer.class, Long.class},
+                {StringBuilder.class, CharSequence.class}, {LinkedHashSet.class, Collection.class},
                 {String[].class, Object[].class}, {Integer[].class, Number[].class}, {ArrayList.class, Iterable.class}};
         for (Class<?>[] c : cases) {
             Object[] pairs = (Object[]) sorted.invoke(null, c[0], c[1]);
@@ -152,7 +154,8 @@ class ConverterQueriesAnswerTest {
             remove.invoke(cache, pair[0], pair[1]);
             assertTrue(converter.isConversionSupportedFor(pair[0], pair[1]));
             Object converted = converter.convert(null, pair[1]);
-            assertEquals(defaultOf(pair[1]), converted, "convert(null, " + pair[1] + ") after asking whether it is supported");
+            assertEquals(defaultOf(pair[1]), converted,
+                    "convert(null, " + pair[1] + ") after asking whether it is supported");
         }
     }
 

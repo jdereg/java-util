@@ -33,9 +33,17 @@ class CompactMapDifferentialTest {
 
     static final Object[] KEYS = {"a", "A", "b", "B", "id", "ID", "Id", "name", "Name", "NAME", "k0", "k1", "k2", "k3",
             "k4", "k5", "k6", "k7", "k8", "k9", 0, 1, 2, 3, 1L, null};
-    interface Config { String name(); CompactMap<Object, Object> make(); Map<Object, Object> reference(); boolean ordered(); boolean ci(); int compactSize(); }
+    interface Config {
+        String name();
+        CompactMap<Object, Object> make();
+        Map<Object, Object> reference();
+        boolean ordered();
+        boolean ci();
+        int compactSize();
+    }
 
-    static Config cfg(String name, Supplier<CompactMap<Object, Object>> make, Supplier<Map<Object, Object>> ref, boolean ordered, boolean ci, int cs) {
+    static Config cfg(String name, Supplier<CompactMap<Object, Object>> make, Supplier<Map<Object, Object>> ref,
+                      boolean ordered, boolean ci, int cs) {
         return new Config() {
             public String name() { return name; }
             public CompactMap<Object, Object> make() { return make.get(); }
@@ -49,19 +57,25 @@ class CompactMapDifferentialTest {
     static List<Config> configs() {
         List<Config> list = new ArrayList<>();
         for (int cs : new int[]{2, 3, 5, 50}) {
-            list.add(cfg("unordered cs" + cs, () -> CompactMap.builder().compactSize(cs).build(), LinkedHashMap::new, false, false, cs));
-            list.add(cfg("insertion cs" + cs, () -> CompactMap.builder().compactSize(cs).insertionOrder().build(), LinkedHashMap::new, true, false, cs));
+            list.add(cfg("unordered cs" + cs, () -> CompactMap.builder().compactSize(cs).build(),
+                    LinkedHashMap::new, false, false, cs));
+            list.add(cfg("insertion cs" + cs, () -> CompactMap.builder().compactSize(cs).insertionOrder().build(),
+                    LinkedHashMap::new, true, false, cs));
             list.add(cfg("sorted cs" + cs, () -> CompactMap.builder().compactSize(cs).sortedOrder().build(),
                     () -> new TreeMap<>(CompactMap.CompactMapComparator.get(false, false)), true, false, cs));
             list.add(cfg("reverse cs" + cs, () -> CompactMap.builder().compactSize(cs).reverseOrder().build(),
                     () -> new TreeMap<>(CompactMap.CompactMapComparator.get(false, true)), true, false, cs));
-            list.add(cfg("CI unordered cs" + cs, () -> CompactMap.builder().compactSize(cs).caseSensitive(false).build(),
+            list.add(cfg("CI unordered cs" + cs,
+                    () -> CompactMap.builder().compactSize(cs).caseSensitive(false).build(),
                     () -> new CaseInsensitiveMap<>(Collections.emptyMap(), new LinkedHashMap<>()), false, true, cs));
-            list.add(cfg("CI insertion cs" + cs, () -> CompactMap.builder().compactSize(cs).caseSensitive(false).insertionOrder().build(),
+            list.add(cfg("CI insertion cs" + cs,
+                    () -> CompactMap.builder().compactSize(cs).caseSensitive(false).insertionOrder().build(),
                     () -> new CaseInsensitiveMap<>(Collections.emptyMap(), new LinkedHashMap<>()), true, true, cs));
-            list.add(cfg("CI sorted cs" + cs, () -> CompactMap.builder().compactSize(cs).caseSensitive(false).sortedOrder().build(),
+            list.add(cfg("CI sorted cs" + cs,
+                    () -> CompactMap.builder().compactSize(cs).caseSensitive(false).sortedOrder().build(),
                     () -> new TreeMap<>(CompactMap.CompactMapComparator.get(true, false)), true, true, cs));
-            list.add(cfg("CI reverse cs" + cs, () -> CompactMap.builder().compactSize(cs).caseSensitive(false).reverseOrder().build(),
+            list.add(cfg("CI reverse cs" + cs,
+                    () -> CompactMap.builder().compactSize(cs).caseSensitive(false).reverseOrder().build(),
                     () -> new TreeMap<>(CompactMap.CompactMapComparator.get(true, true)), true, true, cs));
         }
         list.add(cfg("legacy CompactMap", () -> new CompactMap<>(), LinkedHashMap::new, false, false, 50));
@@ -91,7 +105,8 @@ class CompactMapDifferentialTest {
         } else if (pick < 52) {
             Object k = key(r);
             if (!Objects.equals(m.get(k), ref.get(k)) || m.containsKey(k) != ref.containsKey(k)) {
-                throw new IllegalStateException("get/containsKey(" + k + ") " + m.get(k) + "/" + m.containsKey(k) + " vs " + ref.get(k) + "/" + ref.containsKey(k));
+                throw new IllegalStateException("get/containsKey(" + k + ") " + m.get(k) + "/" + m.containsKey(k)
+                        + " vs " + ref.get(k) + "/" + ref.containsKey(k));
             }
             Object v = value(r);
             if (m.containsValue(v) != ref.containsValue(v)) throw new IllegalStateException("containsValue(" + v + ")");
@@ -105,7 +120,8 @@ class CompactMapDifferentialTest {
         } else if (pick < 62) {   // iterator removal through one of the three views
             int view = r.nextInt(3);
             int every = 1 + r.nextInt(3);
-            Iterator<?> it = view == 0 ? m.keySet().iterator() : view == 1 ? m.values().iterator() : m.entrySet().iterator();
+            Iterator<?> it = view == 0 ? m.keySet().iterator()
+                    : view == 1 ? m.values().iterator() : m.entrySet().iterator();
             List<Object> removedKeys = new ArrayList<>();
             int i = 0;
             List<Object> keysInOrder = new ArrayList<>(m.keySet());
@@ -126,7 +142,8 @@ class CompactMapDifferentialTest {
                     Object v = value(r);
                     Object old = e.setValue(v);
                     Object refOld = ref.put(k, v);
-                    if (!Objects.equals(old, refOld)) throw new IllegalStateException("setValue returned " + old + " vs " + refOld);
+                    if (!Objects.equals(old, refOld)) throw new IllegalStateException("setValue returned " + old
+                            + " vs " + refOld);
                     sb.append(k).append('=').append(v).append(' ');
                     if (r.nextInt(3) == 0) { it.remove(); ref.remove(k); sb.append("(removed) "); }
                 }
@@ -164,21 +181,55 @@ class CompactMapDifferentialTest {
                 return "entrySet.remove(" + e + ")";
             }
             List<Map.Entry<Object, Object>> keep = new ArrayList<>();
-            for (Map.Entry<Object, Object> x : ref.entrySet()) if (r.nextBoolean()) keep.add(new AbstractMap.SimpleEntry<>(x.getKey(), x.getValue()));
+            for (Map.Entry<Object, Object> x : ref.entrySet())
+                if (r.nextBoolean()) keep.add(new AbstractMap.SimpleEntry<>(x.getKey(), x.getValue()));
             boolean a = m.entrySet().retainAll(keep), b = ref.entrySet().retainAll(keep);
             if (a != b) throw new IllegalStateException("entrySet.retainAll returned " + a + " vs " + b);
             return "entrySet.retainAll(" + keep + ")";
         } else if (pick < 90) {   // Map default methods
             Object k = key(r), v = value(r);
             switch (r.nextInt(8)) {
-                case 0: { Object a = m.putIfAbsent(k, v), b = ref.putIfAbsent(k, v); same("putIfAbsent", a, b); return "putIfAbsent(" + k + "," + v + ")"; }
-                case 1: { Object a = m.merge(k, 1, (x, y) -> x instanceof Integer ? (Integer) x + 1 : null), b = ref.merge(k, 1, (x, y) -> x instanceof Integer ? (Integer) x + 1 : null); same("merge", a, b); return "merge(" + k + ")"; }
-                case 2: { Object a = m.computeIfAbsent(k, x -> v), b = ref.computeIfAbsent(k, x -> v); same("computeIfAbsent", a, b); return "computeIfAbsent(" + k + "," + v + ")"; }
-                case 3: { Object a = m.computeIfPresent(k, (x, y) -> v), b = ref.computeIfPresent(k, (x, y) -> v); same("computeIfPresent", a, b); return "computeIfPresent(" + k + "," + v + ")"; }
-                case 4: { Object a = m.compute(k, (x, y) -> v), b = ref.compute(k, (x, y) -> v); same("compute", a, b); return "compute(" + k + "," + v + ")"; }
-                case 5: { Object a = m.replace(k, v), b = ref.replace(k, v); same("replace", a, b); return "replace(" + k + "," + v + ")"; }
-                case 6: { boolean a = m.remove(k, v), b = ref.remove(k, v); same("remove(k,v)", a, b); return "remove(" + k + "," + v + ")"; }
-                default: { m.replaceAll((x, y) -> y == null ? null : (Integer) y + 1); ref.replaceAll((x, y) -> y == null ? null : (Integer) y + 1); return "replaceAll(+1)"; }
+                case 0: {
+                    Object a = m.putIfAbsent(k, v), b = ref.putIfAbsent(k, v);
+                    same("putIfAbsent", a, b);
+                    return "putIfAbsent(" + k + "," + v + ")";
+                }
+                case 1: {
+                    Object a = m.merge(k, 1, (x, y) -> x instanceof Integer ? (Integer) x + 1 : null),
+                            b = ref.merge(k, 1, (x, y) -> x instanceof Integer ? (Integer) x + 1 : null);
+                    same("merge", a, b);
+                    return "merge(" + k + ")";
+                }
+                case 2: {
+                    Object a = m.computeIfAbsent(k, x -> v), b = ref.computeIfAbsent(k, x -> v);
+                    same("computeIfAbsent", a, b);
+                    return "computeIfAbsent(" + k + "," + v + ")";
+                }
+                case 3: {
+                    Object a = m.computeIfPresent(k, (x, y) -> v), b = ref.computeIfPresent(k, (x, y) -> v);
+                    same("computeIfPresent", a, b);
+                    return "computeIfPresent(" + k + "," + v + ")";
+                }
+                case 4: {
+                    Object a = m.compute(k, (x, y) -> v), b = ref.compute(k, (x, y) -> v);
+                    same("compute", a, b);
+                    return "compute(" + k + "," + v + ")";
+                }
+                case 5: {
+                    Object a = m.replace(k, v), b = ref.replace(k, v);
+                    same("replace", a, b);
+                    return "replace(" + k + "," + v + ")";
+                }
+                case 6: {
+                    boolean a = m.remove(k, v), b = ref.remove(k, v);
+                    same("remove(k,v)", a, b);
+                    return "remove(" + k + "," + v + ")";
+                }
+                default: {
+                    m.replaceAll((x, y) -> y == null ? null : (Integer) y + 1);
+                    ref.replaceAll((x, y) -> y == null ? null : (Integer) y + 1);
+                    return "replaceAll(+1)";
+                }
             }
         } else if (pick < 95) {
             Object k = key(r);
@@ -187,7 +238,8 @@ class CompactMapDifferentialTest {
         } else if (pick < 97) {
             CompactMap<Object, Object> copy = c.make();
             copy.putAll(m);
-            if (!copy.equals(m) || !m.equals(copy) || copy.hashCode() != m.hashCode()) throw new IllegalStateException("copy differs: " + copy + " vs " + m);
+            if (!copy.equals(m) || !m.equals(copy) || copy.hashCode() != m.hashCode())
+                throw new IllegalStateException("copy differs: " + copy + " vs " + m);
             return "copyCheck";
         } else if (pick < 98) {
             m.clear(); ref.clear();
@@ -211,7 +263,8 @@ class CompactMapDifferentialTest {
             }
         } else {
             if (!new HashSet<>(mk).equals(new HashSet<>(rk))) {
-                return (sameIgnoringSpelling(sorted(mk), sorted(rk)) ? "key spelling: " : "contents: ") + m + " vs " + ref;
+                return (sameIgnoringSpelling(sorted(mk), sorted(rk)) ? "key spelling: " : "contents: ")
+                        + m + " vs " + ref;
             }
         }
         for (Object k : rk) {
@@ -239,8 +292,9 @@ class CompactMapDifferentialTest {
         if (a.size() != b.size()) return false;
         for (int i = 0; i < a.size(); i++) {
             Object x = a.get(i), y = b.get(i);
-            if (x instanceof String && y instanceof String) { if (!((String) x).equalsIgnoreCase((String) y)) return false; }
-            else if (!Objects.equals(x, y)) return false;
+            if (x instanceof String && y instanceof String) {
+                if (!((String) x).equalsIgnoreCase((String) y)) return false;
+            } else if (!Objects.equals(x, y)) return false;
         }
         return true;
     }

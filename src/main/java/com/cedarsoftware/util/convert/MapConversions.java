@@ -845,7 +845,7 @@ final class MapConversions {
             return result;
         }
         
-        if (target.isSortedMapInterface) {        // SortedMap, NavigableMap: a TreeMap, in the source's order if it has one
+        if (target.isSortedMapInterface) { // SortedMap, NavigableMap: a TreeMap, in the source's order if it has one
             Map<Object, Object> result = source.isSortedMap && source.comparator != null
                     ? new TreeMap<>(source.comparator) : new TreeMap<>();
             copyEntries(sourceMap, result, true, false); // Skip null keys

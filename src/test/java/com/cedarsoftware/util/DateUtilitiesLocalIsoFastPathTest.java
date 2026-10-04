@@ -24,8 +24,8 @@ class DateUtilitiesLocalIsoFastPathTest {
     private static final String[] MONTHS = {"00", "01", "02", "03", "11", "12", "13", "1a"};
     private static final String[] DAYS = {"00", "01", "10", "28", "29", "30", "31", "32", "0x"};
     private static final String[] SEPARATORS = {"T", " ", "t", "_"};
-    private static final String[] TIMES = {"10:30", "00:00", "02:30", "01:30", "23:59", "24:00", "10:60", "1a:30", "10:3",
-            "10:30:00", "10:30:59", "10:30:60", "10:30:0", "10:30:", "10:30:00.", "10:30:00.1", "10:30:00.05",
+    private static final String[] TIMES = {"10:30", "00:00", "02:30", "01:30", "23:59", "24:00", "10:60", "1a:30",
+            "10:3", "10:30:00", "10:30:59", "10:30:60", "10:30:0", "10:30:", "10:30:00.", "10:30:00.1", "10:30:00.05",
             "10:30:00.123456789", "10:30:00.1234567891", "10:30:00.12a", "10:30:00Z", "10:30:00 EST", "10:30+05:30"};
     private static final ZoneId[] ZONES = {ZoneId.of("UTC"), ZoneId.of("America/New_York"), ZoneId.of("Asia/Kolkata")};
 
@@ -62,7 +62,8 @@ class DateUtilitiesLocalIsoFastPathTest {
                     String actual = outcome(() -> DateUtilities.parseDate(text, zone, strict));
                     compared++;
                     if (!Objects.equals(expected, actual) && differences.size() < 20) {
-                        differences.add(text + " " + zone + " strict=" + strict + ": flexible " + expected + " / parseDate " + actual);
+                        differences.add(text + " " + zone + " strict=" + strict + ": flexible " + expected
+                                + " / parseDate " + actual);
                     }
                 }
             }
@@ -74,7 +75,8 @@ class DateUtilitiesLocalIsoFastPathTest {
     @Test
     void theCommonShapesParse() {
         ZoneId newYork = ZoneId.of("America/New_York");
-        assertEquals("2024-01-15T00:00-05:00[America/New_York]", DateUtilities.parseDate("2024-01-15", newYork, true).toString());
+        assertEquals("2024-01-15T00:00-05:00[America/New_York]",
+                DateUtilities.parseDate("2024-01-15", newYork, true).toString());
         assertEquals("2024-07-04T10:30:15.123-04:00[America/New_York]",
                 DateUtilities.parseDate("2024-07-04 10:30:15.123", newYork, true).toString());
         assertEquals("2024-03-10T03:30-04:00[America/New_York]",        // inside the spring-forward gap, moved on

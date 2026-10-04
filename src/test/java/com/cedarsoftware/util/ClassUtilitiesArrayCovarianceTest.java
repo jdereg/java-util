@@ -103,7 +103,9 @@ class ClassUtilitiesArrayCovarianceTest {
         assertEquals(-1, ClassUtilities.computeInheritanceDistance(Object.class, List.class));
     }
 
-    /** Java's own rule is the oracle: a distance exists exactly when the type is assignable, and is 0 only to itself. */
+    /**
+     * Java's own rule is the oracle: a distance exists exactly when the type is assignable, and is 0 only to itself.
+     */
     @Test
     void aDistanceExistsExactlyWhenJavaWouldAssign() {
         Class<?>[] types = {Object.class, String.class, CharSequence.class, Comparable.class, Serializable.class,

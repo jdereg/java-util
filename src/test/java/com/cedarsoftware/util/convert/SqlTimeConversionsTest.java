@@ -53,7 +53,8 @@ class SqlTimeConversionsTest {
         sources.put(java.sql.Date.valueOf("2026-09-27"), "java.sql.Date");
         sources.put(Instant.ofEpochMilli(T123.getTime()), "Instant");
         sources.put(ZonedDateTime.of(2026, 9, 27, 13, 14, 15, 0, ZoneId.of("Asia/Tokyo")), "ZonedDateTime");
-        sources.put(ZonedDateTime.of(2026, 9, 27, 13, 14, 15, 0, ZoneId.of("Asia/Tokyo")).toOffsetDateTime(), "OffsetDateTime");
+        sources.put(ZonedDateTime.of(2026, 9, 27, 13, 14, 15, 0, ZoneId.of("Asia/Tokyo")).toOffsetDateTime(),
+                "OffsetDateTime");
         sources.put(java.time.LocalDateTime.of(2026, 9, 27, 13, 14, 15), "LocalDateTime");
         sources.put(java.time.LocalDate.of(2026, 9, 27), "LocalDate");
         sources.put(java.time.Duration.ofMillis(T123.getTime()), "Duration");

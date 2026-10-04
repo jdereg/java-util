@@ -65,7 +65,8 @@ class CompactMapSortedKeyMatchingTest {
             for (int size = 0; size <= 5; size++) {
                 CompactMap.Builder<Object, Object> builder = CompactMap.builder().compactSize(3);
                 CompactMap<Object, Object> map = (reverse ? builder.reverseOrder() : builder.sortedOrder()).build();
-                TreeMap<Object, Object> expected = reverse ? new TreeMap<>(Collections.reverseOrder()) : new TreeMap<>();
+                TreeMap<Object, Object> expected = reverse ? new TreeMap<>(Collections.reverseOrder())
+                        : new TreeMap<>();
                 for (int i = 1; i <= size; i++) {
                     map.put(number(i + ".0"), i);
                     expected.put(number(i + ".0"), i);

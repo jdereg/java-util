@@ -81,7 +81,8 @@ class ClassUtilitiesJlsSupertypesTest {
         }
         direct.addAll(Arrays.asList(type.getInterfaces()));             // the direct superinterfaces
         if (type.isInterface() && type.getInterfaces().length == 0) {
-            direct.add(Object.class);                                   // "if C is an interface with no direct superinterfaces"
+            // "if C is an interface with no direct superinterfaces"
+            direct.add(Object.class);
         }
         return direct;
     }

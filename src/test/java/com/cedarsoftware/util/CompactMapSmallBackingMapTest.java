@@ -36,10 +36,12 @@ class CompactMapSmallBackingMapTest {
     private static void assertStateMatchesSize(CompactMap<?, ?> map, int compactSize) {
         int size = map.size();
         CompactMap.LogicalValueType expected = size == 0 ? CompactMap.LogicalValueType.EMPTY
-                : size > compactSize ? CompactMap.LogicalValueType.MAP : size >= 2 ? CompactMap.LogicalValueType.ARRAY : null;
+                : size > compactSize ? CompactMap.LogicalValueType.MAP
+                : size >= 2 ? CompactMap.LogicalValueType.ARRAY : null;
         CompactMap.LogicalValueType actual = map.getLogicalValueType();
         if (expected == null) {
-            assertEquals(true, actual == CompactMap.LogicalValueType.OBJECT || actual == CompactMap.LogicalValueType.ENTRY,
+            assertEquals(true,
+                    actual == CompactMap.LogicalValueType.OBJECT || actual == CompactMap.LogicalValueType.ENTRY,
                     "size 1 in state " + actual);
         } else {
             assertEquals(expected, actual, "size " + size);

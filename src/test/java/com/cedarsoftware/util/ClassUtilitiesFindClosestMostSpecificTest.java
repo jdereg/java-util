@@ -41,11 +41,14 @@ class ClassUtilitiesFindClosestMostSpecificTest {
 
     @Test
     void aSubtypeIsChosenOverItsSupertype() {
-        assertEquals("Collection", ClassUtilities.findClosest(ArrayList.class, candidates(Object.class, Collection.class), "none"));
-        assertEquals("Iterable", ClassUtilities.findClosest(ArrayList.class, candidates(Object.class, Iterable.class), "none"));
+        assertEquals("Collection", ClassUtilities.findClosest(ArrayList.class,
+                candidates(Object.class, Collection.class), "none"));
+        assertEquals("Iterable", ClassUtilities.findClosest(ArrayList.class,
+                candidates(Object.class, Iterable.class), "none"));
         assertEquals("List", ClassUtilities.findClosest(ArrayList.class,
                 candidates(Object.class, Iterable.class, Collection.class, List.class), "none"));
-        assertEquals("Map", ClassUtilities.findClosest(ConcurrentHashMap.class, candidates(Object.class, Map.class), "none"));
+        assertEquals("Map", ClassUtilities.findClosest(ConcurrentHashMap.class,
+                candidates(Object.class, Map.class), "none"));
     }
 
     @Test

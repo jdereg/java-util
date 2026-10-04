@@ -321,8 +321,9 @@ public final class Converter {
             return (value, converter) -> value;
         }
         return (value, converter) -> {
-            throw new IllegalArgumentException("Unsupported conversion to " + type.getName() + ": the value converts to a "
-                    + value.getClass().getName() + ", and a " + type.getName() + " cannot be made from it");
+            throw new IllegalArgumentException("Unsupported conversion to " + type.getName()
+                    + ": the value converts to a " + value.getClass().getName() + ", and a " + type.getName()
+                    + " cannot be made from it");
         };
     }
 
@@ -498,7 +499,9 @@ public final class Converter {
             return isAncestor(sourceLoader, targetLoader) ? ON_TARGET : NOT_KEPT;
         }
 
-        /** True if {@code ancestor} is {@code loader} or one of its parents (null, the bootstrap loader, is everyone's). */
+        /**
+         * True if {@code ancestor} is {@code loader} or one of its parents (null, the bootstrap loader, is everyone's).
+         */
         private static boolean isAncestor(ClassLoader ancestor, ClassLoader loader) {
             if (ancestor == null) {
                 return true;

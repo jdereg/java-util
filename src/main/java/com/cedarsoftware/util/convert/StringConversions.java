@@ -109,7 +109,8 @@ final class StringConversions {
         // anything else: decimal text, out of range, or not a number
         Long value = toLong(str, bigDecimalMinByte, bigDecimalMaxByte);
         if (value == null) {
-            throw new IllegalArgumentException("Value '" + str + "' not parseable as a byte value or outside " + Byte.MIN_VALUE + " to " + Byte.MAX_VALUE);
+            throw new IllegalArgumentException("Value '" + str + "' not parseable as a byte value or outside "
+                    + Byte.MIN_VALUE + " to " + Byte.MAX_VALUE);
         }
         return value.byteValue();
     }
@@ -126,7 +127,8 @@ final class StringConversions {
         // anything else: decimal text, out of range, or not a number
         Long value = toLong(str, bigDecimalMinShort, bigDecimalMaxShort);
         if (value == null) {
-            throw new IllegalArgumentException("Value '" + from + "' not parseable as a short value or outside " + Short.MIN_VALUE + " to " + Short.MAX_VALUE);
+            throw new IllegalArgumentException("Value '" + from + "' not parseable as a short value or outside "
+                    + Short.MIN_VALUE + " to " + Short.MAX_VALUE);
         }
         return value.shortValue();
     }
@@ -143,7 +145,8 @@ final class StringConversions {
         // anything else: decimal text, out of range, or not a number
         Long value = toLong(str, bigDecimalMinInteger, bigDecimalMaxInteger);
         if (value == null) {
-            throw new IllegalArgumentException("Value '" + from + "' not parseable as an int value or outside " + Integer.MIN_VALUE + " to " + Integer.MAX_VALUE);
+            throw new IllegalArgumentException("Value '" + from + "' not parseable as an int value or outside "
+                    + Integer.MIN_VALUE + " to " + Integer.MAX_VALUE);
         }
         return value.intValue();
     }
@@ -161,7 +164,8 @@ final class StringConversions {
         // anything else: decimal text, out of range, or not a number
         Long value = toLong(str, bigDecimalMinLong, bigDecimalMaxLong);
         if (value == null) {
-            throw new IllegalArgumentException("Value '" + from + "' not parseable as a long value or outside " + Long.MIN_VALUE + " to " + Long.MAX_VALUE);
+            throw new IllegalArgumentException("Value '" + from + "' not parseable as a long value or outside "
+                    + Long.MIN_VALUE + " to " + Long.MAX_VALUE);
         }
         return value;
     }

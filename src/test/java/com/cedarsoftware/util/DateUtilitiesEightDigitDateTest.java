@@ -28,7 +28,8 @@ class DateUtilitiesEightDigitDateTest {
         assertEquals(ZonedDateTime.parse("2024-02-29T00:00-05:00[America/New_York]"),
                 DateUtilities.parseDate("20240229", NEW_YORK, true));
         // as "2024-01-15" reads, in the default zone
-        assertEquals(DateUtilities.parseDate("2024-01-15", NEW_YORK, true), DateUtilities.parseDate("20240115", NEW_YORK, true));
+        assertEquals(DateUtilities.parseDate("2024-01-15", NEW_YORK, true),
+                DateUtilities.parseDate("20240115", NEW_YORK, true));
         assertEquals(DateUtilities.parseDate("2024-01-15"), DateUtilities.parseDate("20240115"));
     }
 

@@ -80,7 +80,8 @@ class CompactMapIncomparableKeysTest {
         map.put(list(3), 3);
         map.put("a", 4);
         map.put(1, 5);
-        assertEquals(Arrays.asList(1, 2, "a", "b", list(3)), new ArrayList<>(map.keySet()));   // Integer, String, ArrayList
+        // Integer, String, ArrayList
+        assertEquals(Arrays.asList(1, 2, "a", "b", list(3)), new ArrayList<>(map.keySet()));
     }
 
     /** Not Comparable. */

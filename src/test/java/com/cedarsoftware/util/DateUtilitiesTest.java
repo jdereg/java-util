@@ -589,7 +589,8 @@ class DateUtilitiesTest
         calendar.setTimeZone(TimeZone.getTimeZone(resolvedId));
         calendar.clear();
         calendar.set(2021, Calendar.JANUARY, 13, 13, 1, 54);
-        assert date.getTime() - meantInstant(timeZoneId, resolvedId, calendar.getTime()) == 674;    // less than 1000 millis
+        assert date.getTime() - meantInstant(timeZoneId, resolvedId, calendar.getTime())
+                == 674;    // less than 1000 millis
     }
 
     /**

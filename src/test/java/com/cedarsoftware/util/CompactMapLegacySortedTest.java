@@ -84,12 +84,14 @@ class CompactMapLegacySortedTest {
             for (int i = 1; i <= size + 1; i++) {
                 K key = probe.apply(i);
                 assertEquals(expected.put(key, -i), map.put(key, -i), what + " put " + key);
-                assertEquals(new ArrayList<>(expected.entrySet()), new ArrayList<>(map.entrySet()), what + " after put " + key);
+                assertEquals(new ArrayList<>(expected.entrySet()), new ArrayList<>(map.entrySet()),
+                        what + " after put " + key);
             }
             for (int i = size + 1; i >= 1; i--) {
                 K key = probe.apply(i);
                 assertEquals(expected.remove(key), map.remove(key), what + " remove " + key);
-                assertEquals(new ArrayList<>(expected.entrySet()), new ArrayList<>(map.entrySet()), what + " after remove " + key);
+                assertEquals(new ArrayList<>(expected.entrySet()), new ArrayList<>(map.entrySet()),
+                        what + " after remove " + key);
             }
         }
     }

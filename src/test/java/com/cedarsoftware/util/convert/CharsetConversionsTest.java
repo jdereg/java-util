@@ -106,7 +106,8 @@ class CharsetConversionsTest {
     void testCharsetIsASimpleStringConvertibleType() {
         assertTrue(com.cedarsoftware.util.Converter.isSimpleTypeConversionSupported(String.class, Charset.class));
         assertTrue(com.cedarsoftware.util.Converter.isSimpleTypeConversionSupported(Charset.class, String.class));
-        assertTrue(com.cedarsoftware.util.Converter.isConversionSupportedFor(StandardCharsets.UTF_8.getClass(), String.class),
+        assertTrue(com.cedarsoftware.util.Converter.isConversionSupportedFor(
+                StandardCharsets.UTF_8.getClass(), String.class),
                 "the JDK's internal Charset subclass converts too");
     }
 }

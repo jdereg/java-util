@@ -23,7 +23,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class DateUtilitiesAbbreviationOffsetTest {
 
     private static final Object[][] MEANINGS = {
-            {"EST", "-05:00"}, {"EDT", "-04:00"}, {"CST", "-06:00"}, {"CDT", "-05:00"}, {"MST", "-07:00"}, {"MDT", "-06:00"},
+            {"EST", "-05:00"}, {"EDT", "-04:00"}, {"CST", "-06:00"}, {"CDT", "-05:00"},
+            {"MST", "-07:00"}, {"MDT", "-06:00"},
             {"PST", "-08:00"}, {"PDT", "-07:00"}, {"AKST", "-09:00"}, {"AKDT", "-08:00"}, {"HST", "-10:00"},
             {"GMT", "Z"}, {"BST", "+01:00"}, {"WET", "Z"}, {"WEST", "+01:00"}, {"CET", "+01:00"}, {"CEST", "+02:00"},
             {"EET", "+02:00"}, {"EEST", "+03:00"}, {"AEST", "+10:00"}, {"AEDT", "+11:00"}, {"ACST", "+09:30"},

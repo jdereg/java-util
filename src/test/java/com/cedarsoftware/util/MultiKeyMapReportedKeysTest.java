@@ -176,7 +176,8 @@ class MultiKeyMapReportedKeysTest {
         whole.put(set(), "1");
         whole.put(list(), "2");
         whole.put(set("a", "b"), "3");
-        assertEquals(new LinkedHashSet<>(Arrays.asList("{}", "[]", "{a, b}")), new LinkedHashSet<>(renderedKeys(whole)));
+        assertEquals(new LinkedHashSet<>(Arrays.asList("{}", "[]", "{a, b}")),
+                new LinkedHashSet<>(renderedKeys(whole)));
 
         for (MultiKeyMap<String> m : Arrays.asList(filled(new MultiKeyMap<>(), shapes()),
                 filled(MultiKeyMap.<String>builder().flattenDimensions(true).build(), shapes()))) {

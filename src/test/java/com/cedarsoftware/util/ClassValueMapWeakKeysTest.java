@@ -31,12 +31,12 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * A ClassValueMap no longer keeps its keys -- or their ClassLoaders -- alive. It kept every class it mapped in a backing
- * ConcurrentHashMap, so a class from a discarded loader (a redeployed webapp, a plugin, a recompiled script) stayed in
- * memory, with its loader and every class that loader loaded, until removed. Each class's value now lives in a slot
- * stored in the class itself, and the mapped classes are listed only weakly: as in a WeakHashMap, an entry goes away
- * when its class is unloaded, even when the value refers back to the class. Everything else about the map is as before,
- * which the differential test below holds to a LinkedHashMap.
+ * A ClassValueMap no longer keeps its keys -- or their ClassLoaders -- alive. It kept every class it mapped in a
+ * backing ConcurrentHashMap, so a class from a discarded loader (a redeployed webapp, a plugin, a recompiled script)
+ * stayed in memory, with its loader and every class that loader loaded, until removed. Each class's value now lives in
+ * a slot stored in the class itself, and the mapped classes are listed only weakly: as in a WeakHashMap, an entry goes
+ * away when its class is unloaded, even when the value refers back to the class. Everything else about the map is as
+ * before, which the differential test below holds to a LinkedHashMap.
  */
 class ClassValueMapWeakKeysTest {
 
@@ -146,7 +146,8 @@ class ClassValueMapWeakKeysTest {
                         assertEquals(model.putIfAbsent(key, value), map.putIfAbsent(key, value), where);
                         break;
                     case 5:
-                        assertEquals(model.computeIfAbsent(key, k -> value), map.computeIfAbsent(key, k -> value), where);
+                        assertEquals(model.computeIfAbsent(key, k -> value), map.computeIfAbsent(key, k -> value),
+                                where);
                         break;
                     case 6:
                         assertEquals(model.compute(key, (k, v) -> v == null ? value : null),
@@ -170,8 +171,8 @@ class ClassValueMapWeakKeysTest {
                         break;
                     case 12:
                         if (value != null) {
-                            assertEquals(model.merge(key, value, (a, b) -> other), map.merge(key, value, (a, b) -> other),
-                                    where);
+                            assertEquals(model.merge(key, value, (a, b) -> other),
+                                    map.merge(key, value, (a, b) -> other), where);
                         }
                         break;
                     case 13:

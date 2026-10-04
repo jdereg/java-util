@@ -870,7 +870,8 @@ public class DeepEquals {
                             } else {
                                 // No budget left to explain WHY equals() failed: report the objects
                                 // as unequal values (every false return must leave a descriptive node).
-                                stack.addFirst(new ItemsToCompare(key1, key2, itemsToCompare, Difference.VALUE_MISMATCH));
+                                stack.addFirst(new ItemsToCompare(key1, key2, itemsToCompare,
+                                        Difference.VALUE_MISMATCH));
                                 return false;
                             }
                         }
@@ -889,7 +890,8 @@ public class DeepEquals {
                             // node the false return left no description: the diff came out missing, or
                             // blamed whatever sibling was still pending on the stack, or -- when that was
                             // the root, as in 3.x -- threw NPE while building it (issue #362).
-                            stack.addFirst(new ItemsToCompare(key1, key2, itemsToCompare, Difference.CUSTOM_EQUALS_ONLY));
+                            stack.addFirst(new ItemsToCompare(key1, key2, itemsToCompare,
+                                    Difference.CUSTOM_EQUALS_ONLY));
                         }
                         return false;
                     }
@@ -931,8 +933,8 @@ public class DeepEquals {
         return Math.max(16, (int) capacity);
     }
 
-    private static boolean decomposeRecord(Object rec1, Object rec2, Deque<ItemsToCompare> stack, ItemsToCompare currentItem,
-                                           boolean skipUnreadableFields) {
+    private static boolean decomposeRecord(Object rec1, Object rec2, Deque<ItemsToCompare> stack,
+                                           ItemsToCompare currentItem, boolean skipUnreadableFields) {
         // Component names and accessors, listed once per record class by ReflectionUtils
         String[] names = ReflectionUtils.recordComponentNames(rec1.getClass());
         if (names == null) {
@@ -1548,8 +1550,9 @@ public class DeepEquals {
      * unless the caller asked to skip such fields (SKIP_UNREADABLE_FIELDS). False, with the difference on the stack,
      * when they are unequal.
      */
-    private static boolean decomposeObject(Object obj1, Object obj2, Deque<ItemsToCompare> stack, ItemsToCompare currentItem,
-                                           int maxObjectFields, boolean skipUnreadableFields) {
+    private static boolean decomposeObject(Object obj1, Object obj2, Deque<ItemsToCompare> stack,
+                                           ItemsToCompare currentItem, int maxObjectFields,
+                                           boolean skipUnreadableFields) {
 
         // Get all fields from the object
         Collection<Field> fields = ReflectionUtils.getAllDeclaredFields(obj1.getClass());
@@ -1612,10 +1615,12 @@ public class DeepEquals {
                 if (obj1.equals(obj2)) {
                     return true;
                 }
-                stack.addFirst(new ItemsToCompare(obj1, obj2, field.getName(), currentItem, Difference.UNREADABLE_FIELD));
+                stack.addFirst(new ItemsToCompare(obj1, obj2, field.getName(), currentItem,
+                        Difference.UNREADABLE_FIELD));
                 return false;
             }
-            stack.addFirst(new ItemsToCompare(value1, value2, field.getName(), currentItem, Difference.FIELD_VALUE_MISMATCH));
+            stack.addFirst(new ItemsToCompare(value1, value2, field.getName(), currentItem,
+                    Difference.FIELD_VALUE_MISMATCH));
             pushed++;
         }
 
@@ -2364,7 +2369,8 @@ public class DeepEquals {
         }
 
         if (item.difference == Difference.CUSTOM_EQUALS_ONLY) {
-            result.append(String.format("  %s.equals() returned false, but every field is equal%n  Expected: %s%n  Found: %s",
+            result.append(String.format("  %s.equals() returned false, but every field is equal%n"
+                    + "  Expected: %s%n  Found: %s",
                     item._key1.getClass().getSimpleName(),
                     formatDifferenceValue(item._key1),
                     formatDifferenceValue(item._key2)));

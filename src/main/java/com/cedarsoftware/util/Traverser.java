@@ -242,7 +242,8 @@ public class Traverser {
     // Every object ever queued: added when queued, never removed. An object is queued at most once, so no
     // object is visited twice, and the queued-but-unvisited ones are exactly those on the stack.
     private final IdentitySet<Object> seen = new IdentitySet<>();
-    // One traversal, one thread: a plain map (a ClassValueMap would attach a slot to every class visited, per traversal)
+    // One traversal, one thread: a plain map (a ClassValueMap would attach a slot to every class visited,
+    // per traversal)
     private final Map<Class<?>, Boolean> skipClassCache = new HashMap<>();
     private final Map<Class<?>, FieldPlan> fieldPlans = new HashMap<>();       // one traversal, one thread, as above
     private final Consumer<NodeVisit> nodeVisitor;
@@ -493,7 +494,8 @@ public class Traverser {
     /**
      * A JDK class is traversed as a LEAF: it is visited, and its field values are reported, but those
      * fields are not walked. Nor are the fields a JDK superclass declares in a user subclass (an exception's
-     * cause and stack trace, a Thread's state): those too were walked on JDK 8-16 only. From JDK 17 the module system makes them unreadable anyway, so the walk
+     * cause and stack trace, a Thread's state): those too were walked on JDK 8-16 only. From JDK 17 the module
+     * system makes them unreadable anyway, so the walk
      * only ever happened on JDK 8-16, where setAccessible() reaches them -- traversing {@code "test"}
      * visited the String AND its internal char[] there, but only the String on 17+. Treating them as
      * leaves gives every JDK the same graph. Identified by class loader rather than package, so a

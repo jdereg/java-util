@@ -257,7 +257,8 @@ class ConverterLegacyApiTest {
         assertTrue(com.cedarsoftware.util.convert.Converter.isContainerConversionSupported(String[].class, java.util.List.class));
         assertFalse(com.cedarsoftware.util.convert.Converter.isContainerConversionSupported(String.class, java.util.List.class));
         // A question answers: an EnumSet target is not supported (it threw; convert() still explains how to ask)
-        assertFalse(com.cedarsoftware.util.convert.Converter.isContainerConversionSupported(String[].class, java.util.EnumSet.class));
+        assertFalse(com.cedarsoftware.util.convert.Converter.isContainerConversionSupported(String[].class,
+                java.util.EnumSet.class));
     }
 
     @Test

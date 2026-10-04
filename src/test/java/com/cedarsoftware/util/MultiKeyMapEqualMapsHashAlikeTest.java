@@ -47,7 +47,8 @@ class MultiKeyMapEqualMapsHashAlikeTest {
     void mapsEqualByValueBasedEqualityHashAlike() {
         assertEqualAndHashAlike(m -> m.put(1, "v"), m -> m.put(1.0, "v"), "1 and 1.0");
         assertEqualAndHashAlike(m -> m.put(1, "v"), m -> m.put(new BigDecimal("1.00"), "v"), "1 and 1.00");
-        assertEqualAndHashAlike(m -> m.putMultiKey("v", 1, 2), m -> m.putMultiKey("v", 1L, 2.0), "(1, 2) and (1L, 2.0)");
+        assertEqualAndHashAlike(m -> m.putMultiKey("v", 1, 2), m -> m.putMultiKey("v", 1L, 2.0),
+                "(1, 2) and (1L, 2.0)");
         assertEqualAndHashAlike(m -> m.put(set(1, 2), "v"), m -> m.put(set(2.0, 1.0), "v"), "{1, 2} and {2.0, 1.0}");
         assertEqualAndHashAlike(m -> m.put(new Object[]{"x", Arrays.asList(1, 2)}, "v"),
                 m -> m.put(Arrays.asList("x", new double[]{1, 2}), "v"), "[x, [1, 2]] and [x, [1.0, 2.0]]");

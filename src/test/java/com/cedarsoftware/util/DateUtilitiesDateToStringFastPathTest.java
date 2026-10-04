@@ -22,7 +22,8 @@ class DateUtilitiesDateToStringFastPathTest {
     private static final String[] WEEKDAYS = {"Mon", "sun", "FRI", "Xyz"};
     private static final String[] MONTHS = {"Jan", "feb", "JUL", "Sep", "Foo"};
     private static final String[] DAYS = {"01", "06", "29", "30", "31", "32", "00", " 6"};
-    private static final String[] TIMES = {"10:30:00", "00:00:00", "23:59:59", "24:00:00", "10:60:00", "10:30:60", "02:30:00"};
+    private static final String[] TIMES = {"10:30:00", "00:00:00", "23:59:59", "24:00:00", "10:60:00", "10:30:60",
+            "02:30:00"};
     private static final String[] ZONES = {"EST", "EDT", "PST", "AEDT", "CEST", "BRT", "SAST", "UTC", "GMT", "Z", "XYZ",
             "est", "ABCDEF", "E5T"};
     private static final String[] YEARS = {"2024", "2023", "0000", "202a"};
@@ -49,12 +50,14 @@ class DateUtilitiesDateToStringFastPathTest {
                                 String text = weekday + " " + month + " " + day + " " + time + " " + zone + " " + year;
                                 for (ZoneId defaultZone : DEFAULT_ZONES) {
                                     for (boolean strict : new boolean[]{true, false}) {
-                                        String expected = outcome(() -> DateUtilities.parseFlexible(text, defaultZone, strict));
-                                        String actual = outcome(() -> DateUtilities.parseDate(text, defaultZone, strict));
+                                        String expected =
+                                                outcome(() -> DateUtilities.parseFlexible(text, defaultZone, strict));
+                                        String actual =
+                                                outcome(() -> DateUtilities.parseDate(text, defaultZone, strict));
                                         compared++;
                                         if (!Objects.equals(expected, actual) && differences.size() < 20) {
-                                            differences.add(text + " " + defaultZone + " strict=" + strict + ": flexible "
-                                                    + expected + " / parseDate " + actual);
+                                            differences.add(text + " " + defaultZone + " strict=" + strict
+                                                    + ": flexible " + expected + " / parseDate " + actual);
                                         }
                                     }
                                 }

@@ -48,7 +48,8 @@ import com.cedarsoftware.util.internal.FloatDecimal;
  * <h3>Key Features:</h3>
  * <ul>
  *   <li><b>N-Dimensional Keys:</b> Support for keys with any number of components (1, 2, 3, ... N).</li>
- *   <li><b>High Performance:</b> Zero-allocation polymorphic storage, a well-spread multiplicative hash, and optimized hash computation — no GC/heap pressure for gets in flat cases.</li>
+ *   <li><b>High Performance:</b> Zero-allocation polymorphic storage, a well-spread multiplicative hash, and
+ *       optimized hash computation — no GC/heap pressure for gets in flat cases.</li>
  *   <li><b>Thread-Safe:</b> Lock-free reads with auto-tuned stripe locking that scales with your server cores, similar to ConcurrentHashMap.</li>
  *   <li><b>Map Interface Compatible:</b> Supports single-key operations via the standard Map interface (get()/put() automatically unpack Collections/Arrays into multi-keys).</li>
  *   <li><b>Flexible API:</b> Var-args methods for convenient multi-key operations (getMultiKey()/putMultiKey() with many keys).</li>
@@ -2097,7 +2098,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                 }
                 int len = ArrayUtilities.getLength(array);
                 for (int i = 0; i < len; i++) {
-                    runningHash = expandAndHash(ArrayUtilities.getElement(array, i), result, visited, runningHash, useFlatten, caseSensitive);
+                    runningHash = expandAndHash(ArrayUtilities.getElement(array, i), result, visited, runningHash,
+                            useFlatten, caseSensitive);
                 }
                 if (!useFlatten) {
                     result.add(CLOSE);
@@ -2435,8 +2437,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             if (elem1 == SET_OPEN && elem2 == SET_OPEN) {
                 // From this Set on, compared as compareCollections() compares a key: element by element, a Set's
                 // elements matched whole (see sameSetElements)
-                return compareCollections(Arrays.asList(array1).subList(i, size), Arrays.asList(array2).subList(i, size),
-                        size - i, valueBasedEquality, caseSensitive);
+                return compareCollections(Arrays.asList(array1).subList(i, size),
+                        Arrays.asList(array2).subList(i, size), size - i, valueBasedEquality, caseSensitive);
             } else if (elem1 == SET_OPEN || elem2 == SET_OPEN) {
                 // One is SET_OPEN but not the other - mismatch
                 return false;
@@ -2510,7 +2512,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      */
     @SuppressWarnings("unchecked")
     private static boolean compareCollections(Collection<?> coll1, Collection<?> coll2, int size, boolean valueBasedEquality, boolean caseSensitive) {
-        if (coll1 instanceof List && coll1 instanceof RandomAccess && coll2 instanceof List && coll2 instanceof RandomAccess) {
+        if (coll1 instanceof List && coll1 instanceof RandomAccess
+                && coll2 instanceof List && coll2 instanceof RandomAccess) {
             // Indexed, as below, with each Set portion compared in place as sublists: both portions were copied
             // out into new lists first (the map's own expansions are ArrayLists, so this is the usual case)
             List<Object> l1 = (List<Object>) coll1;
@@ -3821,7 +3824,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                 return false;
             }
             if (byKey == null) {
-                Map<Object, Map.Entry<Object, V>> index = new HashMap<>(Math.max(16, (int) (entries.size() / 0.75f) + 1));
+                Map<Object, Map.Entry<Object, V>> index =
+                        new HashMap<>(Math.max(16, (int) (entries.size() / 0.75f) + 1));
                 for (Map.Entry<Object, V> e : entries) {
                     index.put(e.getKey(), e);
                 }

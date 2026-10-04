@@ -25,7 +25,8 @@ class StringUtilitiesSupplementaryCaseTest {
             'a', 'A', 'z', 'Z', '0', ' ', 'k', 'K', 's', 'S', 'i', 'I',
             0x00E9, 0x00C9, 0x00DF, 0x1E9E, 0x017F, 0x212A, 0x0131, 0x0130,     // é É ß ẞ ſ Kelvin ı İ
             0x03A3, 0x03C3, 0x03C2, 0x10D0, 0x1C90,                             // Σ σ ς, Georgian ა Ა
-            0x10400, 0x10428, 0x104B0, 0x104D8, 0x1E900, 0x1E922, 0x10C80, 0x10CC0,  // Deseret, Osage, Adlam, Old Hungarian
+            0x10400, 0x10428, 0x104B0, 0x104D8,                                 // Deseret, Osage,
+            0x1E900, 0x1E922, 0x10C80, 0x10CC0,                                 // Adlam, Old Hungarian
             0x1F600, 0xD801, 0xDC00                                              // emoji, lone high, lone low surrogate
     };
 

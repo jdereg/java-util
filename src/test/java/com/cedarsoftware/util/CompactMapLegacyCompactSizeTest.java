@@ -41,13 +41,17 @@ class CompactMapLegacyCompactSizeTest {
         CompactMap<String, Object> copy = CompactMap.<String, Object>builder()
                 .compactSize((Integer) config.get(CompactMap.COMPACT_SIZE)).build();
         assertEquals(80, copy.getConfig().get(CompactMap.COMPACT_SIZE));
-        assertEquals(80, map.withConfig(Collections.<String, Object>emptyMap()).getConfig().get(CompactMap.COMPACT_SIZE));
+        assertEquals(80, map.withConfig(Collections.<String, Object>emptyMap()).getConfig()
+                .get(CompactMap.COMPACT_SIZE));
     }
 
     @Test
     void theLibrarysOwnSubclassesStillReportTheDefault() {
-        assertEquals(CompactMap.DEFAULT_COMPACT_SIZE, new CompactMap<String, Object>().getConfig().get(CompactMap.COMPACT_SIZE));
-        assertEquals(CompactMap.DEFAULT_COMPACT_SIZE, new CompactLinkedMap<String, Object>().getConfig().get(CompactMap.COMPACT_SIZE));
-        assertEquals(CompactMap.DEFAULT_COMPACT_SIZE, new CompactCILinkedMap<String, Object>().getConfig().get(CompactMap.COMPACT_SIZE));
+        assertEquals(CompactMap.DEFAULT_COMPACT_SIZE,
+                new CompactMap<String, Object>().getConfig().get(CompactMap.COMPACT_SIZE));
+        assertEquals(CompactMap.DEFAULT_COMPACT_SIZE,
+                new CompactLinkedMap<String, Object>().getConfig().get(CompactMap.COMPACT_SIZE));
+        assertEquals(CompactMap.DEFAULT_COMPACT_SIZE,
+                new CompactCILinkedMap<String, Object>().getConfig().get(CompactMap.COMPACT_SIZE));
     }
 }

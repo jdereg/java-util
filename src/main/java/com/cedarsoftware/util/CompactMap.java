@@ -646,8 +646,8 @@ public class CompactMap<K, V> implements Map<K, V> {
      * unordered, single-value key "id", a HashMap behind it -- one a serializer can write as an ordinary object of its
      * class and read back by that class's name. A builder map never is, whatever its configuration: its class is
      * generated in a class loader of its own, and no reader can find it by name. json-io wrote
-     * {@code CompactMap.builder().build()} under that name and could not read it back; it now writes such a map with its
-     * configuration, as it writes every other builder map.
+     * {@code CompactMap.builder().build()} under that name and could not read it back; it now writes such a map with
+     * its configuration, as it writes every other builder map.
      *
      * @return true for a map that is not a builder map and has the default configuration
      */
@@ -2431,7 +2431,8 @@ public class CompactMap<K, V> implements Map<K, V> {
         }
 
         private Object keyOfOneEntry(Object state) {
-            return state instanceof CompactMap.CompactMapEntry ? ((CompactMapEntry) state).getKey() : getSingleValueKey();
+            return state instanceof CompactMap.CompactMapEntry ? ((CompactMapEntry) state).getKey()
+                    : getSingleValueKey();
         }
 
         final void advance() {

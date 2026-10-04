@@ -33,14 +33,21 @@ class CompactMapBuildCacheTest {
     void everyOptionStillDecidesTheMapWithTheCacheWarm() {
         for (int pass = 0; pass < 3; pass++) {
             assertConfig(CompactMap.<String, Object>builder().build(), 50, true, CompactMap.UNORDERED, "id");
-            assertConfig(CompactMap.<String, Object>builder().compactSize(7).build(), 7, true, CompactMap.UNORDERED, "id");
-            assertConfig(CompactMap.<String, Object>builder().caseSensitive(false).build(), 50, false, CompactMap.UNORDERED, "id");
-            assertConfig(CompactMap.<String, Object>builder().insertionOrder().build(), 50, true, CompactMap.INSERTION, "id");
+            assertConfig(CompactMap.<String, Object>builder().compactSize(7).build(),
+                    7, true, CompactMap.UNORDERED, "id");
+            assertConfig(CompactMap.<String, Object>builder().caseSensitive(false).build(),
+                    50, false, CompactMap.UNORDERED, "id");
+            assertConfig(CompactMap.<String, Object>builder().insertionOrder().build(),
+                    50, true, CompactMap.INSERTION, "id");
             assertConfig(CompactMap.<String, Object>builder().sortedOrder().build(), 50, true, CompactMap.SORTED, "id");
-            assertConfig(CompactMap.<String, Object>builder().reverseOrder().build(), 50, true, CompactMap.REVERSE, "id");
-            assertConfig(CompactMap.<String, Object>builder().singleValueKey("uuid").build(), 50, true, CompactMap.UNORDERED, "uuid");
-            assertSame(TreeMap.class, CompactMap.<String, Object>builder().mapType(TreeMap.class).build().getConfig().get(CompactMap.MAP_TYPE));
-            assertSame(LinkedHashMap.class, CompactMap.<String, Object>builder().mapType(LinkedHashMap.class).build().getConfig().get(CompactMap.MAP_TYPE));
+            assertConfig(CompactMap.<String, Object>builder().reverseOrder().build(),
+                    50, true, CompactMap.REVERSE, "id");
+            assertConfig(CompactMap.<String, Object>builder().singleValueKey("uuid").build(),
+                    50, true, CompactMap.UNORDERED, "uuid");
+            assertSame(TreeMap.class, CompactMap.<String, Object>builder().mapType(TreeMap.class).build()
+                    .getConfig().get(CompactMap.MAP_TYPE));
+            assertSame(LinkedHashMap.class, CompactMap.<String, Object>builder().mapType(LinkedHashMap.class).build()
+                    .getConfig().get(CompactMap.MAP_TYPE));
         }
         // and the maps behave as configured
         CompactMap<String, Object> ci = CompactMap.<String, Object>builder().caseSensitive(false).build();
@@ -55,7 +62,8 @@ class CompactMapBuildCacheTest {
 
     @Test
     void aBuilderReusedAfterBuildBuildsItsConfigurationAgain() {
-        CompactMap.Builder<String, Object> builder = CompactMap.<String, Object>builder().caseSensitive(false).insertionOrder().compactSize(9);
+        CompactMap.Builder<String, Object> builder = CompactMap.<String, Object>builder().caseSensitive(false)
+                .insertionOrder().compactSize(9);
         for (int i = 0; i < 3; i++) {
             assertConfig(builder.build(), 9, false, CompactMap.INSERTION, "id");
         }

@@ -25,10 +25,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class DateUtilitiesDateToStringTest {
 
-    private static final String[] ZONES = {"America/New_York", "America/Los_Angeles", "America/Anchorage", "Europe/Berlin",
-            "Europe/London", "Australia/Sydney", "Australia/Adelaide", "Pacific/Auckland", "Asia/Tokyo", "Asia/Kolkata",
-            "America/Sao_Paulo", "Africa/Johannesburg", "UTC"};
-    private static final long[] INSTANTS = {1705314600000L, 1720096200000L};       // 2024-01-15T10:30Z, 2024-07-04T12:30Z
+    private static final String[] ZONES = {"America/New_York", "America/Los_Angeles", "America/Anchorage",
+            "Europe/Berlin", "Europe/London", "Australia/Sydney", "Australia/Adelaide", "Pacific/Auckland",
+            "Asia/Tokyo", "Asia/Kolkata", "America/Sao_Paulo", "Africa/Johannesburg", "UTC"};
+    // 2024-01-15T10:30Z, 2024-07-04T12:30Z
+    private static final long[] INSTANTS = {1705314600000L, 1720096200000L};
 
     /** Date.toString()'s format, in a zone of our choosing, without touching the JVM's default zone. */
     private static String dateToString(long millis, String zone) {

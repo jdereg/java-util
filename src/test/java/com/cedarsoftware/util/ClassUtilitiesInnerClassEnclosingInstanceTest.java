@@ -66,7 +66,8 @@ class ClassUtilitiesInnerClassEnclosingInstanceTest {
             assertSame(mine, named.outer(), "call " + call);
             assertEquals("x", named.name);
 
-            Outer.Inner inner = (Outer.Inner) ClassUtilities.newInstance(Outer.Inner.class, Collections.singletonList(mine));
+            Outer.Inner inner = (Outer.Inner) ClassUtilities.newInstance(Outer.Inner.class,
+                    Collections.singletonList(mine));
             assertSame(mine, inner.outer(), "call " + call);
         }
     }

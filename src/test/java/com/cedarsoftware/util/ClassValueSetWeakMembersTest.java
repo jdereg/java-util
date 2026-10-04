@@ -178,8 +178,8 @@ class ClassValueSetWeakMembersTest {
     @Test
     void concurrentAddsAndRemovesLeaveAConsistentSet() throws Exception {
         ClassValueSet set = new ClassValueSet();
-        Class<?>[] classes = {String.class, Integer.class, Long.class, Double.class, Object.class, List.class, Map.class,
-                Thread.class, Number.class, Runnable.class, HashMap.class, ArrayList.class};
+        Class<?>[] classes = {String.class, Integer.class, Long.class, Double.class, Object.class, List.class,
+                Map.class, Thread.class, Number.class, Runnable.class, HashMap.class, ArrayList.class};
         int threads = 6;
         ExecutorService pool = Executors.newFixedThreadPool(threads);
         CountDownLatch start = new CountDownLatch(1);

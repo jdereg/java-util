@@ -99,8 +99,10 @@ class DeepEqualsUnreadableFieldsTest {
     /** Atomic holders have no equals(), and hide their state on JDK 17+: compared by what they hold, on every JDK. */
     @Test
     void atomicHoldersAreComparedByWhatTheyHold() {
-        assertTrue(DeepEquals.deepEquals(new AtomicIntegerArray(new int[]{1, 2}), new AtomicIntegerArray(new int[]{1, 2})));
-        assertFalse(DeepEquals.deepEquals(new AtomicIntegerArray(new int[]{1, 2}), new AtomicIntegerArray(new int[]{1, 3})));
+        assertTrue(DeepEquals.deepEquals(new AtomicIntegerArray(new int[]{1, 2}),
+                new AtomicIntegerArray(new int[]{1, 2})));
+        assertFalse(DeepEquals.deepEquals(new AtomicIntegerArray(new int[]{1, 2}),
+                new AtomicIntegerArray(new int[]{1, 3})));
         assertFalse(DeepEquals.deepEquals(new AtomicIntegerArray(2), new AtomicIntegerArray(3)));
         assertTrue(DeepEquals.deepEquals(new AtomicLongArray(new long[]{7}), new AtomicLongArray(new long[]{7})));
         assertFalse(DeepEquals.deepEquals(new AtomicLongArray(new long[]{7}), new AtomicLongArray(new long[]{8})));
@@ -108,13 +110,15 @@ class DeepEqualsUnreadableFieldsTest {
                 new AtomicReferenceArray<>(new Object[]{"a", 1L})));        // elements compared deeply: 1 == 1L
         assertFalse(DeepEquals.deepEquals(new AtomicReferenceArray<>(new Object[]{"a"}),
                 new AtomicReferenceArray<>(new Object[]{"b"})));
-        assertTrue(DeepEquals.deepEquals(new AtomicReference<>(Arrays.asList(1, 2)), new AtomicReference<>(Arrays.asList(1, 2))));
+        assertTrue(DeepEquals.deepEquals(new AtomicReference<>(Arrays.asList(1, 2)),
+                new AtomicReference<>(Arrays.asList(1, 2))));
         assertFalse(DeepEquals.deepEquals(new AtomicReference<>("a"), new AtomicReference<>("b")));
     }
 
     /**
      * An exception's own state (message, cause, suppressed) is hidden on JDK 17+: compared by its accessors, on every
-     * JDK. The stack trace is not compared -- an exception made elsewhere (a copy read back from JSON, say) has another.
+     * JDK. The stack trace is not compared -- an exception made elsewhere (a copy read back from JSON, say) has
+     * another.
      */
     @Test
     void exceptionsAreComparedByMessageCauseAndSuppressed() {

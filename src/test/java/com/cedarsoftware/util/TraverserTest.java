@@ -163,7 +163,8 @@ public class TraverserTest
     public void testJdkClassesAreLeavesOnEveryJdk()
     {
         final java.util.List<Object> seen = new java.util.ArrayList<>();
-        Traverser.traverse(new java.math.BigInteger("123456789012345678901234567890"), visit -> seen.add(visit.getNode()), null);
+        Traverser.traverse(new java.math.BigInteger("123456789012345678901234567890"),
+                visit -> seen.add(visit.getNode()), null);
         assertEquals(1, seen.size(), "BigInteger's int[] magnitude must not be walked: " + seen);
 
         seen.clear();

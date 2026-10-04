@@ -28,7 +28,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class ConverterClassLoaderLeakTest {
 
     private static final String FIXTURE = "com.cedarsoftware.util.convert.ConverterClassLoaderLeakTest$Fixture";
-    private static final String FIXTURE_LIST = "com.cedarsoftware.util.convert.ConverterClassLoaderLeakTest$FixtureList";
+    private static final String FIXTURE_LIST =
+            "com.cedarsoftware.util.convert.ConverterClassLoaderLeakTest$FixtureList";
 
     /** Loaded in throwaway ClassLoaders whose parent is the bootstrap loader: may depend only on java.base. */
     public static class Fixture implements Comparable<Fixture>, java.io.Serializable {

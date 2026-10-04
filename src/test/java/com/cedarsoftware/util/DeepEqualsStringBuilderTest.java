@@ -57,7 +57,8 @@ class DeepEqualsStringBuilderTest {
     @Test
     void deepHashCodeFollowsTheText() {
         assertEquals(DeepEquals.deepHashCode(builder("abc", 3)), DeepEquals.deepHashCode(builder("abc", 300)));
-        assertEquals(DeepEquals.deepHashCode(new StringBuffer("abc")), DeepEquals.deepHashCode(new StringBuffer("abc")));
+        assertEquals(DeepEquals.deepHashCode(new StringBuffer("abc")),
+                DeepEquals.deepHashCode(new StringBuffer("abc")));
     }
 
     @Test

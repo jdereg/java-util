@@ -32,7 +32,9 @@ class ClassUtilitiesClassLoaderLeakTest {
     private static final String FIXTURE = "com.cedarsoftware.util.ClassUtilitiesClassLoaderLeakTest$LoaderFixture";
     private final Converter converter = new Converter(new DefaultConverterOptions());
 
-    /** Loads the fixture in a throwaway loader, runs {@code use} on it, drops both, and reports whether the loader went. */
+    /**
+     * Loads the fixture in a throwaway loader, runs {@code use} on it, drops both, and reports whether the loader went.
+     */
     private void assertLoaderIsCollectedAfter(String what, Consumer<Class<?>> use) throws Exception {
         URLClassLoader loader = new URLClassLoader(new URL[]{new File("target/test-classes").toURI().toURL()}, null);
         Class<?> fixture = Class.forName(FIXTURE, false, loader);
@@ -48,12 +50,14 @@ class ClassUtilitiesClassLoaderLeakTest {
 
     @Test
     void forNameDoesNotPinTheLoader() throws Exception {
-        assertLoaderIsCollectedAfter("forName()", c -> assertNotNull(ClassUtilities.forName(FIXTURE, c.getClassLoader())));
+        assertLoaderIsCollectedAfter("forName()",
+                c -> assertNotNull(ClassUtilities.forName(FIXTURE, c.getClassLoader())));
     }
 
     @Test
     void theHierarchyCacheDoesNotPinTheLoader() throws Exception {
-        assertLoaderIsCollectedAfter("getClassHierarchyInfo()", c -> assertNotNull(ClassUtilities.getClassHierarchyInfo(c)));
+        assertLoaderIsCollectedAfter("getClassHierarchyInfo()",
+                c -> assertNotNull(ClassUtilities.getClassHierarchyInfo(c)));
     }
 
     @Test

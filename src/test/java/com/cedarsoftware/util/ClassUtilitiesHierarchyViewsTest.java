@@ -71,8 +71,9 @@ class ClassUtilitiesHierarchyViewsTest {
             }
             assertEquals(keys, new ArrayList<>(info.getAllSupertypes()), "the supertypes list the same, in order");
         }
-        assertEquals(Arrays.asList(ArrayList.class), new ArrayList<>(ClassUtilities.getClassHierarchyInfo(ArrayList.class)
-                .getDistanceMap().keySet()).subList(0, 1));
+        assertEquals(Arrays.asList(ArrayList.class),
+                new ArrayList<>(ClassUtilities.getClassHierarchyInfo(ArrayList.class)
+                        .getDistanceMap().keySet()).subList(0, 1));
     }
 
     @Test

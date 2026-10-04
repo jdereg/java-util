@@ -157,7 +157,7 @@ public class TypeUtilities {
         }
         if (type instanceof ParameterizedType) {
             ParameterizedType parameterizedType = (ParameterizedType) type;
-            for (Type arg : parameterizedType.getActualTypeArguments()) {
+            for (Type arg : typeArguments(parameterizedType)) {
                 if (hasUnresolvedType(arg)) {
                     return true;
                 }
@@ -283,7 +283,7 @@ public class TypeUtilities {
             ParameterizedType pt = (ParameterizedType) type;
             owner = deeper(owner, pt.getRawType(), depth + 1);
             owner = deeper(owner, pt.getOwnerType(), depth + 1);
-            for (Type arg : pt.getActualTypeArguments()) {
+            for (Type arg : typeArguments(pt)) {
                 owner = deeper(owner, arg, depth + 1);
             }
             return owner;
@@ -374,7 +374,7 @@ public class TypeUtilities {
         try {
             if (typeToResolve instanceof ParameterizedType) {
                 ParameterizedType pt = (ParameterizedType) typeToResolve;
-                Type[] args = pt.getActualTypeArguments();
+                Type[] args = typeArguments(pt);
                 Type[] resolvedArgs = new Type[args.length];
                 // Use the current ParameterizedType (pt) as the new context for its type arguments.
                 for (int i = 0; i < args.length; i++) {
@@ -450,7 +450,7 @@ public class TypeUtilities {
 
                     for (int i = 0; i < declaredVars.length; i++) {
                         if (declaredVars[i].getName().equals(typeVar.getName())) {
-                            resolved = pType.getActualTypeArguments()[i];
+                            resolved = typeArguments(pType)[i];
                             break;
                         }
                     }
@@ -495,7 +495,7 @@ public class TypeUtilities {
                 TypeVariable<?>[] declaredVars = declaringClass.getTypeParameters();
                 for (int i = 0; i < declaredVars.length; i++) {
                     if (declaredVars[i].getName().equals(typeVar.getName())) {
-                        return pType.getActualTypeArguments()[i];
+                        return typeArguments(pType)[i];
                     }
                 }
             }
@@ -567,7 +567,7 @@ public class TypeUtilities {
             ParameterizedType pt = (ParameterizedType) parentType;
             // Get the type parameters declared on the raw type.
             TypeVariable<?>[] typeParams = ((Class<?>) pt.getRawType()).getTypeParameters();
-            Type[] actualTypes = pt.getActualTypeArguments();
+            Type[] actualTypes = typeArguments(pt);
             for (int i = 0; i < typeParams.length; i++) {
                 if (typeParams[i].equals(typeToResolve)) {
                     return actualTypes[i];
@@ -575,6 +575,12 @@ public class TypeUtilities {
             }
         }
         return null;
+    }
+
+    /** A parameterized type's arguments, to read only: TypeUtilities' own without a copy. */
+    private static Type[] typeArguments(ParameterizedType type) {
+        return type instanceof ParameterizedTypeImpl ? ((ParameterizedTypeImpl) type).args
+                : type.getActualTypeArguments();
     }
 
     /**
@@ -606,7 +612,7 @@ public class TypeUtilities {
     public static Type inferElementType(Type container, Type fieldGenericType) {
         if (container instanceof ParameterizedType) {
             ParameterizedType pt = (ParameterizedType) container;
-            Type[] typeArgs = pt.getActualTypeArguments();
+            Type[] typeArgs = typeArguments(pt);
             Class<?> raw = getRawClass(pt.getRawType());
             if (Map.class.isAssignableFrom(raw)) {
                 // For maps, expect two type arguments; the value type is at index 1.
@@ -650,8 +656,7 @@ public class TypeUtilities {
 
         @Override
         public Type[] getActualTypeArguments() {
-            // Return direct reference for performance - callers should not modify
-            return args;
+            return args.clone();        // a copy, as the JDK's: the instance is shared through the cache
         }
 
         @Override
@@ -692,7 +697,7 @@ public class TypeUtilities {
             ParameterizedType that = (ParameterizedType) o;
             return Objects.equals(raw, that.getRawType()) &&
                     Objects.equals(owner, that.getOwnerType()) &&
-                    Arrays.equals(args, that.getActualTypeArguments());
+                    Arrays.equals(args, typeArguments(that));
         }
 
         @Override

@@ -157,4 +157,20 @@ class TypeUtilitiesBehaviorTest {
         assertEquals(jdkWild, ourWild);
         assertEquals(jdkWild.hashCode(), ourWild.hashCode());
     }
+
+    /**
+     * getActualTypeArguments() hands out a copy, as the JDK's does. TypeUtilities' own ParameterizedType returned its
+     * internal array, and the instance is shared through the cache: a caller writing into it changed the answer
+     * every later caller got (Map<String, Integer> became Map<String, Thread>).
+     */
+    @Test
+    void typeArgumentsAreACopy() throws Exception {
+        ParameterizedType first = (ParameterizedType) TypeUtilities.resolveType(ConcreteMap.class,
+                fieldType(MapGen.class, "map"));
+        first.getActualTypeArguments()[1] = Thread.class;          // a caller's scratch edit
+        ParameterizedType again = (ParameterizedType) TypeUtilities.resolveType(ConcreteMap.class,
+                fieldType(MapGen.class, "map"));
+        assertEquals(Integer.class, again.getActualTypeArguments()[1]);
+        assertEquals(Integer.class, first.getActualTypeArguments()[1]);
+    }
 }

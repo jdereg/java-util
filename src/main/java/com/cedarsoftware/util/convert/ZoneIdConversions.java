@@ -40,6 +40,18 @@ final class ZoneIdConversions {
         return TimeZone.getTimeZone(zoneId);
     }
 
+    /**
+     * The TimeZone of a ZoneId, as JDK 9+ makes it, on every JDK: JDK 8's TimeZone.getTimeZone(ZoneId) does not read
+     * the prefixes "UTC" and "UT" before an offset, and gave GMT for "UTC+05:00".
+     */
+    static TimeZone timeZone(ZoneId zoneId) {
+        String id = zoneId.getId();
+        if (id.startsWith("UT") && !"UTC".equals(id)) {
+            return TimeZone.getTimeZone("GMT" + id.substring(id.startsWith("UTC") ? 3 : 2));
+        }
+        return TimeZone.getTimeZone(zoneId);
+    }
+
     static ZoneOffset toZoneOffset(Object from, Converter converter) {
         ZoneId zoneId = (ZoneId) from;
         return zoneId.getRules().getOffset(Instant.now());

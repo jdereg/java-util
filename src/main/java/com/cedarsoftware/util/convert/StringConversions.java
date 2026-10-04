@@ -30,6 +30,7 @@ import java.util.Base64;
 import java.util.Calendar;
 import java.util.Currency;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
@@ -718,17 +719,77 @@ final class StringConversions {
             return null;
         }
 
-        TimeZone zone = TimeZone.getTimeZone(str);
-        if ("GMT".equals(zone.getID()) && !"GMT".equalsIgnoreCase(str)) {
-            // getTimeZone answers GMT for an ID it does not know, as its Javadoc says, and so it read "+05:00" or "Z"
-            // as GMT. What ZoneId reads is read as that zone; an ID neither knows stays GMT.
-            try {
-                return TimeZone.getTimeZone(ZoneId.of(str));
-            } catch (DateTimeException e) {
-                return zone;
+        TimeZone zone = timeZoneOf(str);
+        if (zone == null) {
+            String other = zoneIdInOtherCase(str);
+            zone = other == null ? null : timeZoneOf(other);
+            if (zone == null) {
+                throw unknownZone(str);
             }
         }
         return zone;
+    }
+
+    /** The TimeZone an ID names exactly, as TimeZone or ZoneId reads it, or null if neither knows it. */
+    private static TimeZone timeZoneOf(String id) {
+        TimeZone zone = TimeZone.getTimeZone(id);
+        if (!"GMT".equals(zone.getID()) || "GMT".equals(id)) {
+            return zone;
+        }
+        // getTimeZone answers GMT for an ID it does not know, as its Javadoc says, and so it read "+05:00" or "Z"
+        // as GMT, and a misspelled zone too
+        try {
+            return ZoneIdConversions.timeZone(ZoneId.of(id));
+        } catch (DateTimeException e) {
+            return null;
+        }
+    }
+
+    /** The ZoneId an ID names exactly, as ZoneId or TimeZone reads it, or null if neither knows it. */
+    private static ZoneId zoneIdOf(String id) {
+        try {
+            return ZoneId.of(id);
+        } catch (DateTimeException e) {
+            TimeZone zone = TimeZone.getTimeZone(id);
+            return "GMT".equals(zone.getID()) ? null : zone.toZoneId();
+        }
+    }
+
+    /**
+     * A zone ID given in another case, "america/new_york" or "utc+5", spelled as the JDK knows it: the zone ID that
+     * differs from it only in case (no two IDs the JDK knows do), else the ID in upper case, for the prefixes and
+     * the offset "z". Null if the ID is not ASCII, as no zone ID is: a Kelvin sign folds to "k" in lower case.
+     */
+    private static String zoneIdInOtherCase(String id) {
+        for (int i = 0; i < id.length(); i++) {
+            if (id.charAt(i) > 0x7F) {
+                return null;
+            }
+        }
+        String known = ZoneIdsByLowerCase.IDS.get(id.toLowerCase(Locale.ROOT));
+        if (known != null) {
+            return known;
+        }
+        String upper = id.toUpperCase(Locale.ROOT);
+        return upper.equals(id) ? null : upper;
+    }
+
+    /** The zone IDs TimeZone and ZoneId know, by their lower case; built when an ID is first given in another case. */
+    private static final class ZoneIdsByLowerCase {
+        static final Map<String, String> IDS = new HashMap<>();
+
+        static {
+            for (String id : TimeZone.getAvailableIDs()) {
+                IDS.put(id.toLowerCase(Locale.ROOT), id);
+            }
+            for (String id : ZoneId.getAvailableZoneIds()) {
+                IDS.put(id.toLowerCase(Locale.ROOT), id);
+            }
+        }
+    }
+
+    private static IllegalArgumentException unknownZone(String id) {
+        return new IllegalArgumentException("Unknown time-zone ID: '" + NumberConversions.shown(id) + "'");
     }
 
     static Calendar toCalendar(Object from, Converter converter) {
@@ -840,14 +901,20 @@ final class StringConversions {
         }
         try {
             return ZoneId.of(str);
-        } catch (Exception e) {
-            TimeZone tz = TimeZone.getTimeZone(str);
-            if ("GMT".equals(tz.getID())) {
-                throw new IllegalArgumentException("Unknown time-zone ID: '" + str + "'", e);
-            } else {
-                return tz.toZoneId();
-            }
+        } catch (DateTimeException e) {
+            TimeZone zone = TimeZone.getTimeZone(str);
+            return "GMT".equals(zone.getID()) ? zoneIdInAnyCase(str) : zone.toZoneId();
         }
+    }
+
+    /** A zone ID in another case, "america/new_york", as the ZoneId of that zone; refused if it names none. */
+    private static ZoneId zoneIdInAnyCase(String id) {
+        String other = zoneIdInOtherCase(id);
+        ZoneId zone = other == null ? null : zoneIdOf(other);
+        if (zone == null) {
+            throw unknownZone(id);
+        }
+        return zone;
     }
 
     static ZoneOffset toZoneOffset(Object from, Converter converter) {

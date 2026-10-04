@@ -5,6 +5,7 @@ import java.util.TimeZone;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
  * String to TimeZone reads a zone ID, or an offset that ZoneId reads.
@@ -15,8 +16,8 @@ class ConverterTimeZoneTest {
 
     /**
      * An offset such as "+05:00", or "Z", gave GMT (offset 0): TimeZone.getTimeZone answers GMT for any ID it does not
-     * know, and it does not read a bare offset. An ID neither TimeZone nor ZoneId knows still gives GMT, per
-     * getTimeZone's Javadoc.
+     * know, and it does not read a bare offset. An ID neither TimeZone nor ZoneId knows, in any case, is refused
+     * (ConverterZoneIdCaseTest).
      */
     @Test
     void anOffsetIsReadAsThatOffset() {
@@ -28,6 +29,6 @@ class ConverterTimeZoneTest {
         assertEquals("UTC", converter.convert("UTC", TimeZone.class).getID());
         assertEquals("GMT+05:00", converter.convert("GMT+5", TimeZone.class).getID());
         assertEquals("EST", converter.convert("EST", TimeZone.class).getID());
-        assertEquals("GMT", converter.convert("Amercia/New_York", TimeZone.class).getID());
+        assertThrows(IllegalArgumentException.class, () -> converter.convert("Amercia/New_York", TimeZone.class));
     }
 }

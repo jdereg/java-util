@@ -630,7 +630,8 @@ class ConverterEverythingTest {
                 {"EST", TimeZone.getTimeZone("EST"), true},
                 {"GMT+05:00", TimeZone.getTimeZone(ZoneId.of("+05:00")), true},
                 {"America/Denver", TimeZone.getTimeZone(ZoneId.of("America/Denver")), true},
-                {"American/FunkyTown", TimeZone.getTimeZone("GMT")},    // Per javadoc's
+                {"American/FunkyTown", new IllegalArgumentException("Unknown time-zone ID: 'American/FunkyTown'")},
+                {"america/new_york", TimeZone.getTimeZone("America/New_York")},    // any case
                 {"GMT", TimeZone.getTimeZone("GMT"), true},            // Added
         });
         TEST_DB.put(pair(Map.class, TimeZone.class), new Object[][]{
@@ -7004,6 +7005,9 @@ class ConverterEverythingTest {
         }
         if (sourceClass == ZoneId.class) {
             return ZoneId.of("UTC");
+        }
+        if (sourceClass == TimeZone.class) {
+            return TimeZone.getTimeZone("UTC");   // "101010" read as GMT when an unknown zone ID was GMT
         }
         if (sourceClass == ZoneOffset.class) {
             return ZoneOffset.of("+09:00");

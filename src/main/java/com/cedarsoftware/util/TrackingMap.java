@@ -243,11 +243,18 @@ public class TrackingMap<K, V> implements Map<K, V> {
 
     /**
      * Compares the specified object with this map for equality.
+     * <p>
+     * Another {@code TrackingMap} is compared by its wrapped map, so the comparison records no reads in it.
+     * A plain map's {@code equals(trackingMap)} reads this map through {@link #get(Object)}, which records them.
+     * </p>
      *
      * @param other object to be compared for equality with this map
      * @return {@code true} if the specified object is equal to this map
      */
     public boolean equals(Object other) {
+        if (other instanceof TrackingMap) {
+            other = ((TrackingMap<?, ?>) other).internalMap;
+        }
         return other instanceof Map && internalMap.equals(other);
     }
 

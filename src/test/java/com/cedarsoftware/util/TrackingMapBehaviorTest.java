@@ -134,4 +134,26 @@ class TrackingMapBehaviorTest {
         replaced.expungeUnused();
         assertEquals(Arrays.asList("a"), new ArrayList<>(replaced.keySet()));
     }
+
+    /**
+     * equals() between two TrackingMaps compares their wrapped maps, so it records no reads in the other one.
+     * It compared against the other TrackingMap itself, whose get() recorded every key as read, so that map's
+     * next expungeUnused() kept entries the program never read.
+     */
+    @Test
+    void equalsRecordsNoReadsInTheOtherMap() {
+        TrackingMap<String, Integer> one = new TrackingMap<>(new HashMap<>(abcd()));
+        TrackingMap<String, Integer> two = new TrackingMap<>(new HashMap<>(abcd()));
+        assertTrue(one.equals(two));
+        assertTrue(two.equals(one));
+        assertTrue(one.keysUsed().isEmpty());
+        assertTrue(two.keysUsed().isEmpty());
+        two.put("e", 5);
+        assertFalse(one.equals(two));
+        assertFalse(two.equals(one));
+        assertEquals(one, abcd());
+        assertTrue(two.keysUsed().isEmpty());
+        two.expungeUnused();
+        assertTrue(two.isEmpty());
+    }
 }

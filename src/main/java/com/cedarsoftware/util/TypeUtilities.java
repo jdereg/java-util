@@ -461,7 +461,8 @@ public class TypeUtilities {
                 resolved = climbGenericHierarchy(rootContext, currentContext, typeVar, visited);
             }
 
-            if (resolved instanceof TypeVariable) {
+            if (resolved != null && hasUnresolvedType(resolved)) {
+                // a variable, or a type built from one (Parent<List<X>> gives List<X>): resolve it in turn
                 resolved = resolveType(rootContext, rootContext, resolved, visited);
             }
 

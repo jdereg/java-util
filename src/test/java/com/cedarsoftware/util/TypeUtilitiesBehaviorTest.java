@@ -4,6 +4,7 @@ import java.io.Serializable;
 import java.lang.reflect.Type;
 import java.lang.reflect.TypeVariable;
 import java.util.ArrayList;
+import java.util.List;
 
 import org.junit.jupiter.api.Test;
 
@@ -91,5 +92,28 @@ class TypeUtilitiesBehaviorTest {
         assertEquals(Integer.class, TypeUtilities.resolveType(MoreConcrete.class, genT));
         assertEquals(Integer.class, TypeUtilities.resolveTypeUsingInstance(new MoreConcrete(), genT));
         assertEquals(String.class, TypeUtilities.resolveType(StringSource.class, sourceT()));
+    }
+
+    static class Parent<T> {
+        T field;
+    }
+
+    static class Mid<X> extends Parent<List<X>> {
+    }
+
+    static class Child extends Mid<Integer> {
+    }
+
+    /**
+     * A binding that is itself built from another type variable is resolved in turn: Mid<X> extends
+     * Parent<List<X>> and Child extends Mid<Integer> make Parent's T, seen from Child, List<Integer>. Only a bare
+     * variable was resolved further, so the answer was List<X>.
+     */
+    @Test
+    void aBindingBuiltFromAnotherVariableIsResolvedInTurn() throws Exception {
+        Type parentT = fieldType(Parent.class, "field");
+        String listOfInteger = "java.util.List<java.lang.Integer>";
+        assertEquals(listOfInteger, TypeUtilities.resolveType(Child.class, parentT).getTypeName());
+        assertEquals(listOfInteger, TypeUtilities.resolveTypeUsingInstance(new Child(), parentT).getTypeName());
     }
 }

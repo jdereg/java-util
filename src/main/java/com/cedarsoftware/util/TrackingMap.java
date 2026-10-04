@@ -2,14 +2,15 @@ package com.cedarsoftware.util;
 
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.Map;
 import java.util.NavigableMap;
 import java.util.NavigableSet;
 import java.util.Objects;
 import java.util.Set;
 import java.util.SortedMap;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ConcurrentNavigableMap;
 import java.util.function.BiConsumer;
@@ -116,14 +117,28 @@ public class TrackingMap<K, V> implements Map<K, V> {
         asNavigable = (map instanceof NavigableMap) ? (NavigableMap<K, V>) map : null;
         asSorted = (map instanceof SortedMap) ? (SortedMap<K, V>) map : null;
 
-        // Use concurrent tracking set if wrapping a concurrent map for thread safety.
+        readKeys = newReadKeys(map);
+        unmodifiableReadKeys = Collections.unmodifiableSet(readKeys);
+    }
+
+    /**
+     * The set that records read keys, matching keys as {@code map} does where a hash set would not, and taking
+     * null wherever the map may. An IdentityHashMap matches by identity, which cannot be recovered later. A
+     * concurrent map needs a thread-safe set; java-util's ConcurrentSet also takes null, as
+     * ConcurrentHashMapNullSafe, ConcurrentNavigableMapNullSafe and CaseInsensitiveMap do. A sorted map's
+     * matching is applied when {@link #expungeUnused()} runs (see keysMatchingReads), so reads stay O(1).
+     */
+    private static Set<Object> newReadKeys(Map<?, ?> map) {
+        if (map instanceof IdentityHashMap) {
+            return Collections.newSetFromMap(new IdentityHashMap<>());
+        }
+        if (map instanceof ConcurrentMap) {
+            return new ConcurrentSet<>();
+        }
         // Pre-size the HashSet with load-factor headroom (capacity = size/0.75 + 1) so
         // tracking every key of a fully-read map never rehashes — new HashSet<>(size)
         // under-sizes the table and rehashes at 0.75*size.
-        readKeys = (asConcurrent != null)
-            ? ConcurrentHashMap.newKeySet()
-            : new HashSet<>(Math.max(16, (int) (map.size() / 0.75f) + 1));
-        unmodifiableReadKeys = Collections.unmodifiableSet(readKeys);
+        return new HashSet<>(Math.max(16, (int) (map.size() / 0.75f) + 1));
     }
 
     /**
@@ -280,7 +295,7 @@ public class TrackingMap<K, V> implements Map<K, V> {
      */
     public void expungeUnused() {
         Set<K> keys = internalMap.keySet();
-        keys.retainAll(readKeys);
+        keys.retainAll(asNavigable != null ? keysMatchingReads() : readKeys);
 
         // Use the smaller collection as the cleanup source.
         if (readKeys.size() > keys.size()) {
@@ -289,6 +304,38 @@ public class TrackingMap<K, V> implements Map<K, V> {
         } else {
             readKeys.retainAll(keys);
         }
+    }
+
+    /**
+     * The wrapped sorted map's own key objects that its ordering matches to a read key. A read records the
+     * caller's key, but a sorted map matches keys that equals() may not (a case-insensitive comparator; BigDecimal
+     * 2.00 against a stored 2.0), so the entries to keep are found by asking the map: its floor entry for each
+     * read key, kept if the map's ordering finds the two equal.
+     */
+    @SuppressWarnings("unchecked")
+    private Set<Object> keysMatchingReads() {
+        Comparator<Object> order = (Comparator<Object>) asNavigable.comparator();
+        Set<Object> matched = Collections.newSetFromMap(new IdentityHashMap<>());
+        for (Object read : readKeys) {
+            Map.Entry<K, V> floor;
+            try {
+                floor = asNavigable.floorEntry((K) read);
+            } catch (ClassCastException | NullPointerException e) {
+                continue;                           // a key this map cannot order: the read was a miss
+            }
+            if (floor != null && sameKey(order, floor.getKey(), read)) {
+                matched.add(floor.getKey());
+            }
+        }
+        return matched;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static boolean sameKey(Comparator<Object> order, Object key, Object read) {
+        if (key == null || read == null) {
+            return key == read;
+        }
+        return order != null ? order.compare(key, read) == 0 : ((Comparable<Object>) key).compareTo(read) == 0;
     }
 
     /**

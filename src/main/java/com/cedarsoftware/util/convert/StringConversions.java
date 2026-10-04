@@ -77,7 +77,7 @@ final class StringConversions {
     private static final BigDecimal bigDecimalMaxInteger = BigDecimal.valueOf(Integer.MAX_VALUE);
     private static final BigDecimal bigDecimalMaxLong = BigDecimal.valueOf(Long.MAX_VALUE);
     private static final BigDecimal bigDecimalMinLong = BigDecimal.valueOf(Long.MIN_VALUE);
-    private static final Pattern MM_DD = Pattern.compile("^(\\d{1,2}).(\\d{1,2})$");
+    private static final Pattern MM_DD = Pattern.compile("^(\\d{1,2})[-/. ](\\d{1,2})$");
     private static final Pattern allDigits = Pattern.compile("^\\d+$");
 
     private StringConversions() {}
@@ -394,8 +394,27 @@ final class StringConversions {
         throw new IllegalArgumentException("Cannot convert String '" + str + "' to class.  Class not found.");
     }
 
+    /** True if {@code s} is minLength to maxLength ASCII digits and nothing else. */
+    private static boolean isDigits(String s, int minLength, int maxLength) {
+        int length = s.length();
+        if (length < minLength || length > maxLength) {
+            return false;
+        }
+        for (int i = 0; i < length; i++) {
+            char c = s.charAt(i);
+            if (c < '0' || c > '9') {
+                return false;
+            }
+        }
+        return true;
+    }
+
     static MonthDay toMonthDay(Object from, Converter converter) {
         String monthDay = (String) from;
+        if (isDigits(monthDay, 3, 4)) {
+            // MMDD, as the same number converts ("1225" is --12-25, not month 12 day 5)
+            return NumberConversions.toMonthDay(Integer.parseInt(monthDay), converter);
+        }
         try {
             return MonthDay.parse(monthDay);
         }
@@ -422,6 +441,10 @@ final class StringConversions {
 
     static YearMonth toYearMonth(Object from, Converter converter) {
         String yearMonth = (String) from;
+        if (isDigits(yearMonth, 5, 6)) {
+            // YYYYMM, as the same number converts ("202401" is 2024-01; the date parser read it as epoch millis)
+            return NumberConversions.toYearMonth(Integer.parseInt(yearMonth), converter);
+        }
         try {
             return YearMonth.parse(yearMonth);
         } catch (DateTimeParseException e) {

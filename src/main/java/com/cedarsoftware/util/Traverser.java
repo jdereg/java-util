@@ -288,6 +288,7 @@ public class Traverser {
     private final IdentitySet<Object> seen = new IdentitySet<>();
     // One traversal, one thread: a plain map (a ClassValueMap would attach a slot to every class visited, per traversal)
     private final Map<Class<?>, Boolean> skipClassCache = new HashMap<>();
+    private final Map<Class<?>, FieldPlan> fieldPlans = new HashMap<>();       // one traversal, one thread, as above
     private final Consumer<NodeVisit> nodeVisitor;
     private final boolean collectFields;
     private int objectsVisited = 0;
@@ -295,6 +296,24 @@ public class Traverser {
     private static final Object NOT_READ = new Object();      // fieldValue's answer for a field it cannot read
     private static final Predicate<Field> TRAVERSABLE_FIELD_FILTER =
             field -> ReflectionUtils.DEFAULT_FIELD_FILTER.test(field) && !field.isSynthetic();
+
+    /** A class's traversable fields, as getFields() reports them, and which of them the walk follows. */
+    private static final class FieldPlan {
+        final Field[] fields;
+        final boolean[] walked;     // non-primitive and declared by a non-JDK class (see isJdkClass)
+        final boolean anyWalked;
+
+        FieldPlan(Collection<Field> traversable) {
+            fields = traversable.toArray(new Field[0]);
+            walked = new boolean[fields.length];
+            boolean any = false;
+            for (int i = 0; i < fields.length; i++) {
+                walked[i] = !fields[i].getType().isPrimitive() && !isJdkClass(fields[i].getDeclaringClass());
+                any |= walked[i];
+            }
+            anyWalked = any;
+        }
+    }
 
     // Helper class to track object and its depth in heap-based traversal
     private static class TraversalNode {
@@ -454,18 +473,17 @@ public class Traverser {
                                                             int depth,
                                                             int maxObjectsVisited) {
         Map<Field, Object> fieldValues = new HashMap<>();
-        Collection<Field> fields = getTraversableFields(object.getClass());
-        boolean leaf = isJdkClass(object.getClass());
+        FieldPlan plan = fieldPlan(object.getClass());
+        Field[] fields = plan.fields;
 
-        for (Field field : fields) {
-            boolean isPrimitive = field.getType().isPrimitive();
-            Object value = fieldValue(field, object);
+        for (int i = 0; i < fields.length; i++) {
+            Object value = fieldValue(fields[i], object);
             if (value == NOT_READ) {
-                fieldValues.put(field, INACCESSIBLE_FIELD_VALUE);
+                fieldValues.put(fields[i], INACCESSIBLE_FIELD_VALUE);
                 continue;
             }
-            fieldValues.put(field, value);
-            if (!isPrimitive && !leaf) {
+            fieldValues.put(fields[i], value);
+            if (plan.walked[i]) {
                 enqueueNode(stack, value, classesToSkip, depth + 1, maxObjectsVisited);
             }
         }
@@ -514,7 +532,8 @@ public class Traverser {
 
     /**
      * A JDK class is traversed as a LEAF: it is visited, and its field values are reported, but those
-     * fields are not walked. From JDK 17 the module system makes them unreadable anyway, so the walk
+     * fields are not walked. Nor are the fields a JDK superclass declares in a user subclass (an exception's
+     * cause and stack trace, a Thread's state): those too were walked on JDK 8-16 only. From JDK 17 the module system makes them unreadable anyway, so the walk
      * only ever happened on JDK 8-16, where setAccessible() reaches them -- traversing {@code "test"}
      * visited the String AND its internal char[] there, but only the String on 17+. Treating them as
      * leaves gives every JDK the same graph. Identified by class loader rather than package, so a
@@ -527,6 +546,15 @@ public class Traverser {
 
     private Collection<Field> getTraversableFields(Class<?> clazz) {
         return ReflectionUtils.getAllDeclaredFields(clazz, TRAVERSABLE_FIELD_FILTER);
+    }
+
+    private FieldPlan fieldPlan(Class<?> clazz) {
+        FieldPlan plan = fieldPlans.get(clazz);
+        if (plan == null) {
+            plan = new FieldPlan(getTraversableFields(clazz));
+            fieldPlans.put(clazz, plan);
+        }
+        return plan;
     }
 
     private boolean shouldSkipClass(Class<?> clazz, Set<Class<?>> classesToSkip) {
@@ -580,11 +608,15 @@ public class Traverser {
         if (isJdkClass(object.getClass())) {
             return;   // a JDK class is a leaf -- see isJdkClass()
         }
-        Collection<Field> fields = getTraversableFields(object.getClass());
+        FieldPlan plan = fieldPlan(object.getClass());
+        if (!plan.anyWalked) {
+            return;
+        }
+        Field[] fields = plan.fields;
 
-        for (Field field : fields) {
-            if (!field.getType().isPrimitive()) {
-                Object value = fieldValue(field, object);
+        for (int i = 0; i < fields.length; i++) {
+            if (plan.walked[i]) {
+                Object value = fieldValue(fields[i], object);
                 if (value != NOT_READ) {         // an unreadable field is not walked
                     enqueueNode(stack, value, classesToSkip, depth + 1, maxObjectsVisited);
                 }

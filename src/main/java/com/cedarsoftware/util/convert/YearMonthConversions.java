@@ -31,7 +31,8 @@ final class YearMonthConversions {
 
     static int toInt(Object from, Converter converter) {
         YearMonth ym = (YearMonth) from;
-        return ym.getYear() * 100 + ym.getMonthValue();
+        long value = ym.getYear() * 100L + ym.getMonthValue();      // yyyymm; past year 21,474,836 it wrapped
+        return (int) NumberConversions.fit(value, Integer.MIN_VALUE, Integer.MAX_VALUE, "int");
     }
 
     static long toLong(Object from, Converter converter) {
@@ -39,7 +40,7 @@ final class YearMonthConversions {
     }
 
     static short toShort(Object from, Converter converter) {
-        return (short) toInt(from, converter);
+        return (short) NumberConversions.fit(toInt(from, converter), Short.MIN_VALUE, Short.MAX_VALUE, "short");
     }
 
     static double toDouble(Object from, Converter converter) {

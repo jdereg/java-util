@@ -55,6 +55,7 @@ import org.junit.jupiter.params.provider.EmptySource;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.NullSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import static com.cedarsoftware.util.ArrayUtilities.EMPTY_BYTE_ARRAY;
 import static com.cedarsoftware.util.ArrayUtilities.EMPTY_CHAR_ARRAY;
@@ -2131,86 +2132,85 @@ class ConverterTest
     // float doesn't have enough significant digits to accurately represent today's dates
     private static Stream<Arguments> conversionsWithPrecisionLoss_primitiveParams() {
         return Stream.of(
-                // double ->
-                Arguments.of( 1705601070270.89765d, float.class, 1705601010100f),
-                Arguments.of( 1705601070270.89765d, Float.class, 1705601010100f),
-                Arguments.of( 1705601070270.89765d, byte.class, (byte)-1),
-                Arguments.of( 1705601070270.89765d, Byte.class, (byte)-1),
-                Arguments.of( 1705601070270.89765d, short.class, (short)-1),
-                Arguments.of( 1705601070270.89765d, Short.class, (short)-1),
-                Arguments.of( 1705601070270.89765d, int.class, 2147483647),
-                Arguments.of( 1705601070270.89765d, Integer.class, 2147483647),
-                Arguments.of( 1705601070270.89765d, long.class, 1705601070270L),
-                Arguments.of( 1705601070270.89765d, Long.class, 1705601070270L),
-
-                // float ->
-                Arguments.of( 65679.6f, byte.class, (byte)-113),
-                Arguments.of( 65679.6f, Byte.class, (byte)-113),
-                Arguments.of( 65679.6f, short.class, (short)143),
-                Arguments.of( 65679.6f, Short.class, (short)143),
-                Arguments.of( 65679.6f, int.class, 65679),
-                Arguments.of( 65679.6f, Integer.class, 65679),
-                Arguments.of( 65679.6f, long.class, 65679L),
-                Arguments.of( 65679.6f, Long.class, 65679L),
-
-                // long ->
-                Arguments.of( new BigInteger("92233720368547738079919"), double.class, 92233720368547740000000.0d),
-                Arguments.of( new BigInteger("92233720368547738079919"), Double.class, 92233720368547740000000.0d),
-                Arguments.of( new BigInteger("92233720368547738079919"), float.class, 92233720368547760000000f),
-                Arguments.of( new BigInteger("92233720368547738079919"), Float.class, 92233720368547760000000f),
-                Arguments.of( new BigInteger("92233720368547738079919"), Byte.class, (byte)-81),
-                Arguments.of( new BigInteger("92233720368547738079919"), byte.class, (byte)-81),
-                Arguments.of( new BigInteger("92233720368547738079919"), short.class, (short)-11601),
-                Arguments.of( new BigInteger("92233720368547738079919"), Short.class, (short)-11601),
-                Arguments.of( new BigInteger("92233720368547738079919"), int.class, -20000081),
-                Arguments.of( new BigInteger("92233720368547738079919"), Integer.class, -20000081),
-                Arguments.of( new BigInteger("92233720368547738079919"), long.class, -20000081L),
-                Arguments.of( new BigInteger("92233720368547738079919"), Long.class, -20000081L),
-
-
-                // long ->
-                Arguments.of( 9223372036854773807L, double.class, 9223372036854773800.0d),
-                Arguments.of( 9223372036854773807L, Double.class, 9223372036854773800.0d),
-                Arguments.of( 9223372036854773807L, float.class, 9223372036854776000.0f),
-                Arguments.of( 9223372036854773807L, Float.class, 9223372036854776000.0f),
-                Arguments.of( 9223372036854773807L, Byte.class, (byte)47),
-                Arguments.of( 9223372036854773807L, byte.class, (byte)47),
-                Arguments.of( 9223372036854773807L, short.class, (short)-2001),
-                Arguments.of( 9223372036854773807L, Short.class, (short)-2001),
-                Arguments.of( 9223372036854773807L, int.class, -2001),
-                Arguments.of( 9223372036854773807L, Integer.class, -2001),
-
-                // AtomicLong ->
-                Arguments.of( new AtomicLong(9223372036854773807L), double.class, 9223372036854773800.0d),
-                Arguments.of( new AtomicLong(9223372036854773807L), Double.class, 9223372036854773800.0d),
-                Arguments.of( new AtomicLong(9223372036854773807L), float.class, 9223372036854776000.0f),
-                Arguments.of( new AtomicLong(9223372036854773807L), Float.class, 9223372036854776000.0f),
-                Arguments.of( new AtomicLong(9223372036854773807L), Byte.class, (byte)47),
-                Arguments.of( new AtomicLong(9223372036854773807L), byte.class, (byte)47),
-                Arguments.of( new AtomicLong(9223372036854773807L), short.class, (short)-2001),
-                Arguments.of( new AtomicLong(9223372036854773807L), Short.class, (short)-2001),
-                Arguments.of( new AtomicLong(9223372036854773807L), int.class, -2001),
-                Arguments.of( new AtomicLong(9223372036854773807L), Integer.class, -2001),
-
-                Arguments.of( 2147473647, float.class, 2147473664.0f),
-                Arguments.of( 2147473647, Float.class, 2147473664.0f),
-                Arguments.of( 2147473647, Byte.class, (byte)-17),
-                Arguments.of( 2147473647, byte.class, (byte)-17),
-                Arguments.of( 2147473647, short.class, (short)-10001),
-                Arguments.of( 2147473647, Short.class, (short)-10001),
-
-                // AtomicInteger ->
-                Arguments.of( new AtomicInteger(2147473647), float.class, 2147473664.0f),
-                Arguments.of( new AtomicInteger(2147473647), Float.class, 2147473664.0f),
-                Arguments.of( new AtomicInteger(2147473647), Byte.class, (byte)-17),
-                Arguments.of( new AtomicInteger(2147473647), byte.class, (byte)-17),
-                Arguments.of( new AtomicInteger(2147473647), short.class, (short)-10001),
-                Arguments.of( new AtomicInteger(2147473647), Short.class, (short)-10001),
-
-                // short ->
-                Arguments.of( (short)62212, Byte.class, (byte)4),
-                Arguments.of( (short)62212, byte.class, (byte)4)
+                Arguments.of(1705601070270.89765d, float.class, 1705601010100f),
+                Arguments.of(1705601070270.89765d, Float.class, 1705601010100f),
+                Arguments.of(1705601070270.89765d, long.class, 1705601070270L),
+                Arguments.of(1705601070270.89765d, Long.class, 1705601070270L),
+                Arguments.of(65679.6f, int.class, 65679),
+                Arguments.of(65679.6f, Integer.class, 65679),
+                Arguments.of(65679.6f, long.class, 65679L),
+                Arguments.of(65679.6f, Long.class, 65679L),
+                Arguments.of(new BigInteger("92233720368547738079919"), double.class, 92233720368547740000000.0d),
+                Arguments.of(new BigInteger("92233720368547738079919"), Double.class, 92233720368547740000000.0d),
+                Arguments.of(new BigInteger("92233720368547738079919"), float.class, 92233720368547760000000f),
+                Arguments.of(new BigInteger("92233720368547738079919"), Float.class, 92233720368547760000000f),
+                Arguments.of(9223372036854773807L, double.class, 9223372036854773800.0d),
+                Arguments.of(9223372036854773807L, Double.class, 9223372036854773800.0d),
+                Arguments.of(9223372036854773807L, float.class, 9223372036854776000.0f),
+                Arguments.of(9223372036854773807L, Float.class, 9223372036854776000.0f),
+                Arguments.of(new AtomicLong(9223372036854773807L), double.class, 9223372036854773800.0d),
+                Arguments.of(new AtomicLong(9223372036854773807L), Double.class, 9223372036854773800.0d),
+                Arguments.of(new AtomicLong(9223372036854773807L), float.class, 9223372036854776000.0f),
+                Arguments.of(new AtomicLong(9223372036854773807L), Float.class, 9223372036854776000.0f),
+                Arguments.of(2147473647, float.class, 2147473664.0f),
+                Arguments.of(2147473647, Float.class, 2147473664.0f),
+                Arguments.of(new AtomicInteger(2147473647), float.class, 2147473664.0f),
+                Arguments.of(new AtomicInteger(2147473647), Float.class, 2147473664.0f)
         );
+    }
+
+    /** A value that does not fit the integer type is refused; it wrapped (2147473647 as a byte was -17) or clamped. */
+    private static Stream<Arguments> conversionsThatOverflow_primitiveParams() {
+        return Stream.of(
+                Arguments.of(1705601070270.89765d, byte.class),
+                Arguments.of(1705601070270.89765d, Byte.class),
+                Arguments.of(1705601070270.89765d, short.class),
+                Arguments.of(1705601070270.89765d, Short.class),
+                Arguments.of(1705601070270.89765d, int.class),
+                Arguments.of(1705601070270.89765d, Integer.class),
+                Arguments.of(65679.6f, byte.class),
+                Arguments.of(65679.6f, Byte.class),
+                Arguments.of(65679.6f, short.class),
+                Arguments.of(65679.6f, Short.class),
+                Arguments.of(new BigInteger("92233720368547738079919"), Byte.class),
+                Arguments.of(new BigInteger("92233720368547738079919"), byte.class),
+                Arguments.of(new BigInteger("92233720368547738079919"), short.class),
+                Arguments.of(new BigInteger("92233720368547738079919"), Short.class),
+                Arguments.of(new BigInteger("92233720368547738079919"), int.class),
+                Arguments.of(new BigInteger("92233720368547738079919"), Integer.class),
+                Arguments.of(new BigInteger("92233720368547738079919"), long.class),
+                Arguments.of(new BigInteger("92233720368547738079919"), Long.class),
+                Arguments.of(9223372036854773807L, Byte.class),
+                Arguments.of(9223372036854773807L, byte.class),
+                Arguments.of(9223372036854773807L, short.class),
+                Arguments.of(9223372036854773807L, Short.class),
+                Arguments.of(9223372036854773807L, int.class),
+                Arguments.of(9223372036854773807L, Integer.class),
+                Arguments.of(new AtomicLong(9223372036854773807L), Byte.class),
+                Arguments.of(new AtomicLong(9223372036854773807L), byte.class),
+                Arguments.of(new AtomicLong(9223372036854773807L), short.class),
+                Arguments.of(new AtomicLong(9223372036854773807L), Short.class),
+                Arguments.of(new AtomicLong(9223372036854773807L), int.class),
+                Arguments.of(new AtomicLong(9223372036854773807L), Integer.class),
+                Arguments.of(2147473647, Byte.class),
+                Arguments.of(2147473647, byte.class),
+                Arguments.of(2147473647, short.class),
+                Arguments.of(2147473647, Short.class),
+                Arguments.of(new AtomicInteger(2147473647), Byte.class),
+                Arguments.of(new AtomicInteger(2147473647), byte.class),
+                Arguments.of(new AtomicInteger(2147473647), short.class),
+                Arguments.of(new AtomicInteger(2147473647), Short.class),
+                Arguments.of((short)62212, Byte.class),
+                Arguments.of((short)62212, byte.class)
+        );
+    }
+
+    @ParameterizedTest
+    @MethodSource("conversionsThatOverflow_primitiveParams")
+    void conversionsThatOverflow_primitivesAreRefused(Object value, Class<?> c) {
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> this.converter.convert(value, c))
+                .withMessageContaining("it is outside");
     }
 
     @ParameterizedTest
@@ -2224,11 +2224,20 @@ class ConverterTest
     // float doesn't have enough significant digits to accurately represent today's dates
     private static Stream<Arguments> conversionsWithPrecisionLoss_toAtomicIntegerParams() {
         return Stream.of(
-                Arguments.of( 1705601070270.89765d, new AtomicInteger(2147483647)),
-                Arguments.of( 65679.6f, new AtomicInteger(65679)),
-                Arguments.of( 9223372036854773807L, new AtomicInteger(-2001)),
-                Arguments.of( new AtomicLong(9223372036854773807L), new AtomicInteger(-2001))
+                Arguments.of( 65679.6f, new AtomicInteger(65679))
         );
+    }
+
+    @ParameterizedTest
+    @ValueSource(longs = {9223372036854773807L, 2147483648L, -2147483649L})
+    void conversionsThatOverflow_toAtomicIntegerAreRefused(long value) {
+        // 1705601070270.89765 clamped to 2147483647, and 9223372036854773807 wrapped to -2001
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> this.converter.convert(value, AtomicInteger.class));
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> this.converter.convert(new AtomicLong(value), AtomicInteger.class));
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> this.converter.convert(1705601070270.89765d, AtomicInteger.class));
     }
 
     @ParameterizedTest
@@ -3122,7 +3131,7 @@ class ConverterTest
     private static Stream<Arguments> toChar_illegalArguments() {
         return Stream.of(
                 Arguments.of(TimeZone.getDefault(), "Unsupported conversion"),
-                Arguments.of(Integer.MAX_VALUE, "out of range to be converted to character")
+                Arguments.of(Integer.MAX_VALUE, "to char: it is outside 0 to 65535")
         );
     }
 

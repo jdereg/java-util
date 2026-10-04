@@ -188,7 +188,8 @@ final class EnumConversions {
                 enumConstants = enumClass.getEnumConstants();
             }
 
-            int ordinal = ((Number) element).intValue();
+            // an ordinal that does not fit an int is refused, not wrapped into range (2^32 + 1 was 1)
+            int ordinal = (int) NumberConversions.fit(element, Integer.MIN_VALUE, Integer.MAX_VALUE, "int");
 
             if (ordinal < 0 || ordinal >= enumConstants.length) {
                 throw new IllegalArgumentException(

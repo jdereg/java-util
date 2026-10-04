@@ -234,11 +234,18 @@ final class StringConversions {
         if (StringUtilities.isEmpty(str)) {
             return 0f;
         }
+        float value;
         try {
-            return MathUtilities.parseFloat(str);
+            value = MathUtilities.parseFloat(str);
         } catch (Exception e) {
             throw new IllegalArgumentException("Value '" + from + "' not parseable as a float value", e);
         }
+        if (Float.isInfinite(value) && !namesInfinity(str)) {
+            // a finite number beyond float's range: "1e300" parsed as Infinity
+            throw new IllegalArgumentException("Unable to convert " + NumberConversions.shown(str) + " to float: it is"
+                    + " outside " + -Float.MAX_VALUE + " to " + Float.MAX_VALUE);
+        }
+        return value;
     }
 
     static Double toDouble(Object from, Converter converter) {
@@ -246,11 +253,23 @@ final class StringConversions {
         if (StringUtilities.isEmpty(str)) {
             return 0.0;
         }
+        double value;
         try {
-            return MathUtilities.parseDouble(str);
+            value = MathUtilities.parseDouble(str);
         } catch (Exception e) {
             throw new IllegalArgumentException("Value '" + from + "' not parseable as a double value", e);
         }
+        if (Double.isInfinite(value) && !namesInfinity(str)) {
+            // a finite number beyond double's range: "1e400" parsed as Infinity
+            throw new IllegalArgumentException("Unable to convert " + NumberConversions.shown(str) + " to double: it"
+                    + " is outside " + -Double.MAX_VALUE + " to " + Double.MAX_VALUE);
+        }
+        return value;
+    }
+
+    /** Text that says infinity itself ("Infinity", "-Infinity", "+inf"), rather than a number too large to hold. */
+    private static boolean namesInfinity(String str) {
+        return str.toLowerCase(Locale.ROOT).contains("inf") || str.indexOf('\u221E') >= 0;
     }
 
     static Boolean toBoolean(Object from, Converter converter) {
@@ -393,11 +412,7 @@ final class StringConversions {
             // If the string matches a plain decimal number, treat it as seconds.
             if (DECIMAL_PATTERN.matcher(str).matches()) {
                 BigDecimal seconds = MathUtilities.parseBigDecimal(str);
-                long wholeSecs = seconds.longValue();
-                long nanos = seconds.subtract(BigDecimal.valueOf(wholeSecs))
-                        .multiply(BigDecimalConversions.BILLION)
-                        .longValue();
-                return Duration.ofSeconds(wholeSecs, nanos);
+                return BigDecimalConversions.toDuration(seconds, converter);   // longValue() wrapped 20 digits
             }
             // Otherwise, try ISO-8601 parsing.
             return parseIsoDuration(str);

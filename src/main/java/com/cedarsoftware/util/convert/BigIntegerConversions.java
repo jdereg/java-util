@@ -3,6 +3,7 @@ package com.cedarsoftware.util.convert;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.sql.Timestamp;
+import java.time.DateTimeException;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -76,13 +77,13 @@ final class BigIntegerConversions {
 
     static Date toDate(Object from, Converter converter) {
         BigInteger epochMillis = (BigInteger) from;
-        return new Date(epochMillis.longValue());
+        return new Date(NumberConversions.timeUnits(epochMillis, from, "Date"));     // longValue() wrapped 2^64 + 1000
     }
 
     static java.sql.Date toSqlDate(Object from, Converter converter) {
         BigInteger epochMillis = (BigInteger) from;
         return java.sql.Date.valueOf(
-                Instant.ofEpochMilli(epochMillis.longValue())
+                Instant.ofEpochMilli(NumberConversions.timeUnits(epochMillis, from, "java.sql.Date"))
                         .atZone(converter.getOptions().getZoneId())
                         .toLocalDate()
         );
@@ -95,7 +96,7 @@ final class BigIntegerConversions {
     static Calendar toCalendar(Object from, Converter converter) {
         BigInteger epochMillis = (BigInteger) from;
         Calendar calendar = Calendar.getInstance(converter.getOptions().getTimeZone());
-        calendar.setTimeInMillis(epochMillis.longValue());
+        calendar.setTimeInMillis(NumberConversions.timeUnits(epochMillis, from, "Calendar"));
         return calendar;
     }
     
@@ -106,7 +107,7 @@ final class BigIntegerConversions {
     static LocalTime toLocalTime(Object from, Converter converter) {
         BigInteger bigI = (BigInteger) from;
         try {
-            return LocalTime.ofNanoOfDay(bigI.longValue());
+            return LocalTime.ofNanoOfDay(NumberConversions.timeUnits(bigI, from, "LocalTime"));
         } catch (Exception e) {
             throw new IllegalArgumentException("Input value [" + bigI + "] for conversion to LocalTime must be >= 0 && <= 86399999999999", e);
         }
@@ -125,7 +126,7 @@ final class BigIntegerConversions {
         try {
             // Divide by billion to get seconds
             BigInteger[] secondsAndNanos = bigI.divideAndRemainder(BigInteger.valueOf(1_000_000_000L));
-            long seconds = secondsAndNanos[0].longValue();
+            long seconds = NumberConversions.timeUnits(secondsAndNanos[0], from, "OffsetTime");
             long nanos = secondsAndNanos[1].longValue();
 
             Instant instant = Instant.ofEpochSecond(seconds, nanos);
@@ -142,16 +143,24 @@ final class BigIntegerConversions {
     static Instant toInstant(Object from, Converter converter) {
         BigInteger nanoseconds = (BigInteger) from;
         BigInteger[] secondsAndNanos = nanoseconds.divideAndRemainder(BILLION);
-        long seconds = secondsAndNanos[0].longValue(); // Total seconds
+        long seconds = NumberConversions.timeUnits(secondsAndNanos[0], from, "Instant"); // Total seconds
         int nanos = secondsAndNanos[1].intValue(); // Nanoseconds part
-        return Instant.ofEpochSecond(seconds, nanos);
+        try {
+            return Instant.ofEpochSecond(seconds, nanos);
+        } catch (DateTimeException e) {
+            throw NumberConversions.outsideTimeRange(from, "Instant");
+        }
     }
 
     static Duration toDuration(Object from, Converter converter) {
         BigInteger nanoseconds = (BigInteger) from;
         BigInteger[] secondsAndNanos = nanoseconds.divideAndRemainder(BILLION);
-        long seconds = secondsAndNanos[0].longValue();
+        long seconds = NumberConversions.timeUnits(secondsAndNanos[0], from, "Duration");
         int nanos = secondsAndNanos[1].intValue();
-        return Duration.ofSeconds(seconds, nanos);
+        try {
+            return Duration.ofSeconds(seconds, nanos);
+        } catch (ArithmeticException e) {
+            throw NumberConversions.outsideTimeRange(from, "Duration");
+        }
     }
 }

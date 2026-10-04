@@ -21,7 +21,7 @@ final class ByteConversions {
     private ByteConversions() {}
     
     static Character toCharacter(Object from, Converter converter) {
-        Byte b = (Byte) from;
-        return (char) b.byteValue();
+        // a negative byte is no char: (char) -1 was '\uFFFF'
+        return (char) NumberConversions.fit(from, Character.MIN_VALUE, Character.MAX_VALUE, "char");
     }
 }

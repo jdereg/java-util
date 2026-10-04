@@ -3567,6 +3567,18 @@ com.cedarsoftware.util.convert.Converter converter =
 String str = converter.convert(42, String.class);
 ```
 
+**Narrowing numbers:** a number converts to a narrower type only if it fits. A fraction is truncated toward zero
+(`3.7` and `"3.7"` give `3`, `-3.7` gives `-3`); a value beyond the target's range, `NaN` or infinity is an
+`IllegalArgumentException` naming the value and the range, whatever the source:
+```java
+converter.convert(4294967297L, int.class);        // IllegalArgumentException: ... it is outside -2147483648 to 2147483647
+converter.convert(Double.NaN, long.class);        // IllegalArgumentException: ... it is not a number
+converter.convert(1e300, float.class);            // IllegalArgumentException: a finite value beyond float's range
+converter.convert(1e300, Date.class);             // IllegalArgumentException: ... outside the range of Date
+converter.convert(Double.POSITIVE_INFINITY, float.class);   // Infinity: infinity itself is kept
+```
+The same holds for `char` (0 to 65535), enums by ordinal, and dates and times built from a number.
+
 **Static versus Instance API:**
 The static API is the easiest to use. It uses the default `ConverterOptions` object. Simply call
 public static APIs on the `com.cedarsoftware.util.Converter` class.

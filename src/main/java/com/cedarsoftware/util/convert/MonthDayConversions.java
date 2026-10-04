@@ -39,7 +39,7 @@ final class MonthDayConversions {
     }
 
     static short toShort(Object from, Converter converter) {
-        return (short) toInt(from, converter);
+        return (short) NumberConversions.fit(toInt(from, converter), Short.MIN_VALUE, Short.MAX_VALUE, "short");
     }
 
     static double toDouble(Object from, Converter converter) {

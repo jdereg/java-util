@@ -35,11 +35,11 @@ final class CharacterConversions {
 
     // down casting -- not always a safe conversion
     static byte toByte(Object from, Converter converter) {
-        return (byte) (char) from;
+        return (byte) NumberConversions.fit((int) (char) from, Byte.MIN_VALUE, Byte.MAX_VALUE, "byte");   // 'é' was -23
     }
 
     static short toShort(Object from, Converter converter) {
-        return (short) (char) from;
+        return (short) NumberConversions.fit((int) (char) from, Short.MIN_VALUE, Short.MAX_VALUE, "short");
     }
 
     static int toInt(Object from, Converter converter) {

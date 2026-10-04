@@ -1,6 +1,7 @@
 package com.cedarsoftware.util.convert;
 
 import java.sql.Timestamp;
+import java.time.DateTimeException;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -33,31 +34,43 @@ final class DoubleConversions {
     private DoubleConversions() { }
 
     static Instant toInstant(Object from, Converter converter) {
+        return toInstant(from, "Instant");
+    }
+
+    /** {@code from} seconds as an Instant, for a conversion to {@code type}; NaN, infinity or out of range refused. */
+    private static Instant toInstant(Object from, String type) {
         double d = (Double) from;
-        long seconds = (long) d;
+        long seconds = NumberConversions.timeUnits(d, from, type);
         // Calculate nanoseconds by taking the fractional part of the double and multiplying by 1_000_000_000,
         // rounding to the nearest long to maintain precision.
         long nanos = Math.round((d - seconds) * 1_000_000_000);
-        return Instant.ofEpochSecond(seconds, nanos);
+        try {
+            return Instant.ofEpochSecond(seconds, nanos);
+        } catch (DateTimeException | ArithmeticException e) {
+            throw NumberConversions.outsideTimeRange(from, type);
+        }
     }
 
     static Date toDate(Object from, Converter converter) {
         double d = (Double) from;
-        return new Date((long)(d * 1000));
+        return new Date(NumberConversions.timeUnits(d * 1000, from, "Date"));
     }
 
     static java.sql.Date toSqlDate(Object from, Converter converter) {
         double seconds = (Double) from;
-        return java.sql.Date.valueOf(
-                Instant.ofEpochSecond((long) seconds)
-                        .atZone(converter.getOptions().getZoneId())
-                        .toLocalDate()
-        );
+        long whole = NumberConversions.timeUnits(seconds, from, "java.sql.Date");   // whole seconds, as before
+        Instant instant;
+        try {
+            instant = Instant.ofEpochSecond(whole);
+        } catch (DateTimeException e) {
+            throw NumberConversions.outsideTimeRange(from, "java.sql.Date");
+        }
+        return java.sql.Date.valueOf(instant.atZone(converter.getOptions().getZoneId()).toLocalDate());
     }
 
     static Calendar toCalendar(Object from, Converter converter) {
         double seconds = (double) from;
-        long epochMillis = (long)(seconds * 1000);
+        long epochMillis = NumberConversions.timeUnits(seconds * 1000, from, "Calendar");
         Calendar calendar = Calendar.getInstance(converter.getOptions().getTimeZone());
         calendar.clear();
         calendar.setTimeInMillis(epochMillis);
@@ -66,6 +79,9 @@ final class DoubleConversions {
     
     static LocalTime toLocalTime(Object from, Converter converter) {
         double seconds = (double) from;
+        if (Double.isNaN(seconds)) {      // Math.round(NaN) is 0: midnight
+            NumberConversions.timeUnits(seconds, from, "LocalTime");
+        }
         // rounded to the nearest nanosecond, as toInstant does (truncating made 1.001 s 00:00:01.000999999); a value
         // within half a nanosecond of midnight is the day's last nanosecond, not 24:00
         long nanos = Math.round(seconds * 1_000_000_000.0);
@@ -89,12 +105,12 @@ final class DoubleConversions {
     }
 
     static ZonedDateTime toZonedDateTime(Object from, Converter converter) {
-        return toInstant(from, converter).atZone(converter.getOptions().getZoneId());
+        return toInstant(from, "ZonedDateTime").atZone(converter.getOptions().getZoneId());
     }
 
     static OffsetTime toOffsetTime(Object from, Converter converter) {
         double seconds = (double) from;
-        long wholeSecs = (long) seconds;  // gets whole number of seconds
+        long wholeSecs = NumberConversions.timeUnits(seconds, from, "OffsetTime");  // whole number of seconds
         double frac = seconds - wholeSecs;  // gets just the fractional part
         long nanos = Math.round(frac * 1_000_000_000.0);  // fraction to nanos, rounded as toInstant does
 
@@ -118,8 +134,12 @@ final class DoubleConversions {
     static Duration toDuration(Object from, Converter converter) {
         double d = (Double) from;
         // Separate whole seconds and nanoseconds
-        long seconds = (long) d;
+        long seconds = NumberConversions.timeUnits(d, from, "Duration");
         long nanoAdjustment = Math.round((d - seconds) * 1_000_000_000L);    // rounded, as toInstant does
-        return Duration.ofSeconds(seconds, nanoAdjustment);
+        try {
+            return Duration.ofSeconds(seconds, nanoAdjustment);
+        } catch (ArithmeticException e) {
+            throw NumberConversions.outsideTimeRange(from, "Duration");
+        }
     }
 }

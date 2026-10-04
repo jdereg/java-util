@@ -3636,7 +3636,7 @@ class ConverterEverythingTest {
                 {null, null},
         });
         TEST_DB.put(pair(Short.class, Character.class), new Object[][]{
-                {(short) -1, new IllegalArgumentException("Value '-1' out of range to be converted to character"),},
+                {(short) -1, new IllegalArgumentException("to char: it is outside 0 to 65535"),},
                 {(short) 0, (char) 0, true},
                 {(short) 1, (char) 1, true},
                 {(short) 49, '1', true},
@@ -3644,41 +3644,41 @@ class ConverterEverythingTest {
                 {Short.MAX_VALUE, (char) Short.MAX_VALUE, true},
         });
         TEST_DB.put(pair(Integer.class, Character.class), new Object[][]{
-                {-1, new IllegalArgumentException("Value '-1' out of range to be converted to character"),},
+                {-1, new IllegalArgumentException("to char: it is outside 0 to 65535"),},
                 {0, (char) 0, true},
                 {1, (char) 1, true},
                 {49, '1', true},
                 {48, '0', true},
                 {65535, (char) 65535, true},
-                {65536, new IllegalArgumentException("Value '65536' out of range to be converted to character")},
+                {65536, new IllegalArgumentException("to char: it is outside 0 to 65535")},
 
         });
         TEST_DB.put(pair(Long.class, Character.class), new Object[][]{
-                {-1L, new IllegalArgumentException("Value '-1' out of range to be converted to character"),},
+                {-1L, new IllegalArgumentException("to char: it is outside 0 to 65535"),},
                 {0L, (char) 0L, true},
                 {1L, (char) 1L, true},
                 {48L, '0', true},
                 {49L, '1', true},
                 {65535L, (char) 65535L, true},
-                {65536L, new IllegalArgumentException("Value '65536' out of range to be converted to character")},
+                {65536L, new IllegalArgumentException("to char: it is outside 0 to 65535")},
         });
         TEST_DB.put(pair(Float.class, Character.class), new Object[][]{
-                {-1f, new IllegalArgumentException("Value '-1' out of range to be converted to character"),},
+                {-1f, new IllegalArgumentException("to char: it is outside 0 to 65535"),},
                 {0f, (char) 0, true},
                 {1f, (char) 1, true},
                 {49f, '1', true},
                 {48f, '0', true},
                 {65535f, (char) 65535f, true},
-                {65536f, new IllegalArgumentException("Value '65536' out of range to be converted to character")},
+                {65536f, new IllegalArgumentException("to char: it is outside 0 to 65535")},
         });
         TEST_DB.put(pair(Double.class, Character.class), new Object[][]{
-                {-1.0, new IllegalArgumentException("Value '-1' out of range to be converted to character")},
+                {-1.0, new IllegalArgumentException("to char: it is outside 0 to 65535")},
                 {0.0, (char) 0, true},
                 {1.0, (char) 1, true},
                 {48.0, '0', true},
                 {49.0, '1', true},
                 {65535.0, (char) 65535.0, true},
-                {65536.0, new IllegalArgumentException("Value '65536' out of range to be converted to character")},
+                {65536.0, new IllegalArgumentException("to char: it is outside 0 to 65535")},
         });
         TEST_DB.put(pair(Character.class, Character.class), new Object[][]{
                 {(char) 0, (char) 0, true},
@@ -3686,41 +3686,41 @@ class ConverterEverythingTest {
                 {(char) 65535, (char) 65535, true},
         });
         TEST_DB.put(pair(AtomicInteger.class, Character.class), new Object[][]{
-                {new AtomicInteger(-1), new IllegalArgumentException("Value '-1' out of range to be converted to character")},
+                {new AtomicInteger(-1), new IllegalArgumentException("to char: it is outside 0 to 65535")},
                 {new AtomicInteger(0), (char) 0, true},
                 {new AtomicInteger(1), (char) 1, true},
                 {new AtomicInteger(65535), (char) 65535},
-                {new AtomicInteger(65536), new IllegalArgumentException("Value '65536' out of range to be converted to character")},
+                {new AtomicInteger(65536), new IllegalArgumentException("to char: it is outside 0 to 65535")},
         });
         TEST_DB.put(pair(AtomicLong.class, Character.class), new Object[][]{
-                {new AtomicLong(-1), new IllegalArgumentException("Value '-1' out of range to be converted to character")},
+                {new AtomicLong(-1), new IllegalArgumentException("to char: it is outside 0 to 65535")},
                 {new AtomicLong(0), (char) 0, true},
                 {new AtomicLong(1), (char) 1, true},
                 {new AtomicLong(65535), (char) 65535},
-                {new AtomicLong(65536), new IllegalArgumentException("Value '65536' out of range to be converted to character")},
+                {new AtomicLong(65536), new IllegalArgumentException("to char: it is outside 0 to 65535")},
         });
         TEST_DB.put(pair(BigInteger.class, Character.class), new Object[][]{
-                {BigInteger.valueOf(-1), new IllegalArgumentException("Value '-1' out of range to be converted to character")},
+                {BigInteger.valueOf(-1), new IllegalArgumentException("to char: it is outside 0 to 65535")},
                 {BigInteger.ZERO, (char) 0, true},
                 {BigInteger.valueOf(1), (char) 1, true},
                 {BigInteger.valueOf(65535), (char) 65535, true},
-                {BigInteger.valueOf(65536), new IllegalArgumentException("Value '65536' out of range to be converted to character")},
+                {BigInteger.valueOf(65536), new IllegalArgumentException("to char: it is outside 0 to 65535")},
         });
         TEST_DB.put(pair(BigDecimal.class, Character.class), new Object[][]{
-                {BigDecimal.valueOf(-1), new IllegalArgumentException("Value '-1' out of range to be converted to character")},
+                {BigDecimal.valueOf(-1), new IllegalArgumentException("to char: it is outside 0 to 65535")},
                 {BigDecimal.ZERO, (char) 0, true},
                 {BigDecimal.valueOf(1), (char) 1, true},
                 {BigDecimal.valueOf(65535), (char) 65535, true},
-                {BigDecimal.valueOf(65536), new IllegalArgumentException("Value '65536' out of range to be converted to character")},
+                {BigDecimal.valueOf(65536), new IllegalArgumentException("to char: it is outside 0 to 65535")},
         });
         TEST_DB.put(pair(Map.class, Character.class), new Object[][]{
-                {mapOf("_v", -1), new IllegalArgumentException("Value '-1' out of range to be converted to character")},
+                {mapOf("_v", -1), new IllegalArgumentException("to char: it is outside 0 to 65535")},
                 {mapOf("value", 0), (char) 0},
                 {mapOf("_v", 1), (char) 1},
                 {mapOf("_v", 65535), (char) 65535},
                 {mapOf("_v", mapOf("_v", 65535)), (char) 65535},
                 {mapOf("_v", "0"), (char) 48},
-                {mapOf("_v", 65536), new IllegalArgumentException("Value '65536' out of range to be converted to character")},
+                {mapOf("_v", 65536), new IllegalArgumentException("to char: it is outside 0 to 65535")},
                 {mapOf(V, (char)0), (char) 0, true},
                 {mapOf(V, (char)1), (char) 1, true},
                 {mapOf(V, (char)65535), (char) 65535, true},
@@ -3989,7 +3989,8 @@ class ConverterEverythingTest {
                 {date("2024-02-18T06:31:55.987654321Z"), 1708237915.987, true},    // Date only has millisecond resolution
                 {date("2024-02-18T06:31:55.123456789Z"), 1708237915.123, true},      // Date only has millisecond resolution
                 {new Date(Integer.MAX_VALUE), (double) Integer.MAX_VALUE / 1000d, true},
-                {new Date(Long.MAX_VALUE), (double) Long.MAX_VALUE / 1000d, true},
+                // not reversed: the double rounds Long.MAX_VALUE / 1000 up, and that many seconds no longer fit a long
+                {new Date(Long.MAX_VALUE), (double) Long.MAX_VALUE / 1000d},
         });
         TEST_DB.put(pair(Timestamp.class, Double.class), new Object[][]{
                 {new Timestamp(0), 0.0, true},
@@ -4234,7 +4235,7 @@ class ConverterEverythingTest {
                 {1.1, 1L},
                 {1.999, 1L},
                 {-9223372036854775808.0, Long.MIN_VALUE},
-                {9223372036854775807.0, Long.MAX_VALUE},
+                {9223372036854775807.0, new IllegalArgumentException("outside -9223372036854775808 to 9223372036854775807")},     // the double is 2^63
         });
         TEST_DB.put(pair(BigInteger.class, Long.class), new Object[][]{
                 {new BigInteger("-1"), -1L, true},
@@ -4242,8 +4243,8 @@ class ConverterEverythingTest {
                 {new BigInteger("1"), 1L, true},
                 {new BigInteger("-9223372036854775808"), Long.MIN_VALUE, true},
                 {new BigInteger("9223372036854775807"), Long.MAX_VALUE, true},
-                {new BigInteger("-9223372036854775809"), Long.MAX_VALUE},       // Test wrap around
-                {new BigInteger("9223372036854775808"), Long.MIN_VALUE},        // Test wrap around
+                {new BigInteger("-9223372036854775809"), new IllegalArgumentException("outside -9223372036854775808 to 9223372036854775807")},
+                {new BigInteger("9223372036854775808"), new IllegalArgumentException("outside -9223372036854775808 to 9223372036854775807")},
         });
         TEST_DB.put(pair(BigDecimal.class, Long.class), new Object[][]{
                 {new BigDecimal("-1"), -1L, true},
@@ -4255,8 +4256,8 @@ class ConverterEverythingTest {
                 {new BigDecimal("1.9"), 1L},
                 {new BigDecimal("-9223372036854775808"), Long.MIN_VALUE, true},
                 {new BigDecimal("9223372036854775807"), Long.MAX_VALUE, true},
-                {new BigDecimal("-9223372036854775809"), Long.MAX_VALUE},       // wrap around
-                {new BigDecimal("9223372036854775808"), Long.MIN_VALUE},        // wrap around
+                {new BigDecimal("-9223372036854775809"), new IllegalArgumentException("outside -9223372036854775808 to 9223372036854775807")},
+                {new BigDecimal("9223372036854775808"), new IllegalArgumentException("outside -9223372036854775808 to 9223372036854775807")},
         });
         TEST_DB.put(pair(Map.class, Long.class), new Object[][]{
                 {mapOf(V, "-1"), -1L},
@@ -4451,8 +4452,8 @@ class ConverterEverythingTest {
                 {-1L, -1},
                 {0L, 0},
                 {1L, 1},
-                {-2147483649L, Integer.MAX_VALUE},   // wrap around check
-                {2147483648L, Integer.MIN_VALUE},   // wrap around check
+                {-2147483649L, new IllegalArgumentException("outside -2147483648 to 2147483647")},
+                {2147483648L, new IllegalArgumentException("outside -2147483648 to 2147483647")},
         });
         TEST_DB.put(pair(Float.class, Integer.class), new Object[][]{
                 {-1f, -1},
@@ -4489,8 +4490,8 @@ class ConverterEverythingTest {
                 {new BigInteger("1"), 1, true},
                 {new BigInteger("-2147483648"), Integer.MIN_VALUE, true},
                 {new BigInteger("2147483647"), Integer.MAX_VALUE, true},
-                {new BigInteger("-2147483649"), Integer.MAX_VALUE},
-                {new BigInteger("2147483648"), Integer.MIN_VALUE},
+                {new BigInteger("-2147483649"), new IllegalArgumentException("outside -2147483648 to 2147483647")},
+                {new BigInteger("2147483648"), new IllegalArgumentException("outside -2147483648 to 2147483647")},
         });
         TEST_DB.put(pair(BigDecimal.class, Integer.class), new Object[][]{
                 {new BigDecimal("-1"), -1, true},
@@ -4502,8 +4503,8 @@ class ConverterEverythingTest {
                 {new BigDecimal("1.9"), 1},
                 {new BigDecimal("-2147483648"), Integer.MIN_VALUE, true},
                 {new BigDecimal("2147483647"), Integer.MAX_VALUE, true},
-                {new BigDecimal("-2147483649"), Integer.MAX_VALUE},       // wrap around test
-                {new BigDecimal("2147483648"), Integer.MIN_VALUE},        // wrap around test
+                {new BigDecimal("-2147483649"), new IllegalArgumentException("outside -2147483648 to 2147483647")},
+                {new BigDecimal("2147483648"), new IllegalArgumentException("outside -2147483648 to 2147483647")},
         });
         TEST_DB.put(pair(Map.class, Integer.class), new Object[][]{
                 {mapOf("_v", "-1"), -1},
@@ -4524,11 +4525,11 @@ class ConverterEverythingTest {
                 {mapOf("_v", 2147483647), Integer.MAX_VALUE},
 
                 {mapOf("_v", "-2147483649"), new IllegalArgumentException("'-2147483649' not parseable as an int value or outside -2147483648 to 2147483647")},
-                {mapOf("_v", -2147483649L), Integer.MAX_VALUE},
+                {mapOf("_v", -2147483649L), new IllegalArgumentException("outside -2147483648 to 2147483647")},
 
                 {mapOf("_v", "2147483648"), new IllegalArgumentException("'2147483648' not parseable as an int value or outside -2147483648 to 2147483647")},
-                {mapOf("_v", 2147483648L), Integer.MIN_VALUE},
-                {mapOf("_v", mapOf("_v", 2147483648L)), Integer.MIN_VALUE},    // Prove use of recursive call to .convert()
+                {mapOf("_v", 2147483648L), new IllegalArgumentException("outside -2147483648 to 2147483647")},
+                {mapOf("_v", mapOf("_v", 2147483648L)), new IllegalArgumentException("outside -2147483648 to 2147483647")},    // Prove use of recursive call to .convert()
         });
         TEST_DB.put(pair(String.class, Integer.class), new Object[][]{
                 {"-1", -1, true},
@@ -4583,15 +4584,15 @@ class ConverterEverythingTest {
                 {-1, (short) -1},
                 {0, (short) 0},
                 {1, (short) 1},
-                {-32769, Short.MAX_VALUE},   // wrap around check
-                {32768, Short.MIN_VALUE},   // wrap around check
+                {-32769, new IllegalArgumentException("outside -32768 to 32767")},
+                {32768, new IllegalArgumentException("outside -32768 to 32767")},
         });
         TEST_DB.put(pair(Long.class, Short.class), new Object[][]{
                 {-1L, (short) -1},
                 {0L, (short) 0},
                 {1L, (short) 1},
-                {-32769L, Short.MAX_VALUE},   // wrap around check
-                {32768L, Short.MIN_VALUE},   // wrap around check
+                {-32769L, new IllegalArgumentException("outside -32768 to 32767")},
+                {32768L, new IllegalArgumentException("outside -32768 to 32767")},
         });
         TEST_DB.put(pair(Float.class, Short.class), new Object[][]{
                 {-1f, (short) -1},
@@ -4603,8 +4604,8 @@ class ConverterEverythingTest {
                 {1.999f, (short) 1},
                 {-32768f, Short.MIN_VALUE},
                 {32767f, Short.MAX_VALUE},
-                {-32769f, Short.MAX_VALUE}, // verify wrap around
-                {32768f, Short.MIN_VALUE}   // verify wrap around
+                {-32769f, new IllegalArgumentException("outside -32768 to 32767")},
+                {32768f, new IllegalArgumentException("outside -32768 to 32767")},
         });
         TEST_DB.put(pair(Double.class, Short.class), new Object[][]{
                 {-1.0, (short) -1, true},
@@ -4616,8 +4617,8 @@ class ConverterEverythingTest {
                 {1.999, (short) 1},
                 {-32768.0, Short.MIN_VALUE, true},
                 {32767.0, Short.MAX_VALUE, true},
-                {-32769.0, Short.MAX_VALUE}, // verify wrap around
-                {32768.0, Short.MIN_VALUE}   // verify wrap around
+                {-32769.0, new IllegalArgumentException("outside -32768 to 32767")},
+                {32768.0, new IllegalArgumentException("outside -32768 to 32767")},
         });
         TEST_DB.put(pair(AtomicInteger.class, Short.class), new Object[][]{
                 {new AtomicInteger(-1), (short) -1, true},
@@ -4625,8 +4626,8 @@ class ConverterEverythingTest {
                 {new AtomicInteger(1), (short) 1, true},
                 {new AtomicInteger(-32768), Short.MIN_VALUE, true},
                 {new AtomicInteger(32767), Short.MAX_VALUE, true},
-                {new AtomicInteger(-32769), Short.MAX_VALUE},
-                {new AtomicInteger(32768), Short.MIN_VALUE},
+                {new AtomicInteger(-32769), new IllegalArgumentException("outside -32768 to 32767")},
+                {new AtomicInteger(32768), new IllegalArgumentException("outside -32768 to 32767")},
         });
         TEST_DB.put(pair(AtomicLong.class, Short.class), new Object[][]{
                 {new AtomicLong(-1), (short) -1, true},
@@ -4634,8 +4635,8 @@ class ConverterEverythingTest {
                 {new AtomicLong(1), (short) 1, true},
                 {new AtomicLong(-32768), Short.MIN_VALUE, true},
                 {new AtomicLong(32767), Short.MAX_VALUE, true},
-                {new AtomicLong(-32769), Short.MAX_VALUE},
-                {new AtomicLong(32768), Short.MIN_VALUE},
+                {new AtomicLong(-32769), new IllegalArgumentException("outside -32768 to 32767")},
+                {new AtomicLong(32768), new IllegalArgumentException("outside -32768 to 32767")},
         });
         TEST_DB.put(pair(BigInteger.class, Short.class), new Object[][]{
                 {new BigInteger("-1"), (short) -1, true},
@@ -4643,8 +4644,8 @@ class ConverterEverythingTest {
                 {new BigInteger("1"), (short) 1, true},
                 {new BigInteger("-32768"), Short.MIN_VALUE, true},
                 {new BigInteger("32767"), Short.MAX_VALUE, true},
-                {new BigInteger("-32769"), Short.MAX_VALUE},
-                {new BigInteger("32768"), Short.MIN_VALUE},
+                {new BigInteger("-32769"), new IllegalArgumentException("outside -32768 to 32767")},
+                {new BigInteger("32768"), new IllegalArgumentException("outside -32768 to 32767")},
         });
         TEST_DB.put(pair(BigDecimal.class, Short.class), new Object[][]{
                 {new BigDecimal("-1"), (short) -1, true},
@@ -4656,8 +4657,8 @@ class ConverterEverythingTest {
                 {new BigDecimal("1.9"), (short) 1},
                 {new BigDecimal("-32768"), Short.MIN_VALUE, true},
                 {new BigDecimal("32767"), Short.MAX_VALUE, true},
-                {new BigDecimal("-32769"), Short.MAX_VALUE},
-                {new BigDecimal("32768"), Short.MIN_VALUE},
+                {new BigDecimal("-32769"), new IllegalArgumentException("outside -32768 to 32767")},
+                {new BigDecimal("32768"), new IllegalArgumentException("outside -32768 to 32767")},
         });
         TEST_DB.put(pair(Map.class, Short.class), new Object[][]{
                 {mapOf("_v", "-1"), (short) -1},
@@ -4678,11 +4679,11 @@ class ConverterEverythingTest {
                 {mapOf("_v", (short)32767), Short.MAX_VALUE, true},
 
                 {mapOf("_v", "-32769"), new IllegalArgumentException("'-32769' not parseable as a short value or outside -32768 to 32767")},
-                {mapOf("_v", -32769), Short.MAX_VALUE},
+                {mapOf("_v", -32769), new IllegalArgumentException("outside -32768 to 32767")},
 
                 {mapOf("_v", "32768"), new IllegalArgumentException("'32768' not parseable as a short value or outside -32768 to 32767")},
-                {mapOf("_v", 32768), Short.MIN_VALUE},
-                {mapOf("_v", mapOf("_v", 32768L)), Short.MIN_VALUE},    // Prove use of recursive call to .convert()
+                {mapOf("_v", 32768), new IllegalArgumentException("outside -32768 to 32767")},
+                {mapOf("_v", mapOf("_v", 32768L)), new IllegalArgumentException("outside -32768 to 32767")},    // Prove use of recursive call to .convert()
         });
         TEST_DB.put(pair(String.class, Short.class), new Object[][]{
                 {"-1", (short) -1, true},
@@ -4802,8 +4803,8 @@ class ConverterEverythingTest {
                 {(short) 1, (byte) 1, true},
                 {(short) -128, Byte.MIN_VALUE, true},
                 {(short) 127, Byte.MAX_VALUE, true},
-                {(short) -129, Byte.MAX_VALUE},    // verify wrap around
-                {(short) 128, Byte.MIN_VALUE},    // verify wrap around
+                {(short) -129, new IllegalArgumentException("outside -128 to 127")},
+                {(short) 128, new IllegalArgumentException("outside -128 to 127")},
         });
         TEST_DB.put(pair(Integer.class, Byte.class), new Object[][]{
                 {-1, (byte) -1, true},
@@ -4811,8 +4812,8 @@ class ConverterEverythingTest {
                 {1, (byte) 1, true},
                 {-128, Byte.MIN_VALUE, true},
                 {127, Byte.MAX_VALUE, true},
-                {-129, Byte.MAX_VALUE},   // verify wrap around
-                {128, Byte.MIN_VALUE},   // verify wrap around
+                {-129, new IllegalArgumentException("outside -128 to 127")},
+                {128, new IllegalArgumentException("outside -128 to 127")},
         });
         TEST_DB.put(pair(Long.class, Byte.class), new Object[][]{
                 {-1L, (byte) -1, true},
@@ -4820,8 +4821,8 @@ class ConverterEverythingTest {
                 {1L, (byte) 1, true},
                 {-128L, Byte.MIN_VALUE, true},
                 {127L, Byte.MAX_VALUE, true},
-                {-129L, Byte.MAX_VALUE}, // verify wrap around
-                {128L, Byte.MIN_VALUE}   // verify wrap around
+                {-129L, new IllegalArgumentException("outside -128 to 127")},
+                {128L, new IllegalArgumentException("outside -128 to 127")},
         });
         TEST_DB.put(pair(Float.class, Byte.class), new Object[][]{
                 {-1f, (byte) -1, true},
@@ -4833,8 +4834,8 @@ class ConverterEverythingTest {
                 {1.999f, (byte) 1},
                 {-128f, Byte.MIN_VALUE, true},
                 {127f, Byte.MAX_VALUE, true},
-                {-129f, Byte.MAX_VALUE}, // verify wrap around
-                {128f, Byte.MIN_VALUE}   // verify wrap around
+                {-129f, new IllegalArgumentException("outside -128 to 127")},
+                {128f, new IllegalArgumentException("outside -128 to 127")},
         });
         TEST_DB.put(pair(Double.class, Byte.class), new Object[][]{
                 {-1.0, (byte) -1, true},
@@ -4846,15 +4847,15 @@ class ConverterEverythingTest {
                 {1.999, (byte) 1},
                 {-128.0, Byte.MIN_VALUE, true},
                 {127.0, Byte.MAX_VALUE, true},
-                {-129.0, Byte.MAX_VALUE}, // verify wrap around
-                {128.0, Byte.MIN_VALUE}   // verify wrap around
+                {-129.0, new IllegalArgumentException("outside -128 to 127")},
+                {128.0, new IllegalArgumentException("outside -128 to 127")},
         });
         TEST_DB.put(pair(Character.class, Byte.class), new Object[][]{
                 {'1', (byte) 49, true},
                 {'0', (byte) 48, true},
                 {(char) 1, (byte) 1, true},
                 {(char) 0, (byte) 0, true},
-                {(char) -1, (byte) 65535, true},
+                {(char) -1, new IllegalArgumentException("outside -128 to 127")},       // '\uFFFF' was -1
                 {(char) Byte.MAX_VALUE, Byte.MAX_VALUE, true},
         });
         TEST_DB.put(pair(AtomicBoolean.class, Byte.class), new Object[][]{
@@ -4881,8 +4882,8 @@ class ConverterEverythingTest {
                 {new BigInteger("1"), (byte) 1, true},
                 {new BigInteger("-128"), Byte.MIN_VALUE, true},
                 {new BigInteger("127"), Byte.MAX_VALUE, true},
-                {new BigInteger("-129"), Byte.MAX_VALUE},
-                {new BigInteger("128"), Byte.MIN_VALUE},
+                {new BigInteger("-129"), new IllegalArgumentException("outside -128 to 127")},
+                {new BigInteger("128"), new IllegalArgumentException("outside -128 to 127")},
         });
         TEST_DB.put(pair(BigDecimal.class, Byte.class), new Object[][]{
                 {new BigDecimal("-1"), (byte) -1, true},
@@ -4894,8 +4895,8 @@ class ConverterEverythingTest {
                 {new BigDecimal("1.9"), (byte) 1},
                 {new BigDecimal("-128"), Byte.MIN_VALUE, true},
                 {new BigDecimal("127"), Byte.MAX_VALUE, true},
-                {new BigDecimal("-129"), Byte.MAX_VALUE},
-                {new BigDecimal("128"), Byte.MIN_VALUE},
+                {new BigDecimal("-129"), new IllegalArgumentException("outside -128 to 127")},
+                {new BigDecimal("128"), new IllegalArgumentException("outside -128 to 127")},
         });
         TEST_DB.put(pair(Map.class, Byte.class), new Object[][]{
                 {mapOf(V, "-1"), (byte) -1},
@@ -4916,11 +4917,11 @@ class ConverterEverythingTest {
                 {mapOf(V, 127), Byte.MAX_VALUE},
 
                 {mapOf(V, "-129"), new IllegalArgumentException("'-129' not parseable as a byte value or outside -128 to 127")},
-                {mapOf(V, -129), Byte.MAX_VALUE},
+                {mapOf(V, -129), new IllegalArgumentException("outside -128 to 127")},
 
                 {mapOf(V, "128"), new IllegalArgumentException("'128' not parseable as a byte value or outside -128 to 127")},
-                {mapOf(V, 128), Byte.MIN_VALUE},
-                {mapOf(V, mapOf(V, 128L)), Byte.MIN_VALUE},    // Prove use of recursive call to .convert()
+                {mapOf(V, 128), new IllegalArgumentException("outside -128 to 127")},
+                {mapOf(V, mapOf(V, 128L)), new IllegalArgumentException("outside -128 to 127")},    // Prove use of recursive call to .convert()
                 {mapOf(V, (byte)1), (byte)1, true},
                 {mapOf(V, (byte)2), (byte)2, true},
                 {mapOf(VALUE, "nope"), new IllegalArgumentException("Value 'nope' not parseable as a byte value or outside -128 to 127")},

@@ -3,6 +3,7 @@ package com.cedarsoftware.util.convert;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.sql.Timestamp;
+import java.time.DateTimeException;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -42,27 +43,44 @@ final class BigDecimalConversions {
         BigDecimal seconds = (BigDecimal) from;
         BigDecimal millis = seconds.multiply(GRAND);
         Calendar calendar = Calendar.getInstance(converter.getOptions().getTimeZone());
-        calendar.setTimeInMillis(millis.longValue());
+        calendar.setTimeInMillis(NumberConversions.timeUnits(millis, from, "Calendar"));
         return calendar;
     }
 
     static Instant toInstant(Object from, Converter converter) {
         BigDecimal seconds = (BigDecimal) from;
-        BigDecimal nanos = seconds.remainder(BigDecimal.ONE);
-        return Instant.ofEpochSecond(seconds.longValue(), nanos.movePointRight(9).longValue());
+        long whole = NumberConversions.timeUnits(seconds, from, "Instant");    // longValue() wrapped 1e20
+        try {
+            return Instant.ofEpochSecond(whole, fractionNanos(seconds, whole));
+        } catch (DateTimeException | ArithmeticException e) {
+            throw NumberConversions.outsideTimeRange(from, "Instant");
+        }
     }
 
     static Duration toDuration(Object from, Converter converter) {
         BigDecimal seconds = (BigDecimal) from;
-        BigDecimal nanos = seconds.remainder(BigDecimal.ONE);
-        return Duration.ofSeconds(seconds.longValue(), nanos.movePointRight(9).longValue());
+        long whole = NumberConversions.timeUnits(seconds, from, "Duration");
+        try {
+            return Duration.ofSeconds(whole, fractionNanos(seconds, whole));
+        } catch (ArithmeticException e) {
+            throw NumberConversions.outsideTimeRange(from, "Duration");
+        }
+    }
+
+    /**
+     * The nanoseconds in {@code seconds} beyond its {@code whole} seconds, truncated, as remainder(1) gave them;
+     * counted by digits, so a tiny fraction (1e-999999999) is 0 at once rather than a division by 10^999999999.
+     */
+    private static long fractionNanos(BigDecimal seconds, long whole) {
+        return NumberConversions.timeUnits(seconds.subtract(BigDecimal.valueOf(whole)).movePointRight(9), seconds,
+                "nanoseconds");
     }
 
     static LocalTime toLocalTime(Object from, Converter converter) {
         BigDecimal seconds = (BigDecimal) from;
         BigDecimal nanos = seconds.multiply(BILLION);
         try {
-            return LocalTime.ofNanoOfDay(nanos.longValue());
+            return LocalTime.ofNanoOfDay(NumberConversions.timeUnits(nanos, from, "LocalTime"));
         } catch (Exception e) {
             throw new IllegalArgumentException("Input value [" + seconds.toPlainString() + "] for conversion to LocalTime must be >= 0 && <= 86399.999999999", e);
         }
@@ -79,9 +97,9 @@ final class BigDecimalConversions {
     static OffsetTime toOffsetTime(Object from, Converter converter) {
         BigDecimal seconds = (BigDecimal) from;
         try {
-            long wholeSecs = seconds.longValue(); // gets the integer part
+            long wholeSecs = NumberConversions.timeUnits(seconds, from, "OffsetTime"); // the integer part
             BigDecimal frac = seconds.subtract(BigDecimal.valueOf(wholeSecs)); // gets just the fractional part
-            long nanos = frac.multiply(BILLION).longValue(); // converts fraction to nanos
+            long nanos = NumberConversions.timeUnits(frac.movePointRight(9), from, "OffsetTime"); // fraction to nanos
 
             Instant instant = Instant.ofEpochSecond(wholeSecs, nanos);
             return OffsetTime.ofInstant(instant, converter.getOptions().getZoneId());

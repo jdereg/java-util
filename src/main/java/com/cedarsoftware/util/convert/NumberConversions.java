@@ -18,6 +18,8 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.DoubleAdder;
+import java.util.concurrent.atomic.LongAdder;
 
 import com.cedarsoftware.util.internal.FloatDecimal;
 
@@ -42,7 +44,7 @@ final class NumberConversions {
     private NumberConversions() {}
 
     static byte toByte(Object from, Converter converter) {
-        return ((Number)from).byteValue();
+        return (byte) fit(from, Byte.MIN_VALUE, Byte.MAX_VALUE, "byte");
     }
 
     static Byte toByteZero(Object from, Converter converter) {
@@ -50,7 +52,7 @@ final class NumberConversions {
     }
 
     static short toShort(Object from, Converter converter) {
-        return ((Number)from).shortValue();
+        return (short) fit(from, Short.MIN_VALUE, Short.MAX_VALUE, "short");
     }
 
     static Short toShortZero(Object from, Converter converter) {
@@ -58,7 +60,7 @@ final class NumberConversions {
     }
 
     static int toInt(Object from, Converter converter) {
-        return ((Number)from).intValue();
+        return (int) fit(from, Integer.MIN_VALUE, Integer.MAX_VALUE, "int");
     }
 
     static Integer toIntZero(Object from, Converter converter) {
@@ -66,7 +68,10 @@ final class NumberConversions {
     }
 
     static long toLong(Object from, Converter converter) {
-        return ((Number) from).longValue();
+        if (from instanceof Long) {
+            return (Long) from;
+        }
+        return fit(from, Long.MIN_VALUE, Long.MAX_VALUE, "long");
     }
     
     static Long toLongZero(Object from, Converter converter) {
@@ -74,7 +79,13 @@ final class NumberConversions {
     }
 
     static float toFloat(Object from, Converter converter) {
-        return ((Number) from).floatValue();
+        float value = ((Number) from).floatValue();
+        if (Float.isInfinite(value) && !isInfinite(from)) {
+            // a finite value beyond float's range: (float) 1e300 is Infinity
+            throw new IllegalArgumentException("Unable to convert " + shown(from) + " to float: it is outside "
+                    + -Float.MAX_VALUE + " to " + Float.MAX_VALUE);
+        }
+        return value;
     }
 
     static Float toFloatZero(Object from, Converter converter) {
@@ -90,7 +101,146 @@ final class NumberConversions {
     }
 
     static double toDouble(Object from, Converter converter) {
-        return ((Number) from).doubleValue();
+        double value = ((Number) from).doubleValue();
+        if (Double.isInfinite(value) && !isInfinite(from)) {
+            // a finite BigDecimal or BigInteger beyond double's range: 1e400 as a double is Infinity
+            throw new IllegalArgumentException("Unable to convert " + shown(from) + " to double: it is outside "
+                    + -Double.MAX_VALUE + " to " + Double.MAX_VALUE);
+        }
+        return value;
+    }
+
+    // -------------------------------------------------------------------------------------------------------------
+    // Narrowing: a number converts to a narrower type only if it fits. A fraction is truncated toward zero, as a cast
+    // does; a value beyond the target's range, NaN or infinity is an IllegalArgumentException. A cast wrapped a long
+    // or BigInteger (2^32 + 1 as an int is 1), clamped a double (1e10 as an int is 2147483647, and as a short -1), and
+    // made NaN 0. A String source was already refused that way.
+    // -------------------------------------------------------------------------------------------------------------
+
+    /**
+     * {@code from} as a whole number from {@code min} to {@code max}, for a conversion to {@code type}: truncated
+     * toward zero, refused if it does not fit.
+     */
+    static long fit(Object from, long min, long max, String type) {
+        long value;
+        if (from instanceof Long || from instanceof Integer) {          // the common sources first
+            value = ((Number) from).longValue();
+        } else if (from instanceof Double || from instanceof Float) {
+            value = wholeLong(((Number) from).doubleValue(), from, type, min, max);
+        } else if (from instanceof BigDecimal) {
+            value = wholeLong((BigDecimal) from, from, type, min, max);
+        } else if (from instanceof BigInteger) {
+            value = wholeLong((BigInteger) from, from, type, min, max);
+        } else if (from instanceof Short || from instanceof Byte || from instanceof AtomicLong
+                || from instanceof AtomicInteger || from instanceof LongAdder) {
+            value = ((Number) from).longValue();
+        } else if (from instanceof DoubleAdder) {
+            value = wholeLong(((Number) from).doubleValue(), from, type, min, max);
+        } else {
+            value = ((Number) from).longValue();    // another Number: its own longValue()
+        }
+        if (value < min || value > max) {
+            throw outOfRange(from, type, min, max);
+        }
+        return value;
+    }
+
+    /** {@code d} truncated toward zero, if it is a finite value within a long. */
+    static long wholeLong(double d, Object from, String type, long min, long max) {
+        if (Double.isNaN(d)) {
+            throw new IllegalArgumentException("Unable to convert " + shown(from) + " to " + type
+                    + ": it is not a number");
+        }
+        if (!(d >= -0x1p63 && d < 0x1p63)) {      // infinite, or beyond a long
+            throw outOfRange(from, type, min, max);
+        }
+        return (long) d;
+    }
+
+    /** {@code b} as a long, if it fits one. */
+    static long wholeLong(BigInteger b, Object from, String type, long min, long max) {
+        if (b.bitLength() > 63) {
+            throw outOfRange(from, type, min, max);
+        }
+        return b.longValue();
+    }
+
+    /**
+     * {@code d}'s whole part as a long, if it fits one. A value of more than 19 whole digits is refused by counting
+     * them, without computing it: toBigInteger() of 1e999999999 builds a billion digits.
+     */
+    static long wholeLong(BigDecimal d, Object from, String type, long min, long max) {
+        long wholeDigits = (long) d.precision() - d.scale();
+        if (wholeDigits <= 0) {
+            return 0L;
+        }
+        if (wholeDigits <= 18) {
+            return d.longValue();       // below 10^18 in magnitude: fits, and longValue() truncates toward zero
+        }
+        if (wholeDigits > 19) {
+            throw outOfRange(from, type, min, max);
+        }
+        return wholeLong(d.toBigInteger(), from, type, min, max);
+    }
+
+    static IllegalArgumentException outOfRange(Object from, String type, long min, long max) {
+        return new IllegalArgumentException("Unable to convert " + shown(from) + " to " + type + ": it is outside "
+                + min + " to " + max);
+    }
+
+    /** The value for a message: at most 100 characters, and a huge BigInteger by its size, not its digits. */
+    static String shown(Object from) {
+        if (from instanceof BigInteger && ((BigInteger) from).bitLength() > 300) {
+            return "a " + ((BigInteger) from).bitLength() + "-bit BigInteger";
+        }
+        String text = String.valueOf(from);
+        return text.length() > 100 ? text.substring(0, 100) + "..." : text;
+    }
+
+    /**
+     * A count of time units as a long, for a conversion of {@code from} to the date or time type {@code type}:
+     * truncated toward zero, refused if it is NaN, infinite, or beyond a long. A cast made NaN the epoch and clamped
+     * 1e300 seconds to the year 292278994.
+     */
+    static long timeUnits(double units, Object from, String type) {
+        if (Double.isNaN(units)) {
+            throw new IllegalArgumentException("Unable to convert " + shown(from) + " to " + type
+                    + ": it is not a number");
+        }
+        if (!(units >= -0x1p63 && units < 0x1p63)) {
+            throw outsideTimeRange(from, type);
+        }
+        return (long) units;
+    }
+
+    /** As {@link #timeUnits(double, Object, String)}, for a BigInteger count: longValue() wrapped 2^64 + 1000 to 1000. */
+    static long timeUnits(BigInteger units, Object from, String type) {
+        if (units.bitLength() > 63) {
+            throw outsideTimeRange(from, type);
+        }
+        return units.longValue();
+    }
+
+    /** As {@link #timeUnits(double, Object, String)}, for a BigDecimal count, its whole part, refused by digit count. */
+    static long timeUnits(BigDecimal units, Object from, String type) {
+        long wholeDigits = (long) units.precision() - units.scale();
+        if (wholeDigits <= 0) {
+            return 0L;
+        }
+        if (wholeDigits > 19) {
+            throw outsideTimeRange(from, type);
+        }
+        return timeUnits(units.toBigInteger(), from, type);
+    }
+
+    static IllegalArgumentException outsideTimeRange(Object from, String type) {
+        return new IllegalArgumentException("Unable to convert " + shown(from) + " to " + type
+                + ": it is outside the range of " + type);
+    }
+
+    private static boolean isInfinite(Object from) {
+        return (from instanceof Double || from instanceof Float || from instanceof DoubleAdder)
+                && Double.isInfinite(((Number) from).doubleValue());
     }
 
     /**
@@ -182,11 +332,7 @@ final class NumberConversions {
      * @throws IllegalArgumentException if the value exceeds the range of a char.
      */
     static char toCharacter(Object from, Converter converter) {
-        long value = toLong(from, converter);
-        if (value >= 0 && value <= Character.MAX_VALUE) {
-            return (char) value;
-        }
-        throw new IllegalArgumentException("Value '" + value + "' out of range to be converted to character.");
+        return (char) fit(from, Character.MIN_VALUE, Character.MAX_VALUE, "char");
     }
 
     static Date toDate(Object from, Converter converter) {

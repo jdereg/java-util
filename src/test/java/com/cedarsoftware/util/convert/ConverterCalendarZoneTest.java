@@ -1,5 +1,13 @@
 package com.cedarsoftware.util.convert;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.MonthDay;
+import java.time.OffsetDateTime;
+import java.time.YearMonth;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.Calendar;
 import java.util.TimeZone;
 
@@ -8,7 +16,8 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
- * Calendar to String keeps the Calendar's own zone, so String back to Calendar gives the same local time.
+ * A Calendar converts in its own zone: to String, so String back to Calendar gives the same local time, and to every
+ * local date and time type.
  */
 class ConverterCalendarZoneTest {
 
@@ -47,6 +56,31 @@ class ConverterCalendarZoneTest {
                 }
             }
         }
+    }
+
+    /**
+     * 05:30 on July 1 in Tokyo is 16:30 on June 30 in New York. With the Converter's zone New York, a Tokyo Calendar
+     * gave LocalTime 16:30 while its LocalDateTime was 2024-07-01T05:30: LocalTime alone went through ZonedDateTime,
+     * which converts to the Converter's zone.
+     */
+    @Test
+    void everyLocalTypeIsTheCalendarsOwnLocalTime() {
+        Converter newYork = new Converter(new DefaultConverterOptions() {
+            @Override
+            public ZoneId getZoneId() {
+                return ZoneId.of("America/New_York");
+            }
+        });
+        Calendar tokyo = calendar("Asia/Tokyo", 2024, Calendar.JULY, 1, 5);
+        tokyo.set(Calendar.MINUTE, 30);
+        assertEquals(LocalTime.of(5, 30), newYork.convert(tokyo, LocalTime.class));
+        assertEquals(LocalDateTime.of(2024, 7, 1, 5, 30), newYork.convert(tokyo, LocalDateTime.class));
+        assertEquals(LocalDate.of(2024, 7, 1), newYork.convert(tokyo, LocalDate.class));
+        assertEquals(java.sql.Date.valueOf("2024-07-01"), newYork.convert(tokyo, java.sql.Date.class));
+        assertEquals(YearMonth.of(2024, 7), newYork.convert(tokyo, YearMonth.class));
+        assertEquals(MonthDay.of(7, 1), newYork.convert(tokyo, MonthDay.class));
+        assertEquals(OffsetDateTime.of(2024, 7, 1, 5, 30, 0, 0, ZoneOffset.ofHours(9)),
+                newYork.convert(tokyo, OffsetDateTime.class));
     }
 
     private static Calendar calendar(String zone, int year, int month, int day, int hour) {

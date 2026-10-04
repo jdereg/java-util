@@ -1224,6 +1224,8 @@ public final class Converter {
         CONVERSION_DB.put(BigDecimal.class, LocalTime.class, BigDecimalConversions::toLocalTime);
         CONVERSION_DB.put(LocalTime.class, LocalTime.class, Converter::identity);
         CONVERSION_DB.put(ZonedDateTime.class, LocalTime.class, ZonedDateTimeConversions::toLocalTime);
+        // the Calendar's own zone, as its other conversions: the bridge through ZonedDateTime applies the Converter's
+        CONVERSION_DB.put(Calendar.class, LocalTime.class, CalendarConversions::toLocalTime);
         CONVERSION_DB.put(Duration.class, LocalTime.class, DurationConversions::toLocalTime);
         CONVERSION_DB.put(Map.class, LocalTime.class, MapConversions::toLocalTime);
         CONVERSION_DB.put(String.class, LocalTime.class, StringConversions::toLocalTime);

@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.MonthDay;
 import java.time.Year;
 import java.time.YearMonth;
@@ -77,6 +78,10 @@ final class CalendarConversions {
 
     static LocalDate toLocalDate(Object from, Converter converter) {
         return toZonedDateTime(from, converter).toLocalDate();
+    }
+
+    static LocalTime toLocalTime(Object from, Converter converter) {
+        return toZonedDateTime(from, converter).toLocalTime();
     }
 
     static Calendar clone(Object from, Converter converter) {

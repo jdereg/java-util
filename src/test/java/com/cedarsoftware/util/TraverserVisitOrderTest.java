@@ -22,6 +22,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * The order Traverser visits a graph in, against a model of it: depth first, the last child pushed visited first;
@@ -62,6 +63,36 @@ class TraverserVisitOrderTest {
             for (int i = 0; i < expected.size(); i++) {
                 assertSame(expected.get(i), visited.get(i), "seed " + seed + " visit " + i);
             }
+        }
+    }
+
+    static class Holder {
+        Object marker = "<inaccessible>";       // the very String Traverser reports for a field it cannot read
+        Object next;
+    }
+
+    /**
+     * A field that really holds the String Traverser reports for an unreadable field is still read, reported and
+     * walked: the walk tells "not read" apart from that value.
+     */
+    @Test
+    void aFieldHoldingTheInaccessibleMarkerIsReadAndWalked() {
+        Holder holder = new Holder();
+        holder.next = new Holder();
+        for (boolean collectFields : new boolean[]{true, false}) {
+            List<Object> visited = new ArrayList<>();
+            List<Object> markers = new ArrayList<>();
+            Traverser.traverse(holder, visit -> {
+                visited.add(visit.getNode());
+                for (Map.Entry<Field, Object> field : visit.getFields().entrySet()) {
+                    if (field.getKey().getName().equals("marker")) {
+                        markers.add(field.getValue());
+                    }
+                }
+            }, null, collectFields);
+            assertEquals(3, visited.size(), "both Holders and the shared marker String");
+            assertTrue(visited.stream().anyMatch(node -> node == holder.marker), "the marker String is walked to");
+            assertEquals(Arrays.asList("<inaccessible>", "<inaccessible>"), markers);
         }
     }
 

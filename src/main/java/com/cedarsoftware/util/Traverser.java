@@ -1,6 +1,7 @@
 package com.cedarsoftware.util;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
 import java.util.ArrayDeque;
 import java.util.Arrays;
 import java.util.Collection;
@@ -291,6 +292,7 @@ public class Traverser {
     private final boolean collectFields;
     private int objectsVisited = 0;
     private static final String INACCESSIBLE_FIELD_VALUE = "<inaccessible>";
+    private static final Object NOT_READ = new Object();      // fieldValue's answer for a field it cannot read
     private static final Predicate<Field> TRAVERSABLE_FIELD_FILTER =
             field -> ReflectionUtils.DEFAULT_FIELD_FILTER.test(field) && !field.isSynthetic();
 
@@ -334,7 +336,7 @@ public class Traverser {
         if (objectProcessor == null) {
             throw new IllegalArgumentException("objectProcessor cannot be null");
         }
-        traverse(root, visit -> objectProcessor.accept(visit.getNode()), classesToSkip, true);
+        traverse(root, visit -> objectProcessor.accept(visit.getNode()), classesToSkip, false);
     }
 
     /**
@@ -345,7 +347,7 @@ public class Traverser {
         if (visitor == null) {
             throw new IllegalArgumentException("visitor cannot be null");
         }
-        traverse(root, visit -> visitor.process(visit.getNode()), null, true);
+        traverse(root, visit -> visitor.process(visit.getNode()), null, false);
     }
 
     /**
@@ -357,7 +359,7 @@ public class Traverser {
             throw new IllegalArgumentException("visitor cannot be null");
         }
         Set<Class<?>> classesToSkip = (skip == null) ? null : new HashSet<>(Arrays.asList(skip));
-        traverse(root, visit -> visitor.process(visit.getNode()), classesToSkip, true);
+        traverse(root, visit -> visitor.process(visit.getNode()), classesToSkip, false);
     }
 
     private void walk(Object root, Set<Class<?>> classesToSkip) {
@@ -440,12 +442,8 @@ public class Traverser {
         Collection<Field> allFields = getTraversableFields(obj.getClass());
 
         for (Field field : allFields) {
-            try {
-                fieldValues.put(field, field.get(obj));
-            } catch (Exception e) {
-                // Field cannot be accessed - JVM/SecurityManager is in control
-                fieldValues.put(field, INACCESSIBLE_FIELD_VALUE);
-            }
+            Object value = fieldValue(field, obj);
+            fieldValues.put(field, value == NOT_READ ? INACCESSIBLE_FIELD_VALUE : value);
         }
         return fieldValues;
     }
@@ -461,19 +459,36 @@ public class Traverser {
 
         for (Field field : fields) {
             boolean isPrimitive = field.getType().isPrimitive();
-            Object value;
-            try {
-                value = field.get(object);
-                fieldValues.put(field, value);
-            } catch (Exception e) {
+            Object value = fieldValue(field, object);
+            if (value == NOT_READ) {
                 fieldValues.put(field, INACCESSIBLE_FIELD_VALUE);
                 continue;
             }
+            fieldValues.put(field, value);
             if (!isPrimitive && !leaf) {
                 enqueueNode(stack, value, classesToSkip, depth + 1, maxObjectsVisited);
             }
         }
         return fieldValues;
+    }
+
+    /**
+     * {@code field}'s value in {@code obj}, or NOT_READ. ReflectionUtils has already tried to make every field it
+     * hands out accessible; one it could not is not read (on JDK 17+, nearly every field of a JDK class), since
+     * every failed get() builds and throws an IllegalAccessException -- unless it is public in a public class,
+     * which get() may still read when only setAccessible() was refused (a SecurityManager).
+     */
+    @SuppressWarnings("deprecation")    // isAccessible(): canAccess(Object) needs JDK 9
+    private static Object fieldValue(Field field, Object obj) {
+        if (!field.isAccessible() && !(Modifier.isPublic(field.getModifiers())
+                && Modifier.isPublic(field.getDeclaringClass().getModifiers()))) {
+            return NOT_READ;
+        }
+        try {
+            return field.get(obj);
+        } catch (Exception e) {
+            return NOT_READ;               // the JVM or a SecurityManager is in control
+        }
     }
 
     // The loader of the JDK's non-bootstrap classes: the platform loader on JDK 9+, the extension loader on 8.
@@ -551,15 +566,10 @@ public class Traverser {
 
         for (Field field : fields) {
             if (!field.getType().isPrimitive()) {
-                Object value;
-                try {
-                    value = field.get(object);
-                } catch (Exception e) {
-                    // Field cannot be accessed - JVM/SecurityManager is in control
-                    // This is ok, continue gracefully (just don't traverse into this field)
-                    continue;
+                Object value = fieldValue(field, object);
+                if (value != NOT_READ) {         // an unreadable field is not walked
+                    enqueueNode(stack, value, classesToSkip, depth + 1, maxObjectsVisited);
                 }
-                enqueueNode(stack, value, classesToSkip, depth + 1, maxObjectsVisited);
             }
         }
     }

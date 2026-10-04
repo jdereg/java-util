@@ -607,7 +607,7 @@ public class GraphComparator
             if (nodeId != NO_ID) {
                 potentialOrphans.add(nodeId);
             }
-        }, null);
+        }, null, false);       // reads only the nodes, not their fields
 
         // Remove all target objects from potential orphan map, leaving remaining objects
         // that are no longer referenced in the potentialOrphans map.
@@ -617,7 +617,7 @@ public class GraphComparator
             if (nodeId != NO_ID) {
                 potentialOrphans.remove(nodeId);
             }
-        }, null);
+        }, null, false);       // reads only the nodes, not their fields
 
         List<Delta> forReturn = new ArrayList<>(deltas);
         // Generate DeltaCommands for orphaned objects
@@ -1072,7 +1072,7 @@ public class GraphComparator
             {
                 srcMap.put(id, o);
             }
-        }, null);
+        }, null, false);       // reads only the nodes, not their fields
 
         List<DeltaError> errors = new ArrayList<>();
         boolean failQuick = failFast != null && failFast.length == 1 && failFast[0];

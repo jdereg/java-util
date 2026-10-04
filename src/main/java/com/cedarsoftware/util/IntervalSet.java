@@ -472,7 +472,8 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
      * Remove an exact interval [start, end) that matches a stored interval exactly.
      * <p>
      * This operation acts only on a single stored interval whose start and end
-     * exactly match the specified values. No other intervals are merged, split,
+     * match the specified values as the set orders them ({@code compareTo}: for
+     * BigDecimal, an end of 2.00 matches 2.0). No other intervals are merged, split,
      * or trimmed as a result of this call. To remove a sub-range or to split
      * existing intervals, use {@link #remove(T, T)} or {@link #removeRange(T, T)}.
      * </p>
@@ -494,7 +495,7 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
         long stamp = lock.writeLock();
         try {
             T existingEnd = intervals.get(start);
-            if (existingEnd != null && existingEnd.equals(end)) {
+            if (existingEnd != null && existingEnd.compareTo(end) == 0) {
                 intervals.remove(start);
                 return true;
             }

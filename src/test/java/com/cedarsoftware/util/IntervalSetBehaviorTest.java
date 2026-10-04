@@ -1,12 +1,15 @@
 package com.cedarsoftware.util;
 
+import java.math.BigDecimal;
 import java.util.Arrays;
 import java.util.NavigableSet;
 
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * IntervalSet edge behavior found by review.
@@ -32,5 +35,18 @@ class IntervalSetBehaviorTest {
         set.add(50, 60);
         assertEquals(3, set.keySet().size(), "still a view: it shows later writes");
         assertEquals(Integer.valueOf(50), set.descendingKeySet().first());
+    }
+
+    /**
+     * removeExact matches the end as the set orders values (compareTo), as it already matched the start: 2.00 is
+     * the end 2.0. It compared the end with equals(), so the scale had to match too.
+     */
+    @Test
+    void removeExactMatchesTheEndAsTheSetOrdersValues() {
+        IntervalSet<BigDecimal> set = new IntervalSet<>();
+        set.add(new BigDecimal("1.0"), new BigDecimal("2.0"));
+        assertFalse(set.removeExact(new BigDecimal("1.0"), new BigDecimal("2.01")));
+        assertTrue(set.removeExact(new BigDecimal("1.00"), new BigDecimal("2.00")));
+        assertTrue(set.isEmpty());
     }
 }

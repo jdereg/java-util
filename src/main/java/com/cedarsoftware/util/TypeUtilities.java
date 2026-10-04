@@ -497,25 +497,17 @@ public class TypeUtilities {
         if (contextClass == null) {
             return null;
         }
-        // Try the generic superclass.
+        // Try the generic superclass, then each generic interface: one of them may bind typeVar. (The supertype
+        // itself is not an answer: resolving it and returning that made Holder<T> extends Base give T = Base.)
         Type superType = contextClass.getGenericSuperclass();
         if (superType != null && !superType.equals(Object.class)) {
-            Type resolved = resolveType(rootContext, superType, superType, visited);
-            if (resolved != null && !(resolved instanceof TypeVariable)) {
-                return resolved;
-            }
-            resolved = climbGenericHierarchy(rootContext, superType, typeVar, visited);
+            Type resolved = climbGenericHierarchy(rootContext, superType, typeVar, visited);
             if (resolved != null && !(resolved instanceof TypeVariable)) {
                 return resolved;
             }
         }
-        // Then try each generic interface.
         for (Type iface : contextClass.getGenericInterfaces()) {
-            Type resolved = resolveType(rootContext, iface, iface, visited);
-            if (resolved != null && !(resolved instanceof TypeVariable)) {
-                return resolved;
-            }
-            resolved = climbGenericHierarchy(rootContext, iface, typeVar, visited);
+            Type resolved = climbGenericHierarchy(rootContext, iface, typeVar, visited);
             if (resolved != null && !(resolved instanceof TypeVariable)) {
                 return resolved;
             }

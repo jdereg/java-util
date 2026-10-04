@@ -8,6 +8,11 @@ import java.io.Reader;
  * they use synchronization.  Typically, this class is used with a separate instance per thread, so
  * synchronization is not needed.
  * <p>
+ * Pushed-back characters are stored in the same array as the buffered input, just before the next character to
+ * read. Each refill leaves room at the front of the array for the requested pushback capacity, so that much
+ * pushback is always possible; between refills, characters already read make more room. A read therefore never
+ * checks a separate pushback buffer first.
+ * <p>
  * @author John DeRegnaucourt (jdereg@gmail.com)
  *         <br>
  *         Copyright (c) Cedar Software LLC
@@ -33,13 +38,11 @@ public final class FastReader extends Reader {
     public static final int COPY_REQUIRED = Integer.MIN_VALUE;
     private static final int MAX_CONSECUTIVE_ZERO_READS = 3;
     private Reader in;
-    private final char[] buf;
-    private final int bufferSize;
-    private final int pushbackBufferSize;
-    private int position; // Current position in the buffer
-    private int limit;    // Number of characters currently in the buffer, or -1 for EOF
-    private final char[] pushbackBuffer;
-    private int pushbackPosition; // Current position in the pushback buffer
+    private final char[] buf;     // [0, reserve): room for pushback after a refill; [reserve, buf.length): input
+    private final int reserve;    // the pushback capacity guaranteed right after a refill
+    private int position;         // the next character to return
+    private int limit;            // one past the last valid character
+    private boolean eof;          // the underlying reader has returned -1 (sticky)
     private BufferSlice activeBorrowedSlice;
     // Line/col tracking removed for performance - use getLastSnippet() for error context
 
@@ -109,28 +112,43 @@ public final class FastReader extends Reader {
         }
     }
 
+    /**
+     * Create a reader with an 8,192-character buffer and room for 16 pushed-back characters.
+     *
+     * @param in the reader to read from
+     */
     public FastReader(Reader in) {
         this(in, 8192, 16);
     }
 
+    /**
+     * Create a reader with the given buffer size and pushback capacity.
+     *
+     * @param in                 the reader to read from
+     * @param bufferSize         characters read from {@code in} at a time
+     * @param pushbackBufferSize characters that can always be pushed back (more often can)
+     */
     public FastReader(Reader in, int bufferSize, int pushbackBufferSize) {
         super(in);
-        if (bufferSize <= 0 || pushbackBufferSize < 0) {
+        if (bufferSize <= 0 || pushbackBufferSize < 0 || bufferSize > Integer.MAX_VALUE - 8 - pushbackBufferSize) {
             throw new IllegalArgumentException("bufferSize must be positive, pushbackBufferSize must be non-negative");
         }
         this.in = in;
-        this.bufferSize = bufferSize;
-        this.pushbackBufferSize = pushbackBufferSize;
-        this.buf = new char[bufferSize];
-        this.pushbackBuffer = new char[pushbackBufferSize];
-        this.position = 0;
-        this.limit = 0;
-        this.pushbackPosition = pushbackBufferSize; // Start from the end of pushbackBuffer
+        this.reserve = pushbackBufferSize;
+        this.buf = new char[pushbackBufferSize + bufferSize];
+        this.position = reserve;
+        this.limit = reserve;
     }
 
     /**
-     * Create reader using caller-provided buffers.
-     * Arrays are used directly (no copy).
+     * Create reader using caller-provided buffers. The buffer array is used directly (no copy) when it is longer
+     * than the pushback capacity; its first {@code pushbackBuffer.length} characters are then kept for pushback,
+     * the rest for input. Otherwise a buffer of both lengths is allocated. The pushback array itself is used only
+     * for its length.
+     *
+     * @param in             the reader to read from
+     * @param buffer         the array to buffer input in
+     * @param pushbackBuffer an array whose length is the pushback capacity
      */
     public FastReader(Reader in, char[] buffer, char[] pushbackBuffer) {
         super(in);
@@ -141,13 +159,11 @@ public final class FastReader extends Reader {
             throw new IllegalArgumentException("pushbackBuffer must be non-null");
         }
         this.in = in;
-        this.bufferSize = buffer.length;
-        this.pushbackBufferSize = pushbackBuffer.length;
-        this.buf = buffer;
-        this.pushbackBuffer = pushbackBuffer;
-        this.position = 0;
-        this.limit = 0;
-        this.pushbackPosition = this.pushbackBufferSize;
+        this.reserve = pushbackBuffer.length;
+        // Use the caller's array when it leaves room for data after the pushback reserve.
+        this.buf = buffer.length > reserve ? buffer : new char[reserve + buffer.length];
+        this.position = reserve;
+        this.limit = reserve;
     }
 
     private boolean noActiveBorrowedSliceForDebug() {
@@ -160,51 +176,49 @@ public final class FastReader extends Reader {
         return slice.attachForDebug(this);
     }
 
-    private void fill() {
-        final int lim = limit;
-        if (lim != -1 && position >= lim) {
-            refill();
-        }
-    }
-
     /**
-     * Unconditionally refills the buffer from the underlying reader.
-     * Caller must ensure this is only called when a refill is actually needed
-     * (i.e., buffer is exhausted and EOF has not been reached).
+     * Refills the buffer from the underlying reader, after the reserved pushback room. Call only when nothing is
+     * unread (position at limit) and the end of input has not been reached.
      *
-     * @return the new limit (number of chars read, or -1 for EOF)
+     * @return true when characters were read; false (and the end of input is recorded) when there are none
      */
-    private int refill() {
+    private boolean refill() {
         try {
             int zeroReads = 0;
             int n;
-            while (true) {
-                n = in.read(buf, 0, bufferSize);
-                if (n != 0) {
-                    break;
-                }
+            while ((n = in.read(buf, reserve, buf.length - reserve)) == 0) {
                 if (++zeroReads >= MAX_CONSECUTIVE_ZERO_READS) {
                     throw new IOException("Underlying Reader repeatedly returned 0 characters");
                 }
             }
-            limit = n;
-            if (n > 0) {
-                position = 0;
+            if (n < 0) {
+                eof = true;
+                return false;
             }
-            return n;
+            position = reserve;
+            limit = reserve + n;
+            return true;
         } catch (IOException e) {
             ExceptionUtilities.uncheckedThrow(e);
-            return -1; // unreachable, but satisfies compiler
+            return false;
         }
     }
 
+    /**
+     * Push a character back, to be read next. At least the pushback capacity given at construction can always
+     * be pushed back; between refills more can, since characters already read make room.
+     *
+     * @param ch the character to push back
+     */
     public void pushback(char ch) {
-        if (pushbackPosition == 0) {
+        int pos = position;
+        if (pos == 0) {
             ExceptionUtilities.uncheckedThrow(new IOException("Pushback buffer is full"));
         }
         assert noActiveBorrowedSliceForDebug() :
                 "FastReader.BufferSlice must be released before pushback()";
-        pushbackBuffer[--pushbackPosition] = ch;
+        buf[--pos] = ch;
+        position = pos;
     }
 
     @Override
@@ -214,20 +228,26 @@ public final class FastReader extends Reader {
         }
         assert noActiveBorrowedSliceForDebug() :
                 "FastReader.BufferSlice must be released before read()";
-
-        // First, serve from pushback buffer if available
-        if (pushbackPosition < pushbackBufferSize) {
-            return pushbackBuffer[pushbackPosition++];
+        int pos = position;
+        if (pos < limit) {
+            position = pos + 1;
+            return buf[pos];
         }
+        return readSlow();
+    }
 
-        fill();
-        if (limit == -1) {
+    private int readSlow() {
+        if (eof || !refill()) {
             return -1;
         }
-
         return buf[position++];
     }
 
+    /**
+     * Reads up to {@code len} characters. Once it has some, it reads the underlying reader again only while that
+     * reader is {@code ready()}: like BufferedReader, it does not block for more when it already has characters to
+     * return (on a pipe or a socket that would wait for input that may not come).
+     */
     @Override
     public int read(char[] cbuf, int off, int len) {
         if (in == null) {
@@ -242,43 +262,48 @@ public final class FastReader extends Reader {
         }
         assert noActiveBorrowedSliceForDebug() :
                 "FastReader.BufferSlice must be released before read(char[], int, int)";
-
-        int charsRead = 0;
-
-        while (len > 0) {
-            // Consume from pushback buffer first
-            int availableFromPushback = pushbackBufferSize - pushbackPosition;
-            if (availableFromPushback > 0) {
-                int toRead = Math.min(availableFromPushback, len);
-                System.arraycopy(pushbackBuffer, pushbackPosition, cbuf, off, toRead);
-                pushbackPosition += toRead;
-                off += toRead;
-                len -= toRead;
-                charsRead += toRead;
-            } else {
-                // Consume from main buffer
-                fill();
-                if (limit == -1) {
-                    // EOF: return what we've got, or -1 if we have nothing
-                    return charsRead > 0 ? charsRead : -1;
+        int n = 0;
+        while (true) {
+            int avail = limit - position;
+            if (avail > 0) {
+                int k = Math.min(avail, len - n);
+                System.arraycopy(buf, position, cbuf, off + n, k);
+                position += k;
+                n += k;
+                if (n == len) {
+                    return n;
                 }
-
-                int availableFromMain = limit - position;
-                if (availableFromMain <= 0) {
-                    // Shouldn't normally happen if fill() behaves, but guard anyway
-                    return charsRead > 0 ? charsRead : -1;
+            }
+            // Buffer is empty. Like BufferedReader: once something was read, do not block for more.
+            if (eof) {
+                break;
+            }
+            if (n > 0) {
+                try {
+                    if (!in.ready()) {
+                        break;
+                    }
+                } catch (IOException e) {
+                    ExceptionUtilities.uncheckedThrow(e);
                 }
-
-                int toRead = Math.min(availableFromMain, len);
-                System.arraycopy(buf, position, cbuf, off, toRead);
-                position += toRead;
-                off += toRead;
-                len -= toRead;
-                charsRead += toRead;
+            }
+            if (!refill()) {
+                break;
             }
         }
+        return n > 0 ? n : -1;
+    }
 
-        return charsRead;
+    /**
+     * Tells whether a read will not block: characters are buffered or pushed back, or the underlying reader is
+     * ready.
+     */
+    @Override
+    public boolean ready() throws IOException {
+        if (in == null) {
+            throw new IOException("in is null");
+        }
+        return position < limit || (!eof && in.ready());
     }
 
     /**
@@ -299,112 +324,47 @@ public final class FastReader extends Reader {
         }
         assert noActiveBorrowedSliceForDebug() :
                 "FastReader.BufferSlice must be released before readUntil()";
-
-        int totalRead = 0;
-        final char[] locBuf = buf;
-
-        // Drain pushback buffer first (rare path — empty in most calls). Cache
-        // pushbackBufferSize into pbSize so the inner while-condition check does not
-        // re-issue GETFIELD per iteration. pushbackBuffer is NOT cached — it is
-        // read at one source location, so a local would add a stack variable with
-        // no second reader to amortize it against.
-        int pbPos = pushbackPosition;
-        final int pbSize = pushbackBufferSize;
-        if (pbPos < pbSize) {
-            while (pbPos < pbSize && totalRead < maxLen) {
-                char c = pushbackBuffer[pbPos];
-                if (c == delim1 || c == delim2) {
-                    // Found delimiter in pushback — don't consume it.
-                    pushbackPosition = pbPos;
-                    return totalRead;
-                }
-                dest[off++] = c;
-                pbPos++;
-                totalRead++;
-            }
-            pushbackPosition = pbPos;
-        }
-
-        // Cache position / limit into locals. These are the ONLY fields fill() mutates,
-        // so every assignment from `limit` must be followed by enough reads to amortize
-        // the local-store cost. The refill check is placed at the TOP of the scan loop
-        // so that each in-loop `locLimit = limit;` is immediately used TWICE in the
-        // same iteration (EOF check and `end = locLimit` boundary init) — no reliance
-        // on cross-iteration loop-back to hit the second read.
+        final char[] b = buf;
         int pos = position;
-        int locLimit = limit;
-
-        // Entry refill-and-EOF guard: preserves the "return -1 if EOF reached before
-        // any chars read" contract even when maxLen == 0 (which would otherwise skip
-        // the while loop entirely and return 0). The locLimit assignment inside this
-        // block is used twice — the EOF check here, then (if we don't return) the
-        // `end = locLimit` line in the first scan iteration.
-        if (pos >= locLimit) {
-            fill();
-            locLimit = limit;
-            if (locLimit == -1) {
-                return totalRead > 0 ? totalRead : -1;
+        int lim = limit;
+        if (pos >= lim) {
+            if (eof || !refill()) {
+                return -1;
             }
             pos = position;
+            lim = limit;
         }
-
-        while (totalRead < maxLen) {
-            // In-loop refill when the current buffer slice is exhausted. Kept at the
-            // top of the loop so the `locLimit = limit;` assignment below is used
-            // twice within this same iteration (EOF check + end init) and NOT reliant
-            // on loop-back.
-            if (pos >= locLimit) {
-                fill();
-                locLimit = limit;
-                if (locLimit == -1) {
-                    return totalRead > 0 ? totalRead : -1;
+        int total = 0;
+        while (total < maxLen) {
+            if (pos >= lim) {
+                position = pos;
+                if (eof || !refill()) {
+                    return total > 0 ? total : -1;
                 }
                 pos = position;
+                lim = limit;
             }
-
-            // Compute scan boundary without pos + remaining overflow.
-            int remaining = maxLen - totalRead;
-            int available = locLimit - pos;
-            int end = pos + Math.min(remaining, available);
-
-            // Tight scan loop — reads only, no writes, no method calls.
-            // JIT can keep this entirely in registers without exception-handler interference.
-            int scanPos = pos;
+            int end = pos + Math.min(maxLen - total, lim - pos);
+            int scan = pos;
             do {
-                char c = locBuf[scanPos];
-                if (c == delim1 || c == delim2) break;
-            } while (++scanPos < end);
-
-            // Bulk-copy scanned characters
-            int copyLen = scanPos - pos;
-            if (copyLen > 0) {
-                System.arraycopy(locBuf, pos, dest, off, copyLen);
-                off += copyLen;
-                totalRead += copyLen;
+                char c = b[scan];
+                if (c == delim1 || c == delim2) {
+                    break;
+                }
+            } while (++scan < end);
+            int n = scan - pos;
+            if (n > 0) {
+                System.arraycopy(b, pos, dest, off, n);
+                off += n;
+                total += n;
             }
-
-            // Write back position once — needed by fill()'s refill check on the next
-            // iteration and by the caller's next read after a delimiter match.
-            position = scanPos;
-
-            if (scanPos < end) {
-                // Found delimiter — don't consume it.
-                return totalRead;
+            position = scan;
+            if (scan < end) {
+                return total;
             }
-
-            // Scan hit `end` without a delimiter. If `end == destEnd` we've also hit
-            // maxLen, and the `while` condition will exit; no refill happens this call
-            // (previously we eagerly called fill() here — wasted work when the caller
-            // only wanted a bounded read). If `end == locLimit`, pos will be >= locLimit
-            // on the next iteration and the top-of-loop refill fires.
-            pos = scanPos;
+            pos = scan;
         }
-
-        // Loop exit: totalRead >= maxLen. position was written inside the loop body
-        // (to scanPos), so no bottom write-back is needed. If the loop never ran
-        // (maxLen == 0, or pushback drain already filled it), pos still equals the
-        // entry-time position — no change required.
-        return totalRead;
+        return total;
     }
 
     /**
@@ -413,10 +373,11 @@ public final class FastReader extends Reader {
      * On success, the delimiter is not consumed and the returned length matches
      * {@code slice.getLength()}. The caller must consume or copy the borrowed
      * contents and call {@link BufferSlice#release()} before the next read operation
-     * on this reader. If pushback is active or the requested range crosses the
-     * current buffer boundary before a delimiter or {@code maxLen} is reached, this
-     * method returns {@link #COPY_REQUIRED} without consuming any characters; callers
-     * should then use {@link #readUntil(char[], int, int, char, char)}.
+     * on this reader. Pushed-back characters are part of the buffer and can be borrowed.
+     * If the requested range crosses the current buffer boundary before a delimiter or
+     * {@code maxLen} is reached, this method returns {@link #COPY_REQUIRED} without
+     * consuming any characters; callers should then use
+     * {@link #readUntil(char[], int, int, char, char)}.
      *
      * @param slice destination for the borrowed buffer, offset, and length
      * @param maxLen maximum number of characters to borrow
@@ -430,48 +391,35 @@ public final class FastReader extends Reader {
         }
         assert noActiveBorrowedSliceForDebug() :
                 "FastReader.BufferSlice must be released before readUntilBorrowed()";
-        if (pushbackPosition < pushbackBufferSize) {
-            return COPY_REQUIRED;
-        }
-
         int pos = position;
         int lim = limit;
         if (pos >= lim) {
-            if (lim == -1) {
-                return -1;
-            }
-            lim = refill();
-            if (lim == -1) {
+            if (eof || !refill()) {
                 return -1;
             }
             pos = position;
+            lim = limit;
         }
-
-        int available = lim - pos;
-        int scanLen = Math.min(maxLen, available);
-        int end = pos + scanLen;
-
-        char[] b = buf;
-        int scanPos = pos;
-        while (scanPos < end) {
-            char c = b[scanPos];
+        int end = pos + Math.min(maxLen, lim - pos);
+        final char[] b = buf;
+        int scan = pos;
+        while (scan < end) {
+            char c = b[scan];
             if (c == delim1 || c == delim2) {
-                int len = scanPos - pos;
+                int len = scan - pos;
                 slice.set(b, pos, len);
                 assert borrowedSliceCreatedForDebug(slice);
-                position = scanPos;
+                position = scan;
                 return len;
             }
-            scanPos++;
+            scan++;
         }
-
-        if (scanPos - pos == maxLen) {
+        if (scan - pos == maxLen) {
             slice.set(b, pos, maxLen);
             assert borrowedSliceCreatedForDebug(slice);
-            position = scanPos;
+            position = scan;
             return maxLen;
         }
-
         return COPY_REQUIRED;
     }
 
@@ -482,12 +430,11 @@ public final class FastReader extends Reader {
      * Returns the number of characters in the line (excluding the line ending).
      * If maxLen is reached before a line ending is found, returns maxLen and the
      * line ending is NOT consumed — the caller should grow the buffer and call again.
-     * Returns -1 on EOF with no data read.
+     * Returns -1 on EOF with no data read. A \r ending a buffer fill is followed by a
+     * look at the next fill for its \n, which takes none of the pushback capacity.
      * <p>
-     * Optimized for the common case: no pushback active, line fits within the
-     * current buffer. Uses a {@code c <= '\r'} range guard so that printable
-     * characters (the vast majority) require only one comparison per character
-     * instead of two.
+     * Uses a {@code c <= '\r'} range guard so that printable characters (the vast
+     * majority) require only one comparison per character instead of two.
      *
      * @param dest   destination buffer
      * @param off    offset in dest to start writing
@@ -500,120 +447,56 @@ public final class FastReader extends Reader {
         }
         assert noActiveBorrowedSliceForDebug() :
                 "FastReader.BufferSlice must be released before readLine()";
-
-        int total = 0;
-
-        // --- Drain pushback buffer (rare path — empty in most calls) ---
-        // Cache pushbackBufferSize (3 uses: guard, while-check, \r-ahead check) and
-        // pushbackBuffer (2 uses: main scan + \r-ahead probe). Wrapping the drain in
-        // `if (pbPos < pbSize)` also skips the unconditional `pushbackPosition = pbPos;`
-        // PUTFIELD that the original always executed even when the drain didn't run.
-        int pbPos = pushbackPosition;
-        final int pbSize = pushbackBufferSize;
-        if (pbPos < pbSize) {
-            final char[] pbBuf = pushbackBuffer;
-            while (pbPos < pbSize && total < maxLen) {
-                char c = pbBuf[pbPos];
-                if (c <= '\r' && (c == '\n' || c == '\r')) {
-                    pbPos++;
-                    pushbackPosition = pbPos;
-                    // Handle \r\n across pushback boundary
-                    if (c == '\r') {
-                        if (pbPos < pbSize) {
-                            if (pbBuf[pbPos] == '\n') {
-                                pushbackPosition = pbPos + 1;
-                            }
-                        } else {
-                            // \n might be in main buffer
-                            int peek = read();
-                            if (peek >= 0 && peek != '\n') pushback((char) peek);
-                        }
-                    }
-                    return total;
-                }
-                dest[off++] = c;
-                pbPos++;
-                total++;
-            }
-            pushbackPosition = pbPos;
-        }
-
-        // --- Main buffer scan ---
-        // Cache buf / position / limit into locals ONCE. `buf` is never reassigned by
-        // refill() (refill reads INTO buf at index 0), so it can be final. `pos` and
-        // `lim` are refreshed only after refill() — the sole field mutator on this
-        // path. Hoisting these out of the outer-while eliminates 3 per-iteration
-        // GETFIELDs (buf, position, limit re-reads) and the 2 GETFIELDs of the old
-        // top-of-loop `position >= limit` check, leaving just the two post-refill
-        // reads on the rare iteration where refill actually fires.
         final char[] b = buf;
         int pos = position;
         int lim = limit;
-
+        int total = 0;
         while (total < maxLen) {
             if (pos >= lim) {
-                // refill() does not read `position` (it writes pos=0 unconditionally
-                // on success), so no write-back is needed before the call. At the end
-                // of input (limit -1) the underlying reader is not asked again.
-                if (lim == -1 || refill() == -1) {
+                position = pos;
+                if (eof || !refill()) {
                     return total > 0 ? total : -1;
                 }
                 pos = position;
                 lim = limit;
             }
-
-            // pos + (maxLen - total) could overflow for a maxLen near Integer.MAX_VALUE
             int end = pos + Math.min(maxLen - total, lim - pos);
-
-            // Tight scan loop — single array load per iteration. The outer c <= '\r' check is
-            // a performance prefilter (printable chars > 13 need only ONE comparison); only
-            // control chars <= 13 (which are rare in typical text) enter the inner equality
-            // tests. Eliminating the prior double-read of b[scanPos] removes one potential
-            // bounds check per character even when JIT CSE is imperfect.
-            int scanPos = pos;
-            while (scanPos < end) {
-                char c = b[scanPos];
-                if (c <= '\r') {
-                    if (c == '\n' || c == '\r') {
-                        // Found line ending — bulk-copy content, consume ending, return
-                        int copyLen = scanPos - pos;
-                        if (copyLen > 0) {
-                            System.arraycopy(b, pos, dest, off, copyLen);
-                            total += copyLen;
-                        }
-                        scanPos++; // consume the \n or \r
-                        // Handle \r\n
-                        if (c == '\r') {
-                            if (scanPos < lim) {
-                                if (b[scanPos] == '\n') scanPos++;
-                            } else {
-                                // \n might be in next buffer fill
-                                position = scanPos;
-                                int peek = read();
-                                if (peek >= 0 && peek != '\n') pushback((char) peek);
-                                return total;
-                            }
-                        }
-                        position = scanPos;
-                        return total;
+            int scan = pos;
+            while (scan < end) {
+                char c = b[scan];
+                if (c <= '\r' && (c == '\n' || c == '\r')) {
+                    int n = scan - pos;
+                    if (n > 0) {
+                        System.arraycopy(b, pos, dest, off, n);
+                        total += n;
                     }
+                    scan++;
+                    if (c == '\r') {
+                        if (scan >= lim) {
+                            // '\n' may start the next fill; nothing is unread, so refilling is safe.
+                            position = scan;
+                            if (!eof && refill() && buf[position] == '\n') {
+                                position++;
+                            }
+                            return total;
+                        }
+                        if (b[scan] == '\n') {
+                            scan++;
+                        }
+                    }
+                    position = scan;
+                    return total;
                 }
-                scanPos++;
+                scan++;
             }
-
-            // No line ending found in this chunk — copy what we have and let the
-            // top-of-loop `pos >= lim` check fire the refill on the next iteration.
-            int copyLen = scanPos - pos;
-            if (copyLen > 0) {
-                System.arraycopy(b, pos, dest, off, copyLen);
-                off += copyLen;
-                total += copyLen;
+            int n = scan - pos;
+            if (n > 0) {
+                System.arraycopy(b, pos, dest, off, n);
+                off += n;
+                total += n;
             }
-            pos = scanPos;
+            pos = scan;
         }
-
-        // Loop exited via `total >= maxLen` without finding a terminator — write back
-        // the final position so the next reader sees where we stopped.
         position = pos;
         return total;
     }
@@ -623,11 +506,10 @@ public final class FastReader extends Reader {
      * <p>
      * The line ending is consumed but not included in the borrowed slice. The slice
      * must be consumed or copied and then released via {@link BufferSlice#release()}
-     * before the next read operation on this reader. If pushback is active, the line
-     * crosses the current buffer boundary, or CRLF handling would require looking
-     * into the next buffer, this method returns {@link #COPY_REQUIRED} without
-     * consuming any characters; callers should then use
-     * {@link #readLine(char[], int, int)}.
+     * before the next read operation on this reader. If the line crosses the current
+     * buffer boundary, or CRLF handling would require looking into the next buffer,
+     * this method returns {@link #COPY_REQUIRED} without consuming any characters;
+     * callers should then use {@link #readLine(char[], int, int)}.
      *
      * @param slice destination for the borrowed buffer, offset, and length
      * @return line length, -1 on EOF before any chars, or {@link #COPY_REQUIRED}
@@ -638,46 +520,37 @@ public final class FastReader extends Reader {
         }
         assert noActiveBorrowedSliceForDebug() :
                 "FastReader.BufferSlice must be released before readLineBorrowed()";
-        if (pushbackPosition < pushbackBufferSize) {
-            return COPY_REQUIRED;
-        }
-
         int pos = position;
         int lim = limit;
         if (pos >= lim) {
-            if (lim == -1) {
-                return -1;
-            }
-            lim = refill();
-            if (lim == -1) {
+            if (eof || !refill()) {
                 return -1;
             }
             pos = position;
+            lim = limit;
         }
-
-        char[] b = buf;
-        int scanPos = pos;
-        while (scanPos < lim) {
-            char c = b[scanPos];
+        final char[] b = buf;
+        int scan = pos;
+        while (scan < lim) {
+            char c = b[scan];
             if (c <= '\r' && (c == '\n' || c == '\r')) {
-                int afterTerminator = scanPos + 1;
+                int after = scan + 1;
                 if (c == '\r') {
-                    if (afterTerminator >= lim) {
+                    if (after >= lim) {
                         return COPY_REQUIRED;
                     }
-                    if (b[afterTerminator] == '\n') {
-                        afterTerminator++;
+                    if (b[after] == '\n') {
+                        after++;
                     }
                 }
-                int len = scanPos - pos;
+                int len = scan - pos;
                 slice.set(b, pos, len);
                 assert borrowedSliceCreatedForDebug(slice);
-                position = afterTerminator;
+                position = after;
                 return len;
             }
-            scanPos++;
+            scan++;
         }
-
         return COPY_REQUIRED;
     }
 
@@ -718,9 +591,7 @@ public final class FastReader extends Reader {
      * @return up to the last 200 characters read from the current buffer
      */
     public String getLastSnippet() {
-        int snippetLength = Math.min(position, 200);
-        int start = position - snippetLength;
-        return new String(buf, start, snippetLength);
+        int start = Math.max(reserve, position - 200);
+        return position > start ? new String(buf, start, position - start) : "";
     }
-
 }

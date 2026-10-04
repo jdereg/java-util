@@ -9,10 +9,12 @@ import java.util.Collections;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
@@ -579,31 +581,88 @@ public class Traverser {
     private void processCollection(Deque<TraversalNode> stack, Collection<?> collection,
                                    Set<Class<?>> classesToSkip, int depth, int maxCollectionSize,
                                    int maxObjectsVisited) {
+        int size;
+        try {
+            size = collection.size();
+        } catch (RuntimeException e) {
+            unreadable(collection, e);
+            return;
+        }
         // Security: Validate collection size
-        int size = collection.size();
         if (maxCollectionSize > 0 && size > maxCollectionSize) {
             throw new SecurityException("Collection size exceeded limit (max " + maxCollectionSize + "): " + size);
         }
+        Iterator<?> elements;
+        try {
+            elements = collection.iterator();
+        } catch (RuntimeException e) {
+            unreadable(collection, e);
+            return;
+        }
 
-        for (Object element : collection) {
+        while (true) {
+            Object element;
+            try {
+                if (!elements.hasNext()) {
+                    return;
+                }
+                element = elements.next();
+            } catch (RuntimeException e) {
+                unreadable(collection, e);
+                return;
+            }
             enqueueNode(stack, element, classesToSkip, depth + 1, maxObjectsVisited);
         }
     }
 
     private void processMap(Deque<TraversalNode> stack, Map<?, ?> map, Set<Class<?>> classesToSkip, int depth,
                             int maxCollectionSize, int maxObjectsVisited) {
+        int size;
+        try {
+            size = map.size();
+        } catch (RuntimeException e) {
+            unreadable(map, e);
+            return;
+        }
         // Security: Validate map size
-        int size = map.size();
         if (maxCollectionSize > 0 && size > maxCollectionSize) {
             throw new SecurityException("Collection size exceeded limit (max " + maxCollectionSize + "): " + size);
         }
+        Iterator<? extends Map.Entry<?, ?>> entries;
+        try {
+            entries = map.entrySet().iterator();
+        } catch (RuntimeException e) {
+            unreadable(map, e);
+            return;
+        }
 
-        for (Map.Entry<?, ?> entry : map.entrySet()) {
-            Object key = entry.getKey();
-            Object value = entry.getValue();
-
+        while (true) {
+            Object key;
+            Object value;
+            try {
+                if (!entries.hasNext()) {
+                    return;
+                }
+                Map.Entry<?, ?> entry = entries.next();
+                key = entry.getKey();
+                value = entry.getValue();
+            } catch (RuntimeException e) {
+                unreadable(map, e);
+                return;
+            }
             enqueueNode(stack, key, classesToSkip, depth + 1, maxObjectsVisited);
             enqueueNode(stack, value, classesToSkip, depth + 1, maxObjectsVisited);
+        }
+    }
+
+    /**
+     * A collection or map that cannot be read (a lazy-loading proxy without its session, a closed resource, one
+     * modified mid-walk) is visited but not walked any further, as an unreadable field is not: the rest of the
+     * graph is still traversed.
+     */
+    private static void unreadable(Object container, RuntimeException e) {
+        if (LOG.isLoggable(Level.FINEST)) {
+            LOG.log(Level.FINEST, "Traverser could not read the elements of a " + container.getClass().getName(), e);
         }
     }
 

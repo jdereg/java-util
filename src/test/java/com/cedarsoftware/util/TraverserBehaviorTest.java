@@ -1,10 +1,15 @@
 package com.cedarsoftware.util;
 
+import java.util.AbstractCollection;
+import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import org.junit.jupiter.api.Test;
@@ -95,6 +100,71 @@ class TraverserBehaviorTest {
             map.tag = new Payload();
             assertEquals(identitiesOf(map, "k", "v", map.tag), identities(visit(map, collectFields)));
         }
+    }
+
+    static class Pair {
+        Object first;
+        Object second;
+    }
+
+    /**
+     * A collection or map that cannot be read (a lazy-loading proxy whose session is gone) is visited but not
+     * walked, and the rest of the graph still is. Its exception ended the whole traversal; a failed field read was
+     * already passed over.
+     */
+    @Test
+    void aCollectionOrMapThatCannotBeReadDoesNotEndTheWalk() {
+        Collection<Object> lazyList = new AbstractCollection<Object>() {
+            @Override
+            public Iterator<Object> iterator() {
+                throw new IllegalStateException("could not initialize proxy - no Session");
+            }
+
+            @Override
+            public int size() {
+                return 1;
+            }
+        };
+        Map<Object, Object> lazyMap = new AbstractMap<Object, Object>() {
+            @Override
+            public Set<Map.Entry<Object, Object>> entrySet() {
+                throw new IllegalStateException("could not initialize proxy - no Session");
+            }
+        };
+        for (Object lazy : Arrays.asList(lazyList, lazyMap)) {
+            Pair root = new Pair();
+            root.first = lazy;
+            root.second = new Payload();
+            for (boolean collectFields : new boolean[]{true, false}) {
+                assertEquals(identitiesOf(root, lazy, root.second), identities(visit(root, collectFields)));
+            }
+        }
+
+        Pair root = new Pair();
+        root.first = new ArrayList<Integer>(Arrays.asList(1, 2, 3)) {
+            @Override
+            public Iterator<Integer> iterator() {
+                Iterator<Integer> real = super.iterator();
+                return new Iterator<Integer>() {
+                    @Override
+                    public boolean hasNext() {
+                        return real.hasNext();
+                    }
+
+                    @Override
+                    public Integer next() {
+                        Integer next = real.next();
+                        if (next == 2) {
+                            throw new IllegalStateException("closed");
+                        }
+                        return next;
+                    }
+                };
+            }
+        };
+        root.second = new Payload();
+        assertEquals(identitiesOf(root, root.first, 1, root.second), identities(visit(root, false)),
+                "the elements read before the failure are walked");
     }
 
     private static List<Object> visit(Object root, boolean collectFields) {

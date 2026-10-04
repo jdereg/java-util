@@ -1,5 +1,7 @@
 package com.cedarsoftware.util;
 
+import java.io.IOException;
+import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -150,6 +152,20 @@ public final class ConcurrentList<E> implements List<E>, Deque<E>, RandomAccess,
 
     /** Creates an empty list. */
     public ConcurrentList() {
+    }
+
+    /**
+     * Writes the list under the read lock, so the stream holds a list it really held. Default serialization of
+     * the buckets, head, tail and size while another thread changed them wrote nulls never added, elements out
+     * of order, or a list that failed to read back. The serial form is unchanged.
+     */
+    private void writeObject(ObjectOutputStream out) throws IOException {
+        lock.readLock().lock();
+        try {
+            out.defaultWriteObject();
+        } finally {
+            lock.readLock().unlock();
+        }
     }
 
     /**

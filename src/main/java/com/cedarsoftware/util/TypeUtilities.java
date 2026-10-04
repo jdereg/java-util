@@ -273,11 +273,12 @@ public class TypeUtilities {
         if (type instanceof Class) {
             return deeper(owner, (Class<?>) type);
         }
-        // A Type that is not a Class is an object of some implementing class, kept as a cache key: count that
-        // class too (a plugin's own ParameterizedType must not be kept on java.util.List)
-        owner = deeper(owner, type.getClass());
-        if (owner == UNRELATED) {
-            return owner;
+        // A Type that is not a Class is an object of some implementing class, kept as a cache key. Only the JDK's
+        // and TypeUtilities' own are known to have value equality and to outlive nothing: any other is resolved
+        // afresh and kept nowhere (with identity equality, a fresh object per call added an entry per call; a
+        // plugin's own ParameterizedType would have kept the plugin's loader).
+        if (!isKnownTypeClass(type.getClass())) {
+            return UNRELATED;
         }
         if (type instanceof ParameterizedType) {
             ParameterizedType pt = (ParameterizedType) type;
@@ -313,6 +314,11 @@ public class TypeUtilities {
             return UNRELATED;
         }
         return UNRELATED;
+    }
+
+    private static boolean isKnownTypeClass(Class<?> c) {
+        return c == ParameterizedTypeImpl.class || c == WildcardTypeImpl.class || c == GenericArrayTypeImpl.class
+                || c.getClassLoader() == null;
     }
 
     private static Class<?> deeper(Class<?> owner, Class<?> c) {

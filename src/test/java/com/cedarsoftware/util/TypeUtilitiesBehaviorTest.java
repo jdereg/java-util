@@ -1,6 +1,7 @@
 package com.cedarsoftware.util;
 
 import java.io.Serializable;
+import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.lang.reflect.TypeVariable;
@@ -172,5 +173,44 @@ class TypeUtilitiesBehaviorTest {
                 fieldType(MapGen.class, "map"));
         assertEquals(Integer.class, again.getActualTypeArguments()[1]);
         assertEquals(Integer.class, first.getActualTypeArguments()[1]);
+    }
+
+    /** A Type built fresh for each call, with identity equality (it overrides neither equals nor hashCode). */
+    static class FreshListType implements ParameterizedType {
+        @Override
+        public Type[] getActualTypeArguments() {
+            return new Type[]{String.class};
+        }
+
+        @Override
+        public Type getRawType() {
+            return List.class;
+        }
+
+        @Override
+        public Type getOwnerType() {
+            return null;
+        }
+    }
+
+    /**
+     * A Type of a class TypeUtilities does not know (neither the JDK's nor its own) is resolved but not cached: its
+     * equality is unknown, and with identity equality each fresh object added a cache entry that was never removed
+     * (about 290 bytes a call, without bound).
+     */
+    @Test
+    @SuppressWarnings("unchecked")
+    void typeObjectsOfUnknownClassesAreNotCached() throws Exception {
+        Field cache = TypeUtilities.class.getDeclaredField("RESOLVED");
+        cache.setAccessible(true);
+        Map<Type, Map<Type, Type>> onConcrete = ((ClassValue<Map<Type, Map<Type, Type>>>) cache.get(null))
+                .get(Concrete.class);
+        TypeUtilities.resolveType(Concrete.class, fieldType(Gen.class, "value"));     // the root's slot exists
+        int before = onConcrete.get(Concrete.class).size();
+        for (int i = 0; i < 1000; i++) {
+            assertEquals("java.util.List<java.lang.String>",
+                    TypeUtilities.resolveType(Concrete.class, new FreshListType()).getTypeName());
+        }
+        assertEquals(before, onConcrete.get(Concrete.class).size(), "cache entries added for fresh Type objects");
     }
 }

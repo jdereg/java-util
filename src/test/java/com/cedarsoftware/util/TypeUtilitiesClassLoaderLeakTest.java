@@ -2,11 +2,13 @@ package com.cedarsoftware.util;
 
 import java.io.File;
 import java.lang.ref.WeakReference;
+import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -15,6 +17,7 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -28,6 +31,26 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class TypeUtilitiesClassLoaderLeakTest {
 
     private static final String FIXTURE = "com.cedarsoftware.util.TypeUtilitiesClassLoaderLeakTest$Fixture";
+
+    private static final String PLUGIN_TYPE = "com.cedarsoftware.util.TypeUtilitiesClassLoaderLeakTest$PluginListType";
+
+    /** A plugin's own ParameterizedType, List<String>: its arguments are JDK classes, the object is the plugin's. */
+    public static class PluginListType implements ParameterizedType {
+        @Override
+        public Type[] getActualTypeArguments() {
+            return new Type[]{String.class};
+        }
+
+        @Override
+        public Type getRawType() {
+            return List.class;
+        }
+
+        @Override
+        public Type getOwnerType() {
+            return null;
+        }
+    }
 
     /** Loaded in throwaway ClassLoaders whose parent is the bootstrap loader: may depend only on java.base. */
     public static class Fixture {
@@ -49,10 +72,14 @@ class TypeUtilitiesClassLoaderLeakTest {
     void resolvingTypesDoesNotKeepTheirLoadersAlive() throws Exception {
         WeakReference<ClassLoader> loader = resolveFixtureTypes();
         WeakReference<?>[] unrelated = resolveAcrossTwoLoaders();
-        gcUntilCleared(loader, unrelated[0], unrelated[1]);
+        WeakReference<ClassLoader> javaUtil = resolveJdkTypesWithJavaUtilInAThrowawayLoader();
+        WeakReference<ClassLoader> plugin = resolveAPluginsOwnTypeObject();
+        gcUntilCleared(loader, unrelated[0], unrelated[1], javaUtil, plugin);
         assertNull(loader.get(), "resolveType() kept the class loader alive");
         assertNull(unrelated[0].get(), "a type of unrelated loaders kept the first loader alive");
         assertNull(unrelated[1].get(), "a type of unrelated loaders kept the second loader alive");
+        assertNull(javaUtil.get(), "java-util's own Type object, kept on a JDK class, kept java-util's loader");
+        assertNull(plugin.get(), "a plugin's own ParameterizedType, kept on java.util.List, kept the plugin's loader");
     }
 
     private static WeakReference<ClassLoader> resolveFixtureTypes() throws Exception {
@@ -68,6 +95,39 @@ class TypeUtilitiesClassLoaderLeakTest {
         // the fixture, not with java.util.List (which lives as long as the JVM)
         Type selves = fixture.getField("selves").getGenericType();
         assertEquals(selves, TypeUtilities.resolveType(selves, selves));
+        loader.close();
+        return new WeakReference<>(loader);
+    }
+
+    /**
+     * java-util itself in a throwaway loader (a webapp's WEB-INF/lib, a plugin), resolving a type made only of JDK
+     * classes: AbstractMap<K,V> against HashMap. The answer is one of TypeUtilities' own Type implementations; kept
+     * in a slot of a JDK class, it held java-util's loader for good.
+     */
+    private static WeakReference<ClassLoader> resolveJdkTypesWithJavaUtilInAThrowawayLoader() throws Exception {
+        URLClassLoader loader = new URLClassLoader(new URL[]{new File("target/classes").toURI().toURL()}, null);
+        Class<?> typeUtilities = Class.forName(TypeUtilities.class.getName(), true, loader);
+        assertNotSame(TypeUtilities.class, typeUtilities);
+        Method resolveType = typeUtilities.getMethod("resolveType", Type.class, Type.class);
+        Type abstractMap = HashMap.class.getGenericSuperclass();
+        for (int i = 0; i < 2; i++) {
+            Object resolved = resolveType.invoke(null, HashMap.class, abstractMap);
+            assertSame(loader, resolved.getClass().getClassLoader(), "an object of java-util's own Type class");
+        }
+        loader.close();
+        return new WeakReference<>(loader);
+    }
+
+    /** A plugin's own ParameterizedType object whose arguments are JDK classes, resolved against itself and List. */
+    private static WeakReference<ClassLoader> resolveAPluginsOwnTypeObject() throws Exception {
+        URLClassLoader loader = throwawayLoader();
+        Type pluginType = (Type) Class.forName(PLUGIN_TYPE, true, loader).getConstructor().newInstance();
+        assertNotSame(PluginListType.class, pluginType.getClass());
+        String listOfString = "java.util.List<java.lang.String>";
+        for (int i = 0; i < 2; i++) {
+            assertEquals(listOfString, TypeUtilities.resolveType(pluginType, pluginType).getTypeName());
+            assertEquals(listOfString, TypeUtilities.resolveType(List.class, pluginType).getTypeName());
+        }
         loader.close();
         return new WeakReference<>(loader);
     }

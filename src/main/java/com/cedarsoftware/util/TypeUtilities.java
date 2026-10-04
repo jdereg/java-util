@@ -208,26 +208,29 @@ public class TypeUtilities {
      * which should be the most concrete type (for example, Child.class).
      */
     public static Type resolveType(Type rootContext, Type typeToResolve) {
-        if (rootContext == null || typeToResolve == null) {
+        if (!(rootContext instanceof Class) || typeToResolve == null) {
+            // A root that is not a Class is resolved afresh: that is cheaper than finding where to keep its answer
+            // (24.5 against 56 ns on JDK 21), and keeps nothing alive
             return resolveType(rootContext, rootContext, typeToResolve, new IdentitySet<>());
         }
         // Fast path: a class resolving the types of its own hierarchy (its fields, say) keeps them on itself, so a hit
         // needs no owner() walk
-        Map<Type, Type> onRoot = rootContext instanceof Class
-                ? resolutions(RESOLVED.get((Class<?>) rootContext), rootContext) : null;
-        if (onRoot != null) {
-            Type resolved = onRoot.get(typeToResolve);
-            if (resolved != null) {
-                return resolved;
-            }
+        Map<Type, Type> onRoot = resolutions(RESOLVED.get((Class<?>) rootContext), rootContext);
+        Type resolved = onRoot.get(typeToResolve);
+        if (resolved != null) {
+            return resolved;
         }
-        Class<?> owner = typeToResolve == rootContext
-                ? deeper(null, rootContext, 0) : owner(rootContext, typeToResolve);
+        Class<?> owner = owner(rootContext, typeToResolve);
+        if (owner != UNRELATED && owner != null) {
+            // The answer may be one of TypeUtilities' own Type implementations: never keep it on a class that
+            // outlives java-util's loader (a JDK class, when java-util sits in a webapp's or plugin's loader)
+            owner = deeper(owner, TypeUtilities.class);
+        }
         if (owner == UNRELATED || owner == null) {
             return resolveType(rootContext, rootContext, typeToResolve, new IdentitySet<>());
         }
         Map<Type, Type> resolutions = owner == rootContext ? onRoot : resolutions(RESOLVED.get(owner), rootContext);
-        Type resolved = resolutions.get(typeToResolve);
+        resolved = resolutions.get(typeToResolve);
         if (resolved == null) {
             resolved = resolveType(rootContext, rootContext, typeToResolve, new IdentitySet<>());
             if (resolved != null) {
@@ -270,6 +273,12 @@ public class TypeUtilities {
         if (type instanceof Class) {
             return deeper(owner, (Class<?>) type);
         }
+        // A Type that is not a Class is an object of some implementing class, kept as a cache key: count that
+        // class too (a plugin's own ParameterizedType must not be kept on java.util.List)
+        owner = deeper(owner, type.getClass());
+        if (owner == UNRELATED) {
+            return owner;
+        }
         if (type instanceof ParameterizedType) {
             ParameterizedType pt = (ParameterizedType) type;
             owner = deeper(owner, pt.getRawType(), depth + 1);
@@ -310,8 +319,11 @@ public class TypeUtilities {
         if (owner == null) {
             return c;
         }
-        ClassLoader ownerLoader = owner.getClassLoader();
         ClassLoader loader = c.getClassLoader();
+        if (loader == null) {
+            return owner;               // a bootstrap class is everyone's: no need for the owner's loader
+        }
+        ClassLoader ownerLoader = owner.getClassLoader();
         if (ownerLoader == loader || isAncestor(loader, ownerLoader)) {
             return owner;
         }

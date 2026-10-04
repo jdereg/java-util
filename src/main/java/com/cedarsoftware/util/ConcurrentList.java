@@ -13,6 +13,8 @@ import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.RandomAccess;
 import java.util.Set;
+import java.util.Spliterator;
+import java.util.Spliterators;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicLong;
@@ -239,6 +241,16 @@ public final class ConcurrentList<E> implements List<E>, Deque<E>, RandomAccess,
         } finally {
             lock.readLock().unlock();
         }
+    }
+
+    /**
+     * A spliterator over a snapshot taken now, as {@link #iterator()} iterates one: a stream sees the list as it
+     * was when the stream was made. The List default (on JDK 9+) read the live list by index, so a list changing
+     * mid-stream skipped elements or threw IndexOutOfBoundsException.
+     */
+    @Override
+    public Spliterator<E> spliterator() {
+        return Spliterators.spliterator(toArray(), Spliterator.ORDERED);
     }
 
     @Override

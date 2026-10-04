@@ -91,8 +91,9 @@ final class ZonedDateTimeConversions {
         return java.sql.Date.valueOf(((ZonedDateTime) from).toLocalDate());
     }
 
+    // milliseconds, whatever modern.time.long.precision says toLong() counts
     static Date toDate(Object from, Converter converter) {
-        return new Date(toLong(from, converter));
+        return new Date(((ZonedDateTime) from).toInstant().toEpochMilli());
     }
 
     static BigInteger toBigInteger(Object from, Converter converter) {

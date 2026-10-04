@@ -80,8 +80,9 @@ final class OffsetDateTimeConversions {
         return ((OffsetDateTime) from).toZonedDateTime();
     }
 
+    // milliseconds, whatever modern.time.long.precision says toLong() counts
     static Date toDate(Object from, Converter converter) {
-        return new Date(toLong(from, converter));
+        return new Date(((OffsetDateTime) from).toInstant().toEpochMilli());
     }
 
     static OffsetTime toOffsetTime(Object from, Converter converter) {

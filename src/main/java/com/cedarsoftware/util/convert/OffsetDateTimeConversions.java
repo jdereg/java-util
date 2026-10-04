@@ -66,14 +66,18 @@ final class OffsetDateTimeConversions {
         return Timestamp.from(odt.toInstant());
     }
 
+    // An OffsetDateTime keeps its own wall clock: a Calendar or ZonedDateTime made from it is at its offset, and the
+    // local types (through ZonedDateTime) are the date and time it shows. The Converter's zone is for sources that
+    // have none.
     static Calendar toCalendar(Object from, Converter converter) {
-        Calendar calendar = Calendar.getInstance(converter.getOptions().getTimeZone());
-        calendar.setTimeInMillis(toLong(from, converter));
+        OffsetDateTime odt = (OffsetDateTime) from;
+        Calendar calendar = Calendar.getInstance(ZoneIdConversions.timeZone(odt.getOffset()));
+        calendar.setTimeInMillis(odt.toInstant().toEpochMilli());
         return calendar;
     }
 
     static ZonedDateTime toZonedDateTime(Object from, Converter converter) {
-        return ((OffsetDateTime) from).toInstant().atZone(converter.getOptions().getZoneId());
+        return ((OffsetDateTime) from).toZonedDateTime();
     }
 
     static Date toDate(Object from, Converter converter) {

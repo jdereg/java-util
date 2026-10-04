@@ -56,22 +56,18 @@ final class ZonedDateTimeConversions {
         return ((ZonedDateTime) from).toInstant();
     }
 
-    private static ZonedDateTime toDifferentZone(Object from, Converter converter) {
-        return ((ZonedDateTime)from).withZoneSameInstant(converter.getOptions().getZoneId());
-    }
-    
+    // A ZonedDateTime keeps its own wall clock: the local types are the date and time it shows in its own zone. The
+    // Converter's zone is for sources that have none.
     static LocalDateTime toLocalDateTime(Object from, Converter converter) {
-        ZonedDateTime zdt = (ZonedDateTime) from;
-        ZonedDateTime adjustedZonedDateTime = zdt.withZoneSameInstant(converter.getOptions().getZoneId());
-        return adjustedZonedDateTime.toLocalDateTime();
+        return ((ZonedDateTime) from).toLocalDateTime();
     }
 
     static LocalDate toLocalDate(Object from, Converter converter) {
-        return toDifferentZone(from, converter).toLocalDate();  // shorter code over speed
+        return ((ZonedDateTime) from).toLocalDate();
     }
 
     static LocalTime toLocalTime(Object from, Converter converter) {
-        return toDifferentZone(from, converter).toLocalTime();  // shorter code over speed
+        return ((ZonedDateTime) from).toLocalTime();
     }
 
     static OffsetDateTime toOffsetDateTime(Object from, Converter converter) {
@@ -86,17 +82,13 @@ final class ZonedDateTimeConversions {
 
     static Calendar toCalendar(Object from, Converter converter) {
         ZonedDateTime zdt = (ZonedDateTime) from;
-        Calendar cal = Calendar.getInstance(converter.getOptions().getTimeZone());
+        Calendar cal = Calendar.getInstance(ZoneIdConversions.timeZone(zdt.getZone()));
         cal.setTimeInMillis(zdt.toInstant().toEpochMilli());
         return cal;
     }
 
     static java.sql.Date toSqlDate(Object from, Converter converter) {
-        return java.sql.Date.valueOf(
-                ((ZonedDateTime) from)
-                        .withZoneSameInstant(converter.getOptions().getZoneId())
-                        .toLocalDate()
-        );
+        return java.sql.Date.valueOf(((ZonedDateTime) from).toLocalDate());
     }
 
     static Date toDate(Object from, Converter converter) {
@@ -114,27 +106,15 @@ final class ZonedDateTimeConversions {
     }
 
     static Year toYear(Object from, Converter converter) {
-        return Year.from(
-                ((ZonedDateTime) from)
-                        .withZoneSameInstant(converter.getOptions().getZoneId())
-                        .toLocalDate()
-        );
+        return Year.from(((ZonedDateTime) from).toLocalDate());
     }
 
     static YearMonth toYearMonth(Object from, Converter converter) {
-        return YearMonth.from(
-                ((ZonedDateTime) from)
-                        .withZoneSameInstant(converter.getOptions().getZoneId())
-                        .toLocalDate()
-        );
+        return YearMonth.from(((ZonedDateTime) from).toLocalDate());
     }
 
     static MonthDay toMonthDay(Object from, Converter converter) {
-        return MonthDay.from(
-                ((ZonedDateTime) from)
-                        .withZoneSameInstant(converter.getOptions().getZoneId())
-                        .toLocalDate()
-        );
+        return MonthDay.from(((ZonedDateTime) from).toLocalDate());
     }
 
     static String toString(Object from, Converter converter) {

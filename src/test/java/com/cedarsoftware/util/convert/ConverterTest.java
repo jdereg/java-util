@@ -1815,9 +1815,11 @@ class ConverterTest
         ZonedDateTime intermediate = converter.convert(initial, ZonedDateTime.class);
         assertThat(intermediate.toInstant().toEpochMilli()).isEqualTo(epochMilli);
 
+        // a ZonedDateTime keeps its own wall clock, whatever the Converter's zone; through Instant, which has no
+        // zone, it is the Converter's
         converter = new Converter(createCustomZones(targetZoneId));
-        LocalDateTime actual = converter.convert(intermediate, LocalDateTime.class);
-        assertThat(actual).isEqualTo(expected);
+        assertThat(converter.convert(intermediate, LocalDateTime.class)).isEqualTo(initial);
+        assertThat(converter.convert(intermediate.toInstant(), LocalDateTime.class)).isEqualTo(expected);
     }
     
     @ParameterizedTest

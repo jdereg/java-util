@@ -2724,11 +2724,18 @@ class ConverterEverythingTest {
                 {ldt("1970-01-01T00:00:00.000000001"), odt("1970-01-01T00:00:00.000000001+09:00"), true},
         });
         TEST_DB.put(pair(ZonedDateTime.class, OffsetDateTime.class), new Object[][]{
-                {zdt("1890-01-01T00:00:00Z"), odt("1890-01-01T00:00:00Z"), true},
-                {zdt("1969-12-31T23:59:59.999999999Z"), odt("1969-12-31T23:59:59.999999999Z"), true},
-                {zdt("1970-01-01T00:00:00Z"), odt("1970-01-01T00:00:00Z"), true},
-                {zdt("1970-01-01T00:00:00.000000001Z"), odt("1970-01-01T00:00:00.000000001Z"), true},
-                {zdt("2024-03-20T21:18:05.123456Z"), odt("2024-03-20T21:18:05.123456Z"), true},
+                {zdt("1890-01-01T00:00:00Z"), odt("1890-01-01T00:00:00Z")},
+                {zdt("1969-12-31T23:59:59.999999999Z"), odt("1969-12-31T23:59:59.999999999Z")},
+                {zdt("1970-01-01T00:00:00Z"), odt("1970-01-01T00:00:00Z")},
+                {zdt("1970-01-01T00:00:00.000000001Z"), odt("1970-01-01T00:00:00.000000001Z")},
+                {zdt("2024-03-20T21:18:05.123456Z"), odt("2024-03-20T21:18:05.123456Z")},
+        });
+        // an OffsetDateTime keeps its own wall clock: a ZonedDateTime at its offset (it has no region to give back)
+        TEST_DB.put(pair(OffsetDateTime.class, ZonedDateTime.class), new Object[][]{
+                {odt("1890-01-01T00:00:00Z"), ZonedDateTime.parse("1890-01-01T09:00:00+09:00")},
+                {odt("1969-12-31T23:59:59.999999999Z"), ZonedDateTime.parse("1970-01-01T08:59:59.999999999+09:00")},
+                {odt("2024-03-20T21:18:05.123456Z"), ZonedDateTime.parse("2024-03-21T06:18:05.123456+09:00")},
+                {OffsetDateTime.parse("2024-03-20T21:18:05-05:00"), ZonedDateTime.parse("2024-03-20T21:18:05-05:00")},
         });
         TEST_DB.put(pair(String.class, OffsetDateTime.class), new Object[][]{
                 {"", null},

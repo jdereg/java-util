@@ -68,8 +68,11 @@ import com.cedarsoftware.util.ClassUtilities;
  */
 public interface ConverterOptions {
     /**
-     * @return {@link ZoneId} to use for source conversion when one is not provided and is required on the target
-     * type. i.e. {@link LocalDateTime}, {@link LocalDate}, or {@link String} when no zone is provided.
+     * @return {@link ZoneId} for a source that has no zone ({@code Date}, {@code Instant}, {@code Long},
+     * {@code Timestamp}, a number, or {@link String} without a zone) when the target shows a date or time, and for
+     * turning a local value ({@link LocalDate}, {@link LocalDateTime}) into an instant. A source that carries a zone
+     * ({@code ZonedDateTime}, {@code OffsetDateTime}, {@code Calendar}, text with a zone or offset) keeps its own wall
+     * clock and does not use this zone.
      */
     default ZoneId getZoneId() { return ZoneId.systemDefault(); }
 

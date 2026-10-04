@@ -72,7 +72,8 @@ public class OffsetDateTimeConversionsTests {
     void toSqlDate_differentZones_sameEpochMilli(String input) {
         OffsetDateTime initial = OffsetDateTime.parse(input);
         java.sql.Date actual = converter.convert(initial, java.sql.Date.class);
-        assertThat(actual.getTime()).isEqualTo(1687579200000L); // Midnight of the same day (Converter always makes sure java.sql.Date is at midnight of the same day)
+        // the day the value shows at its own offset (2023-06-25 at +09:00, 2023-06-24 elsewhere), at midnight
+        assertThat(actual).isEqualTo(java.sql.Date.valueOf(initial.toLocalDate()));
     }
 
     @ParameterizedTest
@@ -113,7 +114,7 @@ public class OffsetDateTimeConversionsTests {
     @MethodSource("offsetDateTime_withMultipleOffset_sameEpochMilli")
     void toSqlDate_differentZones_sameEpochMilli(OffsetDateTime initial) {
         java.sql.Date actual = converter.convert(initial, java.sql.Date.class);
-        assertThat(actual.getTime()).isEqualTo(1687579200000L);
+        assertThat(actual).isEqualTo(java.sql.Date.valueOf(initial.toLocalDate()));   // the day it shows
     }
 
     @ParameterizedTest

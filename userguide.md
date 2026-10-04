@@ -3650,6 +3650,19 @@ LocalDateTime ldt = converter.convert(date, LocalDateTime.class);
 ZonedDateTime zdt = converter.convert(instant, ZonedDateTime.class);
 ```
 
+**Which zone applies:**
+A source that carries a zone keeps its own wall clock: a `ZonedDateTime`, `OffsetDateTime`, `Calendar`, or text with a
+zone or offset converts to `LocalDate`, `LocalTime`, `LocalDateTime`, `java.sql.Date`, `Year`, `YearMonth` and
+`MonthDay` as the date and time it shows in its own zone, and to `Calendar` or `ZonedDateTime` in that zone. The
+Converter's zone (`ConverterOptions.getZoneId()`) applies only where the source has none (`Date`, `Instant`, `Long`,
+`Timestamp`, numbers), and when a local value is turned into an instant (`LocalDate` → `Instant`).
+```java
+// Converter in America/Los_Angeles
+ZonedDateTime tokyo = ZonedDateTime.parse("2024-07-01T05:30+09:00[Asia/Tokyo]");
+LocalDate day = converter.convert(tokyo, LocalDate.class);                   // 2024-07-01, Tokyo's date
+LocalDate laDay = converter.convert(tokyo.toInstant(), LocalDate.class);     // 2024-06-30, the Converter's zone
+```
+
 **Time Conversion Precision Rules:**
 The Converter applies consistent precision rules for time conversions to ensure predictable behavior and round-trip compatibility:
 

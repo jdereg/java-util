@@ -2407,7 +2407,7 @@ public final class Converter {
                         (fromObj, converter) -> EnumConversions.toEnumSet(fromObj, converter, toType));
             } else if (Map.class.isAssignableFrom(sourceType)) {
                 return executeAndCache(sourceType, toType, from,
-                        (fromObj, converter) -> EnumConversions.toEnumSet(((Map<?, ?>) fromObj).keySet(), converter, toType));
+                        (fromObj, converter) -> EnumConversions.mapToEnum((Map<?, ?>) fromObj, converter, toType));
             }
         }
         // EnumSet source conversions

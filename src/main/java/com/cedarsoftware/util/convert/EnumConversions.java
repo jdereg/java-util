@@ -116,6 +116,20 @@ final class EnumConversions {
         return target;
     }
 
+    /**
+     * A Map to an enum: the one constant {@link #toMap} writes, {@code {"name": "SECONDS"}}, or else the EnumSet of the
+     * constants the Map's keys name.
+     */
+    static Object mapToEnum(Map<?, ?> map, Converter converter, Class<?> target) {
+        if (map.size() == 1) {
+            Map.Entry<?, ?> entry = map.entrySet().iterator().next();
+            if ("name".equals(entry.getKey()) && entry.getValue() instanceof String) {
+                return stringToEnum(entry.getValue(), converter, target);
+            }
+        }
+        return toEnumSet(map.keySet(), converter, target);
+    }
+
     @SuppressWarnings("unchecked")
     static <T extends Enum<T>> EnumSet<T> toEnumSet(Object from, Converter converter, Class<?> target) {
         if (!target.isEnum()) {

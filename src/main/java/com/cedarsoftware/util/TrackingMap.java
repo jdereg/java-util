@@ -94,6 +94,9 @@ public class TrackingMap<K, V> implements Map<K, V> {
      */
     private final Set<Object> readKeys;
     private final Set<Object> unmodifiableReadKeys;
+    // True for a subMap/headMap/tailMap view: it shares its parent's readKeys, so it may forget only reads of
+    // keys it holds.
+    private final boolean view;
 
     // Cached interface references to avoid repeated instanceof checks and casts
     private final ConcurrentMap<K, V> asConcurrent;
@@ -111,6 +114,7 @@ public class TrackingMap<K, V> implements Map<K, V> {
             throw new IllegalArgumentException("Cannot construct a TrackingMap() with null");
         }
         internalMap = map;
+        view = false;
 
         // Cache interface references for performance
         asConcurrent = (map instanceof ConcurrentMap) ? (ConcurrentMap<K, V>) map : null;
@@ -146,6 +150,7 @@ public class TrackingMap<K, V> implements Map<K, V> {
      */
     private TrackingMap(Map<K, V> map, Set<Object> sharedReadKeys) {
         internalMap = map;
+        view = true;
         readKeys = sharedReadKeys;
         unmodifiableReadKeys = Collections.unmodifiableSet(readKeys);
         asConcurrent = (map instanceof ConcurrentMap) ? (ConcurrentMap<K, V>) map : null;
@@ -262,11 +267,25 @@ public class TrackingMap<K, V> implements Map<K, V> {
 
     /**
      * Removes all the mappings from this map. The map will be empty after this call returns.
-     * Also clears the set of accessed keys.
+     * Also clears the set of accessed keys; on a {@code subMap}/{@code headMap}/{@code tailMap} view,
+     * which shares its parent's accessed keys, only those of the keys the view holds.
      */
     public void clear() {
-        readKeys.clear();
+        if (view) {
+            readKeys.removeIf(this::viewHolds);
+        } else {
+            readKeys.clear();
+        }
         internalMap.clear();
+    }
+
+    /** Whether this view holds {@code key} (false for a key it cannot even compare). */
+    private boolean viewHolds(Object key) {
+        try {
+            return internalMap.containsKey(key);
+        } catch (ClassCastException | NullPointerException e) {
+            return false;
+        }
     }
 
     /**
@@ -306,6 +325,9 @@ public class TrackingMap<K, V> implements Map<K, V> {
     public void expungeUnused() {
         Set<K> keys = internalMap.keySet();
         keys.retainAll(asNavigable != null ? keysMatchingReads() : readKeys);
+        if (view) {
+            return;     // the keys it removed were unread; the shared set also holds the parent's other reads
+        }
 
         // Use the smaller collection as the cleanup source.
         if (readKeys.size() > keys.size()) {

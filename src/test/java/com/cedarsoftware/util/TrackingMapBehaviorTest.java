@@ -1,7 +1,9 @@
 package com.cedarsoftware.util;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
@@ -88,5 +90,48 @@ class TrackingMapBehaviorTest {
         trackingIdentity.expungeUnused();
         assertEquals(1, identity.size());
         assertSame(read, identity.keySet().iterator().next());
+    }
+
+    private static TreeMap<String, Integer> abcd() {
+        TreeMap<String, Integer> map = new TreeMap<>();
+        map.put("a", 1);
+        map.put("b", 2);
+        map.put("c", 3);
+        map.put("d", 4);
+        return map;
+    }
+
+    /**
+     * A subMap, headMap or tailMap view shares its parent's record of reads, and forgets only reads of keys it
+     * holds. expungeUnused() on a view reset the shared record to the view's own keys, and clear() or
+     * replaceContents() on a view emptied it, so the parent's next expungeUnused() removed entries it had read.
+     */
+    @Test
+    void aViewForgetsOnlyReadsOfItsOwnKeys() {
+        TrackingMap<String, Integer> parent = new TrackingMap<>(abcd());
+        parent.get("a");
+        parent.get("d");
+        TrackingMap<String, Integer> middle = parent.subMap("b", true, "c", true);
+        middle.get("b");
+        middle.expungeUnused();                                     // removes c, which nobody read
+        assertEquals(new HashSet<>(Arrays.asList("a", "b", "d")), new HashSet<>(parent.keysUsed()));
+        parent.expungeUnused();
+        assertEquals(Arrays.asList("a", "b", "d"), new ArrayList<>(parent.keySet()));
+
+        TrackingMap<String, Integer> cleared = new TrackingMap<>(abcd());
+        cleared.get("a");
+        cleared.get("d");
+        cleared.headMap("b").clear();                               // removes a, and forgets reading it
+        assertEquals(new HashSet<>(Arrays.asList("d")), new HashSet<>(cleared.keysUsed()));
+        cleared.expungeUnused();
+        assertEquals(Arrays.asList("d"), new ArrayList<>(cleared.keySet()));
+
+        TrackingMap<String, Integer> replaced = new TrackingMap<>(abcd());
+        replaced.get("a");
+        replaced.get("d");
+        replaced.tailMap("c").replaceContents(Collections.singletonMap("c", 30));
+        assertEquals(new HashSet<>(Arrays.asList("a")), new HashSet<>(replaced.keysUsed()));
+        replaced.expungeUnused();
+        assertEquals(Arrays.asList("a"), new ArrayList<>(replaced.keySet()));
     }
 }

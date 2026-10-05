@@ -818,12 +818,9 @@ public class TypeUtilitiesTest {
         // which is not a ParameterizedType.
         Type parentType = TestGeneric.class;
 
-        // Since parentType is not a ParameterizedType, the method should fall through
-        // and return typeToResolve unchanged.
+        // A raw root binds nothing: the variable is its bound (Object), as a raw type means
         Type resolved = TypeUtilities.resolveType(parentType, typeToResolve);
-
-        // Verify that the returned type is the same as the original typeToResolve.
-        assertEquals(typeToResolve, resolved);
+        assertEquals(Object.class, resolved);
     }
 
     // Define a generic interface with a type parameter.
@@ -941,8 +938,7 @@ public class TypeUtilitiesTest {
 
         Type resolved = TypeUtilities.resolveType(parentType, arrayType);
 
-        assertTrue(resolved instanceof GenericArrayType, "Should be GenericArrayType");
-        GenericArrayType gat = (GenericArrayType) resolved;
-        assertEquals(Integer.class, gat.getGenericComponentType(), "Component should resolve to Integer.class");
+        // an array of a resolved class is that array class, as reflection gives a non-generic array
+        assertEquals(Integer[].class, resolved, "T[] with T = Integer is Integer[].class");
     }
 }

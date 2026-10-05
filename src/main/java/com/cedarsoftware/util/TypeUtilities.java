@@ -395,8 +395,12 @@ public class TypeUtilities {
             } else if (typeToResolve instanceof GenericArrayType) {
                 GenericArrayType gat = (GenericArrayType) typeToResolve;
                 Type resolvedComp = resolveType(rootContext, currentContext, gat.getGenericComponentType(), visited);
-                GenericArrayTypeImpl result = new GenericArrayTypeImpl(resolvedComp);
-                return result;
+                if (resolvedComp instanceof Class) {
+                    // T[] with T an Integer is Integer[].class, as reflection gives a non-generic array: a
+                    // GenericArrayType printed Integer[] but was not equal to it
+                    return getArrayClass((Class<?>) resolvedComp);
+                }
+                return new GenericArrayTypeImpl(resolvedComp);
             } else if (typeToResolve instanceof WildcardType) {
                 WildcardType wt = (WildcardType) typeToResolve;
                 // Get bounds arrays. WildcardTypeImpl.getXxxBounds() already returns clones,
@@ -450,6 +454,9 @@ public class TypeUtilities {
 
             if (resolved == null && (!declaringClass.equals(currentRaw))) {
                 ParameterizedType pType = findParameterizedType(rootContext, declaringClass);
+                if (pType == null) {
+                    pType = findInOwnerTypes(rootContext, declaringClass);
+                }
 
                 if (pType != null) {
                     TypeVariable<?>[] declaredVars = declaringClass.getTypeParameters();
@@ -473,13 +480,9 @@ public class TypeUtilities {
             }
 
             if (resolved == null) {
-                // If the resolution was invoked with a raw class as parent,
-                // then leave the type variable unchanged.
-                if (rootContext instanceof Class && rootContext == currentContext) {
-                    resolved = typeVar;
-                } else {
-                    resolved = firstBound(typeVar);
-                }
+                // Nothing binds it (a raw root): its bound, which is what a raw type means. A bare T was left T
+                // while the T in List<T> became its bound.
+                resolved = firstBound(typeVar);
             }
             return resolved;
         } finally {
@@ -560,6 +563,22 @@ public class TypeUtilities {
         return null;
     }
     
+    /**
+     * The owner type that binds a variable of an enclosing class: {@code OC<String>} in {@code OC<String>.Inner}, for
+     * OC's T used inside Inner. Searched, with each owner's hierarchy, only after the hierarchy of the type itself.
+     */
+    private static ParameterizedType findInOwnerTypes(Type context, Class<?> target) {
+        Type owner = context instanceof ParameterizedType ? ((ParameterizedType) context).getOwnerType() : null;
+        for (int depth = 0; owner instanceof ParameterizedType && depth < 32; depth++) {
+            ParameterizedType found = findParameterizedType(owner, target);
+            if (found != null) {
+                return found;
+            }
+            owner = ((ParameterizedType) owner).getOwnerType();
+        }
+        return null;
+    }
+
     /**
      * Helper method that, given a type (if it is parameterized), checks whether it
      * maps the given type variable to a concrete type.

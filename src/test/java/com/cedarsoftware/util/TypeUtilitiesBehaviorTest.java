@@ -4,7 +4,6 @@ import java.io.Serializable;
 import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
-import java.lang.reflect.TypeVariable;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -16,7 +15,6 @@ import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -78,8 +76,8 @@ class TypeUtilitiesBehaviorTest {
     }
 
     /**
-     * A type variable that nothing binds stays unresolved; it is not replaced by the class's own superclass or
-     * interface. Climbing the hierarchy resolved each supertype and returned it as the variable's value:
+     * A type variable that nothing binds is its bound (Object here), as a raw type means; it is not replaced by the
+     * class's own superclass or interface. Climbing the hierarchy resolved each supertype and returned it as the variable's value:
      * Holder<T> extends Base gave T = Base, Box<T> implements Serializable gave Serializable, and a class
      * unrelated to the variable's own gave its superclass. json-io reading {"value":{...}} as a Holder then
      * made the value an empty Base, and as a Box failed to instantiate Serializable.
@@ -87,14 +85,13 @@ class TypeUtilitiesBehaviorTest {
     @Test
     void aTypeVariableIsNotResolvedToTheClassesOwnSupertype() throws Exception {
         Type holderT = fieldType(Holder.class, "value");
-        assertInstanceOf(TypeVariable.class, TypeUtilities.resolveType(Holder.class, holderT));
-        assertEquals("T", TypeUtilities.resolveType(Holder.class, holderT).getTypeName());
+        assertEquals(Object.class, TypeUtilities.resolveType(Holder.class, holderT));
         assertEquals(Object.class, TypeUtilities.resolveTypeUsingInstance(new Holder<>(), holderT));
         assertEquals(Object.class, TypeUtilities.resolveTypeUsingInstance(new Box<>(), fieldType(Box.class, "value")));
         assertEquals(Object.class,
                 TypeUtilities.resolveTypeUsingInstance(new Node<>(), fieldType(Node.class, "value")));
         Type genT = fieldType(Gen.class, "value");
-        assertInstanceOf(TypeVariable.class, TypeUtilities.resolveType(Unrelated.class, genT));
+        assertEquals(Object.class, TypeUtilities.resolveType(Unrelated.class, genT));
 
         // what the climb is for: a binding made by a superclass or an interface, at any depth
         assertEquals(Integer.class, TypeUtilities.resolveType(Concrete.class, genT));

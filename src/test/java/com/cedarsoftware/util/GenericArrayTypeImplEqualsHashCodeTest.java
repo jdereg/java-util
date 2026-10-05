@@ -3,6 +3,7 @@ package com.cedarsoftware.util;
 import java.lang.reflect.Field;
 import java.lang.reflect.GenericArrayType;
 import java.lang.reflect.Type;
+import java.util.List;
 
 import org.junit.jupiter.api.Test;
 
@@ -17,6 +18,7 @@ public class GenericArrayTypeImplEqualsHashCodeTest {
 
     public static class TestGeneric<T> {
         public T[] arrayField;
+        public List<T>[] listArrayField;     // still generic once T is resolved: List<Integer>[]
     }
 
     public static class TestInteger extends TestGeneric<Integer> { }
@@ -24,7 +26,8 @@ public class GenericArrayTypeImplEqualsHashCodeTest {
 
     @Test
     public void testEqualsAndHashCode() throws Exception {
-        Field field = TestGeneric.class.getField("arrayField");
+        // T[] resolves to Integer[].class; List<T>[] stays a GenericArrayType
+        Field field = TestGeneric.class.getField("listArrayField");
         Type arrayType = field.getGenericType();
 
         Type resolved1 = TypeUtilities.resolveType(TestInteger.class.getGenericSuperclass(), arrayType);

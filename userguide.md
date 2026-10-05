@@ -7238,6 +7238,15 @@ Type resolvedGeneric = TypeUtilities.resolveType(
 // T in collectionField is replaced by the concrete type from TestConcrete
 ```
 
+#### **What resolveType answers**
+- **A variable nothing binds** (a raw root such as `Box.class`) is its bound: `T extends Number` gives `Number`,
+  whether it stands alone or inside `List<T>` (`List<Number>`). That is what a raw type means in Java.
+- **A variable of an enclosing class**, used in an inner class, comes from the owner type: in `OC<String>.Inner`,
+  OC's `T` is `String`.
+- **An array of a resolved class** is that array class: `T[]` with `T` = `Integer` is `Integer[].class`, as reflection
+  gives a non-generic array. A `GenericArrayType` remains only while the component is itself generic
+  (`List<String>[]`).
+
 ---
 
 ### **Performance Characteristics**

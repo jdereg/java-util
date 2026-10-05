@@ -177,10 +177,12 @@ public class TraverserTest
         assertEquals(3, seen.size(), "array + its two elements: " + seen);
     }
 
+    // static: a class declared inside an instance method also holds the test object (this$0), which is followed
+    static class Foo { int n = 7; }
+
     @Test
     public void testLazyFieldCollection() throws Exception
     {
-        class Foo { int n = 7; }
         Foo foo = new Foo();
 
         Field nField = foo.getClass().getDeclaredField("n");
@@ -192,11 +194,12 @@ public class TraverserTest
         }, null, false);
     }
 
+    static class Child { }
+    static class Parent { Child child; }    // static, as Foo above
+
     @Test
     public void testPrivateTraverseConsumer() throws Exception
     {
-        class Child { }
-        class Parent { Child child; }
 
         Parent root = new Parent();
         root.child = new Child();

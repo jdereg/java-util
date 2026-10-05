@@ -116,36 +116,10 @@ class TraverserBehaviorTest {
      * walked, and the rest of the graph still is. Its exception ended the whole traversal; a failed field read was
      * already passed over.
      */
-    @Test
-    void aCollectionOrMapThatCannotBeReadDoesNotEndTheWalk() {
-        Collection<Object> lazyList = new AbstractCollection<Object>() {
-            @Override
-            public Iterator<Object> iterator() {
-                throw new IllegalStateException("could not initialize proxy - no Session");
-            }
 
-            @Override
-            public int size() {
-                return 1;
-            }
-        };
-        Map<Object, Object> lazyMap = new AbstractMap<Object, Object>() {
-            @Override
-            public Set<Map.Entry<Object, Object>> entrySet() {
-                throw new IllegalStateException("could not initialize proxy - no Session");
-            }
-        };
-        for (Object lazy : Arrays.asList(lazyList, lazyMap)) {
-            Pair root = new Pair();
-            root.first = lazy;
-            root.second = new Payload();
-            for (boolean collectFields : new boolean[]{true, false}) {
-                assertEquals(identitiesOf(root, lazy, root.second), identities(visit(root, collectFields)));
-            }
-        }
-
-        Pair root = new Pair();
-        root.first = new ArrayList<Integer>(Arrays.asList(1, 2, 3)) {
+    // an ArrayList whose iterator fails at its second element; static, as lazyList()
+    private static List<Integer> closesAfterOne() {
+        return new ArrayList<Integer>(Arrays.asList(1, 2, 3)) {
             @Override
             public Iterator<Integer> iterator() {
                 Iterator<Integer> real = super.iterator();
@@ -166,6 +140,45 @@ class TraverserBehaviorTest {
                 };
             }
         };
+    }
+
+    // made in a static method: an anonymous class in an instance method also holds the test object (this$0)
+    private static Collection<Object> lazyList() {
+        return new AbstractCollection<Object>() {
+            @Override
+            public Iterator<Object> iterator() {
+                throw new IllegalStateException("could not initialize proxy - no Session");
+            }
+
+            @Override
+            public int size() {
+                return 1;
+            }
+        };
+    }
+
+    private static Map<Object, Object> lazyMap() {
+        return new AbstractMap<Object, Object>() {
+            @Override
+            public Set<Map.Entry<Object, Object>> entrySet() {
+                throw new IllegalStateException("could not initialize proxy - no Session");
+            }
+        };
+    }
+
+    @Test
+    void aCollectionOrMapThatCannotBeReadDoesNotEndTheWalk() {
+        for (Object lazy : Arrays.asList(lazyList(), lazyMap())) {
+            Pair root = new Pair();
+            root.first = lazy;
+            root.second = new Payload();
+            for (boolean collectFields : new boolean[]{true, false}) {
+                assertEquals(identitiesOf(root, lazy, root.second), identities(visit(root, collectFields)));
+            }
+        }
+
+        Pair root = new Pair();
+        root.first = closesAfterOne();
         root.second = new Payload();
         assertEquals(identitiesOf(root, root.first, 1, root.second), identities(visit(root, false)),
                 "the elements read before the failure are walked");

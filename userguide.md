@@ -5642,6 +5642,16 @@ A Java Object Graph traverser that visits all object reference fields and invoke
 - **Modern API:** Consumer-based callback system with detailed node information
 - **Legacy Support:** Backward-compatible visitor pattern API
 
+### What is followed
+- The fields of every non-JDK class, including the references the compiler adds: an inner object's outer object
+  (`this$0`) and an anonymous or local class's captured variables (`val$name`). To stop at an object, such as a large
+  outer object, list its class in `classesToSkip`.
+- The elements of arrays, collections and maps.
+- What a JDK holder carries, through its public methods: an `Optional`'s value, an `AtomicReference`'s, an
+  `AtomicReferenceArray`'s elements, and the key and value of a JDK `Map.Entry` outside a map.
+
+Any other JDK class is a leaf: visited, but its fields are not walked, so every JDK gives the same graph.
+
 ### Basic Usage
 
 **Modern API (Recommended):**

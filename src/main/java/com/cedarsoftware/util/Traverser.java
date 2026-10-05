@@ -11,7 +11,10 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.atomic.AtomicReferenceArray;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.logging.Level;
@@ -22,6 +25,19 @@ import java.util.logging.Logger;
  * provided callback for each encountered object, including the root. It properly
  * detects cycles within the graph to prevent infinite loops. For each visited node,
  * complete field information including metadata is provided.
+ *
+ * <h2>What is followed</h2>
+ * <ul>
+ *   <li>The fields of every non-JDK class, including the references the compiler adds: an inner object's outer
+ *       object ({@code this$0}) and an anonymous or local class's captured variables ({@code val$name}). To stop
+ *       at an object, such as a large outer object, list its class in {@code classesToSkip}.</li>
+ *   <li>The elements of arrays, collections and maps.</li>
+ *   <li>What a JDK holder carries, through its public methods: an {@code Optional}'s value, an
+ *       {@code AtomicReference}'s, an {@code AtomicReferenceArray}'s elements, and the key and value of a JDK
+ *       {@code Map.Entry} outside a map.</li>
+ * </ul>
+ * <p>Any other JDK class is a leaf: it is visited, but its fields are not walked, so every JDK gives the same graph
+ * (JDK 17+ does not let them be read).</p>
  *
  * <h2>Security Configuration</h2>
  * <p>Traverser provides configurable security controls to prevent resource exhaustion
@@ -251,8 +267,17 @@ public class Traverser {
     private int objectsVisited = 0;
     private static final String INACCESSIBLE_FIELD_VALUE = "<inaccessible>";
     private static final Object NOT_READ = new Object();      // fieldValue's answer for a field it cannot read
-    private static final Predicate<Field> TRAVERSABLE_FIELD_FILTER =
-            field -> ReflectionUtils.DEFAULT_FIELD_FILTER.test(field) && !field.isSynthetic();
+    private static final Predicate<Field> TRAVERSABLE_FIELD_FILTER = field -> ReflectionUtils.DEFAULT_FIELD_FILTER
+            .test(field) && (!field.isSynthetic() || isCapturedReference(field));
+
+    /**
+     * A compiler-made field that holds a reference the code has: an inner object's outer object ({@code this$0}),
+     * an anonymous or local class's captured variable ({@code val$name}). Other synthetic fields are skipped.
+     */
+    private static boolean isCapturedReference(Field field) {
+        String name = field.getName();
+        return name.startsWith("this$") || name.startsWith("val$");
+    }
 
     /** A class's traversable fields, as getFields() reports them, and which of them the walk follows. */
     private static final class FieldPlan {
@@ -413,6 +438,7 @@ public class Traverser {
                     nodeVisitor.accept(new NodeVisit(current, () -> collectFieldValues(current)));
                     processFields(stack, current, classesToSkip, currentDepth, maxObjectsVisited);
                 }
+                processHolder(stack, current, classesToSkip, currentDepth, maxArrayLength, maxObjectsVisited);
             }
         }
     }
@@ -619,6 +645,43 @@ public class Traverser {
     private static void unreadable(Object container, RuntimeException e) {
         if (LOG.isLoggable(Level.FINEST)) {
             LOG.log(Level.FINEST, "Traverser could not read the elements of a " + container.getClass().getName(), e);
+        }
+    }
+
+    /**
+     * What a JDK holder carries, read through its public methods so every JDK gives the same graph: an Optional's
+     * value, an AtomicReference's, an AtomicReferenceArray's elements, and the key and value of a JDK Map.Entry held
+     * outside a map. A JDK class is otherwise a leaf. AtomicReference.get() and AtomicReferenceArray.get() are final,
+     * so a user subclass runs no user code here; a Map.Entry is read only when its class is the JDK's.
+     */
+    private void processHolder(Deque<TraversalNode> stack, Object object, Set<Class<?>> classesToSkip, int depth,
+                               int maxArrayLength, int maxObjectsVisited) {
+        if (object instanceof Optional) {
+            enqueueNode(stack, ((Optional<?>) object).orElse(null), classesToSkip, depth + 1, maxObjectsVisited);
+        } else if (object instanceof AtomicReference) {
+            enqueueNode(stack, ((AtomicReference<?>) object).get(), classesToSkip, depth + 1, maxObjectsVisited);
+        } else if (object instanceof AtomicReferenceArray) {
+            AtomicReferenceArray<?> array = (AtomicReferenceArray<?>) object;
+            int length = array.length();
+            if (maxArrayLength > 0 && length > maxArrayLength) {
+                throw new SecurityException("Array length exceeded limit (max " + maxArrayLength + "): " + length);
+            }
+            for (int i = 0; i < length; i++) {
+                enqueueNode(stack, array.get(i), classesToSkip, depth + 1, maxObjectsVisited);
+            }
+        } else if (object instanceof Map.Entry && isJdkClass(object.getClass())) {
+            Object key;
+            Object value;
+            try {
+                Map.Entry<?, ?> entry = (Map.Entry<?, ?>) object;
+                key = entry.getKey();
+                value = entry.getValue();
+            } catch (RuntimeException e) {
+                unreadable(object, e);
+                return;
+            }
+            enqueueNode(stack, key, classesToSkip, depth + 1, maxObjectsVisited);
+            enqueueNode(stack, value, classesToSkip, depth + 1, maxObjectsVisited);
         }
     }
 

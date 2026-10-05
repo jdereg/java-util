@@ -43,6 +43,7 @@
         <version.maven-compiler-plugin>3.15.0</version.maven-compiler-plugin>
         <version.maven-javadoc-plugin>3.12.0</version.maven-javadoc-plugin>
         <version.maven-surefire-plugin>3.5.6</version.maven-surefire-plugin>
+        <version.maven-failsafe-plugin>3.5.6</version.maven-failsafe-plugin>
         <version.maven-source-plugin>3.4.0</version.maven-source-plugin>
         <version.maven-scr-plugin>1.26.4</version.maven-scr-plugin>
         <version.maven-bundle-plugin>6.2.0</version.maven-bundle-plugin>
@@ -337,6 +338,28 @@
                 </configuration>
             </plugin>
 
+            <!-- Integration tests (*IT) run against the packaged jar, not target/classes: the jar's layout, and
+                 multi-release versions, which the JVM applies only to classes loaded from a jar -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-failsafe-plugin</artifactId>
+                <version>${version.maven-failsafe-plugin}</version>
+                <configuration>
+                    <classesDirectory>${project.build.directory}/${project.build.finalName}.jar</classesDirectory>
+                    <systemPropertyVariables>
+                        <java-util.jar>${project.build.directory}/${project.build.finalName}.jar</java-util.jar>
+                    </systemPropertyVariables>
+                </configuration>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>integration-test</goal>
+                            <goal>verify</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
             <plugin>
                 <groupId>org.moditect</groupId>
                 <artifactId>moditect-maven-plugin</artifactId>
@@ -349,7 +372,9 @@
                         </goals>
                         <phase>package</phase>
                         <configuration>
-                            <jvmVersion>base</jvmVersion>
+                            <!-- under META-INF/versions/9 of a multi-release jar, where only JDK 9+ looks: at the
+                                 root it was the one Java 9 class file in a JDK 8 jar -->
+                            <jvmVersion>9</jvmVersion>
                             <module>
                                 <moduleInfoSource>
                                     module com.cedarsoftware.util {

@@ -386,6 +386,8 @@ public class CompactSet<E> implements Set<E> {
      *   <li>{@link CompactMap#COMPACT_SIZE} - Maximum size before switching to backing map</li>
      *   <li>{@link CompactMap#CASE_SENSITIVE} - Whether string elements are case-sensitive</li>
      *   <li>{@link CompactMap#ORDERING} - Element ordering strategy</li>
+     *   <li>{@link CompactMap#MAP_TYPE} - The Map class used once the set outgrows its compact size, as
+     *       {@link Builder#mapType(Class)} set it (a ConcurrentHashMap for a thread-safe set)</li>
      * </ul>
      * </p>
      *
@@ -400,6 +402,7 @@ public class CompactSet<E> implements Set<E> {
         setConfig.put(CompactMap.COMPACT_SIZE, mapConfig.get(CompactMap.COMPACT_SIZE));
         setConfig.put(CompactMap.CASE_SENSITIVE, mapConfig.get(CompactMap.CASE_SENSITIVE));
         setConfig.put(CompactMap.ORDERING, mapConfig.get(CompactMap.ORDERING));
+        setConfig.put(CompactMap.MAP_TYPE, mapConfig.get(CompactMap.MAP_TYPE));
 
         return Collections.unmodifiableMap(setConfig);
     }

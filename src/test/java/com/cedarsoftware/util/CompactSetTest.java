@@ -605,13 +605,13 @@ class CompactSetTest
         assertThrows(UnsupportedOperationException.class, () -> config.put("test", "value"));
 
         // Make sure only the expected keys are present
-        assertEquals(3, config.size());
+        assertEquals(4, config.size());
         assertTrue(config.containsKey(CompactMap.COMPACT_SIZE));
         assertTrue(config.containsKey(CompactMap.CASE_SENSITIVE));
         assertTrue(config.containsKey(CompactMap.ORDERING));
+        assertEquals(java.util.TreeMap.class, config.get(CompactMap.MAP_TYPE));   // the backing map, sorted
 
-        // Make sure MAP_TYPE and SINGLE_KEY are not exposed
-        assertFalse(config.containsKey(CompactMap.MAP_TYPE));
+        // SINGLE_KEY is a map detail and is not exposed
         assertFalse(config.containsKey(CompactMap.SINGLE_KEY));
     }
 
@@ -919,7 +919,7 @@ class CompactSetTest
         Map<String, Object> mixedConfig = new HashMap<>();
         mixedConfig.put(CompactMap.COMPACT_SIZE, 25);
         mixedConfig.put("someRandomKey", "value");
-        mixedConfig.put(CompactMap.MAP_TYPE, HashMap.class); // Should be ignored
+        mixedConfig.put(CompactMap.MAP_TYPE, java.util.concurrent.ConcurrentHashMap.class); // Should be ignored
         mixedConfig.put(CompactMap.SINGLE_KEY, "id");        // Should be ignored
 
         // Apply the config
@@ -931,7 +931,7 @@ class CompactSetTest
 
         // Verify the irrelevant keys were ignored
         assertFalse(newConfig.containsKey("someRandomKey"));
-        assertFalse(newConfig.containsKey(CompactMap.MAP_TYPE));
+        assertEquals(HashMap.class, newConfig.get(CompactMap.MAP_TYPE));   // the set's own, not the config's
         assertFalse(newConfig.containsKey(CompactMap.SINGLE_KEY));
     }
 

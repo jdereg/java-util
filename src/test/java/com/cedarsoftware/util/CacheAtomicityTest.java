@@ -220,7 +220,7 @@ class CacheAtomicityTest {
 
     /**
      * A function that writes the key it is computing (against the Map contract) must not leave a size-limited
-     * cache holding two entries for one key. LOCKING linked a second node for the key, past capacity for good:
+     * cache holding two entries for one key (computeIfAbsent keeps the function's write: it loads outside the lock). LOCKING linked a second node for the key, past capacity for good:
      * capacity 3 then held 4 entries after any number of puts.
      */
     @Test
@@ -258,7 +258,10 @@ class CacheAtomicityTest {
                         return 2;
                     });
                 }
-                assertEquals(Integer.valueOf(2), cache.get("k"), e.getKey() + " " + op);
+                // computeIfAbsent loads outside the cache's lock: a write made while its function ran is kept (from
+                // another thread it is the last write in any order); compute, merge and computeIfPresent write theirs
+                Integer expected = op.equals("computeIfAbsent") ? 1 : 2;
+                assertEquals(expected, cache.get("k"), e.getKey() + " " + op);
                 for (int i = 0; i < 10; i++) {
                     cache.put("x" + i, i);
                 }

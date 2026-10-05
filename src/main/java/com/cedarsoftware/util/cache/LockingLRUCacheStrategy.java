@@ -12,6 +12,7 @@ import java.util.function.BiFunction;
 
 import com.cedarsoftware.util.ConcurrentHashMapNullSafe;
 import com.cedarsoftware.util.MapUtilities;
+import com.cedarsoftware.util.internal.KeyedLoads;
 
 /**
  * This class provides a thread-safe Least Recently Used (LRU) cache API that evicts the least recently used items
@@ -47,6 +48,8 @@ public class LockingLRUCacheStrategy<K, V> implements Map<K, V> {
     private final Node<K, V> head;
     private final Node<K, V> tail;
     private final Lock lock = new ReentrantLock();
+    private final KeyedLoads loads = new KeyedLoads();
+    private final KeyedLoads.Load<K, V> loadAndWrite = this::loadAndWrite;      // one, not a lambda per call
 
     private static class Node<K, V> {
         final K key;
@@ -265,24 +268,64 @@ public class LockingLRUCacheStrategy<K, V> implements Map<K, V> {
         }
     }
 
+    /**
+     * The key's value, computed by mappingFunction and cached if absent (or null-valued), as Map.computeIfAbsent.
+     * <p>
+     * Loads single-flight per key, outside the cache's lock: the function runs once for a key however many threads
+     * ask for it at once (the others wait for its value, or its exception, which nothing caches); loads of different
+     * keys run in parallel; and no other operation on the cache waits for a function. A value written for the key
+     * while the function runs is kept and returned. A function that asks for its own key again throws
+     * IllegalStateException, as ConcurrentHashMap does; functions on different threads that wait on each other's
+     * keys in a cycle deadlock, as they would in ConcurrentHashMap.
+     */
     @Override
     public V computeIfAbsent(K key, java.util.function.Function<? super K, ? extends V> mappingFunction) {
+        Objects.requireNonNull(mappingFunction);
+        Node<K, V> node = cache.get(key);
+        if (node != null) {
+            V value = node.value;
+            if (value != null) {
+                touch(node);
+                return value;
+            }
+        }
+        // Single-flight per key, outside the cache-wide lock: loads of different keys run in parallel, and nothing
+        // else waits for a loader. The lock is taken only to write the result.
+        return loads.load(key, mappingFunction, loadAndWrite);
+    }
+
+    private V loadAndWrite(K key, java.util.function.Function<? super K, ? extends V> mappingFunction) {
+        Node<K, V> node = cache.get(key);
+        if (node != null && node.value != null) {
+            return node.value;                      // loaded by a load that just ended
+        }
+        V computed = mappingFunction.apply(key);
         lock.lock();
         try {
-            Node<K, V> node = cache.get(key);
-            if (node != null && node.value != null) {
-                moveToHead(node);
-                return node.value;
+            Node<K, V> now = cache.get(key);
+            if (now != null && now.value != null) {
+                moveToHead(now);
+                return now.value;                   // written while the function ran: that value stays
             }
-            V computed = mappingFunction.apply(key);
             if (computed != null) {
-                writeLocked(key, node, computed);
-            } else if (node != null) {
-                moveToHead(node);
+                writeLocked(key, now, computed);
+            } else if (now != null) {
+                moveToHead(now);
             }
             return computed;
         } finally {
             lock.unlock();
+        }
+    }
+
+    /** A read's recency: to the head when the lock is free, as get() does. */
+    private void touch(Node<K, V> node) {
+        if (lock.tryLock()) {
+            try {
+                moveToHead(node);
+            } finally {
+                lock.unlock();
+            }
         }
     }
 

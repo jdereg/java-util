@@ -22,6 +22,8 @@ import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import com.cedarsoftware.util.internal.KeyedLoads;
+
 /**
  * A cache that holds items for a specified Time-To-Live (TTL) duration.
  * Optionally, it supports Least Recently Used (LRU) eviction when a maximum size is specified.
@@ -50,6 +52,8 @@ import java.util.logging.Logger;
 public class TTLCache<K, V> implements Map<K, V>, AutoCloseable {
 
     private final long ttlMillis;
+    private final KeyedLoads loads = new KeyedLoads();
+    private final KeyedLoads.Load<K, V> loadAndWrite = this::loadAndWrite;      // one, not a lambda per call
     private final int maxSize;
     private final boolean lruEnabled;
     private final ConcurrentMap<K, CacheEntry<K, V>> cacheMap;
@@ -460,6 +464,13 @@ public class TTLCache<K, V> implements Map<K, V>, AutoCloseable {
      * If the specified key is not already associated with a value (or is expired),
      * attempts to compute its value using the given mapping function and enters it into this cache.
      * The entry will expire after the configured TTL has elapsed.
+     * <p>
+     * Loads single-flight per key, outside the cache's lock: the function runs once for a key however many threads
+     * ask for it at once (the others wait for its value, or its exception, which nothing caches); loads of different
+     * keys run in parallel; and no other operation on the cache waits for a function. A value written for the key
+     * while the function runs is kept and returned. A function that asks for its own key again throws
+     * IllegalStateException, as ConcurrentHashMap does; functions on different threads that wait on each other's
+     * keys in a cycle deadlock, as they would in ConcurrentHashMap.
      *
      * @param key the key with which the specified value is to be associated
      * @param mappingFunction the function to compute a value
@@ -468,44 +479,56 @@ public class TTLCache<K, V> implements Map<K, V>, AutoCloseable {
      */
     @Override
     public V computeIfAbsent(K key, Function<? super K, ? extends V> mappingFunction) {
+        Objects.requireNonNull(mappingFunction);
+        V present = get(key);
+        if (present != null) {
+            return present;
+        }
+        // Single-flight per key, outside the cache-wide lock: loads of different keys run in parallel, and nothing
+        // else (another load, a put, the shared purge thread) waits for a loader. The lock is taken only to write.
+        return loads.load(key, mappingFunction, loadAndWrite);
+    }
+
+    private V loadAndWrite(K key, Function<? super K, ? extends V> mappingFunction) {
+        CacheEntry<K, V> seen = cacheMap.get(key);
+        V loaded = liveValue(seen);
+        if (loaded != null) {
+            return loaded;                              // loaded by a load that just ended
+        }
+        V value = mappingFunction.apply(key);
+        if (value == null) {
+            return null;
+        }
+        Node<K, V> node = new Node<>(key, value);
+        CacheEntry<K, V> newEntry = new CacheEntry<>(node, System.currentTimeMillis() + ttlMillis);
+        if (!lruEnabled) {
+            // over the entry seen before the function ran: a put meanwhile is kept, not overwritten
+            V winner = installUnlessOvertaken(key, seen, newEntry);
+            return winner == null ? value : winner;
+        }
         lock.lock();
         try {
             CacheEntry<K, V> entry = cacheMap.get(key);
-            long currentTime = System.currentTimeMillis();
-            boolean liveEntry = entry != null && entry.expiryTime >= currentTime;
-
-            // Check if entry exists and is not expired with a non-null value
-            if (liveEntry && entry.node.value != null) {
-                if (lruEnabled) {
-                    moveToTail(entry.node);
-                }
-                return entry.node.value;
+            V written = liveValue(entry);
+            if (written != null) {
+                moveToTail(entry.node);
+                return written;                         // written while the function ran: that value stays
             }
-
-            // Entry is absent, expired, or null-valued - compute new value
-            V value = mappingFunction.apply(key);
-            if (value != null) {
-                // Remove existing entry if present (expired or null-valued)
-                if (entry != null) {
-                    if (lruEnabled) {
-                        unlink(entry.node);
-                    }
-                }
-                long expiryTime = System.currentTimeMillis() + ttlMillis;
-                Node<K, V> node = new Node<>(key, value);
-                CacheEntry<K, V> newEntry = new CacheEntry<>(node, expiryTime);
-                if (!lruEnabled) {
-                    V winner = installUnlessOvertaken(key, entry, newEntry);
-                    return winner == null ? value : winner;
-                }
-                cacheMap.put(key, newEntry);
-                insertAtTail(node);
-                evictOverflow();
+            if (entry != null) {
+                unlink(entry.node);                     // expired, or null-valued
             }
+            cacheMap.put(key, newEntry);
+            insertAtTail(node);
+            evictOverflow();
             return value;
         } finally {
             lock.unlock();
         }
+    }
+
+    /** The entry's value if it is live and not null, else null. */
+    private static <K, V> V liveValue(CacheEntry<K, V> entry) {
+        return entry != null && entry.expiryTime >= System.currentTimeMillis() ? entry.node.value : null;
     }
 
     /**

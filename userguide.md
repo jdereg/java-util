@@ -1624,6 +1624,8 @@ This implementation is fully thread-safe for all operations and implements `Conc
 
 A revolutionary high-performance thread-safe implementation of `List`, `Deque`, and `RandomAccess` interfaces, designed for highly concurrent environments with exceptional performance characteristics. This implementation uses a bucket-based architecture with chunked `AtomicReferenceArray` storage and atomic head/tail counters, delivering lock-free performance for the most common operations.
 
+On JDK 21+, `reversed()` works however the list is held: as a `ConcurrentList`, a `List` or a `SequencedCollection` it gives `List`'s live reversed view, and as a `Deque` it gives `Deque`'s. (JDK 21 gave both `List` and `Deque` a `reversed()`; the jar carries a JDK 21 version of `ConcurrentList`'s superclass, in `META-INF/versions/21`, that settles which applies.)
+
 ### Architecture Overview
 The list is structured as a series of fixed-size buckets (1024 elements each), managed through a `ConcurrentHashMap`. Each bucket is an `AtomicReferenceArray` that never moves once allocated, ensuring stable memory layout and eliminating costly array copying operations.
 

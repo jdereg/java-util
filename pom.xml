@@ -85,6 +85,40 @@
             </build>
         </profile>
 
+        <!-- JDK 21 and newer: the classes in src/main/java21, compiled for JDK 21 into META-INF/versions/21 of the
+             (multi-release) jar, where only JDK 21+ looks. Build releases on JDK 21+, or the jar lacks them. -->
+        <profile>
+            <id>jdk21-and-above</id>
+            <activation>
+                <jdk>[21,)</jdk>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-compiler-plugin</artifactId>
+                        <version>${version.maven-compiler-plugin}</version>
+                        <executions>
+                            <execution>
+                                <id>compile-java21</id>
+                                <phase>compile</phase>
+                                <goals>
+                                    <goal>compile</goal>
+                                </goals>
+                                <configuration>
+                                    <release>21</release>
+                                    <compileSourceRoots>
+                                        <compileSourceRoot>${project.basedir}/src/main/java21</compileSourceRoot>
+                                    </compileSourceRoots>
+                                    <multiReleaseOutput>true</multiReleaseOutput>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
         <!-- JDK 8 -->
         <profile>
             <id>jdk8</id>
@@ -318,6 +352,10 @@
                         <id>report</id>
                         <phase>test</phase>
                         <goals><goal>report</goal></goals>
+                        <configuration>
+                            <!-- a JDK 21 version of a class (META-INF/versions/21) has the same name as the class -->
+                            <excludes><exclude>META-INF/**</exclude></excludes>
+                        </configuration>
                     </execution>
                 </executions>
             </plugin>
@@ -346,6 +384,7 @@
                 <version>${version.maven-failsafe-plugin}</version>
                 <configuration>
                     <classesDirectory>${project.build.directory}/${project.build.finalName}.jar</classesDirectory>
+                    <useModulePath>false</useModulePath>     <!-- on the classpath, as surefire runs the tests -->
                     <systemPropertyVariables>
                         <java-util.jar>${project.build.directory}/${project.build.finalName}.jar</java-util.jar>
                     </systemPropertyVariables>

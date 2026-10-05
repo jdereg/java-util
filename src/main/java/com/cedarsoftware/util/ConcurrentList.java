@@ -139,7 +139,7 @@ import java.util.function.UnaryOperator;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public final class ConcurrentList<E> implements List<E>, Deque<E>, RandomAccess, Serializable {
+public final class ConcurrentList<E> extends ConcurrentListBase<E> implements List<E>, Deque<E>, RandomAccess, Serializable {
     private static final long serialVersionUID = 1L;
 
     private static final int BUCKET_SHIFT = 10;

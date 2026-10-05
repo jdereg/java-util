@@ -29,7 +29,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class CacheLoadSingleFlightTest {
 
-    private final ExecutorService pool = Executors.newCachedThreadPool();
+    // daemon threads: a test that deadlocks must not keep the JVM from exiting
+    private final ExecutorService pool = Executors.newCachedThreadPool(runnable -> {
+        Thread thread = new Thread(runnable);
+        thread.setDaemon(true);
+        return thread;
+    });
     private final List<TTLCache<?, ?>> ttlCaches = new ArrayList<>();
 
     @AfterEach
@@ -265,6 +270,55 @@ class CacheLoadSingleFlightTest {
             release.countDown();
         }
         assertEquals("v", load.get(10, TimeUnit.SECONDS));
+    }
+
+    /**
+     * Loads that need each other's keys, started on two threads at once (k1's function needs k2, k2's needs k1):
+     * each would wait for the other forever. The loop is detected when the second wait would close it, and both
+     * loads fail with IllegalStateException, as one thread gets for the same loop. Nothing is cached.
+     */
+    @Test
+    void loadsThatNeedEachOtherFailInsteadOfHanging() throws Exception {
+        for (Supplier<Map<String, String>> make : caches()) {
+            Map<String, String> cache = make.get();
+            assertLoopFails(cache, cache, cache.getClass().getName());
+            assertFalse(cache.containsKey("k1") || cache.containsKey("k2"));
+            assertEquals("v", cache.computeIfAbsent("k1", k -> "v"));
+        }
+        // across two caches: one's function needs the other's key, and the reverse
+        Map<String, String> x = new LRUCache<>(100, LRUCache.StrategyType.LOCKING);
+        Map<String, String> y = track(new TTLCache<>(60_000, 100));
+        assertLoopFails(x, y, "LRUCache and TTLCache");
+        // one thread, the same loop
+        Map<String, String> one = new LRUCache<>(100, LRUCache.StrategyType.LOCKING);
+        assertThrows(IllegalStateException.class, () -> one.computeIfAbsent("k1",
+                k -> one.computeIfAbsent("k2", k2 -> one.computeIfAbsent("k1", k3 -> "never"))));
+    }
+
+    private void assertLoopFails(Map<String, String> first, Map<String, String> second, String what)
+            throws Exception {
+        CyclicBarrier bothLoading = new CyclicBarrier(2);
+        Future<String> a = pool.submit(() -> first.computeIfAbsent("k1", k -> {
+            await(bothLoading);
+            return "needs " + second.computeIfAbsent("k2", k2 -> "unused");
+        }));
+        Future<String> b = pool.submit(() -> second.computeIfAbsent("k2", k -> {
+            await(bothLoading);
+            return "needs " + first.computeIfAbsent("k1", k1 -> "unused");
+        }));
+        for (Future<String> load : new Future[] {a, b}) {
+            java.util.concurrent.ExecutionException e = assertThrows(java.util.concurrent.ExecutionException.class,
+                    () -> load.get(5, TimeUnit.SECONDS), what);
+            assertTrue(e.getCause() instanceof IllegalStateException, what + ": " + e.getCause());
+        }
+    }
+
+    private static void await(CyclicBarrier barrier) {
+        try {
+            barrier.await(5, TimeUnit.SECONDS);
+        } catch (Exception e) {
+            throw new IllegalStateException(e);
+        }
     }
 
     /** null keys, null results, and a hit, as before. */

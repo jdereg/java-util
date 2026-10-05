@@ -275,8 +275,8 @@ public class LockingLRUCacheStrategy<K, V> implements Map<K, V> {
      * ask for it at once (the others wait for its value, or its exception, which nothing caches); loads of different
      * keys run in parallel; and no other operation on the cache waits for a function. A value written for the key
      * while the function runs is kept and returned. A function that asks for its own key again throws
-     * IllegalStateException, as ConcurrentHashMap does; functions on different threads that wait on each other's
-     * keys in a cycle deadlock, as they would in ConcurrentHashMap.
+     * IllegalStateException, as ConcurrentHashMap does, and so do functions on different threads that need each
+     * other's keys (k1's needs k2 while k2's needs k1): where ConcurrentHashMap would hang, the loop is detected.
      */
     @Override
     public V computeIfAbsent(K key, java.util.function.Function<? super K, ? extends V> mappingFunction) {

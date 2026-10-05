@@ -8,9 +8,10 @@ import java.util.function.Function;
  * thread asking for that key meanwhile waits for its result (or its exception), and loads of different keys run in
  * parallel. Nothing is kept once a load ends. Internal to java-util.
  * <p>
- * A load that asks for its own key again waits for itself: it throws IllegalStateException, as
- * ConcurrentHashMap.computeIfAbsent does. Loads that wait on each other's keys in a cycle, on different threads,
- * deadlock, as they would in ConcurrentHashMap.
+ * A load that asks for its own key again would wait for itself: it throws IllegalStateException, as
+ * ConcurrentHashMap.computeIfAbsent does. So do loads on different threads that need each other's keys (k1's load
+ * needs k2 while k2's needs k1, in one cache or across several): the wait that would close the loop throws instead
+ * of waiting forever, where ConcurrentHashMap, Guava and Caffeine hang.
  *
   * @author John DeRegnaucourt (jdereg@gmail.com)
  *         <br>
@@ -39,6 +40,10 @@ public final class KeyedLoads {
     private static final Object NULL_KEY = new Object();
 
     private final ConcurrentHashMap<Object, Flight> flights = new ConcurrentHashMap<>();
+
+    // Each thread waiting for another thread's load, and that load: across all caches, as a loop may span them.
+    // Only the path that waits uses it.
+    private static final ConcurrentHashMap<Thread, Flight> WAITING = new ConcurrentHashMap<>();
 
     /**
      * One load in progress. The loading thread finishes it with volatile writes alone; its monitor is taken only
@@ -88,6 +93,18 @@ public final class KeyedLoads {
         }
     }
 
+    /** Whether {@code thread} waits, through the loads it waits for, on a load of {@code me}'s. */
+    private static boolean waitsFor(Thread thread, Thread me) {
+        for (int hops = 0; thread != null && hops < 1024; hops++) {
+            if (thread == me) {
+                return true;
+            }
+            Flight waitedFor = WAITING.get(thread);
+            thread = waitedFor == null ? null : waitedFor.loader;
+        }
+        return false;
+    }
+
     /**
      * {@code load} applied to the key and function by this thread, unless another thread is loading the key: then
      * that load's value, or its exception, after waiting for it.
@@ -101,7 +118,16 @@ public final class KeyedLoads {
             if (running.loader == mine.loader) {
                 throw new IllegalStateException("Recursive load: the load of a key asked for that key again");
             }
-            return (V) running.await();
+            // Registered before the check: of two threads closing a loop, the second to register sees the first.
+            WAITING.put(mine.loader, running);
+            try {
+                if (waitsFor(running.loader, mine.loader)) {
+                    throw new IllegalStateException("Cyclic load: loads on different threads need each other's keys");
+                }
+                return (V) running.await();
+            } finally {
+                WAITING.remove(mine.loader, running);
+            }
         }
         try {
             V value = load.apply(key, function);

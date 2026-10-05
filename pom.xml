@@ -44,6 +44,7 @@
         <version.maven-javadoc-plugin>3.12.0</version.maven-javadoc-plugin>
         <version.maven-surefire-plugin>3.5.6</version.maven-surefire-plugin>
         <version.maven-failsafe-plugin>3.5.6</version.maven-failsafe-plugin>
+        <version.maven-enforcer-plugin>3.6.2</version.maven-enforcer-plugin>
         <version.maven-source-plugin>3.4.0</version.maven-source-plugin>
         <version.maven-scr-plugin>1.26.4</version.maven-scr-plugin>
         <version.maven-bundle-plugin>6.2.0</version.maven-bundle-plugin>
@@ -153,6 +154,31 @@
             </activation>
             <build>
                 <plugins>
+
+                    <!-- A release is built on JDK 21+: the jar carries a JDK 21 class (META-INF/versions/21, from
+                         src/main/java21) that only a JDK 21+ build compiles. Built on JDK 8-20 the jar would still
+                         run everywhere, but without it. -->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-enforcer-plugin</artifactId>
+                        <version>${version.maven-enforcer-plugin}</version>
+                        <executions>
+                            <execution>
+                                <id>release-on-jdk21</id>
+                                <goals>
+                                    <goal>enforce</goal>
+                                </goals>
+                                <configuration>
+                                    <rules>
+                                        <requireJavaVersion>
+                                            <version>[21,)</version>
+                                            <message>Build releases on JDK 21+ (src/main/java21)</message>
+                                        </requireJavaVersion>
+                                    </rules>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
 
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>

@@ -292,14 +292,41 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
             return hash(start, end);
         }
 
-        /** {@code finalizeHash(Objects.hash(start, end))}, without the varargs array. */
+        /** {@code finalizeHash(Objects.hash(start, end))}, without the varargs array, by value (see sameValue). */
         static int hash(Object start, Object end) {
-            return finalizeHash(31 * (31 + start.hashCode()) + end.hashCode());
+            return finalizeHash(31 * (31 + valueHash(start)) + valueHash(end));
         }
 
+        /**
+         * Equal by value, as every other IntervalSet operation compares: [1, 2.0) equals [1, 2.00). BigDecimal's
+         * equals also compares the number of decimal places.
+         */
         @Override
         public boolean equals(Object o) {
-            return o instanceof Interval && start.equals(((Interval<?>) o).start) && end.equals(((Interval<?>) o).end);
+            return o instanceof Interval && sameValue(start, ((Interval<?>) o).start)
+                    && sameValue(end, ((Interval<?>) o).end);
+        }
+
+        /**
+         * Two bounds are the same value when equal, or of one class and equal by compareTo: 2.0 and 2.00. Bounds of
+         * different classes are not compared (an Integer and a Long are different values here).
+         */
+        @SuppressWarnings({"unchecked", "rawtypes"})
+        static boolean sameValue(Object a, Object b) {
+            return a.equals(b) || (a.getClass() == b.getClass() && ((Comparable) a).compareTo(b) == 0);
+        }
+
+        /**
+         * A hash that agrees with sameValue: a BigDecimal without its trailing zeros (2.0 and 2.00 hash alike), any
+         * zero alike. A bound type whose equals disagrees with its compareTo in some other way gets sameValue's
+         * equality but not a hash to match.
+         */
+        static int valueHash(Object value) {
+            if (value instanceof BigDecimal) {
+                BigDecimal number = (BigDecimal) value;
+                return number.signum() == 0 ? 0 : number.stripTrailingZeros().hashCode();
+            }
+            return value.hashCode();
         }
 
         @Override
@@ -1144,7 +1171,7 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
             return false;
         }
         @SuppressWarnings("unchecked")
-        IntervalSet<T> that = (IntervalSet<T>) o;     // only equals() is asked of its bounds
+        IntervalSet<T> that = (IntervalSet<T>) o;     // bounds compared by value (Interval.sameValue)
         return readBoth(that, IntervalSet::sameIntervals);
     }
 
@@ -1385,7 +1412,7 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
         while (it1.hasNext() && it2.hasNext()) {
             Map.Entry<T, T> a = it1.next();
             Map.Entry<T, T> b = it2.next();
-            if (!a.getKey().equals(b.getKey()) || !a.getValue().equals(b.getValue())) {
+            if (!Interval.sameValue(a.getKey(), b.getKey()) || !Interval.sameValue(a.getValue(), b.getValue())) {
                 return false;
             }
         }

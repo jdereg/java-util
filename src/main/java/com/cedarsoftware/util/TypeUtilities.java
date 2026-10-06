@@ -660,22 +660,50 @@ public class TypeUtilities {
     }
 
     /**
-     * Per container class: its type parameters, and Map's value type and Collection's element type in terms of
-     * them (HashMap: its V; MultiMap<K, V> extends HashMap<K, List<V>>: List<V>), worked out once, since walking
-     * the generic supertypes costs 40-80 ns. Each refers only to the class's own type variables.
+     * Infers the key type of a Map container type, through its class hierarchy: {@code Map<String, Integer>} gives
+     * String, and so does {@code StringMap<Integer>} where {@code StringMap<V> extends HashMap<String, V>} -- its one
+     * argument is the value's, not the key's. A container class whose hierarchy fixes the key gives that key
+     * ({@code Names extends HashMap<String, Integer>}: String).
+     *
+     * @param container the container type, e.g. {@code Map<Long, String>} or {@code StringMap<Integer>}
+     * @return the key type, or null when the container is not a Map or does not say what its keys are (a raw HashMap)
+     */
+    public static Type inferKeyType(Type container) {
+        Class<?> raw = getRawClass(container);
+        if (raw == null || !Map.class.isAssignableFrom(raw)) {
+            return null;
+        }
+        ContainerArguments known = CONTAINER_ARGUMENTS.get(raw);
+        Type[] args = container instanceof ParameterizedType ? typeArguments((ParameterizedType) container) : null;
+        if (args == null && known.mapKeyIndex >= 0) {
+            return null;                    // a raw container: its own type parameter, unbound
+        }
+        Type key = known.argument(known.mapKey, known.mapKeyIndex, args);
+        return key == null || hasUnresolvedType(key) ? null : key;
+    }
+
+    /**
+     * Per container class: its type parameters, and Map's key and value types and Collection's element type in
+     * terms of them (HashMap: its K and V; MultiMap<K, V> extends HashMap<K, List<V>>: K and List<V>), worked out
+     * once, since walking the generic supertypes costs 40-80 ns. Each refers only to the class's own type variables.
      */
     private static final class ContainerArguments {
         final TypeVariable<?>[] params;
+        final Type mapKey;
         final Type mapValue;
         final Type collectionElement;
+        final int mapKeyIndex;              // which of params mapKey is, or -1 (then it is substituted)
         final int mapValueIndex;            // which of params mapValue is, or -1 (then it is substituted)
         final int collectionElementIndex;
 
         ContainerArguments(Class<?> raw) {
             params = raw.getTypeParameters();
-            mapValue = Map.class.isAssignableFrom(raw) ? typeArgumentOf(raw, params, Map.class, 1, 0) : null;
+            boolean map = Map.class.isAssignableFrom(raw);
+            mapKey = map ? typeArgumentOf(raw, params, Map.class, 0, 0) : null;
+            mapValue = map ? typeArgumentOf(raw, params, Map.class, 1, 0) : null;
             collectionElement = Collection.class.isAssignableFrom(raw)
                     ? typeArgumentOf(raw, params, Collection.class, 0, 0) : null;
+            mapKeyIndex = indexOf(mapKey);
             mapValueIndex = indexOf(mapValue);
             collectionElementIndex = indexOf(collectionElement);
         }

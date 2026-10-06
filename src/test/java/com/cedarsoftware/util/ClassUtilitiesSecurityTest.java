@@ -10,6 +10,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
@@ -167,6 +168,17 @@ public class ClassUtilitiesSecurityTest {
         });
         assertTrue(exception.getMessage().contains("denied") || exception.getMessage().contains("security"),
                 "Should block Java-style array names whose component type is dangerous");
+    }
+
+    /** An array name is judged by its element: an exempt internal class's array loads, a blocked class's does not. */
+    @Test
+    public void testForName_arrayOfAnExemptInternalClassLoads() {
+        Class<?> zoneInfo = java.util.TimeZone.getTimeZone("America/New_York").getClass();
+        assertSame(java.lang.reflect.Array.newInstance(zoneInfo, 0).getClass(),
+                ClassUtilities.forName(zoneInfo.getName() + "[]", null));
+        assertFalse(ClassUtilities.SecurityChecker.isSecurityBlockedName(zoneInfo.getName() + "[][]"));
+        assertTrue(ClassUtilities.SecurityChecker.isSecurityBlockedName("java.lang.Runtime[]"));
+        assertTrue(ClassUtilities.SecurityChecker.isSecurityBlockedName("sun.misc.Unsafe[]"));
     }
 
     @Test

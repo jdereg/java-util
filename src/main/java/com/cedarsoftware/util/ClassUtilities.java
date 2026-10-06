@@ -4770,6 +4770,15 @@ public class ClassUtilities {
          * @return true if the class name is blocked, false otherwise
          */
         public static boolean isSecurityBlockedName(String className) {
+            if (className != null && className.endsWith("[]")) {
+                // an array ("x.Y[]", "x.Y[][]") is judged by its element: sun.util.calendar.ZoneInfo is exempt from
+                // the internal-package rule, so its array is too, and java.lang.Runtime[] is blocked here at once
+                int end = className.length();
+                while (end >= 2 && className.charAt(end - 1) == ']' && className.charAt(end - 2) == '[') {
+                    end -= 2;
+                }
+                className = className.substring(0, end);
+            }
             if (hasRuntimeSecurityRules) {
                 if (runtimeUnblockedNames.contains(className)) {
                     return false;

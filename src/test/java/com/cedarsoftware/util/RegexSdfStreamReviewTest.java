@@ -61,7 +61,10 @@ class RegexSdfStreamReviewTest {
 
             // With interrupt-aborting matches, the pool threads are free again — a trivial
             // protected match must succeed. Before the fix this timed out behind the stuck
-            // threads and threw SecurityException.
+            // threads and threw SecurityException. Its budget is a generous one: under a loaded
+            // machine (the full suite) 75 ms was sometimes too little for a trivial match, while
+            // a thread stuck for good still makes it time out.
+            System.setProperty("cedarsoftware.regex.timeout.milliseconds", "5000");
             Pattern simple = RegexUtilities.getCachedPattern("\\d+");
             assertTrue(RegexUtilities.safeMatches(simple, "12345"));
             assertEquals("x-y", RegexUtilities.safeReplaceAll(RegexUtilities.getCachedPattern("\\s+"), "x y", "-"));

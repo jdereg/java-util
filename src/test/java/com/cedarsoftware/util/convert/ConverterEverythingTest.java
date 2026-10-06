@@ -4352,8 +4352,8 @@ class ConverterEverythingTest {
                 {1f, 1L},
                 {1.1f, 1L},
                 {1.999f, 1L},
-                {-214748368f, -214748368L},    // large representable -float
-                {214748368f, 214748368L},      // large representable +float
+                {-214748368f, -214748370L},    // large -float: the decimal it prints, -2.1474837E8
+                {214748368f, 214748370L},      // large +float: the decimal it prints, 2.1474837E8
         });
         TEST_DB.put(pair(Double.class, Long.class), new Object[][]{
                 {-1.0, -1L},
@@ -4592,8 +4592,8 @@ class ConverterEverythingTest {
                 {1f, 1},
                 {1.1f, 1},
                 {1.999f, 1},
-                {-214748368f, -214748368},    // large representable -float
-                {214748368f, 214748368},      // large representable +float
+                {-214748368f, -214748370},    // large -float: the decimal it prints, -2.1474837E8
+                {214748368f, 214748370},      // large +float: the decimal it prints, 2.1474837E8
         });
         TEST_DB.put(pair(Double.class, Integer.class), new Object[][]{
                 {-1.0, -1},

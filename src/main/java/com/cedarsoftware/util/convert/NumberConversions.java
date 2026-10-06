@@ -125,8 +125,10 @@ final class NumberConversions {
         long value;
         if (from instanceof Long || from instanceof Integer) {          // the common sources first
             value = ((Number) from).longValue();
-        } else if (from instanceof Double || from instanceof Float) {
-            value = wholeLong(((Number) from).doubleValue(), from, type, min, max);
+        } else if (from instanceof Double) {
+            value = wholeLong((Double) from, from, type, min, max);
+        } else if (from instanceof Float) {
+            value = wholeLong((float) (Float) from, from, type, min, max);
         } else if (from instanceof BigDecimal) {
             value = wholeLong((BigDecimal) from, from, type, min, max);
         } else if (from instanceof BigInteger) {
@@ -155,6 +157,26 @@ final class NumberConversions {
             throw outOfRange(from, type, min, max);
         }
         return (long) d;
+    }
+
+    /**
+     * {@code f} as the decimal it prints, truncated toward zero, if finite and within a long: 1.5e10f is 15000000000,
+     * not 15000000512 (its binary value), as BigDecimal and String take it. Below 2^24 every whole float is exact and
+     * the cast is that number.
+     */
+    static long wholeLong(float f, Object from, String type, long min, long max) {
+        if (f > -0x1p24f && f < 0x1p24f) {
+            return (long) f;
+        }
+        double d = f;
+        if (Double.isNaN(d)) {
+            throw new IllegalArgumentException("Unable to convert " + shown(from) + " to " + type
+                    + ": it is not a number");
+        }
+        if (!(d >= -0x1p63 && d < 0x1p63)) {      // infinite, or beyond a long
+            throw outOfRange(from, type, min, max);
+        }
+        return FloatDecimal.printedLong(f);
     }
 
     /** {@code b} as a long, if it fits one. */
@@ -295,10 +317,22 @@ final class NumberConversions {
      * 3.7f arrived as 3.700000047683716 rather than 3.7.
      */
     static BigDecimal floatToBigDecimal(Object from, Converter converter) {
-        return new BigDecimal(from.toString());
+        float f = (Float) from;
+        if (Float.isNaN(f) || Float.isInfinite(f)) {
+            return new BigDecimal(from.toString());     // throws NumberFormatException, as before
+        }
+        return FloatDecimal.printedDecimal(f);          // the JDK 19 decimal on every JDK (JDK 8 printed 19 longer)
     }
 
     static BigInteger floatingPointToBigInteger(Object from, Converter converter) {
+        if (from instanceof Float) {
+            float f = (Float) from;
+            if (Float.isNaN(f) || Float.isInfinite(f)) {
+                throw new IllegalArgumentException("Cannot convert " + f + " to BigInteger");
+            }
+            // the decimal the float prints (3.4e38f is 3.4E38): widened to a double first, it took the double's digits
+            return FloatDecimal.printedDecimal(f).toBigInteger();
+        }
         double d = toDouble(from, converter);
         if (Double.isNaN(d) || Double.isInfinite(d)) {
             throw new IllegalArgumentException("Cannot convert " + d + " to BigInteger");

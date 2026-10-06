@@ -1,5 +1,6 @@
 package com.cedarsoftware.util.internal;
 
+import java.math.BigDecimal;
 import java.math.BigInteger;
 
 import com.cedarsoftware.util.fastdoubleparser.FastDoubleMath;
@@ -102,6 +103,52 @@ public final class FloatDecimal {
             return w;
         }
         return valueOf(f);
+    }
+
+    /**
+     * The decimal a float prints (what Float.toString prints from JDK 19 on), exactly, on every JDK: 3.4e38f is
+     * 3.4E+38 and 1.5e10f is 1.5E+10. Zero is 0. For a finite float.
+     */
+    public static BigDecimal printedDecimal(float f) {
+        if (f == 0) {
+            return BigDecimal.valueOf(0, 1);                        // "0.0"
+        }
+        long decimal = decimal(f);
+        long significand = decimal >>> 8;
+        int exponent = (int) (decimal & 0xFF) - 128;
+        BigDecimal value = BigDecimal.valueOf(f < 0 ? -significand : significand, -exponent).stripTrailingZeros();
+        // the scale new BigDecimal(Float.toString(f)) has: plain notation (10^-3 <= |f| < 10^7) shows at least one
+        // fraction digit ("3.0"); scientific notation at least two significant digits ("1.0E10")
+        int leading = value.precision() - value.scale() - 1;        // the decimal exponent of the leading digit
+        if (leading >= -3 && leading < 7) {
+            return value.scale() < 1 ? value.setScale(1) : value;
+        }
+        return value.precision() < 2 ? value.setScale(value.scale() + 1) : value;
+    }
+
+    private static final long[] POW10 = {1L, 10L, 100L, 1_000L, 10_000L, 100_000L, 1_000_000L, 10_000_000L,
+            100_000_000L, 1_000_000_000L, 10_000_000_000L, 100_000_000_000L, 1_000_000_000_000L,
+            10_000_000_000_000L, 100_000_000_000_000L, 1_000_000_000_000_000L, 10_000_000_000_000_000L,
+            100_000_000_000_000_000L, 1_000_000_000_000_000_000L};
+
+    /**
+     * The decimal a float prints, truncated toward zero, as a long, without a BigDecimal: printedDecimal(f) as a long.
+     * For a finite float of magnitude below 2^63, whose printed decimal is then below 2^63 too.
+     */
+    public static long printedLong(float f) {
+        if (f == 0) {
+            return 0L;
+        }
+        long decimal = decimal(f);
+        long significand = decimal >>> 8;
+        int exponent = (int) (decimal & 0xFF) - 128;
+        long magnitude;
+        if (exponent >= 0) {
+            magnitude = significand * POW10[exponent];               // below 2^63, as f is
+        } else {
+            magnitude = -exponent < POW10.length ? significand / POW10[-exponent] : 0L;
+        }
+        return f < 0 ? -magnitude : magnitude;
     }
 
     /**

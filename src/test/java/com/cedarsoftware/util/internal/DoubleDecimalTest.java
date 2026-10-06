@@ -181,4 +181,41 @@ class DoubleDecimalTest {
             assertEquals(e[1], DoubleDecimal.toString(Double.parseDouble(e[0])), e[0]);
         }
     }
+
+    /**
+     * printedLong(v, scale) and printedNanos(v) are the printed decimal scaled and its fraction in nanoseconds, as
+     * BigDecimal computes them from printedDecimal (whose decimal the tests above check against the specification).
+     */
+    @Test
+    void scaledLongAndNanosAreThePrintedDecimals() {
+        SplittableRandom r = new SplittableRandom(31);
+        for (int i = 0; i < 200_000; i++) {
+            double v;
+            switch (i % 4) {
+                case 0: v = (r.nextDouble() - 0.5) * 4e9; break;                       // epoch seconds, now-ish
+                case 1: v = r.nextLong(-10_000_000_000L, 10_000_000_000L) / 1000.0; break;  // milliseconds as seconds
+                case 2: v = (r.nextDouble() - 0.5) * Math.pow(10, r.nextInt(-12, 15)); break;
+                default: v = Double.parseDouble((r.nextBoolean() ? "-" : "") + r.nextInt(100_000) + "."
+                        + r.nextInt(1_000_000_000) + r.nextInt(10)); break;           // ten fraction digits
+            }
+            BigDecimal decimal = DoubleDecimal.printedDecimal(v);
+            for (int scale : new int[] {0, 3, 6, 9}) {
+                if (decimal.abs().movePointRight(scale).compareTo(BigDecimal.valueOf(0x1p62)) < 0) {
+                    assertEquals(decimal.movePointRight(scale).longValue(), DoubleDecimal.printedLong(v, scale),
+                            v + " scale " + scale);
+                }
+            }
+            BigDecimal whole = new BigDecimal(decimal.toBigInteger());
+            int nanos = decimal.subtract(whole).movePointRight(9).setScale(0, RoundingMode.HALF_UP).intValueExact();
+            assertEquals(nanos, DoubleDecimal.printedNanos(v), String.valueOf(v));
+        }
+        assertEquals(1001L, DoubleDecimal.printedLong(1.001, 3));             // times 1000: 1000.9999999999999
+        assertEquals(-64100L, DoubleDecimal.printedLong(-64.1, 3));            // times 1000: -64099.99999999999
+        assertEquals(123_000_000, DoubleDecimal.printedNanos(1700000000.123));  // binary fraction 0.12299990654
+        assertEquals(-500_000_000, DoubleDecimal.printedNanos(-1.5));
+        assertEquals(1_000_000_000, DoubleDecimal.printedNanos(0.9999999996));
+        assertEquals(0, DoubleDecimal.printedNanos(1.0E-10));
+        assertEquals(1, DoubleDecimal.printedNanos(5.0E-10));
+        assertEquals(0, DoubleDecimal.printedNanos(1e300));
+    }
 }

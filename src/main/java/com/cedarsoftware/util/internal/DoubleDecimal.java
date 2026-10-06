@@ -158,6 +158,59 @@ public final class DoubleDecimal {
     }
 
     /**
+     * The decimal a double prints times 10^scale, truncated toward zero, as a long: 1.001 with scale 3 is 1001
+     * (multiplying the double by 1000 gives 1000.9999999999999). printedDecimal(v).movePointRight(scale).longValue()
+     * without a BigDecimal. For a finite double and a scale from 0 to 18 whose scaled decimal is below 2^62 in
+     * magnitude.
+     */
+    public static long printedLong(double v, int scale) {
+        if (scale == 0) {
+            return printedLong(v);
+        }
+        long bits = Double.doubleToRawLongBits(v);
+        long magnitude = bits & MASK_63;
+        if (magnitude == 0) {
+            return 0L;
+        }
+        return PrintedDecimal.toLong(bits < 0, digits(magnitude), exponent(magnitude) + scale);
+    }
+
+    /**
+     * The fraction of the decimal a double prints, beyond its whole part, in nanoseconds (10^-9 of a unit), rounded to
+     * the nearest (a half away from zero), with the double's sign: 1700000000.123 is 123000000 (its binary fraction is
+     * 0.12299990654...), -1.5 is -500000000, 1.0E-10 is 0. A fraction that rounds up to a whole unit is 1000000000.
+     * For a finite double.
+     */
+    public static int printedNanos(double v) {
+        long bits = Double.doubleToRawLongBits(v);
+        long magnitude = bits & MASK_63;
+        if (magnitude == 0) {
+            return 0;
+        }
+        int exponent = exponent(magnitude);
+        if (exponent >= 0) {
+            return 0;                                               // a whole number
+        }
+        long digits = digits(magnitude);
+        int fractionDigits = -exponent;
+        long[] pow10 = PrintedDecimal.POW10;
+        long fraction = fractionDigits < pow10.length ? digits % pow10[fractionDigits] : digits;
+        long nanos;
+        if (fractionDigits <= 9) {
+            nanos = fraction * pow10[9 - fractionDigits];
+        } else if (fractionDigits - 9 < pow10.length) {
+            long unit = pow10[fractionDigits - 9];
+            nanos = fraction / unit;
+            if ((fraction - nanos * unit) * 2 >= unit) {
+                nanos++;
+            }
+        } else {
+            nanos = 0;                                              // below half a nanosecond (digits < 10^18)
+        }
+        return bits < 0 ? (int) -nanos : (int) nanos;
+    }
+
+    /**
      * The digits of the decimal a positive, finite double of these bits prints: the decimal is
      * digits 10^exponent(bits). Trailing zeros may remain.
      */

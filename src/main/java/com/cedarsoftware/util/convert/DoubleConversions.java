@@ -1,5 +1,6 @@
 package com.cedarsoftware.util.convert;
 
+import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.time.DateTimeException;
 import java.time.Duration;
@@ -12,6 +13,8 @@ import java.time.OffsetTime;
 import java.time.ZonedDateTime;
 import java.util.Calendar;
 import java.util.Date;
+
+import com.cedarsoftware.util.internal.DoubleDecimal;
 
 /**
  * @author John DeRegnaucourt (jdereg@gmail.com)
@@ -37,28 +40,47 @@ final class DoubleConversions {
         return toInstant(from, "Instant");
     }
 
-    /** {@code from} seconds as an Instant, for a conversion to {@code type}; NaN, infinity or out of range refused. */
+    /**
+     * {@code from} seconds as an Instant, for a conversion to {@code type}; NaN, infinity or out of range refused. The
+     * seconds are the decimal the double prints, to the nearest nanosecond: 1700000000.123 is .123, where its binary
+     * fraction gave .122999907.
+     */
     private static Instant toInstant(Object from, String type) {
         double d = (Double) from;
-        long seconds = NumberConversions.timeUnits(d, from, type);
-        // Calculate nanoseconds by taking the fractional part of the double and multiplying by 1_000_000_000,
-        // rounding to the nearest long to maintain precision.
-        long nanos = Math.round((d - seconds) * 1_000_000_000);
+        long seconds = units(d, 0, from, type);
         try {
-            return Instant.ofEpochSecond(seconds, nanos);
+            return Instant.ofEpochSecond(seconds, DoubleDecimal.printedNanos(d));
         } catch (DateTimeException | ArithmeticException e) {
             throw NumberConversions.outsideTimeRange(from, type);
         }
     }
 
+    /**
+     * {@code seconds} in whole seconds (scale 0) or milliseconds (scale 3), truncated toward zero, taken from the
+     * decimal the double prints (1.001 seconds is 1001 milliseconds; the double times 1000 is 1000.9999999999999,
+     * and 741 of the first 100,000 millisecond values lost one that way); NaN, infinity or beyond a long refused.
+     */
+    private static long units(double seconds, int scale, Object from, String type) {
+        double scaled = scale == 0 ? seconds : seconds * 1000.0;
+        long binary = NumberConversions.timeUnits(scaled, from, type);    // NaN, infinity, beyond a long: refused
+        if (scaled > -0x1p62 && scaled < 0x1p62) {
+            return DoubleDecimal.printedLong(seconds, scale);
+        }
+        // Near a long's ends: the decimal, unless only the double's own value fits -- Date(Long.MIN_VALUE) as seconds
+        // is -9.223372036854776E15, whose decimal in milliseconds is just past a long; it comes back, as -2^63 does
+        // to Long
+        BigDecimal decimal = DoubleDecimal.printedDecimal(seconds).movePointRight(scale);
+        long wholeDigits = (long) decimal.precision() - decimal.scale();
+        return wholeDigits <= 19 && decimal.toBigInteger().bitLength() <= 63 ? decimal.longValue() : binary;
+    }
+
     static Date toDate(Object from, Converter converter) {
-        double d = (Double) from;
-        return new Date(NumberConversions.timeUnits(d * 1000, from, "Date"));
+        return new Date(units((Double) from, 3, from, "Date"));
     }
 
     static java.sql.Date toSqlDate(Object from, Converter converter) {
         double seconds = (Double) from;
-        long whole = NumberConversions.timeUnits(seconds, from, "java.sql.Date");   // whole seconds, as before
+        long whole = units(seconds, 0, from, "java.sql.Date");          // whole seconds, as before
         Instant instant;
         try {
             instant = Instant.ofEpochSecond(whole);
@@ -69,8 +91,7 @@ final class DoubleConversions {
     }
 
     static Calendar toCalendar(Object from, Converter converter) {
-        double seconds = (double) from;
-        long epochMillis = NumberConversions.timeUnits(seconds * 1000, from, "Calendar");
+        long epochMillis = units((Double) from, 3, from, "Calendar");
         Calendar calendar = Calendar.getInstance(converter.getOptions().getTimeZone());
         calendar.clear();
         calendar.setTimeInMillis(epochMillis);
@@ -82,9 +103,11 @@ final class DoubleConversions {
         if (Double.isNaN(seconds)) {      // Math.round(NaN) is 0: midnight
             NumberConversions.timeUnits(seconds, from, "LocalTime");
         }
-        // rounded to the nearest nanosecond, as toInstant does (truncating made 1.001 s 00:00:01.000999999); a value
-        // within half a nanosecond of midnight is the day's last nanosecond, not 24:00
-        long nanos = Math.round(seconds * 1_000_000_000.0);
+        // the decimal it prints, to the nearest nanosecond, as toInstant does (truncating made 1.001 s
+        // 00:00:01.000999999); a value within half a nanosecond of midnight is the day's last nanosecond, not 24:00
+        long nanos = seconds >= 0 && seconds < 86_400.0
+                ? DoubleDecimal.printedLong(seconds) * 1_000_000_000L + DoubleDecimal.printedNanos(seconds)
+                : Math.round(seconds * 1_000_000_000.0);                // out of range: refused below
         if (nanos == 86_400_000_000_000L && seconds < 86_400.0) {
             nanos--;
         }
@@ -110,9 +133,8 @@ final class DoubleConversions {
 
     static OffsetTime toOffsetTime(Object from, Converter converter) {
         double seconds = (double) from;
-        long wholeSecs = NumberConversions.timeUnits(seconds, from, "OffsetTime");  // whole number of seconds
-        double frac = seconds - wholeSecs;  // gets just the fractional part
-        long nanos = Math.round(frac * 1_000_000_000.0);  // fraction to nanos, rounded as toInstant does
+        long wholeSecs = units(seconds, 0, from, "OffsetTime");        // whole seconds of the decimal it prints
+        long nanos = DoubleDecimal.printedNanos(seconds);               // its fraction, to the nearest nanosecond
 
         try {
             Instant instant = Instant.ofEpochSecond(wholeSecs, nanos);
@@ -133,9 +155,9 @@ final class DoubleConversions {
     
     static Duration toDuration(Object from, Converter converter) {
         double d = (Double) from;
-        // Separate whole seconds and nanoseconds
-        long seconds = NumberConversions.timeUnits(d, from, "Duration");
-        long nanoAdjustment = Math.round((d - seconds) * 1_000_000_000L);    // rounded, as toInstant does
+        // whole seconds and nanoseconds of the decimal it prints, rounded to the nanosecond as toInstant does
+        long seconds = units(d, 0, from, "Duration");
+        long nanoAdjustment = DoubleDecimal.printedNanos(d);
         try {
             return Duration.ofSeconds(seconds, nanoAdjustment);
         } catch (ArithmeticException e) {

@@ -1,10 +1,13 @@
 package com.cedarsoftware.util;
 
+import java.io.Serializable;
 import java.util.AbstractMap;
 import java.util.AbstractSet;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.NavigableSet;
 import java.util.Set;
@@ -43,8 +46,9 @@ import java.util.concurrent.atomic.AtomicLong;
  *         limitations under the License.
  */
 public class ConcurrentNavigableMapNullSafe<K, V> extends AbstractConcurrentNullSafeMap<K, V>
-        implements ConcurrentNavigableMap<K, V> {
+        implements ConcurrentNavigableMap<K, V>, Serializable {
 
+    private static final long serialVersionUID = 1L;
     private final Comparator<? super K> originalComparator;
     private final ConcurrentNavigableMap<Object, Object> navigableMap;
     private final boolean descendingView;
@@ -628,5 +632,50 @@ public class ConcurrentNavigableMapNullSafe<K, V> extends AbstractConcurrentNull
         K key = unmaskNullKey(internalEntry.getKey());
         V value = unmaskNullValue(internalEntry.getValue());
         return new AbstractMap.SimpleImmutableEntry<>(key, value);
+    }
+
+    /**
+     * Serializable as ConcurrentSkipListMap is: written as its entries, in order, with real nulls, and its comparator
+     * (which must be Serializable, as for TreeMap); read back through the public constructor. A descending view comes
+     * back as a descending view of a copy, a range view as a copy of the entries it holds (without its bounds).
+     */
+    private Object writeReplace() {
+        return new SerializedForm(originalComparator, descendingView, this);
+    }
+
+    // Never read directly: the stream holds a SerializedForm (a crafted stream naming this class is refused).
+    private void readObject(java.io.ObjectInputStream in) throws java.io.InvalidObjectException {
+        throw new java.io.InvalidObjectException("Written as its SerializedForm");
+    }
+
+    private static final class SerializedForm implements Serializable {
+        private static final long serialVersionUID = 1L;
+        private final Comparator<?> comparator;
+        private final boolean descending;
+        private final Object[] keys;
+        private final Object[] values;
+
+        SerializedForm(Comparator<?> comparator, boolean descending, Map<?, ?> map) {
+            this.comparator = comparator;
+            this.descending = descending;
+            List<Object> k = new ArrayList<>();
+            List<Object> v = new ArrayList<>();
+            for (Map.Entry<?, ?> entry : map.entrySet()) {
+                k.add(entry.getKey());
+                v.add(entry.getValue());
+            }
+            keys = k.toArray();
+            values = v.toArray();
+        }
+
+        @SuppressWarnings({"unchecked", "rawtypes"})
+        private Object readResolve() {
+            ConcurrentNavigableMapNullSafe<Object, Object> map =
+                    new ConcurrentNavigableMapNullSafe<>((Comparator) comparator);
+            for (int i = 0; i < keys.length; i++) {
+                map.put(keys[i], values[i]);
+            }
+            return descending ? map.descendingMap() : map;
+        }
     }
 }

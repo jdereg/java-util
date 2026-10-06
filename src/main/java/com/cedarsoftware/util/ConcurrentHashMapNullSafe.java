@@ -1,5 +1,8 @@
 package com.cedarsoftware.util;
 
+import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -59,7 +62,9 @@ import java.util.concurrent.ConcurrentHashMap;
  * @see ConcurrentHashMap
  * @see AbstractConcurrentNullSafeMap
  */
-public final class ConcurrentHashMapNullSafe<K, V> extends AbstractConcurrentNullSafeMap<K, V> {
+public final class ConcurrentHashMapNullSafe<K, V> extends AbstractConcurrentNullSafeMap<K, V> implements Serializable {
+    private static final long serialVersionUID = 1L;
+
     /**
      * Constructs a new, empty {@code ConcurrentHashMapNullSafe} with the default initial capacity (16)
      * and load factor (0.75).
@@ -129,6 +134,41 @@ public final class ConcurrentHashMapNullSafe<K, V> extends AbstractConcurrentNul
         putAll(m);
     }
 
-    // No need to override any methods from AbstractConcurrentNullSafeMap
-    // as all required functionalities are already inherited.
+    /**
+     * Serializable as ConcurrentHashMap is: written as its entries, with real nulls (the placeholders that stand for
+     * null inside are never written), and read back through the public constructor.
+     */
+    private Object writeReplace() {
+        return new SerializedForm(this);
+    }
+
+    // Never read directly: the stream holds a SerializedForm (a crafted stream naming this class is refused).
+    private void readObject(java.io.ObjectInputStream in) throws java.io.InvalidObjectException {
+        throw new java.io.InvalidObjectException("Written as its SerializedForm");
+    }
+
+    private static final class SerializedForm implements Serializable {
+        private static final long serialVersionUID = 1L;
+        private final Object[] keys;
+        private final Object[] values;
+
+        SerializedForm(Map<?, ?> map) {
+            List<Object> k = new ArrayList<>();
+            List<Object> v = new ArrayList<>();
+            for (Map.Entry<?, ?> entry : map.entrySet()) {
+                k.add(entry.getKey());
+                v.add(entry.getValue());
+            }
+            keys = k.toArray();
+            values = v.toArray();
+        }
+
+        private Object readResolve() {
+            ConcurrentHashMapNullSafe<Object, Object> map = new ConcurrentHashMapNullSafe<>(Math.max(16, keys.length));
+            for (int i = 0; i < keys.length; i++) {
+                map.put(keys[i], values[i]);
+            }
+            return map;
+        }
+    }
 }

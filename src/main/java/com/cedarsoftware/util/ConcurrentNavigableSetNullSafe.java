@@ -1,7 +1,9 @@
 package com.cedarsoftware.util;
 
+import java.io.Serializable;
 import java.util.AbstractSet;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.NavigableSet;
@@ -31,11 +33,13 @@ import java.util.concurrent.ConcurrentSkipListSet;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class ConcurrentNavigableSetNullSafe<E> extends AbstractSet<E> implements NavigableSet<E> {
+public class ConcurrentNavigableSetNullSafe<E> extends AbstractSet<E> implements NavigableSet<E>, Serializable {
 
+    private static final long serialVersionUID = 1L;
     private final NavigableSet<Object> internalSet;
     private final Comparator<? super E> originalComparator;
     private final Comparator<? super E> viewComparator;
+    private final boolean descending;           // a descending view: iterates opposite to originalComparator
     private volatile boolean comparatorRejectsNulls;
     // Use a unique Object instance as sentinel - cannot collide with user data
     // and identity comparison (==) is used for detection
@@ -49,6 +53,7 @@ public class ConcurrentNavigableSetNullSafe<E> extends AbstractSet<E> implements
         // Use natural ordering
         this.originalComparator = null;
         this.viewComparator = null;
+        this.descending = false;
         Comparator<Object> comp = wrapComparator(null);
         this.internalSet = new ConcurrentSkipListSet<>(comp);
     }
@@ -62,6 +67,7 @@ public class ConcurrentNavigableSetNullSafe<E> extends AbstractSet<E> implements
     public ConcurrentNavigableSetNullSafe(Comparator<? super E> comparator) {
         this.originalComparator = comparator;
         this.viewComparator = comparator;
+        this.descending = false;
         Comparator<Object> comp = wrapComparator(comparator);
         this.internalSet = new ConcurrentSkipListSet<>(comp);
     }
@@ -76,6 +82,7 @@ public class ConcurrentNavigableSetNullSafe<E> extends AbstractSet<E> implements
         // Use natural ordering
         this.originalComparator = null;
         this.viewComparator = null;
+        this.descending = false;
         Comparator<Object> comp = wrapComparator(null);
         this.internalSet = new ConcurrentSkipListSet<>(comp);
         this.addAll(c); // Ensure masking of null elements
@@ -93,15 +100,18 @@ public class ConcurrentNavigableSetNullSafe<E> extends AbstractSet<E> implements
     public ConcurrentNavigableSetNullSafe(Collection<? extends E> c, Comparator<? super E> comparator) {
         this.originalComparator = comparator;
         this.viewComparator = comparator;
+        this.descending = false;
         Comparator<Object> comp = wrapComparator(comparator);
         this.internalSet = new ConcurrentSkipListSet<>(comp);
         this.addAll(c); // Ensure masking of null elements
     }
 
-    private ConcurrentNavigableSetNullSafe(NavigableSet<Object> internalSet, Comparator<? super E> comparator, Comparator<? super E> viewComparator) {
+    private ConcurrentNavigableSetNullSafe(NavigableSet<Object> internalSet, Comparator<? super E> comparator,
+                                           Comparator<? super E> viewComparator, boolean descending) {
         this.internalSet = internalSet;
         this.originalComparator = comparator;
         this.viewComparator = viewComparator;
+        this.descending = descending;
     }
     
     /**
@@ -256,7 +266,8 @@ public class ConcurrentNavigableSetNullSafe<E> extends AbstractSet<E> implements
     @Override
     public NavigableSet<E> descendingSet() {
         NavigableSet<Object> descendingInternalSet = internalSet.descendingSet();
-        return new ConcurrentNavigableSetNullSafe<>(descendingInternalSet, originalComparator, createViewComparator(descendingInternalSet));
+        return new ConcurrentNavigableSetNullSafe<>(descendingInternalSet, originalComparator,
+                createViewComparator(descendingInternalSet), !descending);
     }
 
     @Override
@@ -286,20 +297,20 @@ public class ConcurrentNavigableSetNullSafe<E> extends AbstractSet<E> implements
         Object maskedTo = maskNull(toElement);
 
         NavigableSet<Object> subInternal = internalSet.subSet(maskedFrom, fromInclusive, maskedTo, toInclusive);
-        return new ConcurrentNavigableSetNullSafe<>(subInternal, originalComparator, viewComparator);
+        return new ConcurrentNavigableSetNullSafe<>(subInternal, originalComparator, viewComparator, descending);
     }
 
 
     @Override
     public NavigableSet<E> headSet(E toElement, boolean inclusive) {
         NavigableSet<Object> headInternal = internalSet.headSet(maskNull(toElement), inclusive);
-        return new ConcurrentNavigableSetNullSafe<>(headInternal, originalComparator, viewComparator);
+        return new ConcurrentNavigableSetNullSafe<>(headInternal, originalComparator, viewComparator, descending);
     }
 
     @Override
     public NavigableSet<E> tailSet(E fromElement, boolean inclusive) {
         NavigableSet<Object> tailInternal = internalSet.tailSet(maskNull(fromElement), inclusive);
-        return new ConcurrentNavigableSetNullSafe<>(tailInternal, originalComparator, viewComparator);
+        return new ConcurrentNavigableSetNullSafe<>(tailInternal, originalComparator, viewComparator, descending);
     }
 
     @Override
@@ -380,5 +391,39 @@ public class ConcurrentNavigableSetNullSafe<E> extends AbstractSet<E> implements
             return null;
         }
         return (a, b) -> comparator.compare(maskNull(a), maskNull(b));
+    }
+
+    /**
+     * Serializable as ConcurrentSkipListSet is: written as its elements, in order, with a real null, and its comparator
+     * (which must be Serializable, as for TreeSet); read back through the public constructor. A descending view comes
+     * back as a descending view of a copy, a range view as a copy of the elements it holds (without its bounds).
+     */
+    private Object writeReplace() {
+        return new SerializedForm(originalComparator, descending, toArray());
+    }
+
+    // Never read directly: the stream holds a SerializedForm (a crafted stream naming this class is refused).
+    private void readObject(java.io.ObjectInputStream in) throws java.io.InvalidObjectException {
+        throw new java.io.InvalidObjectException("Written as its SerializedForm");
+    }
+
+    private static final class SerializedForm implements Serializable {
+        private static final long serialVersionUID = 1L;
+        private final Comparator<?> comparator;
+        private final boolean descending;
+        private final Object[] elements;
+
+        SerializedForm(Comparator<?> comparator, boolean descending, Object[] elements) {
+            this.comparator = comparator;
+            this.descending = descending;
+            this.elements = elements;
+        }
+
+        @SuppressWarnings({"unchecked", "rawtypes"})
+        private Object readResolve() {
+            ConcurrentNavigableSetNullSafe<Object> set = new ConcurrentNavigableSetNullSafe<>((Comparator) comparator);
+            Collections.addAll(set, elements);
+            return descending ? set.descendingSet() : set;
+        }
     }
 }

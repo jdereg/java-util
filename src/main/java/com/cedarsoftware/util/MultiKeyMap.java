@@ -36,6 +36,7 @@ import java.util.function.ToLongFunction;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import com.cedarsoftware.util.internal.DoubleDecimal;
 import com.cedarsoftware.util.internal.FloatDecimal;
 
 /**
@@ -3162,17 +3163,18 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     
     /**
      * A finite number as a BigDecimal. A whole float or double is its exact integer, as it is against a long;
-     * a double with a fraction is the decimal it prints (0.1d is BigDecimal("0.1"), not new BigDecimal(0.1)), and
-     * a float is first the double of its value (floatValue). A whole double was converted through its printed
-     * decimal too, so 2^60 became ...980 -- not the 2^60 a long equals -- and hashed apart from it; a float was
-     * converted through its own printed decimal while it compared with doubles as its binary value.
+     * a double with a fraction is the decimal it prints (0.1d is BigDecimal("0.1"), not new BigDecimal(0.1)), the
+     * one JDK 19 prints, on every JDK (DoubleDecimal); and a float is first the double of its value (floatValue).
+     * A whole double was converted through its printed decimal too, so 2^60 became ...980 -- not the 2^60 a long
+     * equals -- and hashed apart from it; a float was converted through its own printed decimal while it compared
+     * with doubles as its binary value.
      */
     private static BigDecimal toBigDecimal(Number n) {
         if (n instanceof BigDecimal) return (BigDecimal) n;
         if (n instanceof BigInteger) return new BigDecimal((BigInteger) n);
         if (n instanceof Double || n instanceof Float) {
             double d = fpValue(n);
-            return d == Math.rint(d) ? new BigDecimal(d) : new BigDecimal(Double.toString(d));
+            return d == Math.rint(d) ? new BigDecimal(d) : DoubleDecimal.printedDecimal(d);
         }
         return BigDecimal.valueOf(n.longValue());
     }

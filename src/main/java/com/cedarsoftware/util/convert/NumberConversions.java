@@ -21,6 +21,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.DoubleAdder;
 import java.util.concurrent.atomic.LongAdder;
 
+import com.cedarsoftware.util.internal.DoubleDecimal;
 import com.cedarsoftware.util.internal.FloatDecimal;
 
 /**
@@ -92,12 +93,13 @@ final class NumberConversions {
         return CommonValues.FLOAT_ZERO;
     }
     
+    /** The text Float.toString prints from JDK 19 on, on every JDK (JDK 8 printed 9.9E-44f as 1.0E-43). */
     static String floatToString(Object from, Converter converter) {
         float x = (float) from;
         if (Float.floatToRawIntBits(x) == 0) {
             return "0";
         }
-        return from.toString();
+        return FloatDecimal.toString(x);
     }
 
     static double toDouble(Object from, Converter converter) {
@@ -147,8 +149,17 @@ final class NumberConversions {
         return value;
     }
 
-    /** {@code d} truncated toward zero, if it is a finite value within a long. */
+    /**
+     * {@code d} as the decimal it prints, truncated toward zero, if finite and within a long: 2^60 is
+     * 1152921504606847000 (it prints 1.152921504606847E18), as BigDecimal and String take it, and on every JDK the
+     * decimal JDK 19 prints. Below 2^53 every whole double is exact and the cast is that number. -2^63, the double
+     * Long.MIN_VALUE becomes, stays Long.MIN_VALUE: its decimal (-9.223372036854776E18) is just past a long, its value
+     * is not, and a cast, Jackson and Python all give it back.
+     */
     static long wholeLong(double d, Object from, String type, long min, long max) {
+        if (d > -0x1p53 && d < 0x1p53) {
+            return (long) d;
+        }
         if (Double.isNaN(d)) {
             throw new IllegalArgumentException("Unable to convert " + shown(from) + " to " + type
                     + ": it is not a number");
@@ -156,7 +167,7 @@ final class NumberConversions {
         if (!(d >= -0x1p63 && d < 0x1p63)) {      // infinite, or beyond a long
             throw outOfRange(from, type, min, max);
         }
-        return (long) d;
+        return d == -0x1p63 ? Long.MIN_VALUE : DoubleDecimal.printedLong(d);
     }
 
     /**
@@ -283,12 +294,13 @@ final class NumberConversions {
         return CommonValues.DOUBLE_ZERO;
     }
 
+    /** The text Double.toString prints from JDK 19 on, on every JDK (JDK 8 printed 1.0E23 as 9.999999999999999E22). */
     static String doubleToString(Object from, Converter converter) {
         double x = (double) from;
         if (Double.doubleToRawLongBits(x) == 0L) {
             return "0";
         }
-        return from.toString();
+        return DoubleDecimal.toString(x);
     }
 
     static BigDecimal integerTypeToBigDecimal(Object from, Converter converter) {
@@ -307,8 +319,13 @@ final class NumberConversions {
         return new AtomicInteger(toInt(from, converter));
     }
     
+    /** A Double as the decimal it prints (0.1 is 0.1), the one JDK 19 prints, on every JDK. */
     static BigDecimal floatingPointToBigDecimal(Object from, Converter converter) {
-        return BigDecimal.valueOf(toDouble(from, converter));
+        double d = toDouble(from, converter);
+        if (Double.isNaN(d) || Double.isInfinite(d)) {
+            return BigDecimal.valueOf(d);                   // throws NumberFormatException, as before
+        }
+        return DoubleDecimal.printedDecimal(d);
     }
 
     /**
@@ -337,9 +354,9 @@ final class NumberConversions {
         if (Double.isNaN(d) || Double.isInfinite(d)) {
             throw new IllegalArgumentException("Cannot convert " + d + " to BigInteger");
         }
-        // The whole part of the value as Java prints it (as String.format("%.0f") did, without its locale's digits:
-        // under ar-SA those are not ASCII, and parsing them threw)
-        return BigDecimal.valueOf(d).toBigInteger();
+        // The whole part of the decimal it prints, the one JDK 19 prints, on every JDK (as String.format("%.0f") did,
+        // without its locale's digits: under ar-SA those are not ASCII, and parsing them threw)
+        return DoubleDecimal.printedDecimal(d).toBigInteger();
     }
 
     static boolean isIntTypeNotZero(Object from, Converter converter) {

@@ -1,5 +1,7 @@
 package com.cedarsoftware.util.internal;
 
+import java.math.BigDecimal;
+
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -62,6 +64,8 @@ class FloatDecimalTest {
             float f = Float.intBitsToFloat(Integer.parseUnsignedInt(e[0], 16));
             assertEquals(Double.parseDouble(e[1]), FloatDecimal.valueOf(f), e[1]);
             assertEquals(-Double.parseDouble(e[1]), FloatDecimal.valueOf(-f), "-" + e[1]);
+            assertEquals(e[1], FloatDecimal.toString(f));
+            assertEquals("-" + e[1], FloatDecimal.toString(-f));
         }
     }
 
@@ -85,6 +89,37 @@ class FloatDecimalTest {
             check(-f);
             check(Math.nextUp(f));
             check(Math.nextDown(f));
+        }
+    }
+
+    /**
+     * toString prints what Float.toString prints from JDK 19 on: it reads back as the float, printedDecimal is its
+     * BigDecimal, and on JDK 19+ it is Float.toString's text. All 4,278,190,080 finite floats were compared once with
+     * Float.toString on JDK 21, with no difference.
+     */
+    @Test
+    void toStringAcrossAllBitPatterns() {
+        char[] buf = new char[DoubleDecimal.MAX_CHARS + 2];
+        for (long bits = 0; bits <= 0xFFFFFFFFL; bits += 997) {
+            float f = Float.intBitsToFloat((int) bits);
+            String text = FloatDecimal.toString(f);
+            assertEquals(text, new String(buf, 2, FloatDecimal.toChars(f, buf, 2) - 2), "toChars at an offset");
+            if (JDK >= 19) {
+                assertEquals(Float.toString(f), text);
+            }
+            if (Float.isFinite(f)) {
+                assertEquals(Float.floatToRawIntBits(f), Float.floatToRawIntBits(Float.parseFloat(text)), text);
+                BigDecimal printed = FloatDecimal.printedDecimal(f);
+                BigDecimal parsed = new BigDecimal(text);
+                assertEquals(parsed.unscaledValue(), printed.unscaledValue(), text);
+                assertEquals(parsed.scale(), printed.scale(), text);
+            }
+        }
+        String[][] expected = {{"0", "0.0"}, {"-0", "-0.0"}, {"1", "1.0"}, {"1E7", "1.0E7"}, {"9999999", "9999999.0"},
+                {"0.001", "0.001"}, {"9.99E-4", "9.99E-4"}, {"3.4028235E38", "3.4028235E38"}, {"1.4E-45", "1.4E-45"},
+                {"0.1", "0.1"}, {"NaN", "NaN"}, {"-Infinity", "-Infinity"}};
+        for (String[] e : expected) {
+            assertEquals(e[1], FloatDecimal.toString(Float.parseFloat(e[0])), e[0]);
         }
     }
 }

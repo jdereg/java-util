@@ -22,10 +22,11 @@ import com.cedarsoftware.util.fastdoubleparser.FastDoubleMath;
  * beyond Clinger's reach (exponent below -22) was checked against Double.parseDouble of the decimal on JDK 21 and
  * JDK 8, with no difference, for it and its negation.
  * <p>
- * MultiKeyMap uses it for a float's value in value-based equality (0.1f is the 0.1 it prints), and Converter for
- * Float to Double. Internal: not part of java-util's API (the package is exported to json-io only). Printing with
- * Float.toString and parsing that cost 35-43 ns per float on JDK 21 (52-54 on JDK 8); this takes about 7-8, and
- * 10 for a float below about 1e-14.
+ * It also gives that decimal as text (on JDK 19+ from Float.toString, which prints the same), as a BigDecimal and
+ * as a long. MultiKeyMap uses it for a float's value in value-based equality (0.1f is the 0.1 it prints), Converter
+ * for Float to every number type and to String, and json-io to write floats. Internal: not part of java-util's API
+ * (the package is exported to json-io only). Printing with Float.toString and parsing that cost 35-43 ns per float
+ * on JDK 21 (52-54 on JDK 8); this takes about 7-8, and 10 for a float below about 1e-14.
  *
  * @author John DeRegnaucourt (jdereg@gmail.com)
  *         <br>
@@ -105,31 +106,52 @@ public final class FloatDecimal {
         return valueOf(f);
     }
 
+    /** What Float.toString prints from JDK 19 on, on every JDK: 1.0E-43 printed on JDK 8 is "9.9E-44". */
+    public static String toString(float f) {
+        if (PrintedDecimal.JDK_PRINTS_IT) {
+            return Float.toString(f);
+        }
+        char[] buf = PrintedDecimal.buffer();
+        return new String(buf, 0, toChars(f, buf, 0));
+    }
+
+    /**
+     * Write what Float.toString prints from JDK 19 on from {@code buf[off]}, which needs room for
+     * {@link DoubleDecimal#MAX_CHARS}. Returns the index after the last character.
+     */
+    public static int toChars(float f, char[] buf, int off) {
+        int bits = Float.floatToRawIntBits(f);
+        int magnitude = bits & 0x7FFFFFFF;
+        if (magnitude >= 0x7F800000) {                              // infinite or NaN
+            String special = magnitude > 0x7F800000 ? "NaN" : bits < 0 ? "-Infinity" : "Infinity";
+            special.getChars(0, special.length(), buf, off);
+            return off + special.length();
+        }
+        if (magnitude == 0) {
+            if (bits < 0) {
+                buf[off++] = '-';
+            }
+            buf[off] = '0';
+            buf[off + 1] = '.';
+            buf[off + 2] = '0';
+            return off + 3;
+        }
+        long decimal = decimal(f);
+        return PrintedDecimal.toChars(bits < 0, decimal >>> 8, (int) (decimal & 0xFF) - 128, buf, off);
+    }
+
     /**
      * The decimal a float prints (what Float.toString prints from JDK 19 on), exactly, on every JDK: 3.4e38f is
-     * 3.4E+38 and 1.5e10f is 1.5E+10. Zero is 0. For a finite float.
+     * 3.4E+38 and 1.5e10f is 1.5E+10, with the scale {@code new BigDecimal(Float.toString(f))} has there. Zero is
+     * 0.0. For a finite float.
      */
     public static BigDecimal printedDecimal(float f) {
         if (f == 0) {
             return BigDecimal.valueOf(0, 1);                        // "0.0"
         }
         long decimal = decimal(f);
-        long significand = decimal >>> 8;
-        int exponent = (int) (decimal & 0xFF) - 128;
-        BigDecimal value = BigDecimal.valueOf(f < 0 ? -significand : significand, -exponent).stripTrailingZeros();
-        // the scale new BigDecimal(Float.toString(f)) has: plain notation (10^-3 <= |f| < 10^7) shows at least one
-        // fraction digit ("3.0"); scientific notation at least two significant digits ("1.0E10")
-        int leading = value.precision() - value.scale() - 1;        // the decimal exponent of the leading digit
-        if (leading >= -3 && leading < 7) {
-            return value.scale() < 1 ? value.setScale(1) : value;
-        }
-        return value.precision() < 2 ? value.setScale(value.scale() + 1) : value;
+        return PrintedDecimal.toBigDecimal(f < 0, decimal >>> 8, (int) (decimal & 0xFF) - 128);
     }
-
-    private static final long[] POW10 = {1L, 10L, 100L, 1_000L, 10_000L, 100_000L, 1_000_000L, 10_000_000L,
-            100_000_000L, 1_000_000_000L, 10_000_000_000L, 100_000_000_000L, 1_000_000_000_000L,
-            10_000_000_000_000L, 100_000_000_000_000L, 1_000_000_000_000_000L, 10_000_000_000_000_000L,
-            100_000_000_000_000_000L, 1_000_000_000_000_000_000L};
 
     /**
      * The decimal a float prints, truncated toward zero, as a long, without a BigDecimal: printedDecimal(f) as a long.
@@ -140,15 +162,7 @@ public final class FloatDecimal {
             return 0L;
         }
         long decimal = decimal(f);
-        long significand = decimal >>> 8;
-        int exponent = (int) (decimal & 0xFF) - 128;
-        long magnitude;
-        if (exponent >= 0) {
-            magnitude = significand * POW10[exponent];               // below 2^63, as f is
-        } else {
-            magnitude = -exponent < POW10.length ? significand / POW10[-exponent] : 0L;
-        }
-        return f < 0 ? -magnitude : magnitude;
+        return PrintedDecimal.toLong(f < 0, decimal >>> 8, (int) (decimal & 0xFF) - 128);
     }
 
     /**
@@ -189,10 +203,10 @@ public final class FloatDecimal {
         int k;
         if (c != C_MIN || q == Q_MIN) {
             cbl = cb - 2;
-            k = flog10pow2(q);
+            k = PrintedDecimal.flog10pow2(q);
         } else {
             cbl = cb - 1;                                           // the interval is narrower below a power of 2
-            k = flog10threeQuartersPow2(q);
+            k = PrintedDecimal.flog10threeQuartersPow2(q);
         }
         int h = q + FLOG2_POW10[k - K_MIN] + 33;
         long g = G1[k - K_MIN] + 1;
@@ -223,34 +237,10 @@ public final class FloatDecimal {
         return ((long) significand << 8) | (exponent + 128);
     }
 
-    /** floor(e log10(2)) */
-    private static int flog10pow2(int e) {
-        return (int) (e * 661_971_961_083L >> 41);
-    }
-
-    /** floor(e log10(2) + log10(3/4)) */
-    private static int flog10threeQuartersPow2(int e) {
-        return (int) (e * 661_971_961_083L - 274_743_187_321L >> 41);
-    }
-
     /** Round to odd of g cp 2^-95. */
     private static int rop(long g, long cp) {
-        long x1 = multiplyHigh(g, cp);
+        long x1 = PrintedDecimal.multiplyHigh(g, cp);
         long vbp = x1 >>> 31;
         return (int) (vbp | ((x1 & MASK_32) + MASK_32) >>> 32);
-    }
-
-    /** The high 64 bits of the 128-bit product x * y (Math.multiplyHigh, which Java 8 lacks). */
-    private static long multiplyHigh(long x, long y) {
-        long x1 = x >> 32;
-        long x2 = x & MASK_32;
-        long y1 = y >> 32;
-        long y2 = y & MASK_32;
-        long z2 = x2 * y2;
-        long t = x1 * y2 + (z2 >>> 32);
-        long z1 = t & MASK_32;
-        long z0 = t >> 32;
-        z1 += x2 * y1;
-        return x1 * y1 + z0 + (z1 >> 32);
     }
 }

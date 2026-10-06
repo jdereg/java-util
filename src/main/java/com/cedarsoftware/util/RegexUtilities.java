@@ -1,5 +1,6 @@
 package com.cedarsoftware.util;
 
+import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -83,14 +84,23 @@ public final class RegexUtilities {
     private static final int MAX_TIMEOUT_THREADS = Math.max(2, Math.min(8, Runtime.getRuntime().availableProcessors()));
     private static final int MAX_TIMEOUT_QUEUE_SIZE = MAX_TIMEOUT_THREADS * 16;
 
+    /**
+     * The most patterns each cache keeps; the least recently used are evicted. They were unbounded, and patterns
+     * compiled from data (the Converter's String to Pattern, json-io reading a Pattern) stayed forever, so a stream of
+     * distinct ones grew memory without limit.
+     */
+    static final int PATTERN_CACHE_CAPACITY = 1000;
+
     // Pattern caches - separate caches for different flag combinations
-    private static final Map<String, Pattern> PATTERN_CACHE = new ConcurrentHashMapNullSafe<>();
-    private static final Map<String, Pattern> PATTERN_CACHE_CI = new ConcurrentHashMapNullSafe<>();
-    private static final Map<PatternCacheKey, Pattern> PATTERN_CACHE_FLAGS = new ConcurrentHashMapNullSafe<>();
+    private static final Map<String, Pattern> PATTERN_CACHE = new LRUCache<>(PATTERN_CACHE_CAPACITY);
+    private static final Map<String, Pattern> PATTERN_CACHE_CI = new LRUCache<>(PATTERN_CACHE_CAPACITY);
+    private static final Map<PatternCacheKey, Pattern> PATTERN_CACHE_FLAGS = new LRUCache<>(PATTERN_CACHE_CAPACITY);
 
     // Invalid pattern tracking to avoid repeated compilation errors
-    private static final Set<String> INVALID_PATTERNS = ConcurrentHashMap.newKeySet();
-    private static final Set<PatternCacheKey> INVALID_PATTERN_KEYS = ConcurrentHashMap.newKeySet();
+    private static final Set<String> INVALID_PATTERNS =
+            Collections.newSetFromMap(new LRUCache<>(PATTERN_CACHE_CAPACITY));
+    private static final Set<PatternCacheKey> INVALID_PATTERN_KEYS =
+            Collections.newSetFromMap(new LRUCache<>(PATTERN_CACHE_CAPACITY));
 
     // Shared bounded executor for regex timeout operations.
     private static final ThreadPoolExecutor REGEX_EXECUTOR = createRegexExecutor();
@@ -201,6 +211,11 @@ public final class RegexUtilities {
             return null;
         }
 
+        Pattern cached = PATTERN_CACHE.get(regex);
+        if (cached != null) {
+            return cached;
+        }
+
         // Check if this pattern is known to be invalid
         if (INVALID_PATTERNS.contains(regex)) {
             return null;
@@ -230,6 +245,11 @@ public final class RegexUtilities {
 
         if (regex == null) {
             return null;
+        }
+
+        Pattern cached = PATTERN_CACHE_CI.get(regex);
+        if (cached != null) {
+            return cached;
         }
 
         // Check if this pattern is known to be invalid
@@ -268,6 +288,10 @@ public final class RegexUtilities {
         }
 
         PatternCacheKey key = new PatternCacheKey(regex, flags);
+        Pattern cached = PATTERN_CACHE_FLAGS.get(key);
+        if (cached != null) {
+            return cached;
+        }
 
         // Check if this pattern is known to be invalid
         if (INVALID_PATTERN_KEYS.contains(key)) {

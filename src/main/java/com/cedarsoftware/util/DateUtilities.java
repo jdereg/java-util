@@ -550,7 +550,9 @@ public final class DateUtilities {
     private static final String tz_Hh_MM_SS = "[+-]\\d{1,2}:\\d{2}:\\d{2}";
     private static final String tz_HHMM = "[+-]\\d{4}";
     private static final String tz_Hh = "[+-]\\d{1,2}";
-    private static final String tzNamedCore = "(?:GMT[+-]\\d{2}:\\d{2}|[A-Za-z][A-Za-z0-9~/._+-]{1,50})";
+    // an offset zone java.time writes ("UTC+05:00", "UT-03:00", "GMT+05:30", "UTC+05:00:30"), or a region / name
+    private static final String tzNamedCore =
+            "(?:(?:GMT|UTC|UT)[+-]\\d{2}:\\d{2}(?::\\d{2})?|[A-Za-z][A-Za-z0-9~/._+-]{1,50})";
     private static final String tzNamed = wsOp + "(?:\\[" + tzNamedCore + "]|" + tzNamedCore + ")";
     private static final String nano = "\\.\\d+";      // past 9 digits, truncated to nanoseconds
 

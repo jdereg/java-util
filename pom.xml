@@ -279,12 +279,23 @@
                 <extensions>true</extensions>
                 <configuration>
                     <instructions>
+                        <!-- internal: for json-io only, as the module descriptor's qualified export; a bundle
+                             wires to it only by asking for friend=json-io (a mandatory attribute) -->
                         <Export-Package>
                             com.cedarsoftware.util,
                             com.cedarsoftware.util.cache,
                             com.cedarsoftware.util.convert,
-                            com.cedarsoftware.util.geom
+                            com.cedarsoftware.util.geom,
+                            com.cedarsoftware.util.internal;friend=json-io;mandatory:=friend
                         </Export-Package>
+                        <!-- Unsafe looks these JDK internals up by name, and copes when they are absent: required,
+                             they kept the bundle from resolving in any OSGi framework (none exports them) -->
+                        <Import-Package>
+                            jdk.internal.reflect;resolution:=optional,
+                            sun.reflect;resolution:=optional,
+                            sun.misc;resolution:=optional,
+                            *
+                        </Import-Package>
                         <DynamicImport-Package>*</DynamicImport-Package>
                     </instructions>
                 </configuration>

@@ -1610,7 +1610,7 @@ public class ClassUtilities {
         
         // Regular class name (not an array)
         if (classLoader != null) {
-            return classLoader.loadClass(name);
+            return loadWith(classLoader, name);
         } else {
             // Use the standard classloader resolution which handles OSGi/JPMS properly
             ClassLoader cl = getClassLoader(ClassUtilities.class);
@@ -1621,12 +1621,62 @@ public class ClassUtilities {
         }
     }
 
+    /**
+     * The JDK's own classes: the bootstrap loader and the platform loader (the extension loader on JDK 8) -- the
+     * system loader's parent, which never sees the application's classpath.
+     */
+    private static final ClassLoader JDK_LOADER = jdkLoader();
+
+    private static ClassLoader jdkLoader() {
+        try {
+            ClassLoader system = ClassLoader.getSystemClassLoader();
+            return system == null ? null : system.getParent();
+        } catch (SecurityException e) {
+            return null;
+        }
+    }
+
+    /**
+     * {@code loader.loadClass(name)}, and failing that, for a loader that does not delegate to the JDK's, the JDK's own
+     * class of that name. An OSGi bundle's loader sees only java.* and the packages it imports: it found no
+     * sun.util.calendar.ZoneInfo, so json-io lost its TimeZone handling there and wrote one it could not read back.
+     * Only the JDK's classes are added, never the application classpath; a loader that does delegate to the JDK (any
+     * ordinary one) keeps its own verdict, so one that filters JDK classes still does.
+     */
+    private static Class<?> loadWith(ClassLoader loader, String name) throws ClassNotFoundException {
+        try {
+            return loader.loadClass(name);
+        } catch (ClassNotFoundException e) {
+            if (delegatesToJdk(loader)) {
+                throw e;
+            }
+            try {
+                return Class.forName(name, false, JDK_LOADER);
+            } catch (ClassNotFoundException | LinkageError | SecurityException notJdk) {
+                throw e;
+            }
+        }
+    }
+
+    private static boolean delegatesToJdk(ClassLoader loader) {
+        try {
+            for (ClassLoader p = loader; p != null; p = p.getParent()) {
+                if (p == JDK_LOADER) {
+                    return true;
+                }
+            }
+            return false;
+        } catch (SecurityException e) {
+            return true;
+        }
+    }
+
     /** The JVM's limit on array dimensions. */
     private static final int MAX_ARRAY_DIMENSIONS = 255;
 
     private static Class<?> loadArrayElement(String className, ClassLoader classLoader) throws ClassNotFoundException {
         if (classLoader != null) {
-            return classLoader.loadClass(className);
+            return loadWith(classLoader, className);
         }
         // Use the standard classloader resolution which handles OSGi/JPMS properly
         return Class.forName(className, false, getClassLoader(ClassUtilities.class));
@@ -1830,16 +1880,19 @@ public class ClassUtilities {
 
         checkSecurityAccess();
 
-        // Try context class loader first (may have OSGi classes in some containers)
+        // The context class loader first (in a web container it sees the application's classes too) -- when it can
+        // see the anchor class. Under OSGi it is usually the launcher's loader, which sees no bundle: returned
+        // anyway, json-io's own config classes, java-util's CompactMap templates and every class named relative to
+        // the anchor went unresolved there.
+        ClassLoader own = anchorClass.getClassLoader();
         ClassLoader cl = Thread.currentThread().getContextClassLoader();
-        if (cl != null) {
+        if (cl != null && (cl == own || own == null || contextSees(cl, anchorClass))) {
             return cl;
         }
 
         // Try anchor class loader
-        cl = anchorClass.getClassLoader();
-        if (cl != null) {
-            return cl;
+        if (own != null) {
+            return own;
         }
 
         // Try OSGi if available
@@ -1850,6 +1903,55 @@ public class ClassUtilities {
 
         // Last resort
         return SYSTEM_LOADER;
+    }
+
+    /** Per anchor class, the last context class loader asked about and whether it sees the anchor (weakly held). */
+    private static final ClassValue<AtomicReference<ContextVisibility>> CONTEXT_VISIBILITY =
+            new ClassValue<AtomicReference<ContextVisibility>>() {
+                @Override
+                protected AtomicReference<ContextVisibility> computeValue(Class<?> type) {
+                    return new AtomicReference<>();
+                }
+            };
+
+    private static final class ContextVisibility extends WeakReference<ClassLoader> {
+        final boolean sees;
+
+        ContextVisibility(ClassLoader loader, boolean sees) {
+            super(loader);
+            this.sees = sees;
+        }
+    }
+
+    /**
+     * Whether {@code context} sees {@code anchorClass} -- the class itself, not another copy of it: the anchor's loader
+     * is one of its ancestors, or it resolves the anchor's name to the anchor (an OSGi bundle importing its package,
+     * Equinox's context finder). The answer for a thread's loader is kept, as a miss costs a ClassNotFoundException.
+     */
+    private static boolean contextSees(ClassLoader context, Class<?> anchorClass) {
+        AtomicReference<ContextVisibility> slot = CONTEXT_VISIBILITY.get(anchorClass);
+        ContextVisibility last = slot.get();
+        if (last != null && last.get() == context) {
+            return last.sees;
+        }
+        boolean sees = false;
+        ClassLoader own = anchorClass.getClassLoader();
+        try {
+            for (ClassLoader p = context; p != null && !sees; p = p.getParent()) {
+                sees = p == own;
+            }
+        } catch (SecurityException e) {
+            // cannot walk the parents: ask the loader below
+        }
+        if (!sees) {
+            try {
+                sees = Class.forName(anchorClass.getName(), false, context) == anchorClass;
+            } catch (ClassNotFoundException | LinkageError | SecurityException e) {
+                sees = false;
+            }
+        }
+        slot.set(new ContextVisibility(context, sees));
+        return sees;
     }
 
     /**

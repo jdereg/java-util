@@ -92,4 +92,51 @@ class JarLayoutIT {
             assertTrue(!exports.contains("META-INF"), exports);
         }
     }
+
+    /**
+     * The bundle resolves in an OSGi framework. Unsafe names three JDK internals as strings, which bnd turned into
+     * required imports that no framework exports, so the bundle could not start in any (every release from at least
+     * 4.102.0): they are optional. The internal package is exported for json-io only, as in the module descriptor --
+     * a bundle wires to it only by asking for friend=json-io.
+     */
+    @Test
+    void theOsgiManifestResolvesAndExportsInternalToJsonIoOnly() throws IOException {
+        try (JarFile jar = jar()) {
+            Attributes main = jar.getManifest().getMainAttributes();
+            for (String clause : clauses(main.getValue("Import-Package"))) {
+                String pkg = clause.split(";")[0];
+                if (pkg.startsWith("sun.") || pkg.startsWith("jdk.") || pkg.startsWith("com.sun.")) {
+                    assertTrue(clause.contains("resolution:=optional"), "a JDK internal is required: " + clause);
+                }
+            }
+            String internal = null;
+            for (String clause : clauses(main.getValue("Export-Package"))) {
+                if (clause.split(";")[0].equals("com.cedarsoftware.util.internal")) {
+                    internal = clause;
+                }
+            }
+            assertNotNull(internal, "com.cedarsoftware.util.internal is exported");
+            assertTrue(internal.contains("friend=json-io") && internal.contains("mandatory:=friend"), internal);
+        }
+    }
+
+    /** A manifest header's clauses: split at the commas outside quotes (a version range holds one). */
+    private static List<String> clauses(String header) {
+        List<String> clauses = new ArrayList<>();
+        StringBuilder clause = new StringBuilder();
+        boolean quoted = false;
+        for (char c : header.toCharArray()) {
+            if (c == '"') {
+                quoted = !quoted;
+            }
+            if (c == ',' && !quoted) {
+                clauses.add(clause.toString().trim());
+                clause.setLength(0);
+            } else {
+                clause.append(c);
+            }
+        }
+        clauses.add(clause.toString().trim());
+        return clauses;
+    }
 }

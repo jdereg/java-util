@@ -4907,6 +4907,16 @@ class ConverterEverythingTest {
         TEST_DB.put(pair(BigDecimal.class, Number.class), new Object[][]{
                 {new BigDecimal("3.14159"), new BigDecimal("3.14159"), true},
         });
+        // whole text a Long, a BigInteger beyond a long; other number text a BigDecimal
+        TEST_DB.put(pair(String.class, Number.class), new Object[][]{
+                {"42", 42L},
+                {"-9223372036854775808", Long.MIN_VALUE},
+                {"9223372036854775808", new BigInteger("9223372036854775808")},
+                {"5.5", new BigDecimal("5.5")},
+                {"1e3", new BigDecimal("1e3")},
+                {"", 0L},
+                {"abc", new IllegalArgumentException("is not a number")},
+        });
     }
 
     /**

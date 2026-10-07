@@ -844,6 +844,7 @@ public final class Converter {
         CONVERSION_DB.put(BigInteger.class, Number.class, Converter::identity);
         CONVERSION_DB.put(BigDecimal.class, Number.class, Converter::identity);
         CONVERSION_DB.put(Duration.class, Number.class, DurationConversions::toNumber);
+        CONVERSION_DB.put(String.class, Number.class, StringConversions::toNumber);
 
         // toByte
         CONVERSION_DB.put(Void.class, byte.class, NumberConversions::toByteZero);

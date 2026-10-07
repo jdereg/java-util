@@ -174,6 +174,50 @@ final class StringConversions {
     private static final long NOT_WHOLE = Long.MIN_VALUE;
 
     /**
+     * Number text as the Number it says: whole text -- an optional sign and decimal digits -- is a Long within a
+     * long's range ("42", "-007") and a BigInteger beyond it ("99999999999999999999"); any other text BigDecimal reads
+     * (a fraction "5.5", an exponent "1e3", ".5") is a BigDecimal. Surrounding whitespace is ignored and blank is 0,
+     * as for the other number types; the digits of another script read as their ASCII digits. Text that is no number
+     * ("abc", "0x1F", "NaN") is refused. There was no String to Number conversion: a field declared Number, or a
+     * type variable bounded by it, could not take number text.
+     */
+    static Number toNumber(Object from, Converter converter) {
+        String str = asciiDigits(((String) from).trim());
+        if (str.isEmpty()) {
+            return 0L;
+        }
+        long whole = parseWhole(str, Long.MIN_VALUE + 1, Long.MAX_VALUE);
+        if (whole != NOT_WHOLE) {
+            return whole;
+        }
+        if (isWholeText(str)) {
+            BigInteger big = new BigInteger(str);
+            return big.bitLength() <= 63 ? (Number) big.longValue() : big;    // Long.MIN_VALUE is a Long
+        }
+        try {
+            return MathUtilities.parseBigDecimal(str);
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("Value '" + NumberConversions.shown(from) + "' is not a number", e);
+        }
+    }
+
+    /** An optional sign and one or more ASCII decimal digits, nothing else. */
+    private static boolean isWholeText(String s) {
+        int length = s.length();
+        int i = s.charAt(0) == '-' || s.charAt(0) == '+' ? 1 : 0;
+        if (i == length) {
+            return false;
+        }
+        for (; i < length; i++) {
+            char c = s.charAt(i);
+            if (c < '0' || c > '9') {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
      * {@code s} as Long.parseLong reads it (an optional sign, then decimal digits, Unicode digits included) if it is
      * within [min, max], else NOT_WHOLE. One pass and no exception: valueOf() threw for any other text, and building
      * that exception was nearly all the cost of "12345.0" -> Integer (281 ns). {@code min} must exceed

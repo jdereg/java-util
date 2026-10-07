@@ -210,7 +210,7 @@ final class StringConversions {
 
     private static Long toLong(String s, BigDecimal low, BigDecimal high) {
         try {
-            BigDecimal big = MathUtilities.parseBigDecimal(s);
+            BigDecimal big = parseBigDecimal(s);
             // Settle out of range, or below 1, from the digit count before setScale: truncating builds the whole
             // number, so "1e999999999" (or "1e-999999999") held a thread for minutes
             long wholeDigits = (long) big.precision() - big.scale();
@@ -238,6 +238,12 @@ final class StringConversions {
         float value;
         try {
             value = MathUtilities.parseFloat(str);
+        } catch (NumberFormatException e) {
+            String ascii = asciiDigits(str);
+            if (ascii == str) {
+                throw new IllegalArgumentException("Value '" + from + "' not parseable as a float value", e);
+            }
+            return toFloat(ascii, converter);
         } catch (Exception e) {
             throw new IllegalArgumentException("Value '" + from + "' not parseable as a float value", e);
         }
@@ -257,6 +263,12 @@ final class StringConversions {
         double value;
         try {
             value = MathUtilities.parseDouble(str);
+        } catch (NumberFormatException e) {
+            String ascii = asciiDigits(str);
+            if (ascii == str) {
+                throw new IllegalArgumentException("Value '" + from + "' not parseable as a double value", e);
+            }
+            return toDouble(ascii, converter);
         } catch (Exception e) {
             throw new IllegalArgumentException("Value '" + from + "' not parseable as a double value", e);
         }
@@ -345,7 +357,7 @@ final class StringConversions {
         }
         BigDecimal bigDec;
         try {
-            bigDec = MathUtilities.parseBigDecimal(str);
+            bigDec = parseBigDecimal(str);
         } catch (Exception e) {
             throw new IllegalArgumentException("Value '" + from + "' not parseable as a BigInteger value.", e);
         }
@@ -358,10 +370,57 @@ final class StringConversions {
             return BigDecimal.ZERO;
         }
         try {
-            return MathUtilities.parseBigDecimal(str);
+            return parseBigDecimal(str);
         } catch (NumberFormatException e) {
             throw new IllegalArgumentException("Value '" + from + "' not parseable as a BigDecimal value.", e);
         }
+    }
+
+    /**
+     * {@code s} as a BigDecimal, reading the decimal digits of any script as their ASCII digits (see
+     * {@link #asciiDigits(String)}); those are looked for only when the text does not parse as it is.
+     */
+    private static BigDecimal parseBigDecimal(String s) {
+        try {
+            return MathUtilities.parseBigDecimal(s);
+        } catch (NumberFormatException e) {
+            String ascii = asciiDigits(s);
+            if (ascii == s) {
+                throw e;
+            }
+            return MathUtilities.parseBigDecimal(ascii);
+        }
+    }
+
+    /**
+     * {@code s} with each decimal digit of another script -- Arabic-Indic, Devanagari, fullwidth -- replaced by its
+     * ASCII digit, as the JDK's Integer.parseInt and new BigDecimal(String) read them; {@code s} itself when it has
+     * none. Other characters, another script's decimal separator included, are left as they are. Arabic-Indic 42
+     * converted to Integer, Long, Short and Year, which read such digits, but not to Double, Float, BigInteger or
+     * BigDecimal, whose parser reads ASCII only.
+     */
+    static String asciiDigits(String s) {
+        int length = s.length();
+        int i = 0;
+        while (i < length && s.charAt(i) < 128) {
+            i++;
+        }
+        if (i == length) {
+            return s;
+        }
+        char[] chars = s.toCharArray();
+        boolean changed = false;
+        for (; i < length; i++) {
+            char c = chars[i];
+            if (c >= 128) {
+                int digit = Character.digit(c, 10);
+                if (digit >= 0) {
+                    chars[i] = (char) ('0' + digit);
+                    changed = true;
+                }
+            }
+        }
+        return changed ? new String(chars) : s;
     }
 
     static URL toURL(Object from, Converter converter) {
@@ -413,6 +472,13 @@ final class StringConversions {
     private static <T> T fromNumberText(Object from, Class<T> type, boolean dateRule, Converter converter) {
         String str = (String) from;
         int kind = numberTextKind(str);
+        if (kind == NOT_A_NUMBER) {
+            String ascii = asciiDigits(str);        // the digits of another script are number text too
+            if (ascii != str) {
+                str = ascii;
+                kind = numberTextKind(str);
+            }
+        }
         if (kind == NOT_A_NUMBER || (kind == EIGHT_DIGITS && dateRule)) {
             return null;                // a date, a time, a duration; or eight digits that make a date (DateUtilities)
         }

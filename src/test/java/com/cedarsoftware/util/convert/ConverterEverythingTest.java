@@ -455,6 +455,9 @@ class ConverterEverythingTest {
                 {"00000000-0000-0001-0000-000000000001", new UUID(1L, 1L), true},
                 {"7fffffff-ffff-ffff-7fff-ffffffffffff", new UUID(Long.MAX_VALUE, Long.MAX_VALUE), true},
                 {"80000000-0000-0000-8000-000000000000", new UUID(Long.MIN_VALUE, Long.MIN_VALUE), true},
+                // surrounding whitespace trimmed, as for numbers
+                {" f0000000-0000-0000-0000-000000000001\n",
+                        UUID.fromString("f0000000-0000-0000-0000-000000000001"), false},
         });
         TEST_DB.put(pair(BigDecimal.class, UUID.class), new Object[][]{
                 {BigDecimal.ZERO, new UUID(0L, 0L), true},

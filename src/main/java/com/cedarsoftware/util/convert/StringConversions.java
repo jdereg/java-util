@@ -502,7 +502,7 @@ final class StringConversions {
             return null;            // blank text is no value of a type without a zero: null, as for the dates
         }
         try {
-            return UUID.fromString(s);
+            return UUID.fromString(s.trim());       // surrounding whitespace is no part of a UUID, as for numbers
         } catch (Exception e) {
             throw new IllegalArgumentException("Unable to convert '" + s + "' to UUID", e);
         }

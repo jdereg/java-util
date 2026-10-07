@@ -92,16 +92,12 @@ class PathConversionsTest {
 
     @Test
     void testStringToPath_emptyString() {
-        assertThatThrownBy(() -> converter.convert("", Path.class))
-            .isInstanceOf(IllegalArgumentException.class)
-            .hasMessageContaining("Cannot convert empty/null string to Path");
+        assertThat((Object) converter.convert("", Path.class)).isNull();   // blank text: null, as for the dates
     }
 
     @Test
     void testStringToPath_whitespaceOnly() {
-        assertThatThrownBy(() -> converter.convert("   ", Path.class))
-            .isInstanceOf(IllegalArgumentException.class)
-            .hasMessageContaining("Cannot convert empty/null string to Path");
+        assertThat((Object) converter.convert("   ", Path.class)).isNull();   // blank text: null, as for the dates
     }
 
     // ========================================
@@ -204,9 +200,7 @@ class PathConversionsTest {
     void testCharArrayToPath_emptyArray() {
         char[] array = new char[0];
         
-        assertThatThrownBy(() -> converter.convert(array, Path.class))
-            .isInstanceOf(IllegalArgumentException.class)
-            .hasMessageContaining("Cannot convert empty/null string to Path");
+        assertThat((Object) converter.convert(array, Path.class)).isNull();   // blank text: null, as for the dates
     }
 
     // ========================================
@@ -225,9 +219,7 @@ class PathConversionsTest {
     void testByteArrayToPath_emptyArray() {
         byte[] array = new byte[0];
         
-        assertThatThrownBy(() -> converter.convert(array, Path.class))
-            .isInstanceOf(IllegalArgumentException.class)
-            .hasMessageContaining("Cannot convert empty/null string to Path");
+        assertThat((Object) converter.convert(array, Path.class)).isNull();   // blank text: null, as for the dates
     }
 
     // ========================================

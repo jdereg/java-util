@@ -498,6 +498,9 @@ final class StringConversions {
 
     static UUID toUUID(Object from, Converter converter) {
         String s = (String) from;
+        if (StringUtilities.isEmpty(s)) {
+            return null;            // blank text is no value of a type without a zero: null, as for the dates
+        }
         try {
             return UUID.fromString(s);
         } catch (Exception e) {
@@ -611,6 +614,9 @@ final class StringConversions {
             return number;
         }
         String str = ((String) from).trim();
+        if (str.isEmpty()) {
+            return null;            // blank text is no value of a type without a zero: null, as for the dates
+        }
         try {
             // Otherwise, try ISO-8601 parsing.
             return parseIsoDuration(str);
@@ -655,6 +661,9 @@ final class StringConversions {
 
     static Class<?> toClass(Object from, Converter converter) {
         String str = ((String) from).trim();
+        if (str.isEmpty()) {
+            return null;            // blank text is no value of a type without a zero: null, as for the dates
+        }
         Class<?> clazz = ClassUtilities.forName(str, converter.getOptions().getClassLoader());
         if (clazz != null) {
             return clazz;
@@ -730,6 +739,9 @@ final class StringConversions {
 
     static Period toPeriod(Object from, Converter converter) {
         String period = (String) from;
+        if (StringUtilities.isEmpty(period)) {
+            return null;            // blank text is no value of a type without a zero: null, as for the dates
+        }
         try {
             return Period.parse(period);
         }
@@ -1141,6 +1153,9 @@ final class StringConversions {
     static Year toYear(Object from, Converter converter) {
         String str = (String) from;
         str = StringUtilities.trimToNull(str);
+        if (str == null) {
+            return null;            // blank text is no year (it was year 0): null, as for the dates
+        }
         try {
             return Year.of(converter.convert(str, int.class));
         } catch (Exception e) {
@@ -1168,6 +1183,9 @@ final class StringConversions {
 
     static Currency toCurrency(Object from, Converter converter) {
         String code = ((String) from).trim();
+        if (code.isEmpty()) {
+            return null;            // blank text is no value of a type without a zero: null, as for the dates
+        }
         return Currency.getInstance(code);
     }
 
@@ -1202,7 +1220,7 @@ final class StringConversions {
         String str = ((String) from).trim().toLowerCase(Locale.ROOT);    // Turkish lowers WHITE's I to a dotless i
         
         if (StringUtilities.isEmpty(str)) {
-            throw new IllegalArgumentException("Cannot convert empty/null string to Color");
+            return null;            // blank text is no value of a type without a zero: null, as for the dates
         }
 
         // Handle hex color strings (with or without #)
@@ -1296,7 +1314,7 @@ final class StringConversions {
         String str = ((String) from).trim();
         
         if (StringUtilities.isEmpty(str)) {
-            throw new IllegalArgumentException("Cannot convert empty/null string to Dimension");
+            return null;            // blank text is no value of a type without a zero: null, as for the dates
         }
 
         // Try "Dimension[width=100,height=200]" or "java.awt.Dimension[width=100,height=200]" format (toString format) - check this FIRST
@@ -1388,7 +1406,7 @@ final class StringConversions {
         String str = ((String) from).trim();
         
         if (StringUtilities.isEmpty(str)) {
-            throw new IllegalArgumentException("Cannot convert empty/null string to Point");
+            return null;            // blank text is no value of a type without a zero: null, as for the dates
         }
 
         // Try "Point[x=10,y=20]" or "java.awt.Point[x=10,y=20]" format (toString format) - check this FIRST
@@ -1459,7 +1477,7 @@ final class StringConversions {
         String str = ((String) from).trim();
         
         if (StringUtilities.isEmpty(str)) {
-            throw new IllegalArgumentException("Cannot convert empty/null string to Rectangle");
+            return null;            // blank text is no value of a type without a zero: null, as for the dates
         }
 
         // Try "Rectangle[x=10,y=20,width=100,height=200]" or "java.awt.Rectangle[x=10,y=20,width=100,height=200]" format (toString format) - check this FIRST
@@ -1560,7 +1578,7 @@ final class StringConversions {
         String str = ((String) from).trim();
         
         if (StringUtilities.isEmpty(str)) {
-            throw new IllegalArgumentException("Cannot convert empty/null string to Insets");
+            return null;            // blank text is no value of a type without a zero: null, as for the dates
         }
 
         // Try "Insets[top=5,left=10,bottom=15,right=20]" or "java.awt.Insets[top=5,left=10,bottom=15,right=20]" format (toString format) - check this FIRST
@@ -1657,7 +1675,7 @@ final class StringConversions {
         String str = ((String) from).trim();
         
         if (StringUtilities.isEmpty(str)) {
-            throw new IllegalArgumentException("Cannot convert empty/null string to File");
+            return null;            // blank text is no value of a type without a zero: null, as for the dates
         }
 
         return new java.io.File(str);
@@ -1675,7 +1693,7 @@ final class StringConversions {
         String str = ((String) from).trim();
         
         if (StringUtilities.isEmpty(str)) {
-            throw new IllegalArgumentException("Cannot convert empty/null string to Path");
+            return null;            // blank text is no value of a type without a zero: null, as for the dates
         }
 
         return java.nio.file.Paths.get(str);

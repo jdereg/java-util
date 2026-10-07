@@ -94,9 +94,7 @@ class DimensionConversionsTest {
 
     @Test
     void testStringToDimension_emptyString() {
-        assertThatThrownBy(() -> converter.convert("", Dimension.class))
-            .isInstanceOf(IllegalArgumentException.class)
-            .hasMessageContaining("Cannot convert empty/null string to Dimension");
+        assertThat((Object) converter.convert("", Dimension.class)).isNull();   // blank text: null, as for the dates
     }
 
     // ========================================

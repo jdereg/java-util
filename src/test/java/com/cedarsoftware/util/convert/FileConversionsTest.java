@@ -88,16 +88,12 @@ class FileConversionsTest {
 
     @Test
     void testStringToFile_emptyString() {
-        assertThatThrownBy(() -> converter.convert("", File.class))
-            .isInstanceOf(IllegalArgumentException.class)
-            .hasMessageContaining("Cannot convert empty/null string to File");
+        assertThat((Object) converter.convert("", File.class)).isNull();   // blank text: null, as for the dates
     }
 
     @Test
     void testStringToFile_whitespaceOnly() {
-        assertThatThrownBy(() -> converter.convert("   ", File.class))
-            .isInstanceOf(IllegalArgumentException.class)
-            .hasMessageContaining("Cannot convert empty/null string to File");
+        assertThat((Object) converter.convert("   ", File.class)).isNull();   // blank text: null, as for the dates
     }
 
     // ========================================
@@ -200,9 +196,7 @@ class FileConversionsTest {
     void testCharArrayToFile_emptyArray() {
         char[] array = new char[0];
         
-        assertThatThrownBy(() -> converter.convert(array, File.class))
-            .isInstanceOf(IllegalArgumentException.class)
-            .hasMessageContaining("Cannot convert empty/null string to File");
+        assertThat((Object) converter.convert(array, File.class)).isNull();   // blank text: null, as for the dates
     }
 
     // ========================================
@@ -221,9 +215,7 @@ class FileConversionsTest {
     void testByteArrayToFile_emptyArray() {
         byte[] array = new byte[0];
         
-        assertThatThrownBy(() -> converter.convert(array, File.class))
-            .isInstanceOf(IllegalArgumentException.class)
-            .hasMessageContaining("Cannot convert empty/null string to File");
+        assertThat((Object) converter.convert(array, File.class)).isNull();   // blank text: null, as for the dates
     }
 
     // ========================================

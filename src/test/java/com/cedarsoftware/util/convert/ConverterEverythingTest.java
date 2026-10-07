@@ -1987,7 +1987,7 @@ class ConverterEverythingTest {
                 {timestamp("2023-06-15T12:00:00.123456789Z"), Year.of(2023), false}  // 21:00:00.123456789 Tokyo
         });
         TEST_DB.put(pair(String.class, Year.class), new Object[][]{
-                {"", Year.of(0)},
+                {"", null},          // blank text is no year (it was year 0)
                 {"2024-03-23T04:10", Year.of(2024)},
                 {"1970", Year.of(1970), true},
                 {"1999", Year.of(1999), true},
@@ -2797,7 +2797,7 @@ class ConverterEverythingTest {
                 {"PT20.345S", Duration.parse("PT20.345S") , true},
                 {"PT2H46M40S", Duration.ofSeconds(10000), true},
                 {"Bitcoin", new IllegalArgumentException("Unable to parse 'Bitcoin' as a Duration")},
-                {"", new IllegalArgumentException("Unable to parse '' as a Duration")},
+                {"", null},          // blank text: null, as for the dates
         });
         TEST_DB.put(pair(BigInteger.class, Duration.class), new Object[][]{
                 {BigInteger.valueOf(-1000000), Duration.ofNanos(-1000000), true},

@@ -91,9 +91,9 @@ class EnumConversionsTest {
     }
 
     @Test
-    void stringToEnum_emptyString_throwsException() {
-        assertThatThrownBy(() -> converter.convert("", Day.class))
-                .isInstanceOf(IllegalArgumentException.class);
+    void stringToEnum_emptyString_isNull() {
+        assertThat((Object) converter.convert("", Day.class)).isNull();    // blank text: null, as for the dates
+        assertThat((Object) converter.convert("  ", Day.class)).isNull();
     }
 
     @Test

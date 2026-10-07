@@ -22,6 +22,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -83,9 +84,9 @@ class StringConversionsTests {
 
     @ParameterizedTest
     @MethodSource("toYear_nullReturn")
-    void toYear_withNullableStrings_returnsYear0(String source) {
+    void toYear_withNullableStrings_returnsNull(String source) {
         Year year = this.converter.convert(source, Year.class);
-        assertEquals(Year.of(0), year);
+        assertNull(year);       // blank text is no year (it was year 0): null, as for the dates
     }
 
     private static Stream<Arguments> toYear_extremeParams() {

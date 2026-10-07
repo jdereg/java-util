@@ -102,9 +102,7 @@ class PointConversionsTest {
 
     @Test
     void testStringToPoint_emptyString() {
-        assertThatThrownBy(() -> converter.convert("", Point.class))
-            .isInstanceOf(IllegalArgumentException.class)
-            .hasMessageContaining("Cannot convert empty/null string to Point");
+        assertThat((Object) converter.convert("", Point.class)).isNull();   // blank text: null, as for the dates
     }
 
     // ========================================

@@ -130,9 +130,7 @@ class InsetsConversionsTest {
 
     @Test
     void testStringToInsets_emptyString() {
-        assertThatThrownBy(() -> converter.convert("", Insets.class))
-            .isInstanceOf(IllegalArgumentException.class)
-            .hasMessageContaining("Cannot convert empty/null string to Insets");
+        assertThat((Object) converter.convert("", Insets.class)).isNull();   // blank text: null, as for the dates
     }
 
     @Test

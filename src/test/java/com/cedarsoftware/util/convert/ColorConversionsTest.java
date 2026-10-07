@@ -112,9 +112,7 @@ class ColorConversionsTest {
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessageContaining("Unable to parse color from string");
 
-        assertThatThrownBy(() -> converter.convert("", Color.class))
-            .isInstanceOf(IllegalArgumentException.class)
-            .hasMessageContaining("Cannot convert empty/null string to Color");
+        assertThat((Object) converter.convert("", Color.class)).isNull();   // blank text: null, as for the dates
 
         assertThatThrownBy(() -> converter.convert("#GGGGGG", Color.class))
             .isInstanceOf(IllegalArgumentException.class)

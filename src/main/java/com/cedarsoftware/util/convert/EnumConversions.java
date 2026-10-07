@@ -46,7 +46,7 @@ final class EnumConversions {
         }
         String enumName = ((String) from).trim();
         if (enumName.isEmpty()) {
-            throw new IllegalArgumentException("Cannot convert empty String to enum " + target.getName());
+            return null;            // blank text is no value of a type without a zero: null, as for the dates
         }
         int maxLength = converter.getOptions().getMaxEnumNameLength();
         if (enumName.length() > maxLength) {

@@ -114,9 +114,7 @@ class RectangleConversionsTest {
 
     @Test
     void testStringToRectangle_emptyString() {
-        assertThatThrownBy(() -> converter.convert("", Rectangle.class))
-            .isInstanceOf(IllegalArgumentException.class)
-            .hasMessageContaining("Cannot convert empty/null string to Rectangle");
+        assertThat((Object) converter.convert("", Rectangle.class)).isNull();   // blank text: null, as for the dates
     }
 
     @Test

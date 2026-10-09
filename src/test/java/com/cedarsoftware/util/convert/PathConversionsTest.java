@@ -8,14 +8,11 @@ import java.nio.file.FileSystem;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.HashMap;
-import java.util.Map;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
@@ -41,95 +38,10 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class PathConversionsTest {
 
     private Converter converter;
-    
-    private static String systemPathString(String path) {
-        return Paths.get(path).toString();
-    }
 
     @BeforeEach
     void setUp() {
         converter = new Converter(new DefaultConverterOptions());
-    }
-
-    // ========================================
-    // String to Path Tests
-    // ========================================
-
-    @Test
-    void testStringToPath_emptyString() {
-        assertThat((Object) converter.convert("", Path.class)).isNull();   // blank text: null, as for the dates
-    }
-
-    @Test
-    void testStringToPath_whitespaceOnly() {
-        assertThat((Object) converter.convert("   ", Path.class)).isNull();   // blank text: null, as for the dates
-    }
-
-    // ========================================
-    // Map to Path Tests
-    // ========================================
-
-    @Test
-    void testMapToPath_valueKey() {
-        Map<String, Object> map = new HashMap<>();
-        map.put("value", "/home/user/document.pdf");
-        
-        Path result = converter.convert(map, Path.class);
-        assertThat(result.toString()).isEqualTo(systemPathString("/home/user/document.pdf"));
-    }
-
-    @Test
-    void testMapToPath_vKey() {
-        Map<String, Object> map = new HashMap<>();
-        map.put("_v", "C:\\Program Files\\app.exe");
-        
-        Path result = converter.convert(map, Path.class);
-        assertThat(result.toString()).isEqualTo(systemPathString("C:\\Program Files\\app.exe"));
-    }
-
-    // ========================================
-    // char[] to Path Tests
-    // ========================================
-
-    @Test
-    void testCharArrayToPath_emptyArray() {
-        char[] array = new char[0];
-        
-        assertThat((Object) converter.convert(array, Path.class)).isNull();   // blank text: null, as for the dates
-    }
-
-    // ========================================
-    // byte[] to Path Tests
-    // ========================================
-
-    @Test
-    void testByteArrayToPath_emptyArray() {
-        byte[] array = new byte[0];
-        
-        assertThat((Object) converter.convert(array, Path.class)).isNull();   // blank text: null, as for the dates
-    }
-
-    // ========================================
-    // Path Normalization Tests
-    // ========================================
-
-    @Test
-    void testPathConversion_normalizedPath() {
-        String pathWithDots = "/home/user/../user/./documents/file.txt";
-        Path result = converter.convert(pathWithDots, Path.class);
-        // Path will preserve/normalize according to the active filesystem.
-        assertThat(result.toString()).isEqualTo(Paths.get(pathWithDots).toString());
-    }
-
-    // ========================================
-    // File System Specific Tests
-    // ========================================
-
-    @Test
-    void testPathConversion_currentDirectory() {
-        String currentDir = ".";
-        Path result = converter.convert(currentDir, Path.class);
-        assertThat(result.toString()).isEqualTo(currentDir);
     }
 
     // ========================================

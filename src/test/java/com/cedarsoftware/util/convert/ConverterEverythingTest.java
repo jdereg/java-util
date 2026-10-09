@@ -5142,10 +5142,12 @@ class ConverterEverythingTest {
         TEST_DB.put(pair(byte[].class, File.class), new Object[][]{
                 {"/tmp/test.txt".getBytes(), new File("/tmp/test.txt")},
                 {"test.txt".getBytes(), new File("test.txt")},
+                {new byte[0], null},                                                  // empty: null
         });
         TEST_DB.put(pair(byte[].class, Path.class), new Object[][]{
                 {"/tmp/test.txt".getBytes(), Paths.get("/tmp/test.txt")},
                 {"test.txt".getBytes(), Paths.get("test.txt")},
+                {new byte[0], null},                                                  // empty: null
         });
     }
 
@@ -5268,10 +5270,12 @@ class ConverterEverythingTest {
         TEST_DB.put(pair(char[].class, File.class), new Object[][]{
                 {"/tmp/test.txt".toCharArray(), new File("/tmp/test.txt")},
                 {"test.txt".toCharArray(), new File("test.txt")},
+                {new char[0], null},                                                  // empty: null
         });
         TEST_DB.put(pair(char[].class, Path.class), new Object[][]{
                 {"/tmp/test.txt".toCharArray(), Paths.get("/tmp/test.txt")},
                 {"test.txt".toCharArray(), Paths.get("test.txt")},
+                {new char[0], null},                                                  // empty: null
         });
     }
 
@@ -6128,6 +6132,23 @@ class ConverterEverythingTest {
             {"blue", new Color(0, 0, 255), false},          // Named color (one-way)
             {"white", new Color(255, 255, 255), false},     // Named color (one-way)
             {"black", new Color(0, 0, 0), false},           // Named color (one-way)
+            {"FF8040", new Color(255, 128, 64)},                                  // no "#"
+            {"#80FF8040", new Color(255, 128, 64, 128)},                          // eight digits: alpha first
+            {"GREEN", Color.GREEN},                                               // names in any case
+            {"Blue", Color.BLUE},
+            {"yellow", Color.YELLOW},
+            {"cyan", Color.CYAN},
+            {"magenta", Color.MAGENTA},
+            {"orange", Color.ORANGE},
+            {"pink", Color.PINK},
+            {"gray", Color.GRAY},
+            {"grey", Color.GRAY},
+            {"dark_gray", Color.DARK_GRAY},                                       // "_" and "-" ignored
+            {"light-gray", Color.LIGHT_GRAY},
+            {"rgba(255, 128, 64, 192)", new Color(255, 128, 64, 192)},
+            {"", null},                                                           // blank text: null
+            {"invalid", new IllegalArgumentException("Unable to parse color from string")},
+            {"#GGGGGG", new IllegalArgumentException("Unable to parse color from string")},
         });
 
         // Integer/Long → Color conversions removed - these conversions are now blocked
@@ -6138,24 +6159,37 @@ class ConverterEverythingTest {
             {new int[]{0, 255, 0}, new Color(0, 255, 0), false},         // Green RGB array (one-way)
             {new int[]{0, 0, 255}, new Color(0, 0, 255), false},         // Blue RGB array (one-way)
             {new int[]{255, 0, 0, 128}, new Color(255, 0, 0, 128), false}, // Red RGBA array (one-way)
+            {new int[]{255, 128}, new IllegalArgumentException("Color array must have 3 (RGB) or 4 (RGBA) elements")},
+            {new int[]{255, 128, 64, 192, 100},
+                    new IllegalArgumentException("Color array must have 3 (RGB) or 4 (RGBA) elements")},
+            {new int[]{300, 128, 64}, new IllegalArgumentException("RGB values must be between 0-255")},
+            {new int[]{255, 128, 64, 300}, new IllegalArgumentException("Alpha value must be between 0-255")},
         });
         
         // int[] to geometric type conversions
         TEST_DB.put(pair(int[].class, Dimension.class), new Object[][]{
             {new int[]{800, 600}, new Dimension(800, 600)}, // int array to Dimension [width, height]
             {new int[]{1920, 1080}, new Dimension(1920, 1080)}, // HD dimensions
+            {new int[]{800}, new IllegalArgumentException("Dimension array must have exactly 2 elements")},
+            {new int[]{-800, 600}, new IllegalArgumentException("Width and height must be non-negative")},
         });
         TEST_DB.put(pair(int[].class, Insets.class), new Object[][]{
             {new int[]{10, 20, 30, 40}, new Insets(10, 20, 30, 40)}, // int array to Insets [top, left, bottom, right]
             {new int[]{5, 15, 25, 35}, new Insets(5, 15, 25, 35)}, // int array to Insets
+            {new int[]{-5, -10, 15, 20}, new Insets(-5, -10, 15, 20)},            // negatives are kept
+            {new int[]{5, 10, 15}, new IllegalArgumentException("Insets array must have exactly 4 elements")},
         });
         TEST_DB.put(pair(int[].class, Point.class), new Object[][]{
             {new int[]{100, 200}, new Point(100, 200)}, // int array to Point [x, y]
             {new int[]{50, 75}, new Point(50, 75)}, // int array to Point
+            {new int[]{-50, -100}, new Point(-50, -100)},                         // negatives are kept
+            {new int[]{100}, new IllegalArgumentException("Point array must have exactly 2 elements")},
         });
         TEST_DB.put(pair(int[].class, Rectangle.class), new Object[][]{
             {new int[]{10, 20, 100, 200}, new Rectangle(10, 20, 100, 200)}, // int array to Rectangle [x, y, width, height]
             {new int[]{50, 75, 300, 400}, new Rectangle(50, 75, 300, 400)}, // int array to Rectangle
+            {new int[]{-10, -20, 100, 50}, new Rectangle(-10, -20, 100, 50)},     // negative x and y
+            {new int[]{10, 20, 100}, new IllegalArgumentException("Rectangle array must have exactly 4 elements")},
         });
 
         TEST_DB.put(pair(Map.class, Color.class), new Object[][]{
@@ -6163,6 +6197,11 @@ class ConverterEverythingTest {
             {mapOf("r", 255, "g", 0, "b", 0), new Color(255, 0, 0), false},                // RGB map short names (one-way)
             {mapOf("red", 255, "green", 0, "blue", 0, "alpha", 128), new Color(255, 0, 0, 128), false}, // RGBA map (one-way)
             {mapOf("value", "#FF0000"), new Color(255, 0, 0), false},                       // Hex string in value key (one-way)
+            {mapOf("rgb", 0xFF8040), new Color(255, 128, 64)},                    // packed RGB
+            {mapOf("color", "#FF8040"), new Color(255, 128, 64)},
+            {mapOf("r", 255, "g", 128, "b", 64, "a", 192), new Color(255, 128, 64, 192)},
+            // component values are converted
+            {mapOf("r", "255", "g", 128.7, "b", new AtomicInteger(64), "a", "192"), new Color(255, 128, 64, 192)},
         });
 
         // Color ==> other types conversions
@@ -6170,6 +6209,7 @@ class ConverterEverythingTest {
         
         TEST_DB.put(pair(Color.class, String.class), new Object[][]{
             {new Color(255, 0, 0), "#FF0000"},                 // Red color to hex string
+            {new Color(255, 128, 64, 192), "#C0FF8040"},                          // not opaque: alpha first
         });
 
         // Note: Color to int[] conversion pair exists in CONVERSION_DB but is not tested here
@@ -6273,24 +6313,50 @@ class ConverterEverythingTest {
             {"800x600", new Dimension(800, 600)}, // Standard widthxheight format
             {"1920x1080", new Dimension(1920, 1080)}, // Standard widthxheight format
             {"0x0", new Dimension(0, 0)}, // Zero dimension
+            {"1920,1080", new Dimension(1920, 1080)},                             // comma-separated
+            {"640 480", new Dimension(640, 480)},                                 // space-separated
+            {"  1024 x 768  ", new Dimension(1024, 768)},                         // spaces around and inside
+            {"", null},                                                           // blank text: null
+            {"invalid", new IllegalArgumentException("Unable to parse dimension from string")},
         });
 
         TEST_DB.put(pair(String.class, Rectangle.class), new Object[][]{
             {"(0,0,100,50)", new Rectangle(0, 0, 100, 50)}, // (x,y,width,height) format
             {"(10,20,200,150)", new Rectangle(10, 20, 200, 150)}, // (x,y,width,height) format
             {"(0,0,0,0)", new Rectangle(0, 0, 0, 0)}, // Empty rectangle
+            {"0 0 300 150", new Rectangle(0, 0, 300, 150)},                       // space-separated
+            {"  ( 25 , 30 , 400 , 200 )  ", new Rectangle(25, 30, 400, 200)},     // spaces around and inside
+            {"(-10,-20,100,50)", new Rectangle(-10, -20, 100, 50)},               // negative x and y
+            {"", null},                                                           // blank text: null
+            {"invalid", new IllegalArgumentException("Unable to parse rectangle from string")},
+            {"10,20,30", new IllegalArgumentException("Unable to parse rectangle from string")},  // three values
         });
 
         TEST_DB.put(pair(String.class, Point.class), new Object[][]{
             {"(100,200)", new Point(100, 200)}, // (x,y) format
             {"(0,0)", new Point(0, 0)}, // Origin point
             {"(50,75)", new Point(50, 75)}, // Regular point
+            {"300 400", new Point(300, 400)},                                     // space-separated
+            {"  ( 50 , 75 )  ", new Point(50, 75)},                               // spaces around and inside
+            {"(-10,-20)", new Point(-10, -20)},                                   // negatives are kept
+            {"", null},                                                           // blank text: null
+            {"invalid", new IllegalArgumentException("Unable to parse point from string")},
         });
 
         TEST_DB.put(pair(String.class, Insets.class), new Object[][]{
             {"(10,20,30,40)", new Insets(10, 20, 30, 40)}, // (top,left,bottom,right) format
             {"(0,0,0,0)", new Insets(0, 0, 0, 0)}, // Zero insets
             {"(5,5,5,5)", new Insets(5, 5, 5, 5)}, // Equal insets
+            {"1 2 3 4", new Insets(1, 2, 3, 4)},                                  // space-separated
+            {"  ( 10 , 20 , 30 , 40 )  ", new Insets(10, 20, 30, 40)},            // spaces around and inside
+            {"(-5,-10,15,20)", new Insets(-5, -10, 15, 20)},                      // negatives are kept
+            {"java.awt.Insets[top=5,left=10,bottom=15,right=20]", new Insets(5, 10, 15, 20)},     // AWT toString form
+            {"  java.awt.Insets[top=8,left=12,bottom=16,right=24]  ", new Insets(8, 12, 16, 24)},
+            {"java.awt.Insets[top=-5,left=-10,bottom=15,right=20]", new Insets(-5, -10, 15, 20)},
+            {new Insets(5, 10, 15, 20).toString(), new Insets(5, 10, 15, 20)},    // its own toString form
+            {"", null},                                                           // blank text: null
+            {"invalid", new IllegalArgumentException("Unable to parse insets from string")},
+            {"10,20,30", new IllegalArgumentException("Unable to parse insets from string")},     // three values
         });
         
         // Dimension to basic types
@@ -6303,6 +6369,7 @@ class ConverterEverythingTest {
             {new Dimension(0, 0), false}, // (0,0) → false
             {new Dimension(1, 1), true}, // anything else → true
             {new Dimension(10, 0), true}, // anything else → true (width != 0)
+            {new Dimension(0, 100), true},                                        // either value non-zero
         });
         TEST_DB.put(pair(Dimension.class, CharSequence.class), new Object[][]{
             {new Dimension(800, 600), "800x600"}, // Standard format widthxheight
@@ -6340,6 +6407,7 @@ class ConverterEverythingTest {
             {mapOf("x", 100, "y", 200), new Point(100, 200)}, // Map to Point
             {mapOf("x", 50, "y", 75), new Point(50, 75)}, // Map to Point
             {mapOf("x", 0, "y", 0), new Point(0, 0)}, // Map to origin point
+            {mapOf(VALUE, "(75,125)"), new Point(75, 125)},
         });
         
         // Point conversions to arrays only (legitimate conversions)
@@ -6361,6 +6429,8 @@ class ConverterEverythingTest {
             {mapOf("top", 10, "left", 20, "bottom", 30, "right", 40), new Insets(10, 20, 30, 40)}, // Map to Insets
             {mapOf("top", 5, "left", 10, "bottom", 15, "right", 20), new Insets(5, 10, 15, 20)}, // Map to Insets
             {mapOf("top", 0, "left", 0, "bottom", 0, "right", 0), new Insets(0, 0, 0, 0)}, // Map to zero insets
+            {mapOf(VALUE, "(8,12,16,24)"), new Insets(8, 12, 16, 24)},
+            {mapOf(V, "1,2,3,4"), new Insets(1, 2, 3, 4)},
         });
         
         TEST_DB.put(pair(Rectangle.class, Map.class), new Object[][]{
@@ -6372,6 +6442,7 @@ class ConverterEverythingTest {
             {mapOf("x", 10, "y", 20, "width", 100, "height", 200), new Rectangle(10, 20, 100, 200)}, // Map to Rectangle
             {mapOf("x", 50, "y", 75, "width", 300, "height", 400), new Rectangle(50, 75, 300, 400)}, // Map to Rectangle
             {mapOf("x", 0, "y", 0, "width", 0, "height", 0), new Rectangle(0, 0, 0, 0)}, // Map to empty rectangle
+            {mapOf(VALUE, "(0,0,300,150)"), new Rectangle(0, 0, 300, 150)},
         });
         
         // Rectangle conversions to arrays only (legitimate conversions)
@@ -6389,6 +6460,8 @@ class ConverterEverythingTest {
             {mapOf("width", 800, "height", 600), new Dimension(800, 600)}, // Map to Dimension
             {mapOf("width", 1920, "height", 1080), new Dimension(1920, 1080)}, // Map to Dimension
             {mapOf("width", 0, "height", 0), new Dimension(0, 0)}, // Map to zero dimension
+            {mapOf("w", 1920, "h", 1080), new Dimension(1920, 1080)},             // short keys
+            {mapOf(VALUE, "640x480"), new Dimension(640, 480)},
         });
         
         // File I/O conversions (corrected based on actual converter behavior)
@@ -6403,11 +6476,15 @@ class ConverterEverythingTest {
         });
         TEST_DB.put(pair(Map.class, File.class), new Object[][]{
             {mapOf("file", "/tmp/test.txt"), new File("/tmp/test.txt")}, // Map to File (expects "file" key)
+            {mapOf(VALUE, "/home/user/document.pdf"), new File("/home/user/document.pdf")},
+            {mapOf(V, "C:\\Program Files\\app.exe"), new File("C:\\Program Files\\app.exe")},
         });
         
         // Path I/O conversions (corrected based on actual converter behavior)
         TEST_DB.put(pair(Map.class, Path.class), new Object[][]{
             {mapOf("path", "/tmp/test.txt"), Paths.get("/tmp/test.txt")}, // Map to Path
+            {mapOf(VALUE, "/home/user/document.pdf"), Paths.get("/home/user/document.pdf")},
+            {mapOf(V, "C:\\Program Files\\app.exe"), Paths.get("C:\\Program Files\\app.exe")},
         });
         TEST_DB.put(pair(Path.class, byte[].class), new Object[][]{
             {Paths.get("/dev/null"), "/dev/null".getBytes()}, // Path to byte array (path string)
@@ -6543,18 +6620,21 @@ class ConverterEverythingTest {
             {new Rectangle(0, 0, 0, 0), Boolean.FALSE}, // Empty rectangle = false
             {new Rectangle(10, 20, 100, 200), Boolean.TRUE}, // Non-empty rectangle = true
             {new Rectangle(50, 75, 300, 400), Boolean.TRUE}, // Non-empty rectangle = true
+            {new Rectangle(0, 0, 100, 0), true},                                  // any value non-zero
         });
 
         TEST_DB.put(pair(Insets.class, Boolean.class), new Object[][]{
             {new Insets(0, 0, 0, 0), Boolean.FALSE}, // Zero insets = false
             {new Insets(10, 20, 30, 40), Boolean.TRUE}, // Non-zero insets = true
             {new Insets(5, 10, 15, 20), Boolean.TRUE}, // Non-zero insets = true
+            {new Insets(0, 0, 15, 0), true},                                      // any side non-zero
         });
 
         TEST_DB.put(pair(Point.class, Boolean.class), new Object[][]{
             {new Point(0, 0), Boolean.FALSE}, // Origin point = false
             {new Point(100, 200), Boolean.TRUE}, // Non-origin point = true
             {new Point(50, 75), Boolean.TRUE}, // Non-origin point = true
+            {new Point(0, 100), true},                                            // either value non-zero
         });
 
         // Missing geometric → boolean conversions
@@ -6675,6 +6755,8 @@ class ConverterEverythingTest {
             {"/path/to/file.txt", new File("/path/to/file.txt")}, // Absolute path
             {"relative/path.txt", new File("relative/path.txt")}, // Relative path
             {"/", new File("/")}, // Root directory
+            {"", null},                                                           // blank text: null
+            {"   ", null},
         });
 
         // File to string representations - these should work via File.toString() or File.getPath()
@@ -6713,6 +6795,11 @@ class ConverterEverythingTest {
             {"/path/to/file.txt", Paths.get("/path/to/file.txt")}, // Absolute path
             {"relative/path.txt", Paths.get("relative/path.txt")}, // Relative path
             {"/", Paths.get("/")}, // Root directory
+            {"", null},                                                           // blank text: null
+            {"   ", null},
+            // "." and ".." are kept, not normalized away
+            {"/home/user/../user/./documents/file.txt", Paths.get("/home/user/../user/./documents/file.txt")},
+            {".", Paths.get(".")},
         });
 
         // Path to string representations - these should work via Path.toString()

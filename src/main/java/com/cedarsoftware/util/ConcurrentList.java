@@ -34,8 +34,8 @@ import java.util.function.UnaryOperator;
  * <p>This implementation uses a bucket-based architecture with chunked {@link AtomicReferenceArray}
  * storage and atomic head/tail counters, guarded by a single {@link ReentrantReadWriteLock}: reads
  * take the shared read lock (parallel among readers), and all mutations take the exclusive write
- * lock. Head/tail mutations are O(1) under the brief write lock; only middle insertion/removal
- * pays an O(n) rebuild.</p>
+ * lock. Head/tail mutations are O(1) under the brief write lock; middle insertion/removal moves the
+ * shorter side by one slot, O(min(index, size - index)).</p>
  *
  * <h2>Architecture Overview</h2>
  * <p>The list is structured as a series of fixed-size buckets (1024 elements each), managed through a
@@ -68,7 +68,7 @@ import java.util.function.UnaryOperator;
  *   <li><strong>Parallel reads:</strong> {@code get()}, {@code set()}, {@code contains()}, iteration, and
  *       {@code toArray()} share the read lock and run concurrently with each other</li>
  *   <li><strong>No copy-on-write:</strong> Unlike {@link java.util.concurrent.CopyOnWriteArrayList}, mutations
- *       never copy the whole backing storage (except middle insertion/removal, which rebuilds)</li>
+ *       never copy the whole backing storage (middle insertion/removal shifts the shorter side in place)</li>
  *   <li><strong>Stable memory layout:</strong> Buckets never move, reducing GC pressure</li>
  *   <li><strong>Optimal memory usage:</strong> No wasted capacity from exponential growth strategies</li>
  * </ul>
@@ -78,7 +78,7 @@ import java.util.function.UnaryOperator;
  *   <li><strong>🟢 Excellent for:</strong> Queue/stack patterns, append-heavy workloads, read-heavy access,
  *       producer-consumer scenarios</li>
  *   <li><strong>🟢 Very good for:</strong> Random access patterns, bulk operations, frequent size queries</li>
- *   <li><strong>🟡 Acceptable for:</strong> Moderate middle insertion/deletion (rebuilds structure)</li>
+ *   <li><strong>🟡 Acceptable for:</strong> Moderate middle insertion/deletion (shifts the shorter side)</li>
  *   <li><strong>❌ Consider alternatives for:</strong> Frequent middle insertion/deletion, or extreme
  *       write contention where a lock-free queue (e.g. {@link java.util.concurrent.ConcurrentLinkedDeque}) fits the access pattern</li>
  * </ul>
@@ -718,11 +718,52 @@ public final class ConcurrentList<E> extends ConcurrentListBase<E> implements Li
                 addLast(element);
                 return;
             }
-            List<E> list = new ArrayList<>(this);
-            list.add(index, element);
-            rebuild(list);
+            // In place: the shorter side moves one slot outward. It copied the whole list into an ArrayList and
+            // rebuilt every bucket from it.
+            long h = head.get();
+            long t = tail.get();
+            if (index < sz / 2) {
+                ensureBucket(bucketIndex(h - 1));
+                shift(h, h + index, -1);                     // [h, h + index) to [h - 1, h - 1 + index)
+                getBucket(bucketIndex(h - 1 + index)).set(bucketOffset(h - 1 + index), element);
+                head.set(h - 1);
+            } else {
+                ensureBucket(bucketIndex(t));
+                shift(h + index, t, 1);                      // [h + index, t) to [h + index + 1, t + 1)
+                getBucket(bucketIndex(h + index)).set(bucketOffset(h + index), element);
+                tail.set(t + 1);
+            }
+            sizeCounter.incrementAndGet();
         } finally {
             lock.writeLock().unlock();
+        }
+    }
+
+    /**
+     * Under the write lock: moves the elements at positions [from, to) by {@code delta} (-1 or +1), each bucket
+     * looked up once per run of it rather than per element. The destination buckets must exist.
+     */
+    private void shift(long from, long to, int delta) {
+        AtomicReferenceArray<Object> source = null;
+        AtomicReferenceArray<Object> target = null;
+        int sourceIndex = 0;
+        int targetIndex = 0;
+        boolean first = true;
+        for (long n = to - from, i = 0; i < n; i++) {
+            long p = delta < 0 ? from + i : to - 1 - i;     // the order that moves each element before it is overwritten
+            long q = p + delta;
+            int si = bucketIndex(p);
+            int ti = bucketIndex(q);
+            if (first || si != sourceIndex) {
+                source = getBucket(si);
+                sourceIndex = si;
+            }
+            if (first || ti != targetIndex) {
+                target = getBucket(ti);
+                targetIndex = ti;
+            }
+            first = false;
+            target.set(bucketOffset(q), source.get(bucketOffset(p)));
         }
     }
 
@@ -742,9 +783,21 @@ public final class ConcurrentList<E> extends ConcurrentListBase<E> implements Li
             if (index == sz - 1) {
                 return removeLast();
             }
-            List<E> list = new ArrayList<>(this);
-            E removed = list.remove(index);
-            rebuild(list);
+            // In place: the shorter side moves one slot inward over the removed element, and the slot it leaves
+            // at the end goes as removeFirst / removeLast's does (its bucket freed once empty). It copied the whole
+            // list into an ArrayList and rebuilt every bucket from it.
+            long h = head.get();
+            long t = tail.get();
+            long pos = h + index;
+            @SuppressWarnings("unchecked")
+            E removed = (E) getBucket(bucketIndex(pos)).get(bucketOffset(pos));
+            if (index < sz / 2) {
+                shift(h, pos, 1);                            // [h, pos) to [h + 1, pos + 1)
+                pollFirstInternal();
+            } else {
+                shift(pos + 1, t, -1);                       // [pos + 1, t) to [pos, t - 1)
+                pollLastInternal();
+            }
             return removed;
         } finally {
             lock.writeLock().unlock();

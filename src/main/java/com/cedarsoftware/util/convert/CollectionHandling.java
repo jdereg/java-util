@@ -225,11 +225,13 @@ final class CollectionHandling {
         BASE_FACTORIES.put(ConcurrentLinkedDeque.class, size -> new ConcurrentLinkedDeque<>());
         BASE_FACTORIES.put(CopyOnWriteArrayList.class, size -> new CopyOnWriteArrayList<>());
 
-        // JDK Blocking collections
-        BASE_FACTORIES.put(LinkedBlockingDeque.class, size -> new LinkedBlockingDeque<>(size));
-        BASE_FACTORIES.put(ArrayBlockingQueue.class, size -> new ArrayBlockingQueue<>(size));
-        BASE_FACTORIES.put(LinkedBlockingQueue.class, size -> new LinkedBlockingQueue<>(size));
-        BASE_FACTORIES.put(PriorityBlockingQueue.class, size -> new PriorityBlockingQueue<>(size));
+        // JDK Blocking collections. A linked one's int argument is its capacity, a bound: unbounded, as its no-argument
+        // constructor makes it (the source's size made a full queue). An ArrayBlockingQueue's capacity is the size, and
+        // neither it nor a PriorityBlockingQueue's initial capacity may be 0 (an empty source).
+        BASE_FACTORIES.put(LinkedBlockingDeque.class, size -> new LinkedBlockingDeque<>());
+        BASE_FACTORIES.put(ArrayBlockingQueue.class, size -> new ArrayBlockingQueue<>(Math.max(size, 1)));
+        BASE_FACTORIES.put(LinkedBlockingQueue.class, size -> new LinkedBlockingQueue<>());
+        BASE_FACTORIES.put(PriorityBlockingQueue.class, size -> new PriorityBlockingQueue<>(Math.max(size, 1)));
         BASE_FACTORIES.put(LinkedTransferQueue.class, size -> new LinkedTransferQueue<>());
         BASE_FACTORIES.put(SynchronousQueue.class, size -> {
             throw new IllegalArgumentException("SynchronousQueue cannot be used as a conversion target because it has zero capacity and cannot hold elements.");
@@ -254,8 +256,8 @@ final class CollectionHandling {
         BASE_FACTORIES.put(Vector.class, size -> new Vector<>(size));
 
         // Interface implementations (most general)
-        BASE_FACTORIES.put(BlockingDeque.class, size -> new LinkedBlockingDeque<>(size));
-        BASE_FACTORIES.put(BlockingQueue.class, size -> new LinkedBlockingQueue<>(size));
+        BASE_FACTORIES.put(BlockingDeque.class, size -> new LinkedBlockingDeque<>());
+        BASE_FACTORIES.put(BlockingQueue.class, size -> new LinkedBlockingQueue<>());
         BASE_FACTORIES.put(Deque.class, size -> new ArrayDeque<>(size));
         BASE_FACTORIES.put(Queue.class, size -> new LinkedList<>());
         BASE_FACTORIES.put(NavigableSet.class, size -> new TreeSet<>());

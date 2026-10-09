@@ -5,7 +5,12 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingDeque;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.DelayQueue;
+import java.util.concurrent.LinkedBlockingDeque;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.SynchronousQueue;
 
 import org.junit.jupiter.api.Test;
@@ -35,6 +40,30 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  *         limitations under the License.
  */
 class CollectionConversionsTest {
+
+    /**
+     * A linked blocking queue or deque a conversion makes is unbounded, as its no-argument constructor makes it. The
+     * source's size was passed as its capacity: the queue came out full (offer() refused another element), and an
+     * empty source failed (capacity 0). A PriorityBlockingQueue or ArrayBlockingQueue from an empty source failed too.
+     */
+    @Test
+    @SuppressWarnings("unchecked")
+    void blockingQueuesAreUnboundedAndEmptySourcesConvert() {
+        Converter converter = new Converter(new DefaultConverterOptions());
+        for (Class<?> type : new Class<?>[] {BlockingQueue.class, LinkedBlockingQueue.class, BlockingDeque.class,
+                LinkedBlockingDeque.class}) {
+            BlockingQueue<Object> queue = (BlockingQueue<Object>) converter.convert(new Object[] {"a", "b"}, type);
+            assertEquals(2, queue.size(), type.getName());
+            assertTrue(queue.offer("c"), type.getName());
+            assertEquals(Integer.MAX_VALUE, queue.remainingCapacity() + queue.size(), type.getName());   // unbounded
+            BlockingQueue<Object> fromList = (BlockingQueue<Object>) converter.convert(
+                    new ArrayList<>(Arrays.asList("a")), type);
+            assertTrue(fromList.offer("b"), type.getName());
+            assertTrue(((Collection<?>) converter.convert(new Object[0], type)).isEmpty(), type.getName());
+        }
+        assertTrue(((Collection<?>) converter.convert(new Object[0], PriorityBlockingQueue.class)).isEmpty());
+        assertTrue(((Collection<?>) converter.convert(new Object[0], ArrayBlockingQueue.class)).isEmpty());
+    }
 
     // ---- Bug #1: sizeOrDefault doesn't handle arrays, ArrayBlockingQueue fails for >16 elements ----
 

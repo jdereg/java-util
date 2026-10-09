@@ -33,9 +33,9 @@ import java.util.function.UnaryOperator;
  *
  * <p>This implementation uses a bucket-based architecture with chunked {@link AtomicReferenceArray}
  * storage and atomic head/tail counters, guarded by a single {@link ReentrantReadWriteLock}: reads
- * take the shared read lock (parallel among readers), and all mutations take the exclusive write
- * lock. Head/tail mutations are O(1) under the brief write lock; middle insertion/removal moves the
- * shorter side by one slot, O(min(index, size - index)).</p>
+ * take the shared read lock (parallel among readers) -- {@code get(index)} none at all while no write is under
+ * way -- and all mutations take the exclusive write lock. Head/tail mutations are O(1) under the brief write
+ * lock; middle insertion/removal moves the shorter side by one slot, O(min(index, size - index)).</p>
  *
  * <h2>Architecture Overview</h2>
  * <p>The list is structured as a series of fixed-size buckets (1024 elements each), managed through a
@@ -46,7 +46,7 @@ import java.util.function.UnaryOperator;
  * <table border="1">
  * <caption>Operation Performance Comparison</caption>
  * <tr><th>Operation</th><th>ArrayList + External Sync</th><th>CopyOnWriteArrayList</th><th>Vector</th><th>This Implementation</th></tr>
- * <tr><td>{@code get(index)}</td><td>🔴 O(1) but serialized</td><td>🟢 O(1) no locks</td><td>🔴 O(1) but synchronized</td><td>🟢 O(1) shared read lock</td></tr>
+ * <tr><td>{@code get(index)}</td><td>🔴 O(1) but serialized</td><td>🟢 O(1) no locks</td><td>🔴 O(1) but synchronized</td><td>🟢 O(1) no lock (a version check)</td></tr>
  * <tr><td>{@code set(index, val)}</td><td>🔴 O(1) but serialized</td><td>🔴 O(n) copy array</td><td>🔴 O(1) but synchronized</td><td>🟢 O(1) shared read lock</td></tr>
  * <tr><td>{@code add(element)}</td><td>🔴 O(1)* but serialized</td><td>🔴 O(n) copy array</td><td>🔴 O(1)* but synchronized</td><td>🟡 O(1) write lock</td></tr>
  * <tr><td>{@code addFirst(element)}</td><td>🔴 O(n) + serialized</td><td>🔴 O(n) copy array</td><td>🔴 O(n) + synchronized</td><td>🟡 O(1) write lock</td></tr>
@@ -85,8 +85,9 @@ import java.util.function.UnaryOperator;
  *
  * <h2>Thread Safety</h2>
  * <ul>
- *   <li><strong>Reads:</strong> {@code get}, {@code set}, {@code size}, iteration, and scans take the shared
- *       read lock ({@code size()}/{@code isEmpty()} are lock-free via a dedicated counter)</li>
+ *   <li><strong>Reads:</strong> {@code get(index)} takes no lock: it reads between two readings of a version
+ *       every write moves, and takes the read lock only when a write overlapped it. {@code set}, iteration and
+ *       scans take the shared read lock; {@code size()}/{@code isEmpty()} are lock-free via a dedicated counter</li>
  *   <li><strong>Writes:</strong> All structural mutations take the exclusive write lock; head/tail operations
  *       hold it only for an O(1) update</li>
  *   <li><strong>Consistent iteration:</strong> Iterators operate over a point-in-time snapshot and never throw
@@ -152,6 +153,28 @@ public final class ConcurrentList<E> extends ConcurrentListBase<E> implements Li
     private final AtomicLong sizeCounter = new AtomicLong(0);  // Dedicated size counter for O(1) lock-free size()
 
     private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
+    /**
+     * Odd while a writer holds the write lock, even otherwise, and moved on by every write: get() reads an element
+     * without the lock and keeps it only if this was even and unchanged across the read.
+     */
+    private transient volatile long version;
+
+    /** How deeply the holder of the write lock has taken it (it is reentrant); read and written only by it. */
+    private transient int writeDepth;
+
+    private void lockWrite() {
+        lock.writeLock().lock();
+        if (writeDepth++ == 0) {
+            version++;                  // odd: a write is under way (only the holder of the write lock writes it)
+        }
+    }
+
+    private void unlockWrite() {
+        if (--writeDepth == 0) {
+            version++;                  // even again, and different from before the write
+        }
+        lock.writeLock().unlock();
+    }
 
     /** Creates an empty list. */
     public ConcurrentList() {
@@ -398,14 +421,14 @@ public final class ConcurrentList<E> extends ConcurrentListBase<E> implements Li
                 }
                 continue;
             }
-            lock.writeLock().lock();
+            lockWrite();
             try {
                 if (holdsAt(seen, -1, 0, match + 1)) {     // the prefix only: the list may go on past the copy
                     remove(match);
                     return true;
                 }
             } finally {
-                lock.writeLock().unlock();
+                unlockWrite();
             }
         }
     }
@@ -458,12 +481,12 @@ public final class ConcurrentList<E> extends ConcurrentListBase<E> implements Li
         if (additions.length == 0) {
             return false;
         }
-        lock.writeLock().lock();
+        lockWrite();
         try {
             appendNoLock(additions);
             return true;
         } finally {
-            lock.writeLock().unlock();
+            unlockWrite();
         }
     }
 
@@ -472,7 +495,7 @@ public final class ConcurrentList<E> extends ConcurrentListBase<E> implements Li
     public boolean addAll(int index, Collection<? extends E> c) {
         Objects.requireNonNull(c, "collection cannot be null");
         Object[] additions = c.toArray();   // c's code runs before this list's lock is held (c may lock this list)
-        lock.writeLock().lock();
+        lockWrite();
         try {
             int currentSize = size();
             if (index < 0 || index > currentSize) {
@@ -491,7 +514,7 @@ public final class ConcurrentList<E> extends ConcurrentListBase<E> implements Li
             rebuild(elements);
             return true;
         } finally {
-            lock.writeLock().unlock();
+            unlockWrite();
         }
     }
 
@@ -508,7 +531,7 @@ public final class ConcurrentList<E> extends ConcurrentListBase<E> implements Li
     public boolean retainAll(Collection<?> c) {
         Objects.requireNonNull(c, "collection cannot be null");
         if (c.isEmpty()) {
-            lock.writeLock().lock();
+            lockWrite();
             try {
                 if (size() == 0) {
                     return false;
@@ -516,7 +539,7 @@ public final class ConcurrentList<E> extends ConcurrentListBase<E> implements Li
                 clear();
                 return true;
             } finally {
-                lock.writeLock().unlock();
+                unlockWrite();
             }
         }
         return removeMatching(c, false);
@@ -595,7 +618,7 @@ public final class ConcurrentList<E> extends ConcurrentListBase<E> implements Li
      * elements; reports whether it did.
      */
     private boolean writeOverIfUnchanged(Object[] snapshot, Object[] values) {
-        lock.writeLock().lock();
+        lockWrite();
         try {
             if (!holdsAt(snapshot, 0, snapshot.length)) {
                 return false;
@@ -614,7 +637,7 @@ public final class ConcurrentList<E> extends ConcurrentListBase<E> implements Li
             }
             return true;
         } finally {
-            lock.writeLock().unlock();
+            unlockWrite();
         }
     }
 
@@ -639,7 +662,7 @@ public final class ConcurrentList<E> extends ConcurrentListBase<E> implements Li
 
     /** Under the write lock: rebuilds the list from retained if it still holds exactly the snapshot's elements. */
     private boolean rebuildIfUnchanged(Object[] snapshot, List<E> retained) {
-        lock.writeLock().lock();
+        lockWrite();
         try {
             if (!holdsAt(snapshot, 0, snapshot.length)) {
                 return false;
@@ -647,25 +670,46 @@ public final class ConcurrentList<E> extends ConcurrentListBase<E> implements Li
             rebuild(retained);
             return true;
         } finally {
-            lock.writeLock().unlock();
+            unlockWrite();
         }
     }
 
     @Override
     public void clear() {
-        lock.writeLock().lock();
+        lockWrite();
         try {
             buckets.clear();
             head.set(0);
             tail.set(0);
             sizeCounter.set(0);  // Reset size counter
         } finally {
-            lock.writeLock().unlock();
+            unlockWrite();
         }
     }
 
     @Override
     public E get(int index) {
+        // Without the lock: an element read between two equal, even readings of version was read with no write
+        // under way, so it is the element at index then (every access here is volatile). Otherwise, under the lock.
+        long v = version;
+        if ((v & 1) == 0 && index >= 0) {
+            long pos = head.get() + index;
+            if (pos < tail.get()) {
+                AtomicReferenceArray<Object> bucket = buckets.get(bucketIndex(pos));
+                if (bucket != null) {
+                    Object e = bucket.get(bucketOffset(pos));
+                    if (version == v) {
+                        @SuppressWarnings("unchecked")
+                        E element = (E) e;
+                        return element;
+                    }
+                }
+            }
+        }
+        return getLocked(index);
+    }
+
+    private E getLocked(int index) {
         lock.readLock().lock();
         try {
             long h = head.get();
@@ -704,7 +748,7 @@ public final class ConcurrentList<E> extends ConcurrentListBase<E> implements Li
 
     @Override
     public void add(int index, E element) {
-        lock.writeLock().lock();
+        lockWrite();
         try {
             int sz = size();
             if (index < 0 || index > sz) {
@@ -735,7 +779,7 @@ public final class ConcurrentList<E> extends ConcurrentListBase<E> implements Li
             }
             sizeCounter.incrementAndGet();
         } finally {
-            lock.writeLock().unlock();
+            unlockWrite();
         }
     }
 
@@ -769,7 +813,7 @@ public final class ConcurrentList<E> extends ConcurrentListBase<E> implements Li
 
     @Override
     public E remove(int index) {
-        lock.writeLock().lock();
+        lockWrite();
         try {
             int sz = size();
             // Bounds-check up front: List contract requires IndexOutOfBoundsException
@@ -800,7 +844,7 @@ public final class ConcurrentList<E> extends ConcurrentListBase<E> implements Li
             }
             return removed;
         } finally {
-            lock.writeLock().unlock();
+            unlockWrite();
         }
     }
 
@@ -936,14 +980,14 @@ public final class ConcurrentList<E> extends ConcurrentListBase<E> implements Li
     public void addFirst(E e) {
         // Use write lock to ensure atomic update of head counter + value
         // This prevents readers from seeing updated head before value is written
-        lock.writeLock().lock();
+        lockWrite();
         try {
             long pos = head.decrementAndGet();
             AtomicReferenceArray<Object> bucket = ensureBucket(bucketIndex(pos));
             bucket.set(bucketOffset(pos), e);
             sizeCounter.incrementAndGet();
         } finally {
-            lock.writeLock().unlock();
+            unlockWrite();
         }
     }
 
@@ -951,14 +995,14 @@ public final class ConcurrentList<E> extends ConcurrentListBase<E> implements Li
     public void addLast(E e) {
         // Use write lock to ensure atomic update of tail counter + value
         // This prevents readers from seeing updated tail before value is written
-        lock.writeLock().lock();
+        lockWrite();
         try {
             long pos = tail.getAndIncrement();
             AtomicReferenceArray<Object> bucket = ensureBucket(bucketIndex(pos));
             bucket.set(bucketOffset(pos), e);
             sizeCounter.incrementAndGet();
         } finally {
-            lock.writeLock().unlock();
+            unlockWrite();
         }
     }
 
@@ -976,40 +1020,40 @@ public final class ConcurrentList<E> extends ConcurrentListBase<E> implements Li
 
     @Override
     public E removeFirst() {
-        lock.writeLock().lock();
+        lockWrite();
         try {
             if (isEmpty()) {
                 throw new NoSuchElementException("List is empty");
             }
             return pollFirstInternal();
         } finally {
-            lock.writeLock().unlock();
+            unlockWrite();
         }
     }
 
     @Override
     public E removeLast() {
-        lock.writeLock().lock();
+        lockWrite();
         try {
             if (isEmpty()) {
                 throw new NoSuchElementException("List is empty");
             }
             return pollLastInternal();
         } finally {
-            lock.writeLock().unlock();
+            unlockWrite();
         }
     }
 
     @Override
     public E pollFirst() {
-        lock.writeLock().lock();
+        lockWrite();
         try {
             if (isEmpty()) {
                 return null;
             }
             return pollFirstInternal();
         } finally {
-            lock.writeLock().unlock();
+            unlockWrite();
         }
     }
 
@@ -1043,14 +1087,14 @@ public final class ConcurrentList<E> extends ConcurrentListBase<E> implements Li
 
     @Override
     public E pollLast() {
-        lock.writeLock().lock();
+        lockWrite();
         try {
             if (isEmpty()) {
                 return null;
             }
             return pollLastInternal();
         } finally {
-            lock.writeLock().unlock();
+            unlockWrite();
         }
     }
 
@@ -1177,14 +1221,14 @@ public final class ConcurrentList<E> extends ConcurrentListBase<E> implements Li
             if (i < 0) {
                 return false;
             }
-            lock.writeLock().lock();
+            lockWrite();
             try {
                 if (holdsAt(snapshot, i, snapshot.length)) {
                     remove(i);
                     return true;
                 }
             } finally {
-                lock.writeLock().unlock();
+                unlockWrite();
             }
         }
     }

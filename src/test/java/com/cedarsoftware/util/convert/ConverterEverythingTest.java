@@ -6504,62 +6504,62 @@ class ConverterEverythingTest {
         
         // Record to Map conversion - requires JDK 14+ (not available in JDK 8)
 
-        // File/Path Identity and Cross conversions (skip JsonIo due to serialization issues)
+        // File/Path identity and cross conversions (false: one way, no reverse check)
         TEST_DB.put(pair(File.class, File.class), new Object[][]{
-            {new File("/tmp/test.txt"), new File("/tmp/test.txt"), false}, // File identity conversion - skip JsonIo
-            {new File("test.txt"), new File("test.txt"), false}, // Relative file identity - skip JsonIo
-            {new File("/Users/test/document.pdf"), new File("/Users/test/document.pdf"), false}, // Absolute file identity - skip JsonIo
+            {new File("/tmp/test.txt"), new File("/tmp/test.txt"), false}, // File identity conversion
+            {new File("test.txt"), new File("test.txt"), false}, // Relative file identity
+            {new File("/Users/test/document.pdf"), new File("/Users/test/document.pdf"), false}, // Absolute file identity
         });
         TEST_DB.put(pair(Path.class, Path.class), new Object[][]{
-            {Paths.get("/tmp/test.txt"), Paths.get("/tmp/test.txt"), false}, // Path identity conversion - skip JsonIo
-            {Paths.get("test.txt"), Paths.get("test.txt"), false}, // Relative path identity - skip JsonIo
-            {Paths.get("/Users/test/document.pdf"), Paths.get("/Users/test/document.pdf"), false}, // Absolute path identity - skip JsonIo
+            {Paths.get("/tmp/test.txt"), Paths.get("/tmp/test.txt"), false}, // Path identity conversion
+            {Paths.get("test.txt"), Paths.get("test.txt"), false}, // Relative path identity
+            {Paths.get("/Users/test/document.pdf"), Paths.get("/Users/test/document.pdf"), false}, // Absolute path identity
         });
         TEST_DB.put(pair(File.class, Path.class), new Object[][]{
-            {new File("/tmp/test.txt"), Paths.get("/tmp/test.txt"), false}, // File to Path conversion - skip JsonIo
-            {new File("test.txt"), Paths.get("test.txt"), false}, // Relative File to Path - skip JsonIo
-            {new File("/Users/test/document.pdf"), Paths.get("/Users/test/document.pdf"), false}, // Absolute File to Path - skip JsonIo
+            {new File("/tmp/test.txt"), Paths.get("/tmp/test.txt"), false}, // File to Path conversion
+            {new File("test.txt"), Paths.get("test.txt"), false}, // Relative File to Path
+            {new File("/Users/test/document.pdf"), Paths.get("/Users/test/document.pdf"), false}, // Absolute File to Path
         });
         TEST_DB.put(pair(Path.class, File.class), new Object[][]{
-            {Paths.get("/tmp/test.txt"), new File("/tmp/test.txt"), false}, // Path to File conversion - skip JsonIo
-            {Paths.get("test.txt"), new File("test.txt"), false}, // Relative Path to File - skip JsonIo
-            {Paths.get("/Users/test/document.pdf"), new File("/Users/test/document.pdf"), false}, // Absolute Path to File - skip JsonIo
+            {Paths.get("/tmp/test.txt"), new File("/tmp/test.txt"), false}, // Path to File conversion
+            {Paths.get("test.txt"), new File("test.txt"), false}, // Relative Path to File
+            {Paths.get("/Users/test/document.pdf"), new File("/Users/test/document.pdf"), false}, // Absolute Path to File
         });
 
-        // URI/URL ↔ File conversions (skip JsonIo due to serialization issues)
+        // URI/URL ↔ File conversions (false: one way, no reverse check)
         TEST_DB.put(pair(URI.class, File.class), new Object[][]{
-            {URI.create("file:///tmp/test.txt"), new File("/tmp/test.txt"), false}, // URI to File - skip JsonIo
-            {URI.create("file:///Users/test/document.pdf"), new File("/Users/test/document.pdf"), false}, // URI to File - skip JsonIo
+            {URI.create("file:///tmp/test.txt"), new File("/tmp/test.txt"), false}, // URI to File
+            {URI.create("file:///Users/test/document.pdf"), new File("/Users/test/document.pdf"), false}, // URI to File
         });
         TEST_DB.put(pair(File.class, URI.class), new Object[][]{
-            {new File("/tmp/test.txt"), URI.create("file:/tmp/test.txt"), false}, // File to URI - skip JsonIo (normalized path)
-            {new File("/Users/test/document.pdf"), URI.create("file:/Users/test/document.pdf"), false}, // File to URI - skip JsonIo
+            {new File("/tmp/test.txt"), URI.create("file:/tmp/test.txt"), false}, // File to URI (normalized path)
+            {new File("/Users/test/document.pdf"), URI.create("file:/Users/test/document.pdf"), false}, // File to URI
         });
         TEST_DB.put(pair(URL.class, File.class), new Object[][]{
-            {toURL("file:///tmp/test.txt"), new File("/tmp/test.txt"), false}, // URL to File - skip JsonIo
-            {toURL("file:///Users/test/document.pdf"), new File("/Users/test/document.pdf"), false}, // URL to File - skip JsonIo
+            {toURL("file:///tmp/test.txt"), new File("/tmp/test.txt"), false}, // URL to File
+            {toURL("file:///Users/test/document.pdf"), new File("/Users/test/document.pdf"), false}, // URL to File
         });
         TEST_DB.put(pair(File.class, URL.class), new Object[][]{
-            {new File("/tmp/test.txt"), toURL("file:/tmp/test.txt"), false}, // File to URL - skip JsonIo (normalized path)
-            {new File("/Users/test/document.pdf"), toURL("file:/Users/test/document.pdf"), false}, // File to URL - skip JsonIo
+            {new File("/tmp/test.txt"), toURL("file:/tmp/test.txt"), false}, // File to URL (normalized path)
+            {new File("/Users/test/document.pdf"), toURL("file:/Users/test/document.pdf"), false}, // File to URL
         });
 
-        // URI/URL ↔ Path conversions (skip JsonIo due to serialization issues)
+        // URI/URL ↔ Path conversions (false: one way, no reverse check)
         TEST_DB.put(pair(URI.class, Path.class), new Object[][]{
-            {URI.create("file:///tmp/test.txt"), Paths.get("/tmp/test.txt"), false}, // URI to Path - skip JsonIo
-            {URI.create("file:///Users/test/document.pdf"), Paths.get("/Users/test/document.pdf"), false}, // URI to Path - skip JsonIo
+            {URI.create("file:///tmp/test.txt"), Paths.get("/tmp/test.txt"), false}, // URI to Path
+            {URI.create("file:///Users/test/document.pdf"), Paths.get("/Users/test/document.pdf"), false}, // URI to Path
         });
         TEST_DB.put(pair(Path.class, URI.class), new Object[][]{
-            {Paths.get("/tmp/test.txt"), URI.create("file:/tmp/test.txt"), false}, // Path to URI - skip JsonIo (normalized path)
-            {Paths.get("/Users/test/document.pdf"), URI.create("file:/Users/test/document.pdf"), false}, // Path to URI - skip JsonIo
+            {Paths.get("/tmp/test.txt"), URI.create("file:/tmp/test.txt"), false}, // Path to URI (normalized path)
+            {Paths.get("/Users/test/document.pdf"), URI.create("file:/Users/test/document.pdf"), false}, // Path to URI
         });
         TEST_DB.put(pair(URL.class, Path.class), new Object[][]{
-            {toURL("file:///tmp/test.txt"), Paths.get("/tmp/test.txt"), false}, // URL to Path - skip JsonIo
-            {toURL("file:///Users/test/document.pdf"), Paths.get("/Users/test/document.pdf"), false}, // URL to Path - skip JsonIo
+            {toURL("file:///tmp/test.txt"), Paths.get("/tmp/test.txt"), false}, // URL to Path
+            {toURL("file:///Users/test/document.pdf"), Paths.get("/Users/test/document.pdf"), false}, // URL to Path
         });
         TEST_DB.put(pair(Path.class, URL.class), new Object[][]{
-            {Paths.get("/tmp/test.txt"), toURL("file:/tmp/test.txt"), false}, // Path to URL - skip JsonIo (normalized path)
-            {Paths.get("/Users/test/document.pdf"), toURL("file:/Users/test/document.pdf"), false}, // Path to URL - skip JsonIo
+            {Paths.get("/tmp/test.txt"), toURL("file:/tmp/test.txt"), false}, // Path to URL (normalized path)
+            {Paths.get("/Users/test/document.pdf"), toURL("file:/Users/test/document.pdf"), false}, // Path to URL
         });
 
         // Dimension to AWT types

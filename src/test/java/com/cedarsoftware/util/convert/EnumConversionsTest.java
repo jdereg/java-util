@@ -234,7 +234,7 @@ class EnumConversionsTest {
     void ordinalToEnumRoundTrip_preservesValue() {
         int original = 4;
         Day enumValue = converter.convert(original, Day.class);
-        int result = enumValue.ordinal();
+        int result = converter.convert(enumValue, int.class);
         assertThat(result).isEqualTo(original);
     }
 

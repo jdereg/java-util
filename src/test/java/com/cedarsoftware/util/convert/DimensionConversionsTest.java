@@ -1,11 +1,7 @@
 package com.cedarsoftware.util.convert;
 
-import java.math.BigInteger;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 
 import com.cedarsoftware.util.geom.Dimension;
 import org.junit.jupiter.api.BeforeEach;
@@ -125,80 +121,6 @@ class DimensionConversionsTest {
         assertThatThrownBy(() -> converter.convert(array, Dimension.class))
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessageContaining("Width and height must be non-negative");
-    }
-
-    // ========================================
-    // Number to Dimension Tests
-    // ========================================
-
-    @Test
-    void testIntegerToDimensionBlocked() {
-        assertThatThrownBy(() -> converter.convert(500, Dimension.class))
-            .isInstanceOf(IllegalArgumentException.class)
-            .hasMessageContaining("Unsupported conversion, source type [Integer");
-    }
-
-    @Test
-    void testLongToDimensionBlocked() {
-        assertThatThrownBy(() -> converter.convert(1000L, Dimension.class))
-            .isInstanceOf(IllegalArgumentException.class)
-            .hasMessageContaining("Unsupported conversion, source type [Long");
-    }
-
-    @Test
-    void testNumberToDimension_negative() {
-        assertThatThrownBy(() -> converter.convert(-100, Dimension.class))
-            .isInstanceOf(IllegalArgumentException.class)
-            .hasMessageContaining("Unsupported conversion, source type [Integer");
-    }
-
-    @Test
-    void testBigIntegerToDimensionBlocked() {
-        assertThatThrownBy(() -> converter.convert(BigInteger.valueOf(300), Dimension.class))
-            .isInstanceOf(IllegalArgumentException.class)
-            .hasMessageContaining("Unsupported conversion, source type [BigInteger");
-    }
-
-    @Test
-    void testAtomicIntegerToDimensionBlocked() {
-        assertThatThrownBy(() -> converter.convert(new AtomicInteger(250), Dimension.class))
-            .isInstanceOf(IllegalArgumentException.class)
-            .hasMessageContaining("Unsupported conversion, source type [AtomicInteger");
-    }
-
-    @Test
-    void testAtomicLongToDimensionBlocked() {
-        assertThatThrownBy(() -> converter.convert(new AtomicLong(350), Dimension.class))
-            .isInstanceOf(IllegalArgumentException.class)
-            .hasMessageContaining("Unsupported conversion, source type [AtomicLong");
-    }
-
-    @Test
-    void testAtomicBooleanToDimensionBlocked_true() {
-        assertThatThrownBy(() -> converter.convert(new AtomicBoolean(true), Dimension.class))
-            .isInstanceOf(IllegalArgumentException.class)
-            .hasMessageContaining("Unsupported conversion, source type [AtomicBoolean");
-    }
-
-    @Test
-    void testAtomicBooleanToDimensionBlocked_false() {
-        assertThatThrownBy(() -> converter.convert(new AtomicBoolean(false), Dimension.class))
-            .isInstanceOf(IllegalArgumentException.class)
-            .hasMessageContaining("Unsupported conversion, source type [AtomicBoolean");
-    }
-
-    @Test
-    void testBooleanToDimensionBlocked_true() {
-        assertThatThrownBy(() -> converter.convert(Boolean.TRUE, Dimension.class))
-            .isInstanceOf(IllegalArgumentException.class)
-            .hasMessageContaining("Unsupported conversion, source type [Boolean");
-    }
-
-    @Test
-    void testBooleanToDimensionBlocked_false() {
-        assertThatThrownBy(() -> converter.convert(Boolean.FALSE, Dimension.class))
-            .isInstanceOf(IllegalArgumentException.class)
-            .hasMessageContaining("Unsupported conversion, source type [Boolean");
     }
 
     // ========================================

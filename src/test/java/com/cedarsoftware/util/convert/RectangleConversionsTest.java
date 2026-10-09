@@ -1,14 +1,8 @@
 package com.cedarsoftware.util.convert;
 
-import java.math.BigInteger;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 
-import com.cedarsoftware.util.geom.Dimension;
-import com.cedarsoftware.util.geom.Point;
 import com.cedarsoftware.util.geom.Rectangle;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -136,92 +130,6 @@ class RectangleConversionsTest {
     }
 
     // ========================================
-    // Number to Rectangle Tests (Area-based)
-    // ========================================
-
-    @Test
-    void testIntegerToRectangleBlocked() {
-        assertThatThrownBy(() -> converter.convert(100, Rectangle.class))
-            .isInstanceOf(IllegalArgumentException.class)
-            .hasMessageContaining("Unsupported conversion, source type [Integer");
-    }
-
-    @Test
-    void testLongToRectangleBlocked() {
-        assertThatThrownBy(() -> converter.convert(64L, Rectangle.class))
-            .isInstanceOf(IllegalArgumentException.class)
-            .hasMessageContaining("Unsupported conversion, source type [Long");
-    }
-
-    @Test
-    void testNumberToRectangleNegativeBlocked() {
-        assertThatThrownBy(() -> converter.convert(-100, Rectangle.class))
-            .isInstanceOf(IllegalArgumentException.class)
-            .hasMessageContaining("Unsupported conversion, source type [Integer");
-    }
-
-    @Test
-    void testBigIntegerToRectangleBlocked() {
-        assertThatThrownBy(() -> converter.convert(BigInteger.valueOf(121), Rectangle.class))
-            .isInstanceOf(IllegalArgumentException.class)
-            .hasMessageContaining("Unsupported conversion, source type [BigInteger");
-    }
-
-    @Test
-    void testAtomicIntegerToRectangleBlocked() {
-        assertThatThrownBy(() -> converter.convert(new AtomicInteger(49), Rectangle.class))
-            .isInstanceOf(IllegalArgumentException.class)
-            .hasMessageContaining("Unsupported conversion, source type [AtomicInteger");
-    }
-
-    @Test
-    void testAtomicLongToRectangleBlocked() {
-        assertThatThrownBy(() -> converter.convert(new AtomicLong(25), Rectangle.class))
-            .isInstanceOf(IllegalArgumentException.class)
-            .hasMessageContaining("Unsupported conversion, source type [AtomicLong");
-    }
-
-    @Test
-    void testAtomicBooleanToRectangle_trueBlocked() {
-        assertThatThrownBy(() -> converter.convert(new AtomicBoolean(true), Rectangle.class))
-            .isInstanceOf(IllegalArgumentException.class)
-            .hasMessageContaining("Unsupported conversion, source type [AtomicBoolean");
-    }
-
-    @Test
-    void testAtomicBooleanToRectangle_falseBlocked() {
-        assertThatThrownBy(() -> converter.convert(new AtomicBoolean(false), Rectangle.class))
-            .isInstanceOf(IllegalArgumentException.class)
-            .hasMessageContaining("Unsupported conversion, source type [AtomicBoolean");
-    }
-
-    @Test
-    void testBooleanToRectangle_trueBlocked() {
-        assertThatThrownBy(() -> converter.convert(Boolean.TRUE, Rectangle.class))
-            .isInstanceOf(IllegalArgumentException.class)
-            .hasMessageContaining("Unsupported conversion, source type [Boolean");
-    }
-
-    @Test
-    void testBooleanToRectangle_falseBlocked() {
-        assertThatThrownBy(() -> converter.convert(Boolean.FALSE, Rectangle.class))
-            .isInstanceOf(IllegalArgumentException.class)
-            .hasMessageContaining("Unsupported conversion, source type [Boolean");
-    }
-
-    // ========================================
-    // AWT Type Cross-Conversions to Rectangle
-    // ========================================
-
-    @Test
-    void testPointToRectangleBlocked() {
-        Point point = new Point(50, 75);
-        assertThatThrownBy(() -> converter.convert(point, Rectangle.class))
-            .isInstanceOf(IllegalArgumentException.class)
-            .hasMessageContaining("Unsupported conversion, source type [Point");
-    }
-
-    // ========================================
     // Rectangle to Boolean Tests
     // ========================================
 
@@ -230,29 +138,5 @@ class RectangleConversionsTest {
         Rectangle rectangle = new Rectangle(0, 0, 100, 0);
         Boolean result = converter.convert(rectangle, Boolean.class);
         assertThat(result).isTrue(); // Any non-zero coordinate is true
-    }
-
-    // ========================================
-    // Cross-Type Round-trip Tests
-    // ========================================
-
-    @Test
-    void testRectanglePointRoundTripBlocked() {
-        Rectangle originalRectangle = new Rectangle(30, 40, 0, 0);
-        
-        // Rectangle -> Point should be blocked
-        assertThatThrownBy(() -> converter.convert(originalRectangle, Point.class))
-            .isInstanceOf(IllegalArgumentException.class)
-            .hasMessageContaining("Unsupported conversion, source type [Rectangle");
-    }
-
-    @Test
-    void testRectangleDimensionRoundTripBlocked() {
-        Rectangle originalRectangle = new Rectangle(0, 0, 120, 80);
-
-        // Rectangle -> Dimension should be blocked
-        assertThatThrownBy(() -> converter.convert(originalRectangle, Dimension.class))
-            .isInstanceOf(IllegalArgumentException.class)
-            .hasMessageContaining("Unsupported conversion, source type [Rectangle");
     }
 }

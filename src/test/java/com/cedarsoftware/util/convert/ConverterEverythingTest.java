@@ -6246,6 +6246,9 @@ class ConverterEverythingTest {
             {new Color(255, 255, 255), -1L}, // White
         });
 
+
+        // A number does not convert to a Color: which of its bytes are alpha is a guess
+        refuse(Color.class, 0xFF0000, 0x80FF0000L);
     }
 
     /**
@@ -6642,6 +6645,21 @@ class ConverterEverythingTest {
             {new Insets(10, 20, 30, 40), new StringBuffer("(10,20,30,40)")}, // Standard (top,left,bottom,right) format
             {new Insets(0, 0, 0, 0), new StringBuffer("(0,0,0,0)")}, // Zero insets
         });
+
+        // A number or a boolean does not convert to a geometry type: one value cannot say which side or axis it is
+        refuse(Dimension.class, 500, -100, 1000L, BigInteger.valueOf(300), new AtomicInteger(250), new AtomicLong(350),
+                new AtomicBoolean(true), new AtomicBoolean(false), true, false);
+        refuse(Rectangle.class, 100, -100, 64L, BigInteger.valueOf(121), new AtomicInteger(49), new AtomicLong(25),
+                new AtomicBoolean(true), new AtomicBoolean(false), true, false);
+        refuse(Point.class, 250, -100, 500L, BigInteger.valueOf(750), new AtomicInteger(300), new AtomicLong(400),
+                new AtomicBoolean(true), new AtomicBoolean(false), true, false);
+        refuse(Insets.class, 10, -5, 25L, BigInteger.valueOf(15), new AtomicInteger(12), new AtomicLong(18),
+                new AtomicBoolean(true), new AtomicBoolean(false), true, false);
+        // Nor does one geometry type to another that means something else
+        refuse(Rectangle.class, new Point(50, 75));
+        refuse(Point.class, new Rectangle(30, 40, 0, 0));
+        refuse(Dimension.class, new Point(640, 480), new Rectangle(0, 0, 120, 80));
+        refuse(Insets.class, new Point(25, 35), new Rectangle(5, 10, 100, 200));
     }
 
     /**
@@ -7004,6 +7022,20 @@ class ConverterEverythingTest {
         TEST_DB.put(key, new Object[][] {
                 {sourceSupplier, (Supplier<Object>) () -> convertOrThrowable(sourceSupplier.get(), targetClass)}
         });
+    }
+
+    /**
+     * Rows for conversions the Converter refuses: each source, converted to the target, throws "Unsupported
+     * conversion" naming the source's type and value and the target.
+     */
+    private static void refuse(Class<?> target, Object... sources) {
+        for (Object source : sources) {
+            TEST_DB.put(pair(source.getClass(), target), new Object[][]{
+                    {source, new IllegalArgumentException("Unsupported conversion, source type ["
+                            + Converter.getShortName(source.getClass()) + " (" + source + ")] target type '"
+                            + Converter.getShortName(target) + "'")},
+            });
+        }
     }
 
     private static Object createBitSetSourceFor(Class<?> sourceClass) {

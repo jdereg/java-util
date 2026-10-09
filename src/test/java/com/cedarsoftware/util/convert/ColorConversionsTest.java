@@ -102,24 +102,6 @@ class ColorConversionsTest {
     }
 
     // ========================================
-    // Integer/Long to Color Tests
-    // ========================================
-
-    @Test
-    void testIntegerToColorBlocked() {
-        assertThatThrownBy(() -> converter.convert(0xFF0000, Color.class))
-            .isInstanceOf(IllegalArgumentException.class)
-            .hasMessageContaining("Unsupported conversion, source type [Integer");
-    }
-
-    @Test
-    void testLongToColorBlocked() {
-        assertThatThrownBy(() -> converter.convert(0x80FF0000L, Color.class))
-            .isInstanceOf(IllegalArgumentException.class)
-            .hasMessageContaining("Unsupported conversion, source type [Long");
-    }
-
-    // ========================================
     // Array to Color Tests
     // ========================================
 

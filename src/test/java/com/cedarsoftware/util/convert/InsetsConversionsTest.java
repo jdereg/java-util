@@ -1,15 +1,9 @@
 package com.cedarsoftware.util.convert;
 
-import java.math.BigInteger;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 
 import com.cedarsoftware.util.geom.Insets;
-import com.cedarsoftware.util.geom.Point;
-import com.cedarsoftware.util.geom.Rectangle;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -172,100 +166,6 @@ class InsetsConversionsTest {
         assertThatThrownBy(() -> converter.convert(array, Insets.class))
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessageContaining("Insets array must have exactly 4 elements");
-    }
-
-    // ========================================
-    // Number to Insets Tests (Uniform values)
-    // ========================================
-
-    @Test
-    void testIntegerToInsetsBlocked() {
-        assertThatThrownBy(() -> converter.convert(10, Insets.class))
-            .isInstanceOf(IllegalArgumentException.class)
-            .hasMessageContaining("Unsupported conversion, source type [Integer");
-    }
-
-    @Test
-    void testLongToInsetsBlocked() {
-        assertThatThrownBy(() -> converter.convert(25L, Insets.class))
-            .isInstanceOf(IllegalArgumentException.class)
-            .hasMessageContaining("Unsupported conversion, source type [Long");
-    }
-
-    @Test
-    void testNumberToInsetsNegativeBlocked() {
-        assertThatThrownBy(() -> converter.convert(-5, Insets.class))
-            .isInstanceOf(IllegalArgumentException.class)
-            .hasMessageContaining("Unsupported conversion, source type [Integer");
-    }
-
-    @Test
-    void testBigIntegerToInsetsBlocked() {
-        assertThatThrownBy(() -> converter.convert(BigInteger.valueOf(15), Insets.class))
-            .isInstanceOf(IllegalArgumentException.class)
-            .hasMessageContaining("Unsupported conversion, source type [BigInteger");
-    }
-
-    @Test
-    void testAtomicIntegerToInsetsBlocked() {
-        assertThatThrownBy(() -> converter.convert(new AtomicInteger(12), Insets.class))
-            .isInstanceOf(IllegalArgumentException.class)
-            .hasMessageContaining("Unsupported conversion, source type [AtomicInteger");
-    }
-
-    @Test
-    void testAtomicLongToInsetsBlocked() {
-        assertThatThrownBy(() -> converter.convert(new AtomicLong(18), Insets.class))
-            .isInstanceOf(IllegalArgumentException.class)
-            .hasMessageContaining("Unsupported conversion, source type [AtomicLong");
-    }
-
-    @Test
-    void testAtomicBooleanToInsets_trueBlocked() {
-        assertThatThrownBy(() -> converter.convert(new AtomicBoolean(true), Insets.class))
-            .isInstanceOf(IllegalArgumentException.class)
-            .hasMessageContaining("Unsupported conversion, source type [AtomicBoolean");
-    }
-
-    @Test
-    void testAtomicBooleanToInsets_falseBlocked() {
-        assertThatThrownBy(() -> converter.convert(new AtomicBoolean(false), Insets.class))
-            .isInstanceOf(IllegalArgumentException.class)
-            .hasMessageContaining("Unsupported conversion, source type [AtomicBoolean");
-    }
-
-    @Test
-    void testBooleanToInsets_trueBlocked() {
-        assertThatThrownBy(() -> converter.convert(Boolean.TRUE, Insets.class))
-            .isInstanceOf(IllegalArgumentException.class)
-            .hasMessageContaining("Unsupported conversion, source type [Boolean");
-    }
-
-    @Test
-    void testBooleanToInsets_falseBlocked() {
-        assertThatThrownBy(() -> converter.convert(Boolean.FALSE, Insets.class))
-            .isInstanceOf(IllegalArgumentException.class)
-            .hasMessageContaining("Unsupported conversion, source type [Boolean");
-    }
-
-    // ========================================
-    // AWT Type Cross-Conversions to Insets
-    // ========================================
-
-    @Test
-    void testPointToInsetsBlocked() {
-        Point point = new Point(25, 35);
-        assertThatThrownBy(() -> converter.convert(point, Insets.class))
-            .isInstanceOf(IllegalArgumentException.class)
-            .hasMessageContaining("Unsupported conversion, source type [Point");
-    }
-
-    @Test
-    void testRectangleToInsetsBlocked() {
-        Rectangle rectangle = new Rectangle(5, 10, 100, 200);
-        assertThatThrownBy(() -> converter.convert(rectangle, Insets.class))
-            .isInstanceOf(IllegalArgumentException.class)
-            .hasMessageContaining("Unsupported conversion, source type [Rectangle");
     }
 
     // ========================================

@@ -15,6 +15,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.Month;
 import java.time.MonthDay;
 import java.time.OffsetDateTime;
 import java.time.OffsetTime;
@@ -672,6 +673,66 @@ final class StringConversions {
     }
 
     /** True if {@code s} is minLength to maxLength ASCII digits and nothing else. */
+    /**
+     * The common MonthDay shapes, read without an exception or a formatter: "--12-25" (ISO), "12-25", "12/25",
+     * "12.25" or "12 25" (as MM_DD reads them, one or two digits each), and "2024-12-25" (a date). Null for any
+     * other text, or a month or day out of range (and a date that does not exist), which the general path then
+     * reads -- or refuses -- as before. Every shape but the ISO one went through a DateTimeParseException first:
+     * 290-350 ns.
+     */
+    private static MonthDay quickMonthDay(String s) {
+        int length = s.length();
+        int month;
+        int day;
+        if (length == 7 && s.charAt(0) == '-' && s.charAt(1) == '-' && s.charAt(4) == '-'
+                && digitsAt(s, 2, 4) && digitsAt(s, 5, 7)) {
+            month = twoDigits(s, 2);                                        // --MM-DD
+            day = twoDigits(s, 5);
+        } else if (length == 10 && s.charAt(4) == '-' && s.charAt(7) == '-' && digitsAt(s, 0, 4)
+                && digitsAt(s, 5, 7) && digitsAt(s, 8, 10)) {
+            int year = Integer.parseInt(s.substring(0, 4));                 // yyyy-MM-dd: a day that exists
+            month = twoDigits(s, 5);
+            day = twoDigits(s, 8);
+            if (year < 1 || month < 1 || month > 12 || day < 1 || day > Month.of(month).length(Year.isLeap(year))) {
+                return null;
+            }
+            return MonthDay.of(month, day);
+        } else if (length >= 3 && length <= 5) {
+            int sep = s.charAt(1) >= '0' && s.charAt(1) <= '9' ? 2 : 1;     // M[M] sep D[D]
+            if (sep >= length - 1 || "-/. ".indexOf(s.charAt(sep)) < 0 || length - sep - 1 > 2
+                    || !digitsAt(s, 0, sep) || !digitsAt(s, sep + 1, length)) {
+                return null;
+            }
+            month = Integer.parseInt(s.substring(0, sep));
+            day = Integer.parseInt(s.substring(sep + 1));
+        } else {
+            return null;
+        }
+        if (month < 1 || month > 12 || day < 1 || day > Month.of(month).maxLength()) {
+            return null;
+        }
+        return MonthDay.of(month, day);
+    }
+
+    /** s[from, to) is one or more ASCII digits. */
+    private static boolean digitsAt(String s, int from, int to) {
+        if (from >= to) {
+            return false;
+        }
+        for (int i = from; i < to; i++) {
+            char c = s.charAt(i);
+            if (c < '0' || c > '9') {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /** The two ASCII digits at s[at, at + 2) as a number. */
+    private static int twoDigits(String s, int at) {
+        return (s.charAt(at) - '0') * 10 + (s.charAt(at + 1) - '0');
+    }
+
     private static boolean isDigits(String s, int minLength, int maxLength) {
         int length = s.length();
         if (length < minLength || length > maxLength) {
@@ -691,6 +752,10 @@ final class StringConversions {
         if (isDigits(monthDay, 3, 4)) {
             // MMDD, as the same number converts ("1225" is --12-25, not month 12 day 5)
             return NumberConversions.toMonthDay(Integer.parseInt(monthDay), converter);
+        }
+        MonthDay quick = quickMonthDay(monthDay);
+        if (quick != null) {
+            return quick;
         }
         try {
             return MonthDay.parse(monthDay);
@@ -721,6 +786,14 @@ final class StringConversions {
         if (isDigits(yearMonth, 5, 6)) {
             // YYYYMM, as the same number converts ("202401" is 2024-01; the date parser read it as epoch millis)
             return NumberConversions.toYearMonth(Integer.parseInt(yearMonth), converter);
+        }
+        // "2024-12", ISO, read directly: YearMonth.parse took 61 ns (133 on JDK 8) through a DateTimeFormatter
+        if (yearMonth.length() == 7 && yearMonth.charAt(4) == '-' && digitsAt(yearMonth, 0, 4)
+                && digitsAt(yearMonth, 5, 7)) {
+            int month = twoDigits(yearMonth, 5);
+            if (month >= 1 && month <= 12) {
+                return YearMonth.of(Integer.parseInt(yearMonth.substring(0, 4)), month);
+            }
         }
         try {
             return YearMonth.parse(yearMonth);

@@ -165,7 +165,23 @@ class ConverterEverythingTest {
             return TOKYO_Z;
         }
     };
-    private static final Map<Map.Entry<Class<?>, Class<?>>, Object[][]> TEST_DB = new ConcurrentHashMap<>(500, .8f);
+    /**
+     * A pair declared in more than one place runs every declaration's rows: put() adds to the rows already there. A
+     * plain put() replaced them, so the earlier rows of a pair declared twice never ran.
+     */
+    private static final Map<Map.Entry<Class<?>, Class<?>>, Object[][]> TEST_DB =
+            new ConcurrentHashMap<Map.Entry<Class<?>, Class<?>>, Object[][]>(500, .8f) {
+                @Override
+                public Object[][] put(Map.Entry<Class<?>, Class<?>> pair, Object[][] rows) {
+                    Object[][] earlier = get(pair);
+                    if (earlier == null) {
+                        return super.put(pair, rows);
+                    }
+                    Object[][] all = Arrays.copyOf(earlier, earlier.length + rows.length);
+                    System.arraycopy(rows, 0, all, earlier.length, rows.length);
+                    return super.put(pair, all);
+                }
+            };
     private static final Map<Map.Entry<Class<?>, Class<?>>, Boolean> STAT_DB = new ConcurrentHashMap<>(500, .8f);
 
     enum TestMode {
@@ -562,9 +578,6 @@ class ConverterEverythingTest {
                 { mapOf(MapConversions.VALUE, "https://domain.com"), toURL("https://domain.com")},
                 { mapOf(V, "https://domain.com"), toURL("https://domain.com")},
         });
-        TEST_DB.put(pair(URI.class, URL.class), new Object[][]{
-                {toURI("urn:isbn:0451450523"), new IllegalArgumentException("Unable to convert URI to URL")},
-        });
     }
 
     /**
@@ -911,8 +924,6 @@ class ConverterEverythingTest {
                 {new AtomicBoolean(false), "false", true},
         });
         TEST_DB.put(pair(String.class, AtomicBoolean.class), new Object[][]{
-                {"true", new AtomicBoolean(true), true},
-                {"false", new AtomicBoolean(false), true},
                 {"1", new AtomicBoolean(true)},
                 {"0", new AtomicBoolean(false)},
         });
@@ -921,9 +932,6 @@ class ConverterEverythingTest {
                 {new AtomicBoolean(false), 0, true},
         });
         TEST_DB.put(pair(Integer.class, AtomicBoolean.class), new Object[][]{
-                {1, new AtomicBoolean(true), true},
-                {0, new AtomicBoolean(false), true},
-                {-1, new AtomicBoolean(true)},
                 {42, new AtomicBoolean(true)},
         });
 
@@ -1049,8 +1057,6 @@ class ConverterEverythingTest {
         TEST_DB.put(pair(Double.class, AtomicInteger.class), new Object[][]{
                 {(double) Integer.MIN_VALUE, new AtomicInteger(-2147483648), true},
                 {-1.99, new AtomicInteger(-1)},
-                {-1.0, new AtomicInteger(-1), true},
-                {0.0, new AtomicInteger(0), true},
                 {1.0, new AtomicInteger(1), true},
                 {1.99, new AtomicInteger(1)},
                 {(double) Integer.MAX_VALUE, new AtomicInteger(2147483647), true},
@@ -1063,8 +1069,6 @@ class ConverterEverythingTest {
                 { BigInteger.valueOf(Integer.MAX_VALUE), new AtomicInteger(Integer.MAX_VALUE), true},
         });
         TEST_DB.put(pair(String.class, AtomicInteger.class), new Object[][]{
-                {"-1", new AtomicInteger(-1), true},
-                {"0", new AtomicInteger(0), true},
                 {"1", new AtomicInteger(1), true},
                 {"-2147483648", new AtomicInteger(Integer.MIN_VALUE), true},
                 {"2147483647", new AtomicInteger(Integer.MAX_VALUE), true},
@@ -6492,9 +6496,6 @@ class ConverterEverythingTest {
             {new Dimension(800, 600), new int[]{800, 600}}, // Standard dimension to int array
             {new Dimension(1920, 1080), new int[]{1920, 1080}}, // HD dimension to int array
         });
-        TEST_DB.put(pair(Dimension.class, Map.class), new Object[][]{
-            {new Dimension(800, 600), mapOf("width", 800, "height", 600)}, // Standard width/height map
-        });
 
         // Dimension to strings
         TEST_DB.put(pair(Dimension.class, String.class), new Object[][]{
@@ -8413,29 +8414,10 @@ class ConverterEverythingTest {
         });
 
         // Missing wrapper to primitive conversions
-        TEST_DB.put(pair(Byte.class, boolean.class), new Object[][]{
-                {(byte)1, true},
-                {(byte)0, false},
-                {(byte)-1, true},
-        });
-        TEST_DB.put(pair(Byte.class, byte.class), new Object[][]{
-                {(byte)42, (byte)42, true},
-                {(byte)0, (byte)0, true},
-                {(byte)-1, (byte)-1, true},
-        });
-        TEST_DB.put(pair(Byte.class, char.class), new Object[][]{
-                {(byte)65, (char)65},
-                {(byte)0, (char)0},
-        });
         TEST_DB.put(pair(Byte.class, double.class), new Object[][]{
                 {(byte)42, 42.0},
                 {(byte)0, 0.0},
                 {(byte)-1, -1.0},
-        });
-        TEST_DB.put(pair(Byte.class, float.class), new Object[][]{
-                {(byte)42, 42.0f},
-                {(byte)0, 0.0f},
-                {(byte)-1, -1.0f},
         });
         TEST_DB.put(pair(Byte.class, int.class), new Object[][]{
                 {(byte)42, 42},
@@ -8574,13 +8556,8 @@ class ConverterEverythingTest {
         });
 
         // Missing char primitive conversions
-        TEST_DB.put(pair(char.class, boolean.class), new Object[][]{
-                {(char)1, true},
-                {(char)0, false},
-        });
         TEST_DB.put(pair(char.class, byte.class), new Object[][]{
                 {(char)42, (byte)42},
-                {(char)0, (byte)0},
         });
         TEST_DB.put(pair(char.class, char.class), new Object[][]{
                 {(char)65, (char)65, true},
@@ -8588,19 +8565,15 @@ class ConverterEverythingTest {
         });
         TEST_DB.put(pair(char.class, double.class), new Object[][]{
                 {(char)42, 42.0},
-                {(char)0, 0.0},
         });
         TEST_DB.put(pair(char.class, float.class), new Object[][]{
                 {(char)42, 42.0f},
-                {(char)0, 0.0f},
         });
         TEST_DB.put(pair(char.class, int.class), new Object[][]{
                 {(char)42, 42},
-                {(char)0, 0},
         });
         TEST_DB.put(pair(char.class, long.class), new Object[][]{
                 {(char)42, 42L},
-                {(char)0, 0L},
         });
         TEST_DB.put(pair(char.class, short.class), new Object[][]{
                 {(char)42, (short)42},
@@ -8618,34 +8591,10 @@ class ConverterEverythingTest {
                 {(byte)0, (byte)0, true},
                 {(byte)-1, (byte)-1, true},
         });
-        TEST_DB.put(pair(byte.class, char.class), new Object[][]{
-                {(byte)65, (char)65},
-                {(byte)0, (char)0},
-        });
-        TEST_DB.put(pair(byte.class, double.class), new Object[][]{
-                {(byte)42, 42.0},
-                {(byte)0, 0.0},
-                {(byte)-1, -1.0},
-        });
         TEST_DB.put(pair(byte.class, float.class), new Object[][]{
                 {(byte)42, 42.0f},
                 {(byte)0, 0.0f},
                 {(byte)-1, -1.0f},
-        });
-        TEST_DB.put(pair(byte.class, int.class), new Object[][]{
-                {(byte)42, 42},
-                {(byte)0, 0},
-                {(byte)-1, -1},
-        });
-        TEST_DB.put(pair(byte.class, long.class), new Object[][]{
-                {(byte)42, 42L},
-                {(byte)0, 0L},
-                {(byte)-1, -1L},
-        });
-        TEST_DB.put(pair(byte.class, short.class), new Object[][]{
-                {(byte)42, (short)42},
-                {(byte)0, (short)0},
-                {(byte)-1, (short)-1},
         });
 
         // Add primitive to BigDecimal/BigInteger conversions
@@ -8658,25 +8607,20 @@ class ConverterEverythingTest {
                 {false, new BigInteger("0")},
         });
         TEST_DB.put(pair(byte.class, BigDecimal.class), new Object[][]{
-                {(byte)42, new BigDecimal("42")},
                 {(byte)0, new BigDecimal("0")},
                 {(byte)-1, new BigDecimal("-1")},
         });
         TEST_DB.put(pair(byte.class, BigInteger.class), new Object[][]{
-                {(byte)42, new BigInteger("42")},
                 {(byte)0, new BigInteger("0")},
                 {(byte)-1, new BigInteger("-1")},
         });
         TEST_DB.put(pair(char.class, BigDecimal.class), new Object[][]{
-                {(char)65, new BigDecimal("65")},
                 {(char)0, new BigDecimal("0")},
         });
         TEST_DB.put(pair(char.class, BigInteger.class), new Object[][]{
-                {(char)65, new BigInteger("65")},
                 {(char)0, new BigInteger("0")},
         });
         TEST_DB.put(pair(double.class, BigDecimal.class), new Object[][]{
-                {42.5, new BigDecimal("42.5")},
                 {0.0, new BigDecimal("0.0")},
                 {-1.1, new BigDecimal("-1.1")},
         });
@@ -8686,7 +8630,6 @@ class ConverterEverythingTest {
                 {-1.0, new BigInteger("-1")},
         });
         TEST_DB.put(pair(float.class, BigDecimal.class), new Object[][]{
-                {42.5f, new BigDecimal("42.5")},
                 {0.0f, new BigDecimal("0.0")},
                 {-1.0f, new BigDecimal("-1.0")},  // Changed to avoid float precision issues
         });
@@ -8696,22 +8639,18 @@ class ConverterEverythingTest {
                 {-1.0f, new BigInteger("-1")},
         });
         TEST_DB.put(pair(int.class, BigDecimal.class), new Object[][]{
-                {42, new BigDecimal("42")},
                 {0, new BigDecimal("0")},
                 {-1, new BigDecimal("-1")},
         });
         TEST_DB.put(pair(int.class, BigInteger.class), new Object[][]{
-                {42, new BigInteger("42")},
                 {0, new BigInteger("0")},
                 {-1, new BigInteger("-1")},
         });
         TEST_DB.put(pair(long.class, BigDecimal.class), new Object[][]{
-                {42L, new BigDecimal("42")},
                 {0L, new BigDecimal("0")},
                 {-1L, new BigDecimal("-1")},
         });
         TEST_DB.put(pair(long.class, BigInteger.class), new Object[][]{
-                {42L, new BigInteger("42")},
                 {0L, new BigInteger("0")},
                 {-1L, new BigInteger("-1")},
         });

@@ -269,18 +269,6 @@ class InsetsConversionsTest {
     }
 
     // ========================================
-    // Insets Identity Tests
-    // ========================================
-
-    @Test
-    void testInsetsToInsets_identity() {
-        Insets original = new Insets(1, 2, 3, 4);
-        Insets result = converter.convert(original, Insets.class);
-        
-        assertThat(result).isSameAs(original);
-    }
-
-    // ========================================
     // Insets to Boolean Tests
     // ========================================
 

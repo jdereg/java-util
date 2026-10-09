@@ -222,18 +222,6 @@ class RectangleConversionsTest {
     }
 
     // ========================================
-    // Rectangle Identity Tests
-    // ========================================
-
-    @Test
-    void testRectangleToRectangle_identity() {
-        Rectangle original = new Rectangle(0, 0, 300, 150);
-        Rectangle result = converter.convert(original, Rectangle.class);
-        
-        assertThat(result).isSameAs(original);
-    }
-
-    // ========================================
     // Rectangle to Boolean Tests
     // ========================================
 

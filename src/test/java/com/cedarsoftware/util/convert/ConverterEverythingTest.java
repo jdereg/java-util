@@ -238,6 +238,13 @@ class ConverterEverythingTest {
         immutable.add(MonthDay.class);
         immutable.add(YearMonth.class);
         immutable.add(Locale.class);
+        immutable.add(File.class);
+        immutable.add(Path.class);
+        immutable.add(Color.class);
+        immutable.add(Dimension.class);
+        immutable.add(Point.class);
+        immutable.add(Rectangle.class);
+        immutable.add(Insets.class);
 
         loadCollectionTest();
         loadNumberTest();

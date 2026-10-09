@@ -202,18 +202,6 @@ class DimensionConversionsTest {
     }
 
     // ========================================
-    // Dimension Identity Tests
-    // ========================================
-
-    @Test
-    void testDimensionToDimension_identity() {
-        Dimension original = new Dimension(640, 480);
-        Dimension result = converter.convert(original, Dimension.class);
-        
-        assertThat(result).isSameAs(original);
-    }
-
-    // ========================================
     // Dimension to Boolean Tests
     // ========================================
 

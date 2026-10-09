@@ -219,15 +219,4 @@ class ColorConversionsTest {
     // ========================================
 
     // Round-trip test removed - Integer to Color conversion is blocked
-
-    // ========================================
-    // Identity and Null Tests
-    // ========================================
-
-    @Test
-    void testColorToColor_identity() {
-        Color original = new Color(255, 128, 64);
-        Color result = converter.convert(original, Color.class);
-        assertThat(result).isSameAs(original);
-    }
 }

@@ -110,18 +110,6 @@ class PathConversionsTest {
     }
 
     // ========================================
-    // Path Identity Tests
-    // ========================================
-
-    @Test
-    void testPathToPath_identity() {
-        Path original = Paths.get("/proc/version");
-        Path result = converter.convert(original, Path.class);
-        
-        assertThat(result).isSameAs(original);
-    }
-
-    // ========================================
     // Path Normalization Tests
     // ========================================
 

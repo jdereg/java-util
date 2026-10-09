@@ -204,18 +204,6 @@ class PointConversionsTest {
     }
 
     // ========================================
-    // Point Identity Tests
-    // ========================================
-
-    @Test
-    void testPointToPoint_identity() {
-        Point original = new Point(100, 200);
-        Point result = converter.convert(original, Point.class);
-        
-        assertThat(result).isSameAs(original);
-    }
-
-    // ========================================
     // Point to Boolean Tests
     // ========================================
 

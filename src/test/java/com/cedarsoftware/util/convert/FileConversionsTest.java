@@ -99,16 +99,4 @@ class FileConversionsTest {
         
         assertThat((Object) converter.convert(array, File.class)).isNull();   // blank text: null, as for the dates
     }
-
-    // ========================================
-    // File Identity Tests
-    // ========================================
-
-    @Test
-    void testFileToFile_identity() {
-        File original = new File("/proc/version");
-        File result = converter.convert(original, File.class);
-        
-        assertThat(result).isSameAs(original);
-    }
 }

@@ -32,6 +32,7 @@
         <version.junit-jupiter-params>5.14.4</version.junit-jupiter-params>   <!-- JUnit 6 requires Java 17; this project compiles release 8 -->
         <version.mockito-junit-jupiter>4.11.0</version.mockito-junit-jupiter>   <!-- can't update until they have JDK support -->
         <version.assertj-core>3.27.7</version.assertj-core>   <!-- 4.0.0-M1 is a milestone, not a release; stay on 3.x -->
+        <version.felix-framework>7.0.5</version.felix-framework>   <!-- OSGi framework for OsgiBundleIT only -->
         <version.json-io>4.112.0</version.json-io>
         <version.agrona>1.22.0</version.agrona> <!-- last agrona compiled for Java 8 (class file 52): 1.23.0+ ships Java 17 bytecode (61) and fails on a JDK 8 test run. Do not increase until abandoning JDK 8 support -->
         <version.commons-collections4>4.6.0</version.commons-collections4>
@@ -410,6 +411,10 @@
                         -Duser.country=US
                         -Xmx1500m
                     </argLine>
+                    <!-- an OSGi framework is for the integration tests only: unit tests check behavior without one -->
+                    <classpathDependencyExcludes>
+                        <classpathDependencyExclude>org.apache.felix:org.apache.felix.framework</classpathDependencyExclude>
+                    </classpathDependencyExcludes>
                 </configuration>
             </plugin>
 
@@ -499,6 +504,12 @@
             <groupId>org.assertj</groupId>
             <artifactId>assertj-core</artifactId>
             <version>${version.assertj-core}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.felix</groupId>
+            <artifactId>org.apache.felix.framework</artifactId>
+            <version>${version.felix-framework}</version>
             <scope>test</scope>
         </dependency>
 

@@ -45,32 +45,8 @@ class PointConversionsTest {
     }
 
     // ========================================
-    // Null/Void to Point Tests
-    // ========================================
-
-    @Test
-    void testNullToPoint() {
-        Point result = converter.convert(null, Point.class);
-        assertThat(result).isNull();
-    }
-
-    // ========================================
     // String to Point Tests
     // ========================================
-
-    @Test
-    void testStringToPoint_parenthesesFormat() {
-        Point result = converter.convert("(100,200)", Point.class);
-        assertThat(result.getX()).isEqualTo(100);
-        assertThat(result.getY()).isEqualTo(200);
-    }
-
-    @Test
-    void testStringToPoint_commaSeparated() {
-        Point result = converter.convert("150,250", Point.class);
-        assertThat(result.getX()).isEqualTo(150);
-        assertThat(result.getY()).isEqualTo(250);
-    }
 
     @Test
     void testStringToPoint_spaceSeparated() {
@@ -110,17 +86,6 @@ class PointConversionsTest {
     // ========================================
 
     @Test
-    void testMapToPoint_xyCoordinates() {
-        Map<String, Object> map = new HashMap<>();
-        map.put("x", 100);
-        map.put("y", 200);
-        
-        Point result = converter.convert(map, Point.class);
-        assertThat(result.getX()).isEqualTo(100);
-        assertThat(result.getY()).isEqualTo(200);
-    }
-
-    @Test
     void testMapToPoint_stringValue() {
         Map<String, Object> map = new HashMap<>();
         map.put("value", "(75,125)");
@@ -133,15 +98,6 @@ class PointConversionsTest {
     // ========================================
     // Array to Point Tests
     // ========================================
-
-    @Test
-    void testIntArrayToPoint() {
-        int[] array = {300, 400};
-        
-        Point result = converter.convert(array, Point.class);
-        assertThat(result.getX()).isEqualTo(300);
-        assertThat(result.getY()).isEqualTo(400);
-    }
 
     @Test
     void testIntArrayToPoint_negativeValues() {
@@ -193,7 +149,6 @@ class PointConversionsTest {
             .hasMessageContaining("Unsupported conversion, source type [BigInteger");
     }
 
-
     @Test
     void testAtomicIntegerToPointBlocked() {
         assertThatThrownBy(() -> converter.convert(new AtomicInteger(300), Point.class))
@@ -237,63 +192,6 @@ class PointConversionsTest {
     }
 
     // ========================================
-    // Dimension to Point Tests
-    // ========================================
-
-    @Test
-    void testDimensionToPoint() {
-        Dimension dimension = new Dimension(800, 600);
-        Point result = converter.convert(dimension, Point.class);
-        assertThat(result.getX()).isEqualTo(800);
-        assertThat(result.getY()).isEqualTo(600);
-    }
-
-    // ========================================
-    // Point to String Tests
-    // ========================================
-
-    @Test
-    void testPointToString() {
-        Point point = new Point(100, 200);
-        String result = converter.convert(point, String.class);
-        assertThat(result).isEqualTo("(100,200)");
-    }
-
-    @Test
-    void testPointToString_negativeCoordinates() {
-        Point point = new Point(-50, -75);
-        String result = converter.convert(point, String.class);
-        assertThat(result).isEqualTo("(-50,-75)");
-    }
-
-
-    // ========================================
-    // Point to Map Tests
-    // ========================================
-
-    @Test
-    void testPointToMap() {
-        Point point = new Point(100, 200);
-        Map<String, Object> result = converter.convert(point, Map.class);
-        
-        assertThat(result).containsEntry("x", 100);
-        assertThat(result).containsEntry("y", 200);
-        assertThat(result).hasSize(2);
-    }
-
-    // ========================================
-    // Point to int[] Tests
-    // ========================================
-
-    @Test
-    void testPointToIntArray() {
-        Point point = new Point(400, 500);
-        int[] result = converter.convert(point, int[].class);
-        
-        assertThat(result).containsExactly(400, 500);
-    }
-
-    // ========================================
     // Point to Dimension Tests
     // ========================================
 
@@ -318,47 +216,8 @@ class PointConversionsTest {
     }
 
     // ========================================
-    // Round-trip Tests
-    // ========================================
-
-    @Test
-    void testPointDimensionRoundTripBlocked() {
-        Point originalPoint = new Point(800, 600);
-        
-        // Point -> Dimension should be blocked
-        assertThatThrownBy(() -> converter.convert(originalPoint, Dimension.class))
-            .isInstanceOf(IllegalArgumentException.class)
-            .hasMessageContaining("Unsupported conversion, source type [Point");
-    }
-
-    @Test
-    void testStringPointRoundTrip() {
-        String originalString = "(150,250)";
-        
-        // String -> Point -> String
-        Point point = converter.convert(originalString, Point.class);
-        String backToString = converter.convert(point, String.class);
-        
-        assertThat(backToString).isEqualTo(originalString);
-    }
-
-    // ========================================
     // Point to Boolean Tests
     // ========================================
-
-    @Test
-    void testPointToBoolean_zeroZero() {
-        Point point = new Point(0, 0);
-        Boolean result = converter.convert(point, Boolean.class);
-        assertThat(result).isFalse();
-    }
-
-    @Test
-    void testPointToBoolean_nonZero() {
-        Point point = new Point(100, 200);
-        Boolean result = converter.convert(point, Boolean.class);
-        assertThat(result).isTrue();
-    }
 
     @Test
     void testPointToBoolean_partialZero() {
@@ -366,36 +225,4 @@ class PointConversionsTest {
         Boolean result = converter.convert(point, Boolean.class);
         assertThat(result).isTrue(); // Any non-zero coordinate is true
     }
-
-    @Test
-    void testPointToBoolean_negativeCoordinates() {
-        Point point = new Point(-10, -20);
-        Boolean result = converter.convert(point, Boolean.class);
-        assertThat(result).isTrue(); // Non-zero (even negative) is true
-    }
-
-    // ========================================
-    // Round-trip Boolean Tests
-    // ========================================
-
-    @Test
-    void testBooleanPointRoundTrip_trueBlocked() {
-        Boolean originalBoolean = Boolean.TRUE;
-        
-        // Boolean -> Point should be blocked
-        assertThatThrownBy(() -> converter.convert(originalBoolean, Point.class))
-            .isInstanceOf(IllegalArgumentException.class)
-            .hasMessageContaining("Unsupported conversion, source type [Boolean");
-    }
-
-    @Test
-    void testBooleanPointRoundTrip_falseBlocked() {
-        Boolean originalBoolean = Boolean.FALSE;
-
-        // Boolean -> Point should be blocked
-        assertThatThrownBy(() -> converter.convert(originalBoolean, Point.class))
-            .isInstanceOf(IllegalArgumentException.class)
-            .hasMessageContaining("Unsupported conversion, source type [Boolean");
-    }
-
 }

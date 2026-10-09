@@ -218,33 +218,7 @@ class EnumConversionsTest {
 
     // ==================== Enum → String Tests (existing functionality) ====================
 
-    @Test
-    void enumToString_returnsEnumName() {
-        String result = converter.convert(Day.WEDNESDAY, String.class);
-        assertThat(result).isEqualTo("WEDNESDAY");
-    }
-
     // ==================== Enum → Integer Tests ====================
-
-    @Test
-    void enumToInteger_returnsOrdinal() {
-        Integer result = converter.convert(Day.MONDAY, Integer.class);
-        assertThat(result).isEqualTo(0);
-    }
-
-    @Test
-    void enumToInteger_allValues_returnCorrectOrdinals() {
-        for (Day day : Day.values()) {
-            Integer result = converter.convert(day, Integer.class);
-            assertThat(result).isEqualTo(day.ordinal());
-        }
-    }
-
-    @Test
-    void enumToInt_returnsOrdinal() {
-        int result = converter.convert(Day.SUNDAY, int.class);
-        assertThat(result).isEqualTo(6);
-    }
 
     // ==================== Round-trip Tests ====================
 

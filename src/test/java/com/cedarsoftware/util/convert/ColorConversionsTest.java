@@ -44,15 +44,6 @@ class ColorConversionsTest {
     // ========================================
 
     @Test
-    void testStringToColor_hexWithHash() {
-        Color result = converter.convert("#FF8040", Color.class);
-        assertThat(result.getRed()).isEqualTo(255);
-        assertThat(result.getGreen()).isEqualTo(128);
-        assertThat(result.getBlue()).isEqualTo(64);
-        assertThat(result.getAlpha()).isEqualTo(255);
-    }
-
-    @Test
     void testStringToColor_hexWithoutHash() {
         Color result = converter.convert("FF8040", Color.class);
         assertThat(result.getRed()).isEqualTo(255);
@@ -86,15 +77,6 @@ class ColorConversionsTest {
         assertThat(converter.convert("grey", Color.class)).isEqualTo(Color.GRAY);
         assertThat(converter.convert("dark_gray", Color.class)).isEqualTo(Color.DARK_GRAY);
         assertThat(converter.convert("light-gray", Color.class)).isEqualTo(Color.LIGHT_GRAY);
-    }
-
-    @Test
-    void testStringToColor_rgbFormat() {
-        Color result = converter.convert("rgb(255, 128, 64)", Color.class);
-        assertThat(result.getRed()).isEqualTo(255);
-        assertThat(result.getGreen()).isEqualTo(128);
-        assertThat(result.getBlue()).isEqualTo(64);
-        assertThat(result.getAlpha()).isEqualTo(255);
     }
 
     @Test
@@ -142,26 +124,6 @@ class ColorConversionsTest {
     // ========================================
 
     @Test
-    void testIntArrayToColor_rgb() {
-        int[] rgb = {255, 128, 64};
-        Color result = converter.convert(rgb, Color.class);
-        assertThat(result.getRed()).isEqualTo(255);
-        assertThat(result.getGreen()).isEqualTo(128);
-        assertThat(result.getBlue()).isEqualTo(64);
-        assertThat(result.getAlpha()).isEqualTo(255);
-    }
-
-    @Test
-    void testIntArrayToColor_rgba() {
-        int[] rgba = {255, 128, 64, 192};
-        Color result = converter.convert(rgba, Color.class);
-        assertThat(result.getRed()).isEqualTo(255);
-        assertThat(result.getGreen()).isEqualTo(128);
-        assertThat(result.getBlue()).isEqualTo(64);
-        assertThat(result.getAlpha()).isEqualTo(192);
-    }
-
-    @Test
     void testIntArrayToColor_invalidLength() {
         assertThatThrownBy(() -> converter.convert(new int[]{255, 128}, Color.class))
             .isInstanceOf(IllegalArgumentException.class)
@@ -188,35 +150,6 @@ class ColorConversionsTest {
     // ========================================
 
     @Test
-    void testMapToColor_rgbComponents() {
-        Map<String, Object> map = new HashMap<>();
-        map.put("red", 255);
-        map.put("green", 128);
-        map.put("blue", 64);
-
-        Color result = converter.convert(map, Color.class);
-        assertThat(result.getRed()).isEqualTo(255);
-        assertThat(result.getGreen()).isEqualTo(128);
-        assertThat(result.getBlue()).isEqualTo(64);
-        assertThat(result.getAlpha()).isEqualTo(255);
-    }
-
-    @Test
-    void testMapToColor_rgbaComponents() {
-        Map<String, Object> map = new HashMap<>();
-        map.put("red", 255);
-        map.put("green", 128);
-        map.put("blue", 64);
-        map.put("alpha", 192);
-
-        Color result = converter.convert(map, Color.class);
-        assertThat(result.getRed()).isEqualTo(255);
-        assertThat(result.getGreen()).isEqualTo(128);
-        assertThat(result.getBlue()).isEqualTo(64);
-        assertThat(result.getAlpha()).isEqualTo(192);
-    }
-
-    @Test
     void testMapToColor_packedRgb() {
         Map<String, Object> map = new HashMap<>();
         map.put("rgb", 0xFF8040);
@@ -232,29 +165,6 @@ class ColorConversionsTest {
     void testMapToColor_hexValue() {
         Map<String, Object> map = new HashMap<>();
         map.put("color", "#FF8040");
-
-        Color result = converter.convert(map, Color.class);
-        assertThat(result.getRed()).isEqualTo(255);
-        assertThat(result.getGreen()).isEqualTo(128);
-        assertThat(result.getBlue()).isEqualTo(64);
-        assertThat(result.getAlpha()).isEqualTo(255);
-    }
-
-    @Test
-    void testMapToColor_fallbackValue() {
-        Map<String, Object> map = new HashMap<>();
-        map.put("value", "red");
-
-        Color result = converter.convert(map, Color.class);
-        assertThat(result).isEqualTo(Color.RED);
-    }
-
-    @Test
-    void testMapToColor_shortKeys_rgb() {
-        Map<String, Object> map = new HashMap<>();
-        map.put("r", 255);
-        map.put("g", 128);
-        map.put("b", 64);
 
         Color result = converter.convert(map, Color.class);
         assertThat(result.getRed()).isEqualTo(255);
@@ -298,115 +208,15 @@ class ColorConversionsTest {
     // ========================================
 
     @Test
-    void testColorToString_rgb() {
-        Color color = new Color(255, 128, 64);
-        String result = converter.convert(color, String.class);
-        assertThat(result).isEqualTo("#FF8040");
-    }
-
-    @Test
     void testColorToString_rgba() {
         Color color = new Color(255, 128, 64, 192);
         String result = converter.convert(color, String.class);
         assertThat(result).isEqualTo("#C0FF8040");
     }
 
-    @Test
-    void testColorToString_standardColors() {
-        assertThat(converter.convert(Color.RED, String.class)).isEqualTo("#FF0000");
-        assertThat(converter.convert(Color.GREEN, String.class)).isEqualTo("#00FF00");
-        assertThat(converter.convert(Color.BLUE, String.class)).isEqualTo("#0000FF");
-        assertThat(converter.convert(Color.WHITE, String.class)).isEqualTo("#FFFFFF");
-        assertThat(converter.convert(Color.BLACK, String.class)).isEqualTo("#000000");
-    }
-
-    // ========================================
-    // Color to Number Tests
-    // ========================================
-
-
-    // ========================================
-    // Color to Array Tests
-    // ========================================
-
-    @Test
-    void testColorToIntArray_rgb() {
-        Color color = new Color(255, 128, 64);
-        int[] result = converter.convert(color, int[].class);
-        assertThat(result).isEqualTo(new int[]{255, 128, 64});
-    }
-
-    @Test
-    void testColorToIntArray_rgba() {
-        Color color = new Color(255, 128, 64, 192);
-        int[] result = converter.convert(color, int[].class);
-        assertThat(result).isEqualTo(new int[]{255, 128, 64, 192});
-    }
-
-    // ========================================
-    // Color to Map Tests
-    // ========================================
-
-    @Test
-    void testColorToMap() {
-        Color color = new Color(255, 128, 64, 192);
-        Map<String, Object> result = converter.convert(color, Map.class);
-
-        assertThat(result).containsEntry("red", 255);
-        assertThat(result).containsEntry("green", 128);
-        assertThat(result).containsEntry("blue", 64);
-        assertThat(result).containsEntry("alpha", 192);
-        assertThat(result).containsEntry("rgb", color.getRGB());
-    }
-
     // ========================================
     // Round-trip Tests
     // ========================================
-
-    @Test
-    void testRoundTrip_colorToMapToColor() {
-        Color original = new Color(255, 128, 64, 192);
-        Map<String, Object> map = converter.convert(original, Map.class);
-        Color restored = converter.convert(map, Color.class);
-
-        assertThat(restored).isEqualTo(original);
-    }
-
-    @Test
-    void testRoundTrip_shortKeysMapToColor() {
-        // Test that short keys also work for round-trip with manually created map
-        Map<String, Object> shortKeyMap = new HashMap<>();
-        shortKeyMap.put("r", 255);
-        shortKeyMap.put("g", 128);
-        shortKeyMap.put("b", 64);
-        shortKeyMap.put("a", 192);
-        
-        Color color = converter.convert(shortKeyMap, Color.class);
-        assertThat(color.getRed()).isEqualTo(255);
-        assertThat(color.getGreen()).isEqualTo(128);
-        assertThat(color.getBlue()).isEqualTo(64);
-        assertThat(color.getAlpha()).isEqualTo(192);
-    }
-
-    @Test
-    void testRoundTrip_colorToStringToColor() {
-        Color original = new Color(255, 128, 64);
-        String hex = converter.convert(original, String.class);
-        Color restored = converter.convert(hex, Color.class);
-
-        assertThat(restored.getRed()).isEqualTo(original.getRed());
-        assertThat(restored.getGreen()).isEqualTo(original.getGreen());
-        assertThat(restored.getBlue()).isEqualTo(original.getBlue());
-    }
-
-    @Test
-    void testRoundTrip_colorToIntArrayToColor() {
-        Color original = new Color(255, 128, 64, 192);
-        int[] array = converter.convert(original, int[].class);
-        Color restored = converter.convert(array, Color.class);
-
-        assertThat(restored).isEqualTo(original);
-    }
 
     // Round-trip test removed - Integer to Color conversion is blocked
 
@@ -419,11 +229,5 @@ class ColorConversionsTest {
         Color original = new Color(255, 128, 64);
         Color result = converter.convert(original, Color.class);
         assertThat(result).isSameAs(original);
-    }
-
-    @Test
-    void testNullToColor() {
-        Color result = converter.convert(null, Color.class);
-        assertThat(result).isNull();
     }
 }

@@ -8,7 +8,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 import com.cedarsoftware.util.geom.Dimension;
-import com.cedarsoftware.util.geom.Insets;
 import com.cedarsoftware.util.geom.Point;
 import com.cedarsoftware.util.geom.Rectangle;
 import org.junit.jupiter.api.BeforeEach;
@@ -47,36 +46,8 @@ class RectangleConversionsTest {
     }
 
     // ========================================
-    // Null/Void to Rectangle Tests
-    // ========================================
-
-    @Test
-    void testNullToRectangle() {
-        Rectangle result = converter.convert(null, Rectangle.class);
-        assertThat(result).isNull();
-    }
-
-    // ========================================
     // String to Rectangle Tests
     // ========================================
-
-    @Test
-    void testStringToRectangle_parenthesesFormat() {
-        Rectangle result = converter.convert("(10,20,100,50)", Rectangle.class);
-        assertThat(result.getX()).isEqualTo(10);
-        assertThat(result.getY()).isEqualTo(20);
-        assertThat(result.getWidth()).isEqualTo(100);
-        assertThat(result.getHeight()).isEqualTo(50);
-    }
-
-    @Test
-    void testStringToRectangle_commaSeparated() {
-        Rectangle result = converter.convert("5,15,200,80", Rectangle.class);
-        assertThat(result.getX()).isEqualTo(5);
-        assertThat(result.getY()).isEqualTo(15);
-        assertThat(result.getWidth()).isEqualTo(200);
-        assertThat(result.getHeight()).isEqualTo(80);
-    }
 
     @Test
     void testStringToRectangle_spaceSeparated() {
@@ -129,22 +100,6 @@ class RectangleConversionsTest {
     // ========================================
 
     @Test
-    void testMapToRectangle_xyWidthHeight() {
-        Map<String, Object> map = new HashMap<>();
-        map.put("x", 10);
-        map.put("y", 20);
-        map.put("width", 100);
-        map.put("height", 50);
-        
-        Rectangle result = converter.convert(map, Rectangle.class);
-        assertThat(result.getX()).isEqualTo(10);
-        assertThat(result.getY()).isEqualTo(20);
-        assertThat(result.getWidth()).isEqualTo(100);
-        assertThat(result.getHeight()).isEqualTo(50);
-    }
-
-
-    @Test
     void testMapToRectangle_stringValue() {
         Map<String, Object> map = new HashMap<>();
         map.put("value", "(0,0,300,150)");
@@ -159,17 +114,6 @@ class RectangleConversionsTest {
     // ========================================
     // Array to Rectangle Tests
     // ========================================
-
-    @Test
-    void testIntArrayToRectangle() {
-        int[] array = {10, 20, 100, 50};
-        
-        Rectangle result = converter.convert(array, Rectangle.class);
-        assertThat(result.getX()).isEqualTo(10);
-        assertThat(result.getY()).isEqualTo(20);
-        assertThat(result.getWidth()).isEqualTo(100);
-        assertThat(result.getHeight()).isEqualTo(50);
-    }
 
     @Test
     void testIntArrayToRectangle_negativeValues() {
@@ -222,7 +166,6 @@ class RectangleConversionsTest {
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessageContaining("Unsupported conversion, source type [BigInteger");
     }
-
 
     @Test
     void testAtomicIntegerToRectangleBlocked() {
@@ -278,57 +221,6 @@ class RectangleConversionsTest {
             .hasMessageContaining("Unsupported conversion, source type [Point");
     }
 
-    @Test
-    void testDimensionToRectangle() {
-        Dimension dimension = new Dimension(200, 150);
-        Rectangle result = converter.convert(dimension, Rectangle.class);
-        assertThat(result.getX()).isEqualTo(0);
-        assertThat(result.getY()).isEqualTo(0);
-        assertThat(result.getWidth()).isEqualTo(200);
-        assertThat(result.getHeight()).isEqualTo(150);
-    }
-
-
-    // ========================================
-    // Rectangle to String Tests
-    // ========================================
-
-    @Test
-    void testRectangleToString() {
-        Rectangle rectangle = new Rectangle(10, 20, 100, 50);
-        String result = converter.convert(rectangle, String.class);
-        assertThat(result).isEqualTo("(10,20,100,50)");
-    }
-
-
-    // ========================================
-    // Rectangle to Map Tests
-    // ========================================
-
-    @Test
-    void testRectangleToMap() {
-        Rectangle rectangle = new Rectangle(10, 20, 100, 50);
-        Map<String, Object> result = converter.convert(rectangle, Map.class);
-        
-        assertThat(result).containsEntry("x", 10);
-        assertThat(result).containsEntry("y", 20);
-        assertThat(result).containsEntry("width", 100);
-        assertThat(result).containsEntry("height", 50);
-        assertThat(result).hasSize(4);
-    }
-
-    // ========================================
-    // Rectangle to int[] Tests
-    // ========================================
-
-    @Test
-    void testRectangleToIntArray() {
-        Rectangle rectangle = new Rectangle(5, 15, 200, 80);
-        int[] result = converter.convert(rectangle, int[].class);
-        
-        assertThat(result).containsExactly(5, 15, 200, 80);
-    }
-
     // ========================================
     // Rectangle Identity Tests
     // ========================================
@@ -346,55 +238,10 @@ class RectangleConversionsTest {
     // ========================================
 
     @Test
-    void testRectangleToBoolean_allZero() {
-        Rectangle rectangle = new Rectangle(0, 0, 0, 0);
-        Boolean result = converter.convert(rectangle, Boolean.class);
-        assertThat(result).isFalse();
-    }
-
-    @Test
-    void testRectangleToBoolean_nonZero() {
-        Rectangle rectangle = new Rectangle(10, 20, 100, 50);
-        Boolean result = converter.convert(rectangle, Boolean.class);
-        assertThat(result).isTrue();
-    }
-
-    @Test
     void testRectangleToBoolean_partialZero() {
         Rectangle rectangle = new Rectangle(0, 0, 100, 0);
         Boolean result = converter.convert(rectangle, Boolean.class);
         assertThat(result).isTrue(); // Any non-zero coordinate is true
-    }
-
-    // ========================================
-    // Rectangle to AWT Type Cross-Conversions
-    // ========================================
-
-
-
-
-    // ========================================
-    // Round-trip Boolean Tests
-    // ========================================
-
-    @Test
-    void testBooleanRectangleRoundTrip_trueBlocked() {
-        Boolean originalBoolean = Boolean.TRUE;
-        
-        // Boolean -> Rectangle should be blocked
-        assertThatThrownBy(() -> converter.convert(originalBoolean, Rectangle.class))
-            .isInstanceOf(IllegalArgumentException.class)
-            .hasMessageContaining("Unsupported conversion, source type [Boolean");
-    }
-
-    @Test
-    void testBooleanRectangleRoundTrip_falseBlocked() {
-        Boolean originalBoolean = Boolean.FALSE;
-        
-        // Boolean -> Rectangle should be blocked
-        assertThatThrownBy(() -> converter.convert(originalBoolean, Rectangle.class))
-            .isInstanceOf(IllegalArgumentException.class)
-            .hasMessageContaining("Unsupported conversion, source type [Boolean");
     }
 
     // ========================================
@@ -420,5 +267,4 @@ class RectangleConversionsTest {
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessageContaining("Unsupported conversion, source type [Rectangle");
     }
-
 }

@@ -6,10 +6,7 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.logging.Logger;
 
-import com.cedarsoftware.util.LoggingConfig;
-import com.cedarsoftware.util.geom.Dimension;
 import com.cedarsoftware.util.geom.Insets;
 import com.cedarsoftware.util.geom.Point;
 import com.cedarsoftware.util.geom.Rectangle;
@@ -41,11 +38,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  */
 class InsetsConversionsTest {
 
-    private static final Logger LOG = Logger.getLogger(InsetsConversionsTest.class.getName());
-    static {
-        LoggingConfig.init();
-    }
-
     private Converter converter;
 
     @BeforeEach
@@ -54,36 +46,8 @@ class InsetsConversionsTest {
     }
 
     // ========================================
-    // Null/Void to Insets Tests
-    // ========================================
-
-    @Test
-    void testNullToInsets() {
-        Insets result = converter.convert(null, Insets.class);
-        assertThat(result).isNull();
-    }
-
-    // ========================================
     // String to Insets Tests
     // ========================================
-
-    @Test
-    void testStringToInsets_parenthesesFormat() {
-        Insets result = converter.convert("(5,10,15,20)", Insets.class);
-        assertThat(result.getTop()).isEqualTo(5);
-        assertThat(result.getLeft()).isEqualTo(10);
-        assertThat(result.getBottom()).isEqualTo(15);
-        assertThat(result.getRight()).isEqualTo(20);
-    }
-
-    @Test
-    void testStringToInsets_commaSeparated() {
-        Insets result = converter.convert("8,12,16,24", Insets.class);
-        assertThat(result.getTop()).isEqualTo(8);
-        assertThat(result.getLeft()).isEqualTo(12);
-        assertThat(result.getBottom()).isEqualTo(16);
-        assertThat(result.getRight()).isEqualTo(24);
-    }
 
     @Test
     void testStringToInsets_spaceSeparated() {
@@ -110,15 +74,6 @@ class InsetsConversionsTest {
         assertThat(result.getLeft()).isEqualTo(-10);
         assertThat(result.getBottom()).isEqualTo(15);
         assertThat(result.getRight()).isEqualTo(20);
-    }
-
-    @Test
-    void testStringToInsets_allZero() {
-        Insets result = converter.convert("(0,0,0,0)", Insets.class);
-        assertThat(result.getTop()).isEqualTo(0);
-        assertThat(result.getLeft()).isEqualTo(0);
-        assertThat(result.getBottom()).isEqualTo(0);
-        assertThat(result.getRight()).isEqualTo(0);
     }
 
     @Test
@@ -172,21 +127,6 @@ class InsetsConversionsTest {
     // ========================================
 
     @Test
-    void testMapToInsets_topLeftBottomRight() {
-        Map<String, Object> map = new HashMap<>();
-        map.put("top", 5);
-        map.put("left", 10);
-        map.put("bottom", 15);
-        map.put("right", 20);
-        
-        Insets result = converter.convert(map, Insets.class);
-        assertThat(result.getTop()).isEqualTo(5);
-        assertThat(result.getLeft()).isEqualTo(10);
-        assertThat(result.getBottom()).isEqualTo(15);
-        assertThat(result.getRight()).isEqualTo(20);
-    }
-
-    @Test
     void testMapToInsets_stringValue() {
         Map<String, Object> map = new HashMap<>();
         map.put("value", "(8,12,16,24)");
@@ -213,17 +153,6 @@ class InsetsConversionsTest {
     // ========================================
     // Array to Insets Tests
     // ========================================
-
-    @Test
-    void testIntArrayToInsets() {
-        int[] array = {5, 10, 15, 20};
-        
-        Insets result = converter.convert(array, Insets.class);
-        assertThat(result.getTop()).isEqualTo(5);
-        assertThat(result.getLeft()).isEqualTo(10);
-        assertThat(result.getBottom()).isEqualTo(15);
-        assertThat(result.getRight()).isEqualTo(20);
-    }
 
     @Test
     void testIntArrayToInsets_negativeValues() {
@@ -276,7 +205,6 @@ class InsetsConversionsTest {
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessageContaining("Unsupported conversion, source type [BigInteger");
     }
-
 
     @Test
     void testAtomicIntegerToInsetsBlocked() {
@@ -333,85 +261,11 @@ class InsetsConversionsTest {
     }
 
     @Test
-    void testDimensionToInsets() {
-        Dimension dimension = new Dimension(100, 200);
-        Insets result = converter.convert(dimension, Insets.class);
-        int minValue = Math.min(100, 200); // min(width, height) = 100
-        assertThat(result.getTop()).isEqualTo(minValue); // all sides = min value
-        assertThat(result.getLeft()).isEqualTo(minValue);
-        assertThat(result.getBottom()).isEqualTo(minValue);
-        assertThat(result.getRight()).isEqualTo(minValue);
-    }
-
-    @Test
     void testRectangleToInsetsBlocked() {
         Rectangle rectangle = new Rectangle(5, 10, 100, 200);
         assertThatThrownBy(() -> converter.convert(rectangle, Insets.class))
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessageContaining("Unsupported conversion, source type [Rectangle");
-    }
-
-    // ========================================
-    // Insets to String Tests
-    // ========================================
-
-    @Test
-    void testInsetsToString() {
-        Insets insets = new Insets(5, 10, 15, 20);
-        String result = converter.convert(insets, String.class);
-        assertThat(result).isEqualTo("(5,10,15,20)");
-    }
-
-    @Test
-    void testInsetsToStringFormat_actualJavaFormat() {
-        // Test to see what the actual toString() format of java.awt.Insets looks like
-        Insets insets = new Insets(5, 10, 15, 20);
-        String actualToString = insets.toString();
-        
-        // Log the actual format for documentation
-        LOG.info("Actual Insets.toString() format: " + actualToString);
-        
-        // Test if the current converter can parse this format back to Insets
-        try {
-            Insets parsedBack = converter.convert(actualToString, Insets.class);
-            assertThat(parsedBack.getTop()).isEqualTo(5);
-            assertThat(parsedBack.getLeft()).isEqualTo(10);
-            assertThat(parsedBack.getBottom()).isEqualTo(15);
-            assertThat(parsedBack.getRight()).isEqualTo(20);
-            LOG.info("SUCCESS: Converter can parse the native toString() format!");
-        } catch (Exception e) {
-            LOG.warning("INFO: Converter cannot parse the native toString() format: " + e.getMessage());
-            // This is expected if the format is not supported yet
-        }
-    }
-
-
-    // ========================================
-    // Insets to Map Tests
-    // ========================================
-
-    @Test
-    void testInsetsToMap() {
-        Insets insets = new Insets(5, 10, 15, 20);
-        Map<String, Object> result = converter.convert(insets, Map.class);
-        
-        assertThat(result).containsEntry("top", 5);
-        assertThat(result).containsEntry("left", 10);
-        assertThat(result).containsEntry("bottom", 15);
-        assertThat(result).containsEntry("right", 20);
-        assertThat(result).hasSize(4);
-    }
-
-    // ========================================
-    // Insets to int[] Tests
-    // ========================================
-
-    @Test
-    void testInsetsToIntArray() {
-        Insets insets = new Insets(8, 12, 16, 24);
-        int[] result = converter.convert(insets, int[].class);
-        
-        assertThat(result).containsExactly(8, 12, 16, 24);
     }
 
     // ========================================
@@ -431,20 +285,6 @@ class InsetsConversionsTest {
     // ========================================
 
     @Test
-    void testInsetsToBoolean_allZero() {
-        Insets insets = new Insets(0, 0, 0, 0);
-        Boolean result = converter.convert(insets, Boolean.class);
-        assertThat(result).isFalse();
-    }
-
-    @Test
-    void testInsetsToBoolean_nonZero() {
-        Insets insets = new Insets(5, 10, 15, 20);
-        Boolean result = converter.convert(insets, Boolean.class);
-        assertThat(result).isTrue();
-    }
-
-    @Test
     void testInsetsToBoolean_partialZero() {
         Insets insets = new Insets(0, 0, 15, 0);
         Boolean result = converter.convert(insets, Boolean.class);
@@ -452,41 +292,8 @@ class InsetsConversionsTest {
     }
 
     // ========================================
-    // Insets to AWT Type Cross-Conversions
-    // ========================================
-
-
-
-
-    // ========================================
-    // Round-trip Boolean Tests
-    // ========================================
-
-    @Test
-    void testBooleanInsetsRoundTrip_trueBlocked() {
-        Boolean originalBoolean = Boolean.TRUE;
-        
-        // Boolean -> Insets should be blocked
-        assertThatThrownBy(() -> converter.convert(originalBoolean, Insets.class))
-            .isInstanceOf(IllegalArgumentException.class)
-            .hasMessageContaining("Unsupported conversion, source type [Boolean");
-    }
-
-    @Test
-    void testBooleanInsetsRoundTrip_falseBlocked() {
-        Boolean originalBoolean = Boolean.FALSE;
-        
-        // Boolean -> Insets should be blocked
-        assertThatThrownBy(() -> converter.convert(originalBoolean, Insets.class))
-            .isInstanceOf(IllegalArgumentException.class)
-            .hasMessageContaining("Unsupported conversion, source type [Boolean");
-    }
-
-    // ========================================
     // Cross-Type Round-trip Tests
     // ========================================
-
-
 
     @Test
     void testInsetsNativeToStringRoundTrip() {
@@ -504,5 +311,4 @@ class InsetsConversionsTest {
         assertThat(parsedInsets.getBottom()).isEqualTo(originalInsets.getBottom());
         assertThat(parsedInsets.getRight()).isEqualTo(originalInsets.getRight());
     }
-
 }

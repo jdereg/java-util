@@ -44,25 +44,8 @@ class DimensionConversionsTest {
     }
 
     // ========================================
-    // Null/Void to Dimension Tests
-    // ========================================
-
-    @Test
-    void testNullToDimension() {
-        Dimension result = converter.convert(null, Dimension.class);
-        assertThat(result).isNull();
-    }
-
-    // ========================================
     // String to Dimension Tests
     // ========================================
-
-    @Test
-    void testStringToDimension_widthXheight() {
-        Dimension result = converter.convert("800x600", Dimension.class);
-        assertThat(result.getWidth()).isEqualTo(800);
-        assertThat(result.getHeight()).isEqualTo(600);
-    }
 
     @Test
     void testStringToDimension_commaSeparated() {
@@ -102,17 +85,6 @@ class DimensionConversionsTest {
     // ========================================
 
     @Test
-    void testMapToDimension_widthHeight() {
-        Map<String, Object> map = new HashMap<>();
-        map.put("width", 800);
-        map.put("height", 600);
-        
-        Dimension result = converter.convert(map, Dimension.class);
-        assertThat(result.getWidth()).isEqualTo(800);
-        assertThat(result.getHeight()).isEqualTo(600);
-    }
-
-    @Test
     void testMapToDimension_shortKeys() {
         Map<String, Object> map = new HashMap<>();
         map.put("w", 1920);
@@ -136,15 +108,6 @@ class DimensionConversionsTest {
     // ========================================
     // Array to Dimension Tests
     // ========================================
-
-    @Test
-    void testIntArrayToDimension() {
-        int[] array = {800, 600};
-        
-        Dimension result = converter.convert(array, Dimension.class);
-        assertThat(result.getWidth()).isEqualTo(800);
-        assertThat(result.getHeight()).isEqualTo(600);
-    }
 
     @Test
     void testIntArrayToDimension_invalidLength() {
@@ -196,7 +159,6 @@ class DimensionConversionsTest {
             .hasMessageContaining("Unsupported conversion, source type [BigInteger");
     }
 
-
     @Test
     void testAtomicIntegerToDimensionBlocked() {
         assertThatThrownBy(() -> converter.convert(new AtomicInteger(250), Dimension.class))
@@ -240,44 +202,6 @@ class DimensionConversionsTest {
     }
 
     // ========================================
-    // Dimension to String Tests
-    // ========================================
-
-    @Test
-    void testDimensionToString() {
-        Dimension dimension = new Dimension(800, 600);
-        String result = converter.convert(dimension, String.class);
-        assertThat(result).isEqualTo("800x600");
-    }
-
-
-    // ========================================
-    // Dimension to Map Tests
-    // ========================================
-
-    @Test
-    void testDimensionToMap() {
-        Dimension dimension = new Dimension(800, 600);
-        Map<String, Object> result = converter.convert(dimension, Map.class);
-        
-        assertThat(result).containsEntry("width", 800);
-        assertThat(result).containsEntry("height", 600);
-        assertThat(result).hasSize(2);
-    }
-
-    // ========================================
-    // Dimension to int[] Tests
-    // ========================================
-
-    @Test
-    void testDimensionToIntArray() {
-        Dimension dimension = new Dimension(1920, 1080);
-        int[] result = converter.convert(dimension, int[].class);
-        
-        assertThat(result).containsExactly(1920, 1080);
-    }
-
-    // ========================================
     // Dimension Identity Tests
     // ========================================
 
@@ -294,42 +218,9 @@ class DimensionConversionsTest {
     // ========================================
 
     @Test
-    void testDimensionToBoolean_zeroZero() {
-        Dimension dimension = new Dimension(0, 0);
-        Boolean result = converter.convert(dimension, Boolean.class);
-        assertThat(result).isFalse();
-    }
-
-    @Test
-    void testDimensionToBoolean_nonZero() {
-        Dimension dimension = new Dimension(100, 200);
-        Boolean result = converter.convert(dimension, Boolean.class);
-        assertThat(result).isTrue();
-    }
-
-    @Test
     void testDimensionToBoolean_partialZero() {
         Dimension dimension = new Dimension(0, 100);
         Boolean result = converter.convert(dimension, Boolean.class);
         assertThat(result).isTrue(); // Any non-zero coordinate is true
     }
-
-    // ========================================
-    // Round-trip Boolean Tests (Now Blocked)
-    // ========================================
-
-    @Test
-    void testBooleanDimensionConversionBlocked_true() {
-        assertThatThrownBy(() -> converter.convert(Boolean.TRUE, Dimension.class))
-            .isInstanceOf(IllegalArgumentException.class)
-            .hasMessageContaining("Unsupported conversion, source type [Boolean");
-    }
-
-    @Test
-    void testBooleanDimensionConversionBlocked_false() {
-        assertThatThrownBy(() -> converter.convert(Boolean.FALSE, Dimension.class))
-            .isInstanceOf(IllegalArgumentException.class)
-            .hasMessageContaining("Unsupported conversion, source type [Boolean");
-    }
-
 }

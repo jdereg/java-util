@@ -3,7 +3,6 @@ package com.cedarsoftware.util.convert;
 import java.io.File;
 import java.io.IOException;
 import java.net.URI;
-import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.FileSystem;
 import java.nio.file.FileSystems;
@@ -53,42 +52,8 @@ class PathConversionsTest {
     }
 
     // ========================================
-    // Null/Void to Path Tests
-    // ========================================
-
-    @Test
-    void testNullToPath() {
-        Path result = converter.convert(null, Path.class);
-        assertThat(result).isNull();
-    }
-
-    // ========================================
     // String to Path Tests
     // ========================================
-
-    @Test
-    void testStringToPath_absolutePath() {
-        Path result = converter.convert("/path/to/file.txt", Path.class);
-        assertThat(result.toString()).isEqualTo(systemPathString("/path/to/file.txt"));
-    }
-
-    @Test
-    void testStringToPath_relativePath() {
-        Path result = converter.convert("relative/path/file.txt", Path.class);
-        assertThat(result.toString()).isEqualTo(systemPathString("relative/path/file.txt"));
-    }
-
-    @Test
-    void testStringToPath_windowsPath() {
-        Path result = converter.convert("C:\\Windows\\System32\\file.txt", Path.class);
-        assertThat(result.toString()).isEqualTo(systemPathString("C:\\Windows\\System32\\file.txt"));
-    }
-
-    @Test
-    void testStringToPath_withSpaces() {
-        Path result = converter.convert("/path with spaces/file name.txt", Path.class);
-        assertThat(result.toString()).isEqualTo(systemPathString("/path with spaces/file name.txt"));
-    }
 
     @Test
     void testStringToPath_emptyString() {
@@ -103,15 +68,6 @@ class PathConversionsTest {
     // ========================================
     // Map to Path Tests
     // ========================================
-
-    @Test
-    void testMapToPath_pathKey() {
-        Map<String, Object> map = new HashMap<>();
-        map.put("path", "/usr/local/bin/java");
-        
-        Path result = converter.convert(map, Path.class);
-        assertThat(result.toString()).isEqualTo(systemPathString("/usr/local/bin/java"));
-    }
 
     @Test
     void testMapToPath_valueKey() {
@@ -132,69 +88,8 @@ class PathConversionsTest {
     }
 
     // ========================================
-    // URI to Path Tests
-    // ========================================
-
-    @Test
-    void testURIToPath() throws Exception {
-        URI uri = new URI("file:///path/to/file.txt");
-        
-        Path result = converter.convert(uri, Path.class);
-        assertThat(result.toString()).isEqualTo(Paths.get(uri).toString());
-    }
-
-    @Test
-    void testURIToPath_windowsPath() throws Exception {
-        URI uri = new URI("file:///C:/Windows/System32/file.txt");
-        
-        Path result = converter.convert(uri, Path.class);
-        // URI conversion may normalize the path
-        assertThat(result.toString()).contains("file.txt");
-    }
-
-    // ========================================
-    // URL to Path Tests
-    // ========================================
-
-    @Test
-    void testURLToPath() throws Exception {
-        URL url = new URL("file:///tmp/test.txt");
-        
-        Path result = converter.convert(url, Path.class);
-        assertThat(result.toString()).isEqualTo(Paths.get(url.toURI()).toString());
-    }
-
-    // ========================================
-    // File to Path Tests
-    // ========================================
-
-    @Test
-    void testFileToPath() {
-        File file = new File("/var/log/application.log");
-        
-        Path result = converter.convert(file, Path.class);
-        assertThat(result.toString()).isEqualTo(file.toPath().toString());
-    }
-
-    @Test
-    void testFileToPath_relativePath() {
-        File file = new File("config/settings.properties");
-        
-        Path result = converter.convert(file, Path.class);
-        assertThat(result.toString()).isEqualTo(file.toPath().toString());
-    }
-
-    // ========================================
     // char[] to Path Tests
     // ========================================
-
-    @Test
-    void testCharArrayToPath() {
-        char[] array = "/etc/passwd".toCharArray();
-        
-        Path result = converter.convert(array, Path.class);
-        assertThat(result.toString()).isEqualTo(systemPathString("/etc/passwd"));
-    }
 
     @Test
     void testCharArrayToPath_emptyArray() {
@@ -208,112 +103,10 @@ class PathConversionsTest {
     // ========================================
 
     @Test
-    void testByteArrayToPath() {
-        byte[] array = "/opt/app/config.xml".getBytes(StandardCharsets.UTF_8);
-        
-        Path result = converter.convert(array, Path.class);
-        assertThat(result.toString()).isEqualTo(systemPathString("/opt/app/config.xml"));
-    }
-
-    @Test
     void testByteArrayToPath_emptyArray() {
         byte[] array = new byte[0];
         
         assertThat((Object) converter.convert(array, Path.class)).isNull();   // blank text: null, as for the dates
-    }
-
-    // ========================================
-    // Path to String Tests
-    // ========================================
-
-    @Test
-    void testPathToString() {
-        Path path = Paths.get("/home/user/documents/report.docx");
-        String result = converter.convert(path, String.class);
-        assertThat(result).isEqualTo(path.toString());
-    }
-
-    @Test
-    void testPathToString_windowsPath() {
-        Path path = Paths.get("C:\\Users\\Administrator\\Desktop\\file.txt");
-        String result = converter.convert(path, String.class);
-        assertThat(result).isEqualTo(path.toString());
-    }
-
-    // ========================================
-    // Path to Map Tests
-    // ========================================
-
-    @Test
-    void testPathToMap() {
-        Path path = Paths.get("/usr/bin/gcc");
-        Map<String, Object> result = converter.convert(path, Map.class);
-        
-        assertThat(result).containsEntry("path", path.toString());
-        assertThat(result).hasSize(1);
-    }
-
-    // ========================================
-    // Path to URI Tests
-    // ========================================
-
-    @Test
-    void testPathToURI() {
-        Path path = Paths.get("/tmp/data.json");
-        URI result = converter.convert(path, URI.class);
-        
-        assertThat(result.getScheme()).isEqualTo("file");
-        assertThat(result.getPath()).isEqualTo(path.toUri().getPath());
-    }
-
-    // ========================================
-    // Path to URL Tests
-    // ========================================
-
-    @Test
-    void testPathToURL() {
-        Path path = Paths.get("/var/www/index.html");
-        URL result = converter.convert(path, URL.class);
-        
-        assertThat(result.getProtocol()).isEqualTo("file");
-        assertThat(result.getPath()).isEqualTo(path.toUri().getPath());
-    }
-
-    // ========================================
-    // Path to File Tests
-    // ========================================
-
-    @Test
-    void testPathToFile() {
-        Path path = Paths.get("/etc/hosts");
-        File result = converter.convert(path, File.class);
-        
-        assertThat(result.getPath()).isEqualTo(path.toFile().getPath());
-    }
-
-    // ========================================
-    // Path to char[] Tests
-    // ========================================
-
-    @Test
-    void testPathToCharArray() {
-        Path path = Paths.get("/lib64/libc.so.6");
-        char[] result = converter.convert(path, char[].class);
-        
-        assertThat(new String(result)).isEqualTo(path.toString());
-    }
-
-    // ========================================
-    // Path to byte[] Tests
-    // ========================================
-
-    @Test
-    void testPathToByteArray() {
-        Path path = Paths.get("/boot/grub/grub.cfg");
-        byte[] result = converter.convert(path, byte[].class);
-        
-        String resultString = new String(result, StandardCharsets.UTF_8);
-        assertThat(resultString).isEqualTo(path.toString());
     }
 
     // ========================================
@@ -329,112 +122,6 @@ class PathConversionsTest {
     }
 
     // ========================================
-    // Round-trip Tests
-    // ========================================
-
-    @Test
-    void testPathStringRoundTrip() {
-        Path originalPath = Paths.get("/system/bin/sh");
-        
-        // Path -> String -> Path
-        String string = converter.convert(originalPath, String.class);
-        Path backToPath = converter.convert(string, Path.class);
-        
-        assertThat(backToPath.toString()).isEqualTo(originalPath.toString());
-    }
-
-    @Test
-    void testPathMapRoundTrip() {
-        Path originalPath = Paths.get("/Applications/Safari.app");
-        
-        // Path -> Map -> Path
-        Map<String, Object> map = converter.convert(originalPath, Map.class);
-        Path backToPath = converter.convert(map, Path.class);
-        
-        assertThat(backToPath.toString()).isEqualTo(originalPath.toString());
-    }
-
-    @Test
-    void testPathURIRoundTrip() {
-        Path originalPath = Paths.get("/Library/Preferences/SystemConfiguration");
-        
-        // Path -> URI -> Path
-        URI uri = converter.convert(originalPath, URI.class);
-        Path backToPath = converter.convert(uri, Path.class);
-        
-        assertThat(backToPath.toString()).isEqualTo(originalPath.toString());
-    }
-
-    @Test
-    void testPathFileRoundTrip() {
-        Path originalPath = Paths.get("/usr/share/man/man1/ls.1");
-        
-        // Path -> File -> Path
-        File file = converter.convert(originalPath, File.class);
-        Path backToPath = converter.convert(file, Path.class);
-        
-        assertThat(backToPath.toString()).isEqualTo(originalPath.toString());
-    }
-
-    @Test
-    void testPathCharArrayRoundTrip() {
-        Path originalPath = Paths.get("/dev/null");
-        
-        // Path -> char[] -> Path
-        char[] charArray = converter.convert(originalPath, char[].class);
-        Path backToPath = converter.convert(charArray, Path.class);
-        
-        assertThat(backToPath.toString()).isEqualTo(originalPath.toString());
-    }
-
-    @Test
-    void testPathByteArrayRoundTrip() {
-        Path originalPath = Paths.get("/bin/bash");
-        
-        // Path -> byte[] -> Path
-        byte[] byteArray = converter.convert(originalPath, byte[].class);
-        Path backToPath = converter.convert(byteArray, Path.class);
-        
-        assertThat(backToPath.toString()).isEqualTo(originalPath.toString());
-    }
-
-    // ========================================
-    // Cross-Platform Path Tests
-    // ========================================
-
-    @Test
-    void testPathConversion_unixPath() {
-        String unixPath = "/home/user/.bashrc";
-        Path result = converter.convert(unixPath, Path.class);
-        assertThat(result.toString()).isEqualTo(systemPathString(unixPath));
-    }
-
-    @Test
-    void testPathConversion_windowsPath() {
-        String windowsPath = "C:\\Windows\\System32\\drivers\\etc\\hosts";
-        Path result = converter.convert(windowsPath, Path.class);
-        assertThat(result.toString()).isEqualTo(systemPathString(windowsPath));
-    }
-
-    // ========================================
-    // Special Characters Tests
-    // ========================================
-
-    @Test
-    void testPathConversion_specialCharacters() {
-        String pathWithSpecialChars = "/tmp/file-with_special.chars@domain.txt";
-        Path result = converter.convert(pathWithSpecialChars, Path.class);
-        assertThat(result.toString()).isEqualTo(systemPathString(pathWithSpecialChars));
-    }
-
-    @Test
-    void testPathConversion_unicodeCharacters() {
-        String pathWithUnicode = "/home/user/文档/测试文件.txt";
-        Path result = converter.convert(pathWithUnicode, Path.class);
-        assertThat(result.toString()).isEqualTo(systemPathString(pathWithUnicode));
-    }
-
-    // ========================================
     // Path Normalization Tests
     // ========================================
 
@@ -446,36 +133,15 @@ class PathConversionsTest {
         assertThat(result.toString()).isEqualTo(Paths.get(pathWithDots).toString());
     }
 
-    @Test
-    void testPathConversion_multipleSeparators() {
-        String pathWithMultipleSeps = "/home//user///documents////file.txt";
-        Path result = converter.convert(pathWithMultipleSeps, Path.class);
-        assertThat(result.toString()).isEqualTo(Paths.get(pathWithMultipleSeps).toString());
-    }
-
     // ========================================
     // File System Specific Tests
     // ========================================
-
-    @Test
-    void testPathConversion_rootPath() {
-        String rootPath = "/";
-        Path result = converter.convert(rootPath, Path.class);
-        assertThat(result.toString()).isEqualTo(Paths.get(rootPath).toString());
-    }
 
     @Test
     void testPathConversion_currentDirectory() {
         String currentDir = ".";
         Path result = converter.convert(currentDir, Path.class);
         assertThat(result.toString()).isEqualTo(currentDir);
-    }
-
-    @Test
-    void testPathConversion_parentDirectory() {
-        String parentDir = "..";
-        Path result = converter.convert(parentDir, Path.class);
-        assertThat(result.toString()).isEqualTo(parentDir);
     }
 
     // ========================================

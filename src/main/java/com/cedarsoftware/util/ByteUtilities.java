@@ -1,6 +1,7 @@
 package com.cedarsoftware.util;
 
 import java.util.Arrays;
+import java.util.Base64;
 
 /**
  * A utility class providing static methods for operations on byte arrays and hexadecimal representations.
@@ -235,6 +236,64 @@ public final class ByteUtilities {
      */
     public static byte[] decode(final CharSequence s) {
         return decodeInternal(s, true);
+    }
+
+    /**
+     * Decodes Base64 -- the standard alphabet or the URL-safe one -- that is padded correctly, or returns
+     * {@code null}. Padded correctly means exactly what every encoder writes: the length is a multiple of 4,
+     * {@code =} filling out the last group, and the bits that padding leaves over are zero. So {@code "AQ=="} is
+     * {@code {1}} and {@code "AQL9"} (three bytes, no padding needed) is {@code {1, 2, -3}}, while {@code "AQ"}
+     * (no padding), {@code "AQ="} (too little) and {@code "AF=="} (no encoder writes it) are not Base64. A short
+     * word such as {@code "AF"} or {@code "OK"} is therefore never read as bytes; a four-letter one such as
+     * {@code "DATA"} is valid Base64 and is. Whitespace is not skipped ({@link #decode(String)} skips the line
+     * breaks of MIME Base64).
+     *
+     * @param s the text to decode
+     * @return the decoded bytes, or {@code null} if {@code s} is null or not correctly padded Base64
+     */
+    public static byte[] decodeBase64(final String s) {
+        if (s == null || (s.length() & 3) != 0 || !padBitsAreZero(s)) {
+            return null;
+        }
+        try {
+            return Base64.getDecoder().decode(s);
+        } catch (IllegalArgumentException notStandard) {
+            try {
+                return Base64.getUrlDecoder().decode(s);
+            } catch (IllegalArgumentException notBase64) {
+                return null;
+            }
+        }
+    }
+
+    // The bits a '=' leaves over in the last group are zero, as every encoder writes them. (The JDK's decoders
+    // ignore them, so "AF==" and "AA==" would both be {0}.)
+    private static boolean padBitsAreZero(final String s) {
+        final int len = s.length();
+        if (len == 0 || s.charAt(len - 1) != '=') {
+            return true;
+        }
+        if (s.charAt(len - 2) == '=') {     // "xY==" is one byte: Y's low 4 bits are left over
+            return (base64Value(s.charAt(len - 3)) & 0x0F) == 0;
+        }
+        return (base64Value(s.charAt(len - 2)) & 0x03) == 0;   // "xyZ=" is two bytes: Z's low 2 bits are left over
+    }
+
+    // The 6-bit value of a Base64 digit in either alphabet, or -1
+    private static int base64Value(final char c) {
+        if (c >= 'A' && c <= 'Z') {
+            return c - 'A';
+        }
+        if (c >= 'a' && c <= 'z') {
+            return c - 'a' + 26;
+        }
+        if (c >= '0' && c <= '9') {
+            return c - '0' + 52;
+        }
+        if (c == '+' || c == '-') {
+            return 62;
+        }
+        return c == '/' || c == '_' ? 63 : -1;
     }
 
     static byte[] decodeTrusted(final String s) {

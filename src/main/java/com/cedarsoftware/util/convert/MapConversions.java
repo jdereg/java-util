@@ -19,7 +19,6 @@ import java.time.OffsetTime;
 import java.time.Period;
 import java.time.Year;
 import java.time.YearMonth;
-import java.util.Base64;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
@@ -46,6 +45,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.logging.Logger;
 import java.util.regex.Pattern;
 
+import com.cedarsoftware.util.ByteUtilities;
 import com.cedarsoftware.util.ClassUtilities;
 import com.cedarsoftware.util.ConcurrentHashMapNullSafe;
 import com.cedarsoftware.util.ConcurrentNavigableMapNullSafe;
@@ -470,9 +470,11 @@ final class MapConversions {
      *
      * <p>The wrapped-form contract used by json-io for binary types is
      * {@code {"@type":"byte[]","value":"<base64>"}} (or simply {@code {"value":"..."}}).
-     * A {@link String} value is Base64, padded or not (a 3-byte array encodes to 4 unpadded chars
-     * like {@code "AQL9"}). A String that is not Base64 gives its own bytes in the Converter's
-     * charset, as {@link StringConversions#toByteArray(Object, Converter)} does.
+     * A {@link String} value is Base64, standard or URL-safe, when it is padded correctly
+     * ({@link ByteUtilities#decodeBase64(String)}): a 3-byte array encodes to 4 chars that need no
+     * padding, like {@code "AQL9"}, while {@code "AF"} or {@code "OK"} is not Base64. A String that is
+     * not Base64 gives its own bytes in the Converter's charset, as
+     * {@link StringConversions#toByteArray(Object, Converter)} does.
      *
      * <p>Non-String values dispatch through Converter, supporting other Converter-known
      * sources (ByteBuffer, char[], etc.).
@@ -481,11 +483,11 @@ final class MapConversions {
         Map<?, ?> map = (Map<?, ?>) from;
         Object valueObj = map.containsKey(VALUE) ? map.get(VALUE) : map.get(V);
         if (valueObj instanceof String) {
-            try {
-                return Base64.getDecoder().decode((String) valueObj);
-            } catch (IllegalArgumentException ignored) {
-                // Not Base64: the String's own bytes, through dispatch
+            byte[] bytes = ByteUtilities.decodeBase64((String) valueObj);
+            if (bytes != null) {
+                return bytes;
             }
+            // Not Base64: the String's own bytes, through dispatch
         }
         return dispatch(from, converter, byte[].class, VALUE_KEYS);
     }
@@ -505,11 +507,11 @@ final class MapConversions {
         Map<?, ?> map = (Map<?, ?>) from;
         Object valueObj = map.containsKey(VALUE) ? map.get(VALUE) : map.get(V);
         if (valueObj instanceof String) {
-            try {
-                return ByteBuffer.wrap(Base64.getDecoder().decode((String) valueObj));
-            } catch (IllegalArgumentException ignored) {
-                // Not Base64: the String's own bytes, through dispatch
+            byte[] bytes = ByteUtilities.decodeBase64((String) valueObj);
+            if (bytes != null) {
+                return ByteBuffer.wrap(bytes);
             }
+            // Not Base64: the String's own bytes, through dispatch
         }
         return dispatch(from, converter, ByteBuffer.class, VALUE_KEYS);
     }

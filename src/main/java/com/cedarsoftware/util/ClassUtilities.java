@@ -2946,21 +2946,28 @@ public class ClassUtilities {
                 return Arrays.asList(indexed);
             }
 
-            // Fallback: preserve deterministic ordering with gaps (e.g., arg0,arg2).
-            List<Map.Entry<String, Object>> entries = new ArrayList<>(map.entrySet());
-            entries.sort((e1, e2) -> {
+            // Fallback: preserve deterministic ordering with gaps (e.g., arg0,arg2). Each key and value is copied out
+            // as it is read: a Map's iterator may hand out one entry object, re-pointed at each field (JsonObject's
+            // did), so entries kept and sorted were all the last field.
+            List<Object[]> pairs = new ArrayList<>(size);
+            for (Map.Entry<String, Object> entry : map.entrySet()) {
+                pairs.add(new Object[]{entry.getKey(), entry.getValue()});
+            }
+            pairs.sort((p1, p2) -> {
+                String k1 = (String) p1[0];
+                String k2 = (String) p2[0];
                 try {
-                    int num1 = Integer.parseInt(e1.getKey().substring(3));
-                    int num2 = Integer.parseInt(e2.getKey().substring(3));
+                    int num1 = Integer.parseInt(k1.substring(3));
+                    int num2 = Integer.parseInt(k2.substring(3));
                     return Integer.compare(num1, num2);
                 } catch (NumberFormatException | StringIndexOutOfBoundsException e) {
-                    return e1.getKey().compareTo(e2.getKey());
+                    return k1.compareTo(k2);
                 }
             });
 
-            List<Object> orderedValues = new ArrayList<>(entries.size());
-            for (Map.Entry<String, Object> entry : entries) {
-                orderedValues.add(entry.getValue());
+            List<Object> orderedValues = new ArrayList<>(pairs.size());
+            for (Object[] pair : pairs) {
+                orderedValues.add(pair[1]);
             }
             return orderedValues;
         }

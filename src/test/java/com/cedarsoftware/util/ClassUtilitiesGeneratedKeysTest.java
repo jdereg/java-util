@@ -1,7 +1,11 @@
 package com.cedarsoftware.util;
 
+import java.util.AbstractMap;
+import java.util.AbstractSet;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Set;
 
 import com.cedarsoftware.util.convert.Converter;
 import com.cedarsoftware.util.convert.DefaultConverterOptions;
@@ -167,5 +171,78 @@ class ClassUtilitiesGeneratedKeysTest {
         assertNotNull(instance);
         // Values might be matched differently since these are named parameters
         // The test verifies that non-generated keys are handled differently
+    }
+
+    /**
+     * A Map whose entry iterator hands out one entry object, re-pointed at each field (JsonObject's did, before json-io
+     * 4.113.0). Arguments with gaps in their numbering are sorted by key; the entries were kept and sorted
+     * themselves, so every argument was the last field's value.
+     */
+    @Test
+    @DisplayName("Generated keys with gaps, from a Map whose iterator reuses one entry")
+    void testGeneratedKeysWithGapsFromAReusingIterator() {
+        Converter converter = new Converter(new DefaultConverterOptions());
+        Map<String, Object> backing = new LinkedHashMap<>();
+        backing.put("arg4", "third");
+        backing.put("arg0", "first");
+        backing.put("arg2", "second");
+
+        MultiParamClass instance = (MultiParamClass) ClassUtilities.newInstance(converter, MultiParamClass.class,
+                new OneEntryMap(backing));
+
+        assertEquals("first", instance.getFirst());
+        assertEquals("second", instance.getSecond());
+        assertEquals("third", instance.getThird());
+    }
+
+    /** A read-only view of a map whose entry iterator re-points one entry object at each field. */
+    private static final class OneEntryMap extends AbstractMap<String, Object> {
+        private final Map<String, Object> backing;
+
+        OneEntryMap(Map<String, Object> backing) {
+            this.backing = backing;
+        }
+
+        @Override
+        public Set<Map.Entry<String, Object>> entrySet() {
+            return new AbstractSet<Map.Entry<String, Object>>() {
+                @Override
+                public Iterator<Map.Entry<String, Object>> iterator() {
+                    Iterator<Map.Entry<String, Object>> it = backing.entrySet().iterator();
+                    String[] key = new String[1];
+                    Object[] value = new Object[1];
+                    Map.Entry<String, Object> shared = new Map.Entry<String, Object>() {
+                        public String getKey() {
+                            return key[0];
+                        }
+
+                        public Object getValue() {
+                            return value[0];
+                        }
+
+                        public Object setValue(Object v) {
+                            throw new UnsupportedOperationException();
+                        }
+                    };
+                    return new Iterator<Map.Entry<String, Object>>() {
+                        public boolean hasNext() {
+                            return it.hasNext();
+                        }
+
+                        public Map.Entry<String, Object> next() {
+                            Map.Entry<String, Object> e = it.next();
+                            key[0] = e.getKey();
+                            value[0] = e.getValue();
+                            return shared;
+                        }
+                    };
+                }
+
+                @Override
+                public int size() {
+                    return backing.size();
+                }
+            };
+        }
     }
 }

@@ -545,7 +545,9 @@ public final class DateUtilities {
     private static final String ws = "\\s+";
     private static final String wsOp = "\\s*";
     private static final String wsOrComma = "[ ,]+";
-    private static final String tzUnix = "[A-Z]{1,5}";   // Date.toString() prints AEST, CEST, NZDT, SAST...
+    // Date.toString() prints AEST, CEST, NZDT, SAST... and, for a zone with no abbreviation, GMT-03:00 (from JDK 23 on
+    // for most of the world's zones: the JDK's names now come from CLDR alone)
+    private static final String tzUnix = "(?:GMT|UTC|UT)[+-]\\d{2}:\\d{2}|[A-Z]{1,5}";
     private static final String tz_Hh_MM = "[+-]\\d{1,2}:\\d{2}";
     private static final String tz_Hh_MM_SS = "[+-]\\d{1,2}:\\d{2}:\\d{2}";
     private static final String tz_HHMM = "[+-]\\d{4}";
@@ -657,6 +659,14 @@ public final class DateUtilities {
 
         timezoneBuilder.put("HST", "Pacific/Honolulu");    // Hawaii Standard Time
         // Hawaii does not observe Daylight Saving Time
+
+        // The JDK's old three-letter IDs give these names to other zones (AST is Alaska there, NST New Zealand, SST
+        // the Solomon Islands); these are the zones Date.toString() prints them for, on every JDK
+        timezoneBuilder.put("AST", "America/Halifax");     // Atlantic Standard Time (Canada, Caribbean, Puerto Rico)
+        timezoneBuilder.put("ADT", "America/Halifax");     // Atlantic Daylight Time
+        timezoneBuilder.put("NST", "America/St_Johns");    // Newfoundland Standard Time
+        timezoneBuilder.put("NDT", "America/St_Johns");    // Newfoundland Daylight Time
+        timezoneBuilder.put("SST", "Pacific/Pago_Pago");   // Samoa Standard Time
 
         // European Time Zones
         timezoneBuilder.put("GMT", "Europe/London");       // Greenwich Mean Time
@@ -1197,7 +1207,7 @@ public final class DateUtilities {
      */
     private static ZonedDateTime tryDateToStringParse(String s) {
         int len = s.length();
-        if (len < 26 || len > 30 || s.charAt(3) != ' ' || s.charAt(7) != ' ' || s.charAt(10) != ' '
+        if (len < 26 || len > 34 || s.charAt(3) != ' ' || s.charAt(7) != ' ' || s.charAt(10) != ' '
                 || s.charAt(13) != ':' || s.charAt(16) != ':' || s.charAt(19) != ' ' || s.charAt(len - 5) != ' ') {
             return null;
         }
@@ -1214,13 +1224,18 @@ public final class DateUtilities {
                 || hour < 0 || hour > 23 || minute < 0 || minute > 59 || second < 0 || second > 59) {
             return null;
         }
-        for (int i = 20; i < len - 5; i++) {
-            char c = s.charAt(i);
-            if ((c < 'A' || c > 'Z') && (c < 'a' || c > 'z')) {
+        String zone = s.substring(20, len - 5);
+        if (!isGmtOffset(zone)) {
+            if (zone.length() > 5) {
                 return null;
             }
+            for (int i = 0; i < zone.length(); i++) {
+                char c = zone.charAt(i);
+                if ((c < 'A' || c > 'Z') && (c < 'a' || c > 'z')) {
+                    return null;
+                }
+            }
         }
-        String zone = s.substring(20, len - 5);
         ZoneId zoneId;
         try {
             zoneId = getTimeZone(zone);
@@ -1228,6 +1243,12 @@ public final class DateUtilities {
             return null;
         }
         return honorAbbreviation(ZonedDateTime.of(year, month, day, hour, minute, second, 0, zoneId), zone);
+    }
+
+    /** "GMT-03:00": what Date.toString() prints for a zone that has no abbreviation. */
+    private static boolean isGmtOffset(String zone) {
+        return zone.length() == 9 && zone.startsWith("GMT") && (zone.charAt(3) == '+' || zone.charAt(3) == '-')
+                && digits(zone, 4, 2) >= 0 && zone.charAt(6) == ':' && digits(zone, 7, 2) >= 0;
     }
 
     /** The index of the 3-letter name {@code s} has at {@code start}, ignoring case, or -1. */
@@ -1421,7 +1442,13 @@ public final class DateUtilities {
             return ZoneId.of(tz);
         } catch (java.time.zone.ZoneRulesException zoneRulesEx) {
             // Preserve ZoneRulesException for API compatibility (e.g., test expectations)
-            // 5) Fallback to TimeZone for legacy support, but if that also fails, rethrow original
+            // 5) One of the JDK's old three-letter IDs (ECT, ART, CAT...): the zone TimeZone.getTimeZone() gives it,
+            //    read from ZoneId.SHORT_IDS -- the same zones, without the deprecation warning TimeZone prints on the
+            //    console for each such lookup from JDK 24 on
+            if (ZoneId.SHORT_IDS.containsKey(tz)) {
+                return ZoneId.of(tz, ZoneId.SHORT_IDS);
+            }
+            // 6) Fallback to TimeZone for legacy support, but if that also fails, rethrow original
             try {
                 TimeZone timeZone = TimeZone.getTimeZone(tz);
                 if (timeZone.getID().equals("GMT") && !tz.equalsIgnoreCase("GMT")) {
@@ -1568,12 +1595,16 @@ public final class DateUtilities {
                 if (region.indexOf('/') < 0 || region.startsWith("Etc/") || region.startsWith("SystemV/")) {
                     continue;       // aliases such as BET or CST6CDT; Etc/GMT+3 and the like have no lettered name
                 }
+                boolean keepsDaylightTime;
                 try {
-                    ZoneId.of(region);
+                    keepsDaylightTime = !ZoneId.of(region).getRules().getTransitionRules().isEmpty();
                 } catch (Exception e) {
                     continue;
                 }
-                for (int column = 2; column <= 4 && column < row.length; column += 2) {     // short standard, daylight
+                // short standard name, then short daylight name -- only where the region keeps daylight time: the
+                // JDK gives every zone a daylight name, and one never used (East Africa's EAST) would take the name
+                // from the zone that prints it (Easter Island)
+                for (int column = 2; column <= (keepsDaylightTime ? 4 : 2) && column < row.length; column += 2) {
                     String name = row[column];
                     if (name != null && name.length() >= 2 && name.length() <= 5 && isLetters(name)) {
                         name = name.toUpperCase(Locale.ROOT);

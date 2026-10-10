@@ -15,6 +15,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 /**
  * Date.toString() -- "Thu Jul 04 22:30:00 AEST 2024" -- is the "Unix style" DateUtilities documents, but half of what
@@ -65,13 +66,26 @@ class DateUtilitiesDateToStringTest {
                 DateUtilities.parseDate("Thu Jul 04 14:30:00 CEST 2024", ZoneId.of("UTC"), true).getZone());
     }
 
+    /** BRT and SAST are names of the JDK's own until JDK 22; from JDK 23 its names come from CLDR, which has neither. */
     @Test
     void anAbbreviationOutsideTheTableIsFoundAmongTheJdksNames() {
+        assumeTrue(jdkNames("BRT") && jdkNames("SAST"), "this JDK has no zone named BRT or SAST");
         ZonedDateTime brazil = DateUtilities.parseDate("2024-01-15 07:30:00 BRT", ZoneId.of("UTC"), true);
         assertEquals(ZoneOffset.ofHours(-3), brazil.getOffset());
         assertTrue(brazil.getZone().getId().startsWith("America/"), brazil.getZone().getId());
         ZonedDateTime southAfrica = DateUtilities.parseDate("2024-01-15 12:30:00 SAST", ZoneId.of("UTC"), true);
         assertEquals(ZoneOffset.ofHours(2), southAfrica.getOffset());
+    }
+
+    private static boolean jdkNames(String abbreviation) {
+        for (String[] row : java.text.DateFormatSymbols.getInstance(Locale.US).getZoneStrings()) {
+            for (int column = 2; column < row.length; column += 2) {
+                if (abbreviation.equals(row[column])) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     @Test

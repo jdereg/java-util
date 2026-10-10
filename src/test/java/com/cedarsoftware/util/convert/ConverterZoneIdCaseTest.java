@@ -64,7 +64,9 @@ class ConverterZoneIdCaseTest {
                 "UTC+5", "Etc/GMT+5", "CET", "UT", "GMT0"};
         String[] timeZones = {"America/New_York", "UTC", "GMT", "UTC", "EST", "PST", "GMT+05:00", "GMT+05:00",
                 "GMT+05:00", "GMT+05:00", "Etc/GMT+5", "CET", "GMT", "GMT0"};
-        String[] zoneIds = {"America/New_York", "UTC", "GMT", "Z", "-05:00", "America/Los_Angeles", "GMT+05:00",
+        // EST is the JDK's own: -05:00 until JDK 23, America/Panama from JDK 24 (tzdata 2024b made it a link)
+        String est = TimeZone.getTimeZone("EST").toZoneId().toString();
+        String[] zoneIds = {"America/New_York", "UTC", "GMT", "Z", est, "America/Los_Angeles", "GMT+05:00",
                 "GMT+05:00", "+05:00", "UTC+05:00", "Etc/GMT+5", "CET", "UT", "GMT0"};
         for (int i = 0; i < ids.length; i++) {
             assertEquals(timeZones[i], converter.convert(ids[i], TimeZone.class).getID(), ids[i]);

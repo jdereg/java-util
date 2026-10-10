@@ -1990,7 +1990,8 @@ if (array == null || array.length == 0) {  // Avoid
 A utility class providing static methods for byte array operations and hexadecimal string conversions. Offers thread-safe methods for encoding, decoding, and GZIP detection.
 
 ### Key Features
-- Hex string to byte array conversion
+- Byte array from text in any common notation: hex, hex dumps, MAC addresses, `\x` escapes, number lists, Base64, data URIs
+- Correctly padded Base64 to byte array (`decodeBase64`)
 - Byte array to hex string conversion
 - GZIP compression detection
 - Thread-safe operations
@@ -2039,6 +2040,35 @@ byte[] decoded = ByteUtilities.decode("1F8B3C");
 // Result: {0x1F, 0x8B, 0x3C}
 ```
 
+**Reading Bytes in Any Notation:**
+
+`decode()` is for text you know holds bytes; it works out how they were written. Surrounding whitespace is ignored,
+blank text is the empty array, and text in none of these notations gives `null`.
+
+| Notation | Examples |
+|----------|----------|
+| Hex digits | `1F8B3C`, `1f8b3c`, `0x1F8B3C` (after `0x` an odd count takes a leading zero: `0xF` is `{0x0F}`) |
+| Hex in groups (whitespace, `:` or `-`, one kind throughout) | `1F 8B 3C`, `1f:8b:3c`, `1F-8B-3C`, `0:1c:42:b`, `6A3B 0D4C`, `0x1F 0x8B`, hex dumps and OpenSSL listings across lines |
+| Escapes and SQL | `\x1F\x8B\x3C` (C, Python), `\x1F8B3C` (PostgreSQL `bytea`), `X'1F8B3C'` |
+| Number lists | `[31, -117, 60]` (`Arrays.toString`), `[31,139,60]` (JSON), `{0x1F, (byte) 0x8B, 0x3C}`, `new byte[] {31, -117, 60}`, `[ 31 139  60]` (numpy), `31, 139, 60` |
+| Base64, padded correctly (standard, URL-safe, MIME line breaks) | `H4s8`, `AQID`, `-_8=` |
+| Data URIs | `data:image/png;base64,iVBORw0KGgo=`, `data:,Hello%2C%20World` |
+
+Each number in a list is a signed or unsigned decimal byte (`-1` and `255` are both `0xFF`) or `0x00`-`0xFF`.
+Numbers in a list are decimal (`[10, 20]` is `{10, 20}`); groups without brackets are hex (`10 20` is
+`{0x10, 0x20}`). Text that fits two notations is read as hex: `CAFEBABE` is four bytes of hex, not six of Base64.
+When you know the text is Base64, use `decodeBase64()`:
+
+```java
+byte[] one = ByteUtilities.decodeBase64("AQ==");   // {1}
+byte[] none = ByteUtilities.decodeBase64("AQ");    // null: not padded
+byte[] odd = ByteUtilities.decodeBase64("AF==");   // null: no encoder writes it ("AA==" is {0})
+```
+
+`decodeBase64()` reads standard or URL-safe Base64 only when it is padded correctly -- exactly as an encoder writes
+it: a length that is a multiple of 4, and the bits the `=` padding leaves over are zero. A short word such as `"AF"`
+or `"OK"` is never read as bytes.
+
 **GZIP Detection:**
 ```java
 // Check if byte array is GZIP compressed
@@ -2049,7 +2079,7 @@ boolean isGzipped = ByteUtilities.isGzipped(compressedData);
 
 **Error Handling:**
 ```java
-// Invalid hex string (odd length)
+// An odd number of hex digits, in no notation
 byte[] result = ByteUtilities.decode("1F8");
 // Result: null
 
@@ -2060,7 +2090,7 @@ byte[] valid = ByteUtilities.decode("1F8B");
 
 ### Performance Characteristics
 - encode(): O(n) with optimized StringBuilder
-- decode(): O(n) with single-pass conversion
+- decode(): O(n); plain hex in a single pass, other notations after it
 - isGzipped(): O(1) constant time
 - Memory usage: Linear with input size
 - No recursive operations

@@ -1,18 +1,24 @@
 package com.cedarsoftware.util;
 
+import java.io.ByteArrayOutputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Base64;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * A utility class providing static methods for operations on byte arrays and hexadecimal representations.
  * <p>
  * {@code ByteUtilities} simplifies common tasks such as encoding byte arrays to hexadecimal strings,
- * decoding hexadecimal strings back to byte arrays, and identifying if a byte array represents GZIP-compressed data.
+ * reading byte arrays back from text, and identifying if a byte array represents GZIP-compressed data.
  * </p>
  *
  * <h2>Key Features</h2>
  * <ul>
- *   <li>Convert hexadecimal strings to byte arrays ({@link #decode(String)}).</li>
+ *   <li>Read a byte array written in any common notation -- hex, hex dumps, MAC addresses, {@code \x} escapes,
+ *       number lists, Base64, data URIs ({@link #decode(String)}).</li>
+ *   <li>Read correctly padded Base64 ({@link #decodeBase64(String)}).</li>
  *   <li>Convert byte arrays to hexadecimal strings ({@link #encode(byte[])}).</li>
  *   <li>Check if a byte array is GZIP-compressed ({@link #isGzipped(byte[])}).</li>
  *   <li>Find byte patterns within byte arrays ({@link #indexOf(byte[], byte[], int)}).</li>
@@ -25,8 +31,10 @@ import java.util.Base64;
  * byte[] data = {0x1f, 0x8b, 0x3c};
  * String hex = ByteUtilities.encode(data); // "1F8B3C"
  *
- * // Decode a hexadecimal string back to a byte array
- * byte[] decoded = ByteUtilities.decode("1F8B3C"); // {0x1f, 0x8b, 0x3c}
+ * // Read it back, in that notation or any other common one
+ * byte[] decoded = ByteUtilities.decode("1F8B3C");          // {0x1f, 0x8b, 0x3c}
+ * decoded = ByteUtilities.decode("1f:8b:3c");               // the same
+ * decoded = ByteUtilities.decode("[31, -117, 60]");         // the same
  *
  * // Check if a byte array is GZIP-compressed
  * boolean isGzip = ByteUtilities.isGzipped(data); // true
@@ -56,7 +64,8 @@ import java.util.Base64;
  * <ul>
  *   <li>The class is designed as a utility class, and its constructor is private to prevent instantiation.</li>
  *   <li>All methods are static and thread-safe, making them suitable for use in concurrent environments.</li>
- *   <li>The {@code decode} method returns {@code null} for invalid inputs (e.g., strings with an odd number of characters).</li>
+ *   <li>The {@code decode} method returns {@code null} for text in none of its notations (e.g., {@code "456"}, an odd
+ *       number of hex digits).</li>
  * </ul>
  *
  * <h2>Performance Considerations</h2>
@@ -64,7 +73,8 @@ import java.util.Base64;
  * The methods in this class are optimized for performance:
  * <ul>
  *   <li>{@link #encode(byte[])} avoids excessive memory allocations by pre-sizing the {@link StringBuilder}.</li>
- *   <li>{@link #decode(String)} uses minimal overhead to parse hexadecimal strings into bytes.</li>
+ *   <li>{@link #decode(String)} reads plain hex first, with minimal overhead; only other text goes on to the other
+ *       notations.</li>
  * </ul>
  * </p>
  *
@@ -219,20 +229,52 @@ public final class ByteUtilities {
     }
 
     /**
-     * Converts a hexadecimal string into a byte array.
-     * 
-     * @param s the hexadecimal string to decode
-     * @return the decoded byte array, or null if input is null, has odd length, or contains non-hex characters
+     * Reads a byte array written in any common notation, or returns {@code null}. Surrounding whitespace is ignored,
+     * and blank text is the empty array. Whoever calls this knows they hold bytes; the question is only how they were
+     * written:
+     * <ul>
+     *   <li><b>Hex digits</b>: {@code "1F8B3C"}, {@code "1f8b3c"}; with a {@code 0x} prefix, {@code "0x1F8B3C"}, where
+     *       an odd count takes a leading zero ({@code "0xF"} is {@code {0x0F}}). Without the prefix the count must be
+     *       even: {@code "456"} is {@code null}.</li>
+     *   <li><b>Hex in groups</b> separated by whitespace (hex dumps, line breaks included), by {@code ':'} (MAC
+     *       addresses, certificate fingerprints, OpenSSL's listings with a line break after a {@code ':'}) or by
+     *       {@code '-'} (Windows MAC addresses), one kind throughout: {@code "AF DE 92 9F"}, {@code "af:de:92:9f"},
+     *       {@code "AF-DE-92-9F"}, {@code "6A3B 0D4C"} (groups of four, as GPG prints them), {@code "0xAF 0xDE"}. A
+     *       group of one digit is one byte ({@code "0:1c:42:b"}, as macOS prints a MAC address).</li>
+     *   <li><b>{@code \x} escapes</b>: {@code "\xAF\xDE\x92"} (C, Python), or {@code "\xAFDE92"} (PostgreSQL
+     *       {@code bytea}); and the SQL literal {@code "X'AFDE92'"}.</li>
+     *   <li><b>A list of numbers</b> in brackets, braces or parentheses, separated by commas or whitespace, or
+     *       separated by commas with no brackets: {@code "[31, -117, 60]"} ({@link Arrays#toString(byte[])}, a JSON
+     *       array), {@code "{0x1F, (byte) 0x8B, 0x3C}"} and {@code "new byte[] {31, -117, 60}"} (Java and C
+     *       source), {@code "[ 31 139  60]"} (numpy), {@code "31, 139, 60"}. Each number is decimal from -128 to 255
+     *       -- a signed or an unsigned byte, so -1 and 255 are both {@code 0xFF} -- or {@code 0x00} to {@code 0xFF}.
+     *       Numbers in a list are decimal: {@code "[10, 20]"} is {@code {10, 20}}, while {@code "10 20"} is hex
+     *       groups, {@code {0x10, 0x20}}. A trailing comma is allowed, as in Java source.</li>
+     *   <li><b>Base64</b>, standard or URL-safe, padded correctly ({@link #decodeBase64(String)}), with the line
+     *       breaks of MIME Base64 ignored: {@code "AQID"}, {@code "-_8="}. {@code "AF"} and {@code "OK"} are not
+     *       Base64.</li>
+     *   <li><b>A data URI</b> (RFC 2397): {@code "data:image/png;base64,iVBORw0KGgo="} (Base64), or
+     *       {@code "data:,Hello%2C%20World"} (percent-encoded).</li>
+     * </ul>
+     * Text that fits two notations is read as hex: {@code "CAFEBABE"} is the four bytes of hex, though it is also
+     * six bytes of Base64, and {@code "AB-CD-EF"} is three bytes of hex, not six of URL-safe Base64. When the text is
+     * known to be Base64, read it with
+     * {@link #decodeBase64(String)}.
+     *
+     * @param s the text to read
+     * @return the bytes it writes, or {@code null} if {@code s} is null or in none of these notations
+     * @throws SecurityException if security is enabled and {@code s} is longer than
+     *         {@code byteutilities.max.hex.string.length}
      */
     public static byte[] decode(final String s) {
         return decodeInternal(s, true);
     }
 
     /**
-     * Converts a hexadecimal CharSequence into a byte array.
-     * 
-     * @param s the hexadecimal CharSequence to decode
-     * @return the decoded byte array, or null if input is null, has odd length, or contains non-hex characters
+     * Reads a byte array written in any common notation, as {@link #decode(String)} does.
+     *
+     * @param s the text to read
+     * @return the bytes it writes, or {@code null} if {@code s} is null or in none of the notations
      */
     public static byte[] decode(final CharSequence s) {
         return decodeInternal(s, true);
@@ -313,27 +355,286 @@ public final class ByteUtilities {
                 throw new SecurityException("Hex string length exceeds maximum allowed: " + maxHexLength);
             }
         }
-        
-        // Must be even length
+        byte[] bytes = decodeHex(s, 0, len);        // the common case: hex digits, nothing else
+        return bytes != null ? bytes : decodeAnyNotation(s.toString().trim());
+    }
+
+    // Hex digits from 'from' to 'to', an even count of them, or null
+    private static byte[] decodeHex(final CharSequence s, final int from, final int to) {
+        final int len = to - from;
         if ((len & 1) != 0) {
             return null;
         }
         byte[] bytes = new byte[len >> 1];
-        for (int i = 0, j = 0; i < len; i += 2) {
-            char c1 = s.charAt(i);
-            char c2 = s.charAt(i + 1);
-            // Check if the characters are within ASCII range
-            if (c1 >= HEX_LOOKUP.length || c2 >= HEX_LOOKUP.length) {
-                return null;
-            }
-            int hi = HEX_LOOKUP[c1];
-            int lo = HEX_LOOKUP[c2];
+        for (int i = from, j = 0; i < to; i += 2) {
+            int hi = hexValue(s.charAt(i));
+            int lo = hexValue(s.charAt(i + 1));
             if (hi == -1 || lo == -1) {
                 return null;
             }
             bytes[j++] = (byte) ((hi << 4) | lo);
         }
         return bytes;
+    }
+
+    private static int hexValue(final char c) {
+        return c < HEX_LOOKUP.length ? HEX_LOOKUP[c] : -1;
+    }
+
+    // The notations after plain hex, in the order decode(String) documents; s is trimmed
+    private static byte[] decodeAnyNotation(final String s) {
+        if (s.isEmpty()) {
+            return new byte[0];
+        }
+        if (s.regionMatches(true, 0, "data:", 0, 5)) {
+            return decodeDataUri(s);
+        }
+        byte[] bytes = decodeNumberList(s);
+        if (bytes == null) {
+            bytes = decodeHexGroups(s);
+        }
+        if (bytes == null) {
+            bytes = decodeEscapedHex(s);
+        }
+        if (bytes == null && s.length() >= 3 && (s.charAt(0) | 0x20) == 'x' && s.charAt(1) == '\''
+                && s.charAt(s.length() - 1) == '\'') {
+            bytes = decodeHex(s, 2, s.length() - 1);       // X'AFDE92', SQL
+        }
+        return bytes != null ? bytes : decodeBase64(withoutWhitespace(s));
+    }
+
+    // "AF DE 92", "af:de:92", "AF-DE-92", "0:1c:42:b", "6A3B 0D4C", "0xAF 0xDE", "0x1F8B3C" -- groups of hex digits
+    // (one digit, or an even count; any count after 0x) between one kind of separator: whitespace, or ':' or '-'
+    // with whitespace allowed around it.
+    private static byte[] decodeHexGroups(final String s) {
+        final int len = s.length();
+        byte[] out = new byte[(len + 1) >> 1];
+        int n = 0;
+        int i = 0;
+        int groups = 0;
+        boolean firstIsOneDigit = false;
+        char separator = 0;
+        while (true) {
+            boolean prefixed = i + 1 < len && s.charAt(i) == '0' && (s.charAt(i + 1) | 0x20) == 'x';
+            int start = prefixed ? i + 2 : i;
+            int end = start;
+            while (end < len && hexValue(s.charAt(end)) >= 0) {
+                end++;
+            }
+            int digits = end - start;
+            if (digits == 0 || (!prefixed && digits > 1 && (digits & 1) != 0)) {
+                return null;
+            }
+            if (groups++ == 0) {
+                firstIsOneDigit = !prefixed && digits == 1;
+            }
+            if ((digits & 1) != 0) {
+                out[n++] = (byte) hexValue(s.charAt(start++));
+            }
+            for (; start < end; start += 2) {
+                out[n++] = (byte) ((hexValue(s.charAt(start)) << 4) | hexValue(s.charAt(start + 1)));
+            }
+            if (end == len) {
+                break;
+            }
+            int k = end;
+            while (k < len && s.charAt(k) <= ' ') {
+                k++;
+            }
+            char found = k > end ? ' ' : 0;
+            if (k < len && (s.charAt(k) == ':' || s.charAt(k) == '-')) {
+                found = s.charAt(k++);
+                while (k < len && s.charAt(k) <= ' ') {
+                    k++;
+                }
+            }
+            if (separator != 0 && found != separator) {
+                return null;        // two kinds of separator
+            }
+            // Any other character, or a separator at the end, leaves the next group with no digits: null
+            separator = found;
+            i = k;
+        }
+        if (groups == 1 && firstIsOneDigit) {
+            return null;            // a lone digit, like any odd count without 0x
+        }
+        return n == out.length ? out : Arrays.copyOf(out, n);
+    }
+
+    // "\xAF\xDE\x92" (C, Python) or "\xAFDE92" (PostgreSQL bytea)
+    private static byte[] decodeEscapedHex(final String s) {
+        final int len = s.length();
+        if (len < 4 || s.charAt(0) != '\\' || (s.charAt(1) | 0x20) != 'x') {
+            return null;
+        }
+        if (s.indexOf('\\', 2) < 0) {
+            return decodeHex(s, 2, len);
+        }
+        if ((len & 3) != 0) {
+            return null;
+        }
+        byte[] out = new byte[len >> 2];
+        for (int i = 0, j = 0; i < len; i += 4) {
+            if (s.charAt(i) != '\\' || (s.charAt(i + 1) | 0x20) != 'x') {
+                return null;
+            }
+            int hi = hexValue(s.charAt(i + 2));
+            int lo = hexValue(s.charAt(i + 3));
+            if (hi == -1 || lo == -1) {
+                return null;
+            }
+            out[j++] = (byte) ((hi << 4) | lo);
+        }
+        return out;
+    }
+
+    private static final Pattern JAVA_ARRAY_PREFIX = Pattern.compile("(?:new\\s+)?byte\\s*\\[\\s*]\\s*(?=\\{)");
+    private static final int NOT_A_BYTE = Integer.MIN_VALUE;
+
+    // "[31, -117, 60]", "{0x1F, (byte) 0x8B}", "new byte[] {31, 139}", "(1 2 3)", "[ 31 139  60]", "31, 139, 60"
+    private static byte[] decodeNumberList(final String s) {
+        int from = 0;
+        int to = s.length();
+        Matcher prefix = JAVA_ARRAY_PREFIX.matcher(s);
+        if (prefix.lookingAt()) {
+            from = prefix.end();
+        }
+        char open = s.charAt(from);
+        char close = s.charAt(to - 1);
+        if (to - from >= 2 && ((open == '[' && close == ']') || (open == '{' && close == '}')
+                || (open == '(' && close == ')'))) {
+            from++;
+            to--;
+        } else if (from > 0 || s.indexOf(',') < 0) {
+            return null;
+        }
+        byte[] out = new byte[(to - from + 1) >> 1];
+        int n = 0;
+        int i = skipWhitespace(s, from, to);
+        while (i < to) {
+            if (s.startsWith("(byte)", i)) {
+                i = skipWhitespace(s, i + 6, to);
+            }
+            int end = i;
+            while (end < to && isNumberChar(s.charAt(end))) {
+                end++;
+            }
+            int value = byteValue(s, i, end);
+            if (value == NOT_A_BYTE) {
+                return null;
+            }
+            out[n++] = (byte) value;
+            int next = skipWhitespace(s, end, to);
+            if (next < to && s.charAt(next) == ',') {
+                next = skipWhitespace(s, next + 1, to);
+            } else if (next == end && next < to) {
+                return null;        // a number runs into something else
+            }
+            i = next;
+        }
+        return n == out.length ? out : Arrays.copyOf(out, n);
+    }
+
+    private static int skipWhitespace(final String s, int i, final int to) {
+        while (i < to && s.charAt(i) <= ' ') {
+            i++;
+        }
+        return i;
+    }
+
+    private static boolean isNumberChar(final char c) {
+        return hexValue(c) >= 0 || c == 'x' || c == 'X' || c == '-' || c == '+';
+    }
+
+    // A decimal from -128 to 255, or 0x and one or two hex digits; NOT_A_BYTE otherwise
+    private static int byteValue(final String s, final int from, final int to) {
+        if (to - from >= 3 && to - from <= 4 && s.charAt(from) == '0' && (s.charAt(from + 1) | 0x20) == 'x') {
+            int value = 0;
+            for (int i = from + 2; i < to; i++) {
+                int digit = hexValue(s.charAt(i));
+                if (digit == -1) {
+                    return NOT_A_BYTE;
+                }
+                value = (value << 4) | digit;
+            }
+            return value;
+        }
+        int i = from;
+        boolean negative = i < to && s.charAt(i) == '-';
+        if (i < to && (negative || s.charAt(i) == '+')) {
+            i++;
+        }
+        if (i == to) {
+            return NOT_A_BYTE;
+        }
+        int value = 0;
+        for (; i < to; i++) {
+            char c = s.charAt(i);
+            if (c < '0' || c > '9') {
+                return NOT_A_BYTE;
+            }
+            value = value * 10 + (c - '0');
+            if (value > 255) {
+                return NOT_A_BYTE;
+            }
+        }
+        return !negative ? value : value <= 128 ? -value : NOT_A_BYTE;
+    }
+
+    // data:[<media type>][;base64],<data> (RFC 2397): Base64, or percent-encoded
+    private static byte[] decodeDataUri(final String s) {
+        int comma = s.indexOf(',');
+        if (comma < 0) {
+            return null;
+        }
+        String data = s.substring(comma + 1);
+        if (comma >= 12 && s.regionMatches(true, comma - 7, ";base64", 0, 7)) {
+            return decodeBase64(withoutWhitespace(data));
+        }
+        ByteArrayOutputStream out = new ByteArrayOutputStream(data.length());
+        final int len = data.length();
+        int i = 0;
+        while (i < len) {
+            if (data.charAt(i) == '%') {
+                if (i + 2 >= len) {
+                    return null;
+                }
+                int hi = hexValue(data.charAt(i + 1));
+                int lo = hexValue(data.charAt(i + 2));
+                if (hi == -1 || lo == -1) {
+                    return null;
+                }
+                out.write((hi << 4) | lo);
+                i += 3;
+            } else {
+                int end = data.indexOf('%', i);
+                if (end < 0) {
+                    end = len;
+                }
+                byte[] text = data.substring(i, end).getBytes(StandardCharsets.UTF_8);
+                out.write(text, 0, text.length);
+                i = end;
+            }
+        }
+        return out.toByteArray();
+    }
+
+    private static String withoutWhitespace(final String s) {
+        int i = 0;
+        while (i < s.length() && s.charAt(i) > ' ') {
+            i++;
+        }
+        if (i == s.length()) {
+            return s;
+        }
+        StringBuilder kept = new StringBuilder(s.length()).append(s, 0, i);
+        for (; i < s.length(); i++) {
+            char c = s.charAt(i);
+            if (c > ' ') {
+                kept.append(c);
+            }
+        }
+        return kept.toString();
     }
 
     /**

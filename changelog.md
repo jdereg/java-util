@@ -1,6 +1,6 @@
 ### Revision History
 
-#### 4.113.0 - 2026-09-25
+#### 4.113.0 - 2026-10-10
 **Upgrading from 4.112.0 -- what can change a result.** Each row is pinned by `UpgradeTo4113NotesTest`; every
 example gave the 4.112.0 answer shown. The entries below have the details.
 

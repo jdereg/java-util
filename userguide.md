@@ -2000,26 +2000,29 @@ A utility class providing static methods for byte array operations and hexadecim
 
 ### Feature Options
 
-ByteUtilities provides configurable security options through system properties. All security features are **disabled by default** for backward compatibility:
+ByteUtilities provides configurable security limits through system properties. They are **off by default**: a limit applies only while `byteutilities.security.enabled` is `true`, and a limit not set then takes the default shown.
 
 | Property | Default | Description |
 |----------|---------|-------------|
-| `bytes.max.hex.string.length` | `0` | Hex string length limit for decode operations (0=disabled) |
-| `bytes.max.array.size` | `0` | Byte array size limit for encode operations (0=disabled) |
+| `byteutilities.security.enabled` | `false` | Master switch: no limit applies while it is `false` |
+| `byteutilities.max.hex.string.length` | `1000000` | Longest text `decode()` reads (0 = no limit) |
+| `byteutilities.max.array.size` | `10000000` | Largest array `encode()` writes (0 = no limit) |
 
 **Usage Examples:**
 
 ```java
 // Production environment with security limits
-System.setProperty("bytes.max.hex.string.length", "100000");
-System.setProperty("bytes.max.array.size", "50000");
+System.setProperty("byteutilities.security.enabled", "true");
+System.setProperty("byteutilities.max.hex.string.length", "100000");
+System.setProperty("byteutilities.max.array.size", "50000");
 
 // Development environment with higher limits
-System.setProperty("bytes.max.hex.string.length", "1000000");
-System.setProperty("bytes.max.array.size", "500000");
+System.setProperty("byteutilities.security.enabled", "true");
+System.setProperty("byteutilities.max.hex.string.length", "1000000");
+System.setProperty("byteutilities.max.array.size", "500000");
 
 // Testing environment - all security features disabled (default)
-// No system properties needed - all limits default to 0 (disabled)
+// No system properties needed: with the master switch off, no limit applies
 ```
 
 **Security Benefits:**
@@ -6093,29 +6096,32 @@ do {
 
 ### Feature Options
 
-MathUtilities provides configurable security options through system properties. All security features are **disabled by default** for backward compatibility:
+MathUtilities provides configurable security limits through system properties. They are **off by default**: a limit applies only while `mathutilities.security.enabled` is `true`, and a limit not set then takes the default shown.
 
 | Property | Default | Description |
 |----------|---------|-------------|
-| `math.max.array.size` | `0` | Array size limit for min/max operations (0=disabled) |
-| `math.max.string.length` | `0` | String length limit for parsing operations (0=disabled) |
-| `math.max.permutation.size` | `0` | List size limit for permutation generation (0=disabled) |
+| `mathutilities.security.enabled` | `false` | Master switch: no limit applies while it is `false` |
+| `mathutilities.max.array.size` | `100000` | Array size limit for min/max operations (0 = no limit) |
+| `mathutilities.max.string.length` | `100000` | String length limit for parsing operations (0 = no limit) |
+| `mathutilities.max.permutation.size` | `10` | List size limit for permutation generation (0 = no limit) |
 
 **Usage Examples:**
 
 ```java
 // Production environment with security limits
-System.setProperty("math.max.array.size", "10000");
-System.setProperty("math.max.string.length", "1000");
-System.setProperty("math.max.permutation.size", "100");
+System.setProperty("mathutilities.security.enabled", "true");
+System.setProperty("mathutilities.max.array.size", "10000");
+System.setProperty("mathutilities.max.string.length", "1000");
+System.setProperty("mathutilities.max.permutation.size", "100");
 
 // Development environment with higher limits
-System.setProperty("math.max.array.size", "100000");
-System.setProperty("math.max.string.length", "10000");
-System.setProperty("math.max.permutation.size", "500");
+System.setProperty("mathutilities.security.enabled", "true");
+System.setProperty("mathutilities.max.array.size", "100000");
+System.setProperty("mathutilities.max.string.length", "10000");
+System.setProperty("mathutilities.max.permutation.size", "500");
 
 // Testing environment - all security features disabled (default)
-// No system properties needed - all limits default to 0 (disabled)
+// No system properties needed: with the master switch off, no limit applies
 ```
 
 **Security Benefits:**
@@ -8310,9 +8316,6 @@ classutilities.max.class.load.depth=100
 # Constructor argument limits (0 = disabled)
 classutilities.max.constructor.args=50
 
-# Reflection operation limits (0 = disabled)
-classutilities.max.reflection.operations=1000
-
 # Resource name length limits (minimum 100 characters)
 classutilities.max.resource.name.length=1000
 ```
@@ -8743,11 +8746,11 @@ All java-util security features follow consistent patterns:
 ```properties
 # System utilities
 systemutilities.security.enabled=false
-systemutilities.max.command.length=1000
+systemutilities.max.shutdown.hooks=100
 
 # String utilities
 stringutilities.security.enabled=false
-stringutilities.max.string.length=1000000
+stringutilities.max.repeat.total.size=10000000
 
 # Array utilities
 arrayutilities.security.enabled=false

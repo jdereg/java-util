@@ -21,9 +21,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * InetAddress conversions (4.113.0). An InetAddress is its IP address; its Map form keeps a host name it already
  * carries. Nothing is looked up: only IP literals are read, and a name travels beside its address.
  * <p>
- * Tested here, not yet in ConverterEverythingTest: that test also round-trips every pair through the test-scope
- * json-io (4.111.0), which writes an InetAddress as an empty object on JDK 9+. Add it there once version.json-io
- * includes these conversions.
+ * The pairs are in ConverterEverythingTest too (loadInetAddressTests), round-tripped through the test-scope json-io;
+ * this class keeps the checks a pair cannot state: the address family, and that nothing is looked up.
  */
 class InetAddressConversionsTest {
     private final Converter converter = new Converter(new DefaultConverterOptions());

@@ -3,6 +3,7 @@ package com.cedarsoftware.util.convert;
 import java.io.File;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.net.InetAddress;
 import java.net.URI;
 import java.net.URL;
 import java.nio.ByteBuffer;
@@ -12,6 +13,7 @@ import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 import java.nio.LongBuffer;
 import java.nio.ShortBuffer;
+import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -60,6 +62,8 @@ import java.util.concurrent.atomic.AtomicIntegerArray;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicLongArray;
 import java.util.concurrent.atomic.AtomicReferenceArray;
+import java.util.concurrent.atomic.DoubleAdder;
+import java.util.concurrent.atomic.LongAdder;
 import java.util.function.Supplier;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -78,7 +82,6 @@ import com.cedarsoftware.io.WriteOptionsBuilder;
 import com.cedarsoftware.util.ClassUtilities;
 import com.cedarsoftware.util.CollectionUtilities;
 import com.cedarsoftware.util.DeepEquals;
-import com.cedarsoftware.util.JsonIoOnTestClassPath;
 import com.cedarsoftware.util.LoggingConfig;
 import com.cedarsoftware.util.SystemUtilities;
 import com.cedarsoftware.util.geom.Color;
@@ -302,6 +305,9 @@ class ConverterEverythingTest {
         loadThrowableTests();
         loadCurrencyTests();
         loadPatternTests();
+        loadCharsetTests();
+        loadInetAddressTests();
+        loadAdderTests();
         loadColorTests();
         loadDimensionTests();
         loadFileTests();
@@ -352,6 +358,125 @@ class ConverterEverythingTest {
         TEST_DB.put(pair(Map.class, Pattern.class), new Object[][]{
                 {mapOf("value", Pattern.compile(".*")), Pattern.compile(".*")},
         });
+    }
+
+    /**
+     * Charset: its canonical name(), and {"charset": name} as a Map.
+     */
+    private static void loadCharsetTests() {
+        TEST_DB.put(pair(Void.class, Charset.class), new Object[][]{
+                {null, null},
+        });
+        TEST_DB.put(pair(Charset.class, Charset.class), new Object[][]{
+                {StandardCharsets.UTF_8, StandardCharsets.UTF_8},
+                {StandardCharsets.US_ASCII, StandardCharsets.US_ASCII},
+        });
+        TEST_DB.put(pair(String.class, Charset.class), new Object[][]{
+                {"UTF-8", StandardCharsets.UTF_8, true},
+                {"US-ASCII", StandardCharsets.US_ASCII, true},
+                {"ISO-8859-1", StandardCharsets.ISO_8859_1, true},
+                {"utf8", StandardCharsets.UTF_8},       // an alias
+                {" UTF-8 ", StandardCharsets.UTF_8},
+        });
+        TEST_DB.put(pair(Map.class, Charset.class), new Object[][]{
+                {mapOf("charset", "UTF-8"), StandardCharsets.UTF_8, true},
+                {mapOf("charset", "US-ASCII"), StandardCharsets.US_ASCII, true},
+                {mapOf(VALUE, "ISO-8859-1"), StandardCharsets.ISO_8859_1},
+                {mapOf(V, "UTF-16"), StandardCharsets.UTF_16},
+        });
+    }
+
+    /**
+     * InetAddress: its IP address; its Map form keeps a host name it already carries. Nothing is looked up.
+     */
+    private static void loadInetAddressTests() {
+        InetAddress v4 = inetAddress(null, 10, 0, 0, 1);
+        InetAddress v6 = inetAddress(null, 0x20, 0x01, 0x0d, 0xb8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1);
+        InetAddress named = inetAddress("build-server", 10, 0, 0, 7);
+        TEST_DB.put(pair(Void.class, InetAddress.class), new Object[][]{
+                {null, null},
+        });
+        TEST_DB.put(pair(InetAddress.class, InetAddress.class), new Object[][]{
+                {v4, v4},
+                {named, named},
+        });
+        TEST_DB.put(pair(String.class, InetAddress.class), new Object[][]{
+                {"10.0.0.1", v4, true},
+                {"2001:db8:0:0:0:0:0:1", v6, true},
+                {"2001:db8::1", v6},
+                {" 10.0.0.1 ", v4},
+                {"build-server/10.0.0.7", named},      // as InetAddress.toString() writes it
+        });
+        TEST_DB.put(pair(Map.class, InetAddress.class), new Object[][]{
+                {mapOf("address", "10.0.0.1"), v4, true},
+                {mapOf("host", "build-server", "address", "10.0.0.7"), named, true},
+                {mapOf(VALUE, "10.0.0.1"), v4},
+        });
+    }
+
+    private static InetAddress inetAddress(String host, int... octets) {
+        byte[] bytes = new byte[octets.length];
+        for (int i = 0; i < octets.length; i++) {
+            bytes[i] = (byte) octets[i];
+        }
+        try {
+            return InetAddress.getByAddress(host, bytes);
+        } catch (java.net.UnknownHostException e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    /**
+     * LongAdder and DoubleAdder: an adder is its sum. It converts as a Long (a Double), and whatever converts to a
+     * Long (a Double) converts to a new adder holding that value, as AtomicLong does.
+     */
+    private static void loadAdderTests() {
+        TEST_DB.put(pair(Void.class, LongAdder.class), new Object[][]{
+                {null, null},
+        });
+        TEST_DB.put(pair(LongAdder.class, LongAdder.class), new Object[][]{
+                {longAdder(1), longAdder(1)},
+        });
+        TEST_DB.put(pair(Long.class, LongAdder.class), new Object[][]{
+                {7L, longAdder(7), true},
+                {-1L, longAdder(-1), true},
+        });
+        TEST_DB.put(pair(Integer.class, LongAdder.class), new Object[][]{
+                {3, longAdder(3), true},
+        });
+        TEST_DB.put(pair(String.class, LongAdder.class), new Object[][]{
+                {"9", longAdder(9), true},
+        });
+        TEST_DB.put(pair(LongAdder.class, BigDecimal.class), new Object[][]{
+                {longAdder(5), new BigDecimal("5")},
+        });
+        TEST_DB.put(pair(Void.class, DoubleAdder.class), new Object[][]{
+                {null, null},
+        });
+        TEST_DB.put(pair(DoubleAdder.class, DoubleAdder.class), new Object[][]{
+                {doubleAdder(2.5), doubleAdder(2.5)},
+        });
+        TEST_DB.put(pair(Double.class, DoubleAdder.class), new Object[][]{
+                {2.5, doubleAdder(2.5), true},
+        });
+        TEST_DB.put(pair(String.class, DoubleAdder.class), new Object[][]{
+                {"1.5", doubleAdder(1.5), true},
+        });
+        TEST_DB.put(pair(LongAdder.class, DoubleAdder.class), new Object[][]{
+                {longAdder(5), doubleAdder(5.0)},
+        });
+    }
+
+    private static LongAdder longAdder(long value) {
+        LongAdder adder = new LongAdder();
+        adder.add(value);
+        return adder;
+    }
+
+    private static DoubleAdder doubleAdder(double value) {
+        DoubleAdder adder = new DoubleAdder();
+        adder.add(value);
+        return adder;
     }
 
     /**
@@ -2851,10 +2976,7 @@ class ConverterEverythingTest {
 
                 // Edge cases (using the "seconds" key with a BigDecimal value)
                 { mapOf(DURATION, new BigDecimal(Long.MAX_VALUE + ".999999999")), Duration.ofSeconds(Long.MAX_VALUE, 999999999) },
-                // ".0": json-io 4.112.0, which this test round-trips through, hands a typed BigDecimal inside a Map to
-                // the Converter as its text, and integer text is milliseconds; json-io 4.113.0 keeps the type, so drop
-                // the ".0" once version.json-io reaches it (ConverterNumberTextTest has the integral BigDecimal)
-                { mapOf(DURATION, new BigDecimal(Long.MIN_VALUE + ".0")), Duration.ofSeconds(Long.MIN_VALUE, 0) },
+                { mapOf(DURATION, new BigDecimal(Long.toString(Long.MIN_VALUE))), Duration.ofSeconds(Long.MIN_VALUE, 0) },
 
                 // Mixed formats:
                 { mapOf(DURATION, "PT1H"), Duration.ofHours(1) },   // ISO string in seconds field (converter should detect the ISO 8601 pattern)
@@ -2871,7 +2993,7 @@ class ConverterEverythingTest {
     /**
      * java.sql.Time: JDBC's time of day, a Date whose text and LocalTime are read in the JVM's default zone, as
      * Time.valueOf() and Time.toString() read them; every source that reaches a Date reaches a Time at the same
-     * instant. (LongAdder and DoubleAdder sources wait for the test-scope json-io 4.113.0, which reads them back.)
+     * instant.
      */
     private static void loadSqlTimeTests() {
         java.sql.Time t = java.sql.Time.valueOf("13:14:15");
@@ -2914,8 +3036,14 @@ class ConverterEverythingTest {
         TEST_DB.put(pair(AtomicLong.class, java.sql.Time.class), new Object[][]{
                 {new AtomicLong(t123.getTime()), t123},
         });
+        TEST_DB.put(pair(LongAdder.class, java.sql.Time.class), new Object[][]{
+                {longAdder(t123.getTime()), t123},
+        });
         TEST_DB.put(pair(Double.class, java.sql.Time.class), new Object[][]{
                 {t500.getTime() / 1000.0, t500},      // seconds
+        });
+        TEST_DB.put(pair(DoubleAdder.class, java.sql.Time.class), new Object[][]{
+                {doubleAdder(t500.getTime() / 1000.0), t500},
         });
         TEST_DB.put(pair(double.class, java.sql.Time.class), new Object[][]{
                 {t500.getTime() / 1000.0, t500},
@@ -5516,6 +5644,10 @@ class ConverterEverythingTest {
             Map<String, Object> options = new HashMap<>();
             if (restored instanceof Pattern) {
                 assertEquals(restored.toString(), target.toString());
+            } else if (target instanceof LongAdder) {      // an adder has no equals(): compare its sum
+                assertEquals(((LongAdder) target).sum(), ((LongAdder) restored).sum());
+            } else if (target instanceof DoubleAdder) {
+                assertEquals(((DoubleAdder) target).sum(), ((DoubleAdder) restored).sum());
             } else if (target instanceof java.util.stream.BaseStream) {
                 assertStreamsYieldSame(target, restored, shortNameSource, shortNameTarget);
             } else if (!DeepEquals.deepEquals(restored, target, options)) {
@@ -5637,6 +5769,12 @@ class ConverterEverythingTest {
                     updateStat(pair(sourceClass, targetClass), true);
                 } else if (targetClass.equals(String[].class)) {
                     assertArrayConversionEquals(target, actual, shortNameSource, shortNameTarget, TestMode.BASIC_CONVERSION);
+                    updateStat(pair(sourceClass, targetClass), true);
+                } else if (target instanceof LongAdder) {      // an adder has no equals(): compare its sum
+                    assertConversionEquals(((LongAdder) target).sum(), ((LongAdder) actual).sum(), shortNameSource, shortNameTarget, TestMode.BASIC_CONVERSION);
+                    updateStat(pair(sourceClass, targetClass), true);
+                } else if (target instanceof DoubleAdder) {
+                    assertConversionEquals(((DoubleAdder) target).sum(), ((DoubleAdder) actual).sum(), shortNameSource, shortNameTarget, TestMode.BASIC_CONVERSION);
                     updateStat(pair(sourceClass, targetClass), true);
                 } else if (target instanceof AtomicBoolean) {
                     assertConversionEquals(((AtomicBoolean) target).get(), ((AtomicBoolean) actual).get(), shortNameSource, shortNameTarget, TestMode.BASIC_CONVERSION);
@@ -5862,10 +6000,11 @@ class ConverterEverythingTest {
 
         // JsonIo-specific skips
         if (testMode == TestMode.JSON_IO_ROUND_TRIP) {
-            // json-io 4.113.0+ reads a JSON string bound for a byte[] as Base64, as Jackson does (its documented
-            // behavior); the Converter takes the text's own bytes. Through json-io this is not this conversion.
+            // json-io reads a JSON string bound for a byte[] or a ByteBuffer as Base64, as Jackson does (its
+            // documented behavior); the Converter takes the text's own bytes. Through json-io this is not this
+            // conversion.
             if ((sourceClass.equals(String.class) || sourceClass.equals(CharSequence.class))
-                    && targetClass.equals(byte[].class) && JsonIoOnTestClassPath.isAtLeast(4, 113)) {
+                    && (targetClass.equals(byte[].class) || targetClass.equals(ByteBuffer.class))) {
                 return true;
             }
             // Conversions that don't fail as anticipated
@@ -5896,10 +6035,6 @@ class ConverterEverythingTest {
                 (targetClass.equals(Color.class) || targetClass.equals(Dimension.class) ||
                  targetClass.equals(Point.class) || targetClass.equals(Rectangle.class) ||
                  targetClass.equals(Insets.class))) {
-                return true;
-            }
-            // Skip AtomicReferenceArray conversions that don't round-trip through JsonIO (serialization issue)
-            if (sourceClass.equals(AtomicReferenceArray.class) || targetClass.equals(AtomicReferenceArray.class)) {
                 return true;
             }
             // Skip LocalTime to integer conversions (explicitly marked as UNSUPPORTED with IllegalArgumentException)
@@ -6868,8 +7003,8 @@ class ConverterEverythingTest {
                 {new long[]{-1L, 0L, 1L}, new AtomicLongArray(new long[]{-1L, 0L, 1L})},
         });
         TEST_DB.put(pair(AtomicReferenceArray.class, Object[].class), new Object[][]{
-                {new AtomicReferenceArray<>(new String[]{"a", "b", "c"}), new String[]{"a", "b", "c"}},
-                {new AtomicReferenceArray<>(new String[]{}), new String[]{}},
+                {new AtomicReferenceArray<>(new String[]{"a", "b", "c"}), new Object[]{"a", "b", "c"}},
+                {new AtomicReferenceArray<>(new String[]{}), new Object[]{}},
                 {new AtomicReferenceArray<>(new Object[]{1, "test", null}), new Object[]{1, "test", null}},
         });
         TEST_DB.put(pair(Object[].class, AtomicReferenceArray.class), new Object[][]{

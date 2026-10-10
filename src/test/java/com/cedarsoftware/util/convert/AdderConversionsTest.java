@@ -17,8 +17,8 @@ import static org.junit.jupiter.api.Assertions.assertNull;
  * converts to a Long (a Double) converts to a new adder holding that value -- as AtomicLong does. There were none, so
  * json-io wrote an adder as an empty object and lost its count.
  * <p>
- * Tested here, not yet in ConverterEverythingTest: that test also round-trips every pair through the test-scope
- * json-io (4.111.0), which writes an adder as an empty object. Add them there once version.json-io includes these.
+ * The pairs are in ConverterEverythingTest too (loadAdderTests), round-tripped through the test-scope json-io; this
+ * class keeps the checks a pair cannot state, such as a copy being a new adder.
  */
 class AdderConversionsTest {
     private final Converter converter = new Converter(new DefaultConverterOptions());

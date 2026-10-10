@@ -1,5 +1,9 @@
 ### Revision History
 
+#### 4.114.0 - (unreleased)
+* **BUILD**: Test scope: `json-io` 4.112.0 → **4.113.0**, released alongside java-util 4.113.0. `ConverterEverythingTest` now round-trips through it the conversions that json-io 4.112.0 could not carry: `Charset`, `InetAddress`, `LongAdder` and `DoubleAdder` (their pairs, plus the adders as `java.sql.Time` sources), and `AtomicReferenceArray`, whose skip is removed (its `Object[]` rows now expect an `Object[]`). The `Duration` row whose `BigDecimal` needed a `".0"` is written as the integer. A JSON string bound for a `ByteBuffer` is skipped there as for a `byte[]`: json-io reads it as Base64, the Converter as the text's bytes. `CacheJsonIoRoundTripTest` runs instead of skipping, so the json-io version gate (`JsonIoOnTestClassPath`) is removed.
+  * **Tests.** Against json-io 4.112.0 the everything test has 30 errors on these rows (Charset 7, InetAddress 6, adders 10, AtomicReferenceArray 6, Duration 1); against 4.113.0, none.
+
 #### 4.113.0 - 2026-10-10
 **Upgrading from 4.112.0 -- what can change a result.** Each row is pinned by `UpgradeTo4113NotesTest`; every
 example gave the 4.112.0 answer shown. The entries below have the details.

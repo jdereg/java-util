@@ -18,10 +18,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * Charset conversions (4.113.0). A Charset is identified by its canonical name().
  * <p>
- * Tested here, not yet in ConverterEverythingTest: that test also round-trips every pair through the
- * test-scope json-io (4.111.0), which writes a Charset as a POJO of its JDK-internal class and cannot read
- * it back. json-io's fix needs these conversions, so it ships after this release; add Charset to
- * ConverterEverythingTest once version.json-io includes it.
+ * The pairs are in ConverterEverythingTest too (loadCharsetTests), round-tripped through the test-scope json-io;
+ * this class keeps the checks a pair cannot state: blank text is null, unknown names are refused, and every
+ * available Charset round-trips through its name.
  */
 class CharsetConversionsTest {
     private final Converter converter = new Converter(new DefaultConverterOptions());

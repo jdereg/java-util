@@ -28,8 +28,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * conversion, found through Time's superclass), "13:14:15" and a LocalTime could not become one, and a Time could not
  * become a String, an Instant or a Map (Time.toInstant() throws UnsupportedOperationException).
  * <p>
- * The pairs are in ConverterEverythingTest too (loadSqlTimeTests), round-tripped through the test-scope json-io
- * 4.112.0; this class keeps the checks a pair cannot state: the result is a Time (not a Date) from every source,
+ * The pairs are in ConverterEverythingTest too (loadSqlTimeTests), round-tripped through the test-scope json-io;
+ * this class keeps the checks a pair cannot state: the result is a Time (not a Date) from every source,
  * and a copy is a new object.
  */
 class SqlTimeConversionsTest {

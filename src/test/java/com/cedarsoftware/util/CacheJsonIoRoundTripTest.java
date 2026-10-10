@@ -6,17 +6,13 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 /**
  * An {@link LRUCache} and a {@link TTLCache}, populated, written by json-io and read back, still working as caches:
  * the LRUCache with its entries and room for each (at least 16); the TTLCache empty, configured as it was -- json-io
  * writes a TTLCache as its settings and no entries, as Guava and Caffeine serialize their caches. No json-io release
- * before 4.113.0 could read either back.
- * <p>
- * java-util's tests use the previous json-io release, so these run once that is json-io 4.113.0 or later
- * ({@code version.json-io} in the pom); until then they are skipped. json-io's own CacheRoundTripTest covers the
- * same ground against the java-util it is built with.
+ * before 4.113.0 could read either back. json-io's own CacheRoundTripTest covers the same ground against the
+ * java-util it is built with.
  *
  * @author John DeRegnaucourt (jdereg@gmail.com)
  *         <br>
@@ -36,14 +32,8 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
  */
 class CacheJsonIoRoundTripTest {
 
-    private static void assumeJsonIoReadsCachesBack() {
-        assumeTrue(JsonIoOnTestClassPath.isAtLeast(4, 113),
-                "json-io " + JsonIoOnTestClassPath.version() + " on the test class path predates 4.113.0");
-    }
-
     @Test
     void anLruCacheReadsBackWithItsEntriesAndWorks() {
-        assumeJsonIoReadsCachesBack();
         LRUCache<String, Integer> lru = new LRUCache<>(10);
         lru.put("a", 1);
         lru.put("b", 2);
@@ -65,7 +55,6 @@ class CacheJsonIoRoundTripTest {
 
     @Test
     void aTtlCacheReadsBackEmptyConfiguredAsItWas() {
-        assumeJsonIoReadsCachesBack();
         TTLCache<String, String> ttl = new TTLCache<>(5000, 10, 250);
         ttl.put("a", "1");
         TTLCache<?, ?> back = null;
@@ -84,14 +73,5 @@ class CacheJsonIoRoundTripTest {
                 back.close();
             }
         }
-    }
-
-    @Test
-    void theVersionGateReadsVersions() {
-        assertTrue(JsonIoOnTestClassPath.isAtLeast("4.113.0", 4, 113));
-        assertTrue(JsonIoOnTestClassPath.isAtLeast("4.120.1-SNAPSHOT", 4, 113));
-        assertTrue(JsonIoOnTestClassPath.isAtLeast("5.0.0", 4, 113));
-        assertTrue(!JsonIoOnTestClassPath.isAtLeast("4.112.0", 4, 113));
-        assertTrue(!JsonIoOnTestClassPath.isAtLeast(null, 4, 113));
     }
 }

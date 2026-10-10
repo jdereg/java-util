@@ -1,6 +1,30 @@
 ### Revision History
 
 #### 4.113.0 - 2026-09-25
+**Upgrading from 4.112.0 -- what can change a result.** Each row is pinned by `UpgradeTo4113NotesTest`; every
+example gave the 4.112.0 answer shown. The entries below have the details.
+
+| Area | 4.112.0 | 4.113.0 |
+|---|---|---|
+| `Converter` String -> `byte[]` / `ByteBuffer` | guessed: `"SGVsbG8="` was Base64 ("Hello"), `"CAFEBABE"` and `"AF DE 92 9F"` hex, `"[1, 2, 3]"` a list | always the text's bytes; to decode, call `ByteUtilities.decode()` (any notation) or `decodeBase64()` |
+| Map `{"value": "..."}` -> `byte[]` | `"AF"` was `{0}` | Base64 only when padded correctly, else the text's bytes |
+| Number to a narrower type | `300` -> `Byte` was `44`; `3.0E10` -> `Integer` was `2147483647` | `IllegalArgumentException` naming the value and the range (a fraction still truncates: `1.9` -> `1`) |
+| Blank text -> a type without a zero | `UUID`, `Duration`, an enum threw; `Year` was `0` | `null` (numbers still `0`, `Boolean` `false`) |
+| String -> `Number` | unsupported | `Long`, `BigInteger` past a long, `BigDecimal` for other number text |
+| Number text -> a date or time | `"20240115"` was 1970-01-01 (milliseconds); `"45.5"` was refused | 8 digits that make a date are that date; other whole digits are epoch milliseconds; decimal text is seconds |
+| float / double -> another type | `3.4e38f` -> `BigInteger` was `339999995214436420000...`; on JDK 8-18 `1.0E23` -> `BigDecimal` was `9.999999999999999E+22` | the decimal it prints (JDK 19+ digits on every JDK): `340000...`, `1.0E+23` |
+| A source with a zone -> a local type | `ZonedDateTime` Tokyo 09:00 -> `LocalDateTime` was the Converter's zone's time (19:00 the day before, in New York) | its own wall clock, 09:00; the Converter's zone applies only to sources without one |
+| Text whose offset contradicts its zone | `"2024-07-01T12:00+05:00[Europe/Berlin]"` was 10:00Z (zone) | 07:00Z (offset), as java.time reads it |
+| Zone IDs | an unknown ID -> `TimeZone` was GMT; `"america/new_york"` was refused | unknown is `IllegalArgumentException`; any case is accepted |
+| DateUtilities abbreviations | `"12:00 EST"` in July was 12:00 EDT; `AST` was Alaska | an abbreviation means its own offset (12:00 EST = 13:00 EDT); `AST`, `NST`, `SST` are Atlantic, Newfoundland, Samoa |
+| `BitSet` conversions | dates, times, `Year`, `Character`, `File`, `Path`, `URI`, `Pattern`, `Locale`, `TimeZone` converted | only binary text (`"101"`), the integer types it fits, `BigInteger` / `BigDecimal`, `Boolean`, its arrays |
+| `Pattern` <-> String | flags dropped (`"abc"`); text trimmed | flags written inline (`"(?i)abc"`); not trimmed |
+| Conversion to `LinkedBlockingQueue` / `LinkedBlockingDeque` | bounded to the source's size (full) | unbounded |
+| String -> `UUID` | surrounding spaces refused | ignored |
+| `ClassUtilities.newInstance()` (and so json-io) | `Timer`, `PrintStream`, `PrintWriter`, `Formatter`, `ZipFile`, `JarFile`, `InetSocketAddress`, logging `Handler`s, `Proxy` and more could be made | blocked with `SecurityException`, as are `sun.`, `com.sun.`, `com.apple.` classes |
+| `ByteUtilities.decode()` | plain hex only, else `null` | hex groups (`"AF:DE"`), escapes, number lists, Base64, data URIs; blank text is an empty array |
+| Java serialization of `CaseInsensitiveMap` / `Set` | -- | written by 4.113.0, not readable by 4.112.0 or earlier (the case-insensitive hash changed); what 4.112.0 wrote reads fine |
+
 * **DOCS**: **The user guide names only system properties java-util reads, and its security examples turn the limits on.** It named eight properties nothing reads, so whoever set them as the guide said had no limit: `bytes.max.hex.string.length` and `bytes.max.array.size` (the code reads `byteutilities.*`), `math.max.array.size`, `math.max.string.length` and `math.max.permutation.size` (`mathutilities.*`), and three limits that do not exist (`classutilities.max.reflection.operations`, `systemutilities.max.command.length`, `stringutilities.max.string.length`; the naming-convention examples now use real ones). The ByteUtilities and MathUtilities tables and examples now include the master switch (`byteutilities.security.enabled`, `mathutilities.security.enabled`), without which no limit applies, and give the defaults a limit takes when the switch is on and the limit is not set.
 * **TESTING**: `UserGuidePropertyNamesTest` (3): every property the user guide and the README name (tables, `setProperty` calls, `-D` flags, `.properties` blocks; the JDK's own excepted) is a string the main sources read; the guide's ByteUtilities and MathUtilities production examples, applied as written, make `decode()` and `minimum()` throw `SecurityException` past the limit. All three fail on the previous guide; the examples' tests also fail with the right names but no master switch.
 * **BUG FIX**: **What `Date.toString()` prints reads back, on JDK 23 and later too, and `AST`, `NST` and `SST` mean the zones that print them.** Found by running the suite on JDK 25 and 27 (it ran on 8 and 21 only):

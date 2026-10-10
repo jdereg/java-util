@@ -27,7 +27,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class ConverterClassLoaderLeakTest {
 
-    private static final String FIXTURE = "com.cedarsoftware.util.convert.ConverterClassLoaderLeakTest$Fixture";
+    static final String FIXTURE = "com.cedarsoftware.util.convert.ConverterClassLoaderLeakTest$Fixture";
     private static final String FIXTURE_LIST =
             "com.cedarsoftware.util.convert.ConverterClassLoaderLeakTest$FixtureList";
 
@@ -44,7 +44,7 @@ class ConverterClassLoaderLeakTest {
     public static class FixtureList extends ArrayList<Object> {
     }
 
-    private static URLClassLoader throwawayLoader() throws Exception {
+    static URLClassLoader throwawayLoader() throws Exception {
         return new URLClassLoader(new URL[]{new File("target/test-classes").toURI().toURL()}, null);
     }
 
@@ -101,7 +101,7 @@ class ConverterClassLoaderLeakTest {
         return new WeakReference<?>[]{new WeakReference<>(first), new WeakReference<>(second)};
     }
 
-    private static void gcUntilCleared(WeakReference<?>... refs) throws InterruptedException {
+    static void gcUntilCleared(WeakReference<?>... refs) throws InterruptedException {
         for (int i = 0; i < 100 && java.util.Arrays.stream(refs).anyMatch(r -> r.get() != null); i++) {
             System.gc();
             byte[][] pressure = new byte[64][];

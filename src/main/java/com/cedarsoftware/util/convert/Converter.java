@@ -365,7 +365,7 @@ public final class Converter {
     // an identity-hash probe for the other. No ConversionPair is allocated per lookup.
     private static final ClassPairMap<InheritancePair[]> cacheInheritancePairs = new ClassPairMap<>();
     private static final ClassPairMap<Convert<?>> CONVERSION_DB = new ClassPairMap<>();
-    private final ClassPairMap<Convert<?>> USER_DB = new ClassPairMap<>();
+    private final ClassPairMap<Convert<?>> USER_DB = new ClassPairMap<>(true);     // keeps every conversion added
     private static final ClassPairMap<Convert<?>> FULL_CONVERSION_CACHE = new ClassPairMap<>();
     private static final AtomicLong INSTANCE_ID_GENERATOR = new AtomicLong(1);
 
@@ -459,6 +459,23 @@ public final class Converter {
         // Each made on its first write (a Converter builds a ClassPairMap per instance, and most stay empty):
         private volatile Side bySource;         // source -> (target -> value)
         private volatile Side byTarget;         // target -> (source -> value): the target's loader is the deeper
+        // Pairs whose loaders are unrelated, source -> (target -> value), held by this map itself: for a map that must
+        // not lose an entry -- a Converter's own conversions, which live as long as the Converter does. Null for a
+        // cache, which simply misses such a pair. Written under the map's lock; read without it.
+        private final Map<Class<?>, Map<Class<?>, Object>> unrelated;
+
+        /** A cache: a pair of classes whose loaders are unrelated is not kept (a get() misses). */
+        ClassPairMap() {
+            this(false);
+        }
+
+        /**
+         * @param keepsUnrelated true for a map whose entries must all be kept (a Converter's own conversions): a pair
+         *                       of classes whose loaders are unrelated is then held by the map itself, as long as it is
+         */
+        ClassPairMap(boolean keepsUnrelated) {
+            unrelated = keepsUnrelated ? new ConcurrentHashMap<>() : null;
+        }
 
         private static final int SAME = 0;
         private static final int ON_SOURCE = 1;
@@ -544,18 +561,27 @@ public final class Converter {
             if (targets != null && placement(source, target) == ON_TARGET) {
                 return (V) find(targets.get(target).get(), source);
             }
+            Map<Class<?>, Map<Class<?>, Object>> others = unrelated;
+            if (others != null && !others.isEmpty()) {
+                Map<Class<?>, Object> row = others.get(key(source));
+                if (row != null) {
+                    return (V) row.get(key(target));
+                }
+            }
             return null;
         }
 
         /**
-         * Stores a value under (source, target). Kept nowhere when the two classes' loaders are unrelated.
+         * Stores a value under (source, target). When the two classes' loaders are unrelated, kept by the map itself
+         * if it keeps such pairs, else nowhere.
          */
         V put(Class<?> source, Class<?> target, V value) {
             return write(source, target, value, false);
         }
 
         /**
-         * Atomic putIfAbsent on the (source, target) slot. Kept nowhere when the two classes' loaders are unrelated.
+         * Atomic putIfAbsent on the (source, target) slot. When the two classes' loaders are unrelated, kept by the map
+         * itself if it keeps such pairs, else nowhere.
          */
         V putIfAbsent(Class<?> source, Class<?> target, V value) {
             return write(source, target, value, true);
@@ -565,7 +591,19 @@ public final class Converter {
         private synchronized V write(Class<?> source, Class<?> target, V value, boolean ifAbsent) {
             int where = placement(source, target);
             if (where == NOT_KEPT) {
-                return null;
+                if (unrelated == null) {
+                    return null;
+                }
+                Map<Class<?>, Object> row = unrelated.computeIfAbsent(key(source), k -> new ConcurrentHashMap<>());
+                V previous = (V) row.get(key(target));
+                if (!ifAbsent || previous == null) {        // an entry holding null counts as absent
+                    if (value == null) {
+                        row.remove(key(target));
+                    } else {
+                        row.put(key(target), value);
+                    }
+                }
+                return previous;
             }
             Side side;
             Class<?> owner;
@@ -608,7 +646,11 @@ public final class Converter {
         @SuppressWarnings("unchecked")
         synchronized V remove(Class<?> source, Class<?> target) {
             int where = placement(source, target);
-            Side side = where == ON_TARGET ? byTarget : where == NOT_KEPT ? null : bySource;
+            if (where == NOT_KEPT) {
+                Map<Class<?>, Object> row = unrelated == null ? null : unrelated.get(key(source));
+                return row == null ? null : (V) row.remove(key(target));
+            }
+            Side side = where == ON_TARGET ? byTarget : bySource;
             if (side == null) {
                 return null;
             }
@@ -630,6 +672,13 @@ public final class Converter {
          * Returns true if there are no mappings.
          */
         synchronized boolean isEmpty() {
+            if (unrelated != null) {
+                for (Map<Class<?>, Object> row : unrelated.values()) {
+                    if (!row.isEmpty()) {
+                        return false;
+                    }
+                }
+            }
             return (bySource == null || bySource.owners.isEmpty()) && (byTarget == null || byTarget.owners.isEmpty());
         }
 
@@ -652,10 +701,21 @@ public final class Converter {
             List<Class<?>> owners = new ArrayList<>();
             List<Object[]> tables = new ArrayList<>();
             int onTargets;
+            List<Object[]> others = new ArrayList<>();      // {source, target, value}
             synchronized (this) {
                 collect(bySource, owners, tables);
                 onTargets = owners.size();
                 collect(byTarget, owners, tables);
+                if (unrelated != null) {
+                    for (Map.Entry<Class<?>, Map<Class<?>, Object>> row : unrelated.entrySet()) {
+                        for (Map.Entry<Class<?>, Object> cell : row.getValue().entrySet()) {
+                            others.add(new Object[]{row.getKey(), cell.getKey(), cell.getValue()});
+                        }
+                    }
+                }
+            }
+            for (Object[] other : others) {
+                action.accept(unkey((Class<?>) other[0]), unkey((Class<?>) other[1]), (V) other[2]);
             }
             for (int n = 0; n < owners.size(); n++) {
                 Class<?> owner = unkey(owners.get(n));
@@ -681,6 +741,12 @@ public final class Converter {
         synchronized void removeIf(java.util.function.BiPredicate<Class<?>, Class<?>> predicate) {
             removeIf(bySource, false, predicate);
             removeIf(byTarget, true, predicate);
+            if (unrelated != null) {
+                for (Map.Entry<Class<?>, Map<Class<?>, Object>> row : unrelated.entrySet()) {
+                    Class<?> source = unkey(row.getKey());
+                    row.getValue().keySet().removeIf(target -> predicate.test(source, unkey(target)));
+                }
+            }
         }
 
         private static void removeIf(Side side, boolean onTarget,

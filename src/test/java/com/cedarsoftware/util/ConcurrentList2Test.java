@@ -8,8 +8,11 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * @author John DeRegnaucourt (jdereg@gmail.com)
@@ -37,6 +40,9 @@ class ConcurrentList2Test {
         ExecutorService executor = Executors.newFixedThreadPool(numberOfThreads);
         CountDownLatch latch = new CountDownLatch(numberOfThreads);
         ConcurrentList<Integer> list = new ConcurrentList<>();
+        // The workers stop on this: shutdownNow() only interrupts, which nothing below checks, so they ran on
+        // (copying an ever larger list) through the rest of the test run, taking 2-3 cores from every later test.
+        AtomicBoolean stop = new AtomicBoolean();
 
         // Initialize the list with 100 elements (1-100)
         for (int i = 1; i <= numberOfElements; i++) {
@@ -47,7 +53,7 @@ class ConcurrentList2Test {
         // Optimized to favor head/tail operations (ConcurrentList's fast path)
         Runnable modifierRunnable = () -> {
             Random random = new Random();  // Regular Random (not SecureRandom) - much faster for testing
-            while (true) {
+            while (!stop.get()) {
                 try {
                     int operation = random.nextInt() % 5;  // 5 operations: addFirst, addLast, removeFirst, removeLast, set
                     int value = (random.nextInt() & 0x3FF) + 1000;  // Mask to 0-1023, add 1000 = 1000-2023
@@ -83,7 +89,7 @@ class ConcurrentList2Test {
         };
 
         Runnable iteratorRunnable = () -> {
-            while (true) {
+            while (!stop.get()) {
                 try {
                     Iterator<Integer> it = list.iterator();
                     while (it.hasNext()) { it.next(); }
@@ -93,7 +99,7 @@ class ConcurrentList2Test {
         };
 
         Runnable listIteratorRunnable = () -> {
-            while (true) {
+            while (!stop.get()) {
                 try {
                     ListIterator<Integer> it = list.listIterator();
                     while (it.hasNext()) { it.next(); }
@@ -110,8 +116,10 @@ class ConcurrentList2Test {
         executor.execute(listIteratorRunnable);
         executor.execute(listIteratorRunnable);
 
-        // Wait for threads to complete (except the continuous validator)
+        // Let them run for a quarter second, then stop them and wait until they have
         latch.await(250, TimeUnit.MILLISECONDS);
+        stop.set(true);
         executor.shutdownNow();
+        assertTrue(executor.awaitTermination(10, TimeUnit.SECONDS), "the workers stopped");
     }
 }

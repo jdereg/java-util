@@ -179,7 +179,8 @@ class ClassUtilitiesPositionalKeyOrderTest {
     /**
      * json-io's parser appends fields without looking for duplicates, so a document that repeats a key gives a
      * JsonObject holding it twice. The values passed have always been get(key) for each key in sorted order --
-     * so the first value, twice. Reading values in one pass must not change what such a map produces.
+     * so get()'s value, twice (the first through json-io 4.112.0, the last from 4.113.0, which reads a repeated key
+     * as its last value everywhere). Reading values in one pass must not change what such a map produces.
      */
     @Test
     @SuppressWarnings("unchecked")
@@ -189,9 +190,10 @@ class ClassUtilitiesPositionalKeyOrderTest {
             obj.appendFieldForParser("a", "A1");
             obj.appendFieldForParser("a", "A2");
             obj.appendFieldForParser("b", "B");
+            Object viaGet = obj.get("a");
             Two t = make((Map<String, Object>) (Map<?, ?>) obj);
-            assertEquals("A1", t.first, "call " + call);
-            assertEquals("A1", t.second, "call " + call);
+            assertEquals(viaGet, t.first, "call " + call);
+            assertEquals(viaGet, t.second, "call " + call);
         }
     }
 

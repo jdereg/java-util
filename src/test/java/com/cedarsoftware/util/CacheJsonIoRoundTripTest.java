@@ -1,8 +1,5 @@
 package com.cedarsoftware.util;
 
-import java.io.InputStream;
-import java.util.Properties;
-
 import com.cedarsoftware.io.JsonIo;
 import org.junit.jupiter.api.Test;
 
@@ -39,35 +36,9 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
  */
 class CacheJsonIoRoundTripTest {
 
-    /** The json-io release on the test class path, from its jar's Maven metadata; null if it has none. */
-    private static String jsonIoVersion() {
-        try (InputStream in = JsonIo.class.getResourceAsStream(
-                "/META-INF/maven/com.cedarsoftware/json-io/pom.properties")) {
-            if (in == null) {
-                return null;
-            }
-            Properties props = new Properties();
-            props.load(in);
-            return props.getProperty("version");
-        } catch (Exception e) {
-            return null;
-        }
-    }
-
-    /** True for json-io 4.113.0 and later, the first that reads these caches back. */
-    static boolean readsCachesBack(String version) {
-        if (version == null) {
-            return false;
-        }
-        String[] parts = version.split("[.-]");
-        int major = Integer.parseInt(parts[0]);
-        int minor = parts.length > 1 ? Integer.parseInt(parts[1]) : 0;
-        return major > 4 || (major == 4 && minor >= 113);
-    }
-
     private static void assumeJsonIoReadsCachesBack() {
-        String version = jsonIoVersion();
-        assumeTrue(readsCachesBack(version), "json-io " + version + " on the test class path predates 4.113.0");
+        assumeTrue(JsonIoOnTestClassPath.isAtLeast(4, 113),
+                "json-io " + JsonIoOnTestClassPath.version() + " on the test class path predates 4.113.0");
     }
 
     @Test
@@ -117,10 +88,10 @@ class CacheJsonIoRoundTripTest {
 
     @Test
     void theVersionGateReadsVersions() {
-        assertTrue(readsCachesBack("4.113.0"));
-        assertTrue(readsCachesBack("4.120.1-SNAPSHOT"));
-        assertTrue(readsCachesBack("5.0.0"));
-        assertTrue(!readsCachesBack("4.112.0"));
-        assertTrue(!readsCachesBack(null));
+        assertTrue(JsonIoOnTestClassPath.isAtLeast("4.113.0", 4, 113));
+        assertTrue(JsonIoOnTestClassPath.isAtLeast("4.120.1-SNAPSHOT", 4, 113));
+        assertTrue(JsonIoOnTestClassPath.isAtLeast("5.0.0", 4, 113));
+        assertTrue(!JsonIoOnTestClassPath.isAtLeast("4.112.0", 4, 113));
+        assertTrue(!JsonIoOnTestClassPath.isAtLeast(null, 4, 113));
     }
 }

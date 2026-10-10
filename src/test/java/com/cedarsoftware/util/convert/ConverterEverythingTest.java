@@ -78,6 +78,7 @@ import com.cedarsoftware.io.WriteOptionsBuilder;
 import com.cedarsoftware.util.ClassUtilities;
 import com.cedarsoftware.util.CollectionUtilities;
 import com.cedarsoftware.util.DeepEquals;
+import com.cedarsoftware.util.JsonIoOnTestClassPath;
 import com.cedarsoftware.util.LoggingConfig;
 import com.cedarsoftware.util.SystemUtilities;
 import com.cedarsoftware.util.geom.Color;
@@ -5861,6 +5862,12 @@ class ConverterEverythingTest {
 
         // JsonIo-specific skips
         if (testMode == TestMode.JSON_IO_ROUND_TRIP) {
+            // json-io 4.113.0+ reads a JSON string bound for a byte[] as Base64, as Jackson does (its documented
+            // behavior); the Converter takes the text's own bytes. Through json-io this is not this conversion.
+            if ((sourceClass.equals(String.class) || sourceClass.equals(CharSequence.class))
+                    && targetClass.equals(byte[].class) && JsonIoOnTestClassPath.isAtLeast(4, 113)) {
+                return true;
+            }
             // Conversions that don't fail as anticipated
             if (sourceClass.equals(Byte.class) && targetClass.equals(Year.class)) {
                 return true;

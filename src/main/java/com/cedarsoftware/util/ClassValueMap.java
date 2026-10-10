@@ -66,6 +66,12 @@ import java.util.concurrent.atomic.AtomicReference;
  *   <li>Special VM support that connects directly to Class metadata structures</li>
  *   <li>Optimized memory layout that can reduce cache misses</li>
  * </ul>
+ * <p>
+ * The value, for its part, lives as long as its class. A value stored for a class that outlives the value's own
+ * class loader -- a library's object stored for a JDK class such as {@code String}, by a map the library keeps in a
+ * static field -- keeps that loader reachable for the life of the JVM. It matters only when that loader is meant to
+ * be discarded (a web application's {@code WEB-INF/lib}, on redeploy). This is how {@link ClassValue} works; any
+ * per-class cache built on it does the same.
  *
  * <h2>Drop-in Replacement</h2>
  * <p>

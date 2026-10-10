@@ -3365,6 +3365,15 @@ public final class Converter {
      * <p>This method automatically handles primitive types by converting them to their corresponding wrapper types
      * and stores conversions for all primitive/wrapper combinations, just like the static version.</p>
      *
+     * <p><b>Class loaders.</b> The conversion is kept on one of its two classes -- the one whose class loader can see
+     * the other's -- so it lives no longer than they do; when neither loader can see the other (two OSGi bundles, two
+     * applications), this Converter holds it itself, for as long as the Converter lives. One case to know about in a
+     * redeployable application (a web application's {@code WEB-INF/lib}): a conversion between two JDK classes (an
+     * override of {@code String -> Long}, say) is kept on a JDK class, and when it is your application's code and
+     * this Converter is held in one of your application's static fields, your application's class loader stays
+     * reachable after a redeploy (a {@link ClassValue} entry whose value leads back to its own key). For such an
+     * override, use a Converter that is not held in a static field.</p>
+     *
      * @param conversionMethod A method that converts an instance of the source type to an instance of the target type.
      * @param source           The source class (type) to convert from.
      * @param target           The target class (type) to convert to.

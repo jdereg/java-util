@@ -163,6 +163,16 @@ import static com.cedarsoftware.util.ExceptionUtilities.safelyIgnoreException;
  * for efficient retrieval of class loaders in these environments.
  * </p>
  *
+ * <h2>Class Loaders and Redeploys</h2>
+ * <p>
+ * ClassUtilities keeps what it works out about a class on that class itself, through {@link ClassValue}, so a cached
+ * answer lives exactly as long as its class: an application class's answers go when it is unloaded. For a JDK class
+ * ({@code String}, {@code ArrayList}) some answers are java-util objects, and those keep java-util's own class loader
+ * reachable for the life of the JVM. That matters only when java-util itself is loaded by a loader meant to be
+ * discarded -- a web application's {@code WEB-INF/lib}, on redeploy -- which then cannot be collected afterwards. To
+ * avoid it, put java-util in the container's shared library folder (a parent loader).
+ * </p>
+ *
  * <h2>Design Notes</h2>
  * <ul>
  *     <li>This class is designed to be a static utility class and should not be instantiated.</li>

@@ -193,7 +193,7 @@ public class ThreadedLRUCacheStrategy<K, V> implements Map<K, V>, Closeable {
             throw new IllegalArgumentException("Capacity must be at least 1.");
         }
         this.capacity = capacity;
-        this.cache = new ConcurrentHashMapNullSafe<>(capacity);
+        this.cache = new ConcurrentHashMapNullSafe<>(Math.min(capacity, LockingLRUCacheStrategy.MAX_PRESIZE));
 
         ensureSchedulerRunning();
 

@@ -1,5 +1,7 @@
 package com.cedarsoftware.util;
 
+import java.lang.management.ManagementFactory;
+import java.lang.management.ThreadMXBean;
 import java.security.SecureRandom;
 import java.util.Arrays;
 import java.util.Collection;
@@ -24,6 +26,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 public class LRUCacheTest {
 
@@ -65,6 +68,33 @@ public class LRUCacheTest {
         } else {
             assertThrows(IllegalArgumentException.class, () -> new LRUCache<>(0));
             assertThrows(IllegalArgumentException.class, () -> new LRUCache<>(-1));
+        }
+    }
+
+    /**
+     * A huge capacity costs memory only as it is used. The backing map was sized for the whole capacity on the first
+     * put: Integer.MAX_VALUE was about 4 GB of empty table -- an OutOfMemoryError in a 512 MB heap.
+     */
+    @ParameterizedTest
+    @MethodSource("strategies")
+    void aHugeCapacityAllocatesOnlyWhatIsUsed(LRUCache.StrategyType strategy) {
+        ThreadMXBean base = ManagementFactory.getThreadMXBean();
+        assumeTrue(base instanceof com.sun.management.ThreadMXBean, "needs per-thread allocation counters");
+        com.sun.management.ThreadMXBean mx = (com.sun.management.ThreadMXBean) base;
+        assumeTrue(mx.isThreadAllocatedMemorySupported() && mx.isThreadAllocatedMemoryEnabled(),
+                "needs per-thread allocation counters");
+
+        long threadId = Thread.currentThread().getId();
+        long before = mx.getThreadAllocatedBytes(threadId);
+        LRUCache<Integer, String> cache = new LRUCache<>(Integer.MAX_VALUE, strategy);
+        cache.put(1, "one");
+        long allocated = mx.getThreadAllocatedBytes(threadId) - before;
+        try {
+            assertEquals("one", cache.get(1));
+            assertEquals(Integer.MAX_VALUE, cache.getCapacity());
+            assertTrue(allocated < 64L << 20, "an empty cache allocated " + allocated + " bytes");
+        } finally {
+            cache.clear();
         }
     }
 

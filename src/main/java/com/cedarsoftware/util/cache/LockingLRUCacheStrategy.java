@@ -45,6 +45,13 @@ import com.cedarsoftware.util.internal.KeyedLoads;
  *         limitations under the License.
  */
 public class LockingLRUCacheStrategy<K, V> implements Map<K, V> {
+    /**
+     * The most entries the backing map is sized for up front. Below it a cache is sized for its capacity, so it
+     * fills without rehashing; above it the map grows as it fills, so a large capacity (Integer.MAX_VALUE: about
+     * 4 GB of empty table on the first put) costs memory only as it is used. 2^20 entries is an 8 MB table.
+     */
+    static final int MAX_PRESIZE = 1 << 20;
+
     private final int capacity;
     private final ConcurrentHashMapNullSafe<Object, Node<K, V>> cache;
     private final Node<K, V> head;
@@ -77,7 +84,7 @@ public class LockingLRUCacheStrategy<K, V> implements Map<K, V> {
             throw new IllegalArgumentException("Capacity must be at least 1.");
         }
         this.capacity = capacity;
-        this.cache = new ConcurrentHashMapNullSafe<>(capacity);
+        this.cache = new ConcurrentHashMapNullSafe<>(Math.min(capacity, MAX_PRESIZE));
         this.head = new Node<>(null, null);
         this.tail = new Node<>(null, null);
         head.next = tail;

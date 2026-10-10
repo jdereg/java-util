@@ -18,7 +18,6 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Logger;
 
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -228,7 +227,6 @@ class MultiKeyMapConcurrencyTest {
         assertEquals(writeOps.get() + readOps.get(), completedOps.get());
     }
     
-    @EnabledIfSystemProperty(named = "performRelease", matches = "true")
     @Test
     void testLongRunningStressTest() throws InterruptedException {
         LOG.info("=== Long Running Stress Test ===");

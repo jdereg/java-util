@@ -3,6 +3,7 @@ package com.cedarsoftware.util;
 import java.util.logging.Logger;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 
 /**
  * Direct test of LRUCache to understand its behavior and performance characteristics.
@@ -11,6 +12,7 @@ public class LRUCacheDirectTest {
 
     private static final Logger LOG = Logger.getLogger(LRUCacheDirectTest.class.getName());
 
+    @EnabledIfSystemProperty(named = "performRelease", matches = "true")
     @Test
     public void testLRUCacheBehaviorWhenFull() {
         LOG.info("=== LRUCache Behavior Analysis ===");
@@ -89,6 +91,7 @@ public class LRUCacheDirectTest {
         LOG.info("=== Analysis Complete ===");
     }
 
+    @EnabledIfSystemProperty(named = "performRelease", matches = "true")
     @Test
     public void testEvictionCost() {
         LOG.info("=== Eviction Cost Analysis ===");

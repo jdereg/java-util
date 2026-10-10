@@ -10,6 +10,7 @@ import java.util.concurrent.ThreadLocalRandom;
 import java.util.logging.Logger;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 
 /**
  * Test to analyze collision patterns in MultiKeyMap with different MAX_HASH_ELEMENTS values
@@ -17,6 +18,7 @@ import org.junit.jupiter.api.Test;
 public class MultiKeyMapCollisionAnalysisTest {
     private static final Logger LOG = Logger.getLogger(MultiKeyMapCollisionAnalysisTest.class.getName());
     
+    @EnabledIfSystemProperty(named = "performRelease", matches = "true")
     @Test
     public void analyzeCollisionsWithDifferentMaxHashElements() throws Exception {
         int numElements = 1_000_000;

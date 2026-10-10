@@ -13,6 +13,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Logger;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 
 /**
  * Simplified performance comparison between:
@@ -28,6 +29,7 @@ public class CollectionStorageComparisonTest {
     private static final int KEY_SIZE = 5;
     private static final int WARMUP = 10_000;
     
+    @EnabledIfSystemProperty(named = "performRelease", matches = "true")
     @Test
     void compareStorageStrategies() {
         LOG.info("=== Collection Storage Strategy Comparison ===");

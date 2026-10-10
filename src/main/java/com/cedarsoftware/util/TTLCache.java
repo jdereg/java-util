@@ -55,6 +55,7 @@ public class TTLCache<K, V> implements Map<K, V>, AutoCloseable {
     private final KeyedLoads loads = new KeyedLoads();
     private final KeyedLoads.Load<K, V> loadAndWrite = this::loadAndWrite;      // one, not a lambda per call
     private final int maxSize;
+    private final long cleanupIntervalMillis;
     private final boolean lruEnabled;
     private final ConcurrentMap<K, CacheEntry<K, V>> cacheMap;
     private final ReentrantLock lock = new ReentrantLock();
@@ -129,6 +130,7 @@ public class TTLCache<K, V> implements Map<K, V>, AutoCloseable {
         // Half of Long.MAX_VALUE milliseconds is 146 million years, as good as forever.
         this.ttlMillis = Math.min(ttlMillis, Long.MAX_VALUE / 2);
         this.maxSize = maxSize;
+        this.cleanupIntervalMillis = cleanupIntervalMillis;
         this.lruEnabled = maxSize > -1;
         this.cacheMap = new ConcurrentHashMapNullSafe<>();
 
@@ -140,6 +142,28 @@ public class TTLCache<K, V> implements Map<K, V>, AutoCloseable {
 
         // Schedule the purging task for this cache
         schedulePurgeTask(cleanupIntervalMillis);
+    }
+
+    /**
+     * @return the time-to-live of each entry, in milliseconds. A TTL past {@code Long.MAX_VALUE / 2} (146 million
+     * years) is held as {@code Long.MAX_VALUE / 2}.
+     */
+    public long getTtlMillis() {
+        return ttlMillis;
+    }
+
+    /**
+     * @return the maximum number of entries; -1 (or any negative) means no size limit.
+     */
+    public int getMaxSize() {
+        return maxSize;
+    }
+
+    /**
+     * @return how often, in milliseconds, expired entries are purged.
+     */
+    public long getCleanupIntervalMillis() {
+        return cleanupIntervalMillis;
     }
 
     /**

@@ -35,4 +35,22 @@ class TTLCacheLimitsTest {
             }
         }
     }
+
+    /** What a cache was built with reads back: all a copy, or a serializer, needs to build another like it. */
+    @Test
+    void itsSettingsReadBack() {
+        try (TTLCache<String, String> cache = new TTLCache<>(5000, 10, 250)) {
+            assertEquals(5000, cache.getTtlMillis());
+            assertEquals(10, cache.getMaxSize());
+            assertEquals(250, cache.getCleanupIntervalMillis());
+        }
+        try (TTLCache<String, String> cache = new TTLCache<>(5000)) {     // no size limit, purged every minute
+            assertEquals(-1, cache.getMaxSize());
+            assertEquals(60000, cache.getCleanupIntervalMillis());
+        }
+        try (TTLCache<String, String> cache = new TTLCache<>(Long.MAX_VALUE, 3)) {
+            assertEquals(Long.MAX_VALUE / 2, cache.getTtlMillis());     // as held: "practically forever"
+            assertEquals(3, cache.getMaxSize());
+        }
+    }
 }

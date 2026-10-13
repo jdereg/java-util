@@ -675,9 +675,10 @@ public final class IOUtilities {
 
         String lowerPath = path.toLowerCase(Locale.ROOT);
         
-        // Unix/Linux system paths
-        if (lowerPath.startsWith("/etc/") || lowerPath.startsWith("/proc/") || 
-            lowerPath.startsWith("/sys/") || lowerPath.startsWith("/dev/")) {
+        // Unix/Linux system paths. The directory itself counts: the JDK answers a file URL that names a
+        // directory with the listing of that directory
+        if (isAtOrUnder(lowerPath, "/etc") || isAtOrUnder(lowerPath, "/proc") ||
+            isAtOrUnder(lowerPath, "/sys") || isAtOrUnder(lowerPath, "/dev")) {
             return true;
         }
         
@@ -689,6 +690,15 @@ public final class IOUtilities {
         
         return false;
     }
+
+    /**
+     * Whether a path names the given directory itself or something inside it: "/etc" and "/etc/hosts" are at or
+     * under "/etc", "/etcetera" is not.
+     */
+    private static boolean isAtOrUnder(String path, String directory) {
+        return path.startsWith(directory)
+                && (path.length() == directory.length() || path.charAt(directory.length()) == '/');
+    }
     
     /**
      * Checks if a path contains suspicious patterns that might indicate an attack.
@@ -699,9 +709,12 @@ public final class IOUtilities {
     private static boolean isSuspiciousPath(String path) {
         if (path == null) return false;
         
-        // Check for hidden directories that might contain sensitive files
+        // Check for hidden directories that might contain sensitive files, and for those directories
+        // themselves (a file URL that names a directory is answered with its listing)
         if (path.contains("/.ssh/") || path.contains("/.gnupg/") || 
-            path.contains("/.aws/") || path.contains("/.docker/")) {
+            path.contains("/.aws/") || path.contains("/.docker/") ||
+            path.endsWith("/.ssh") || path.endsWith("/.gnupg") ||
+            path.endsWith("/.aws") || path.endsWith("/.docker")) {
             return true;
         }
         

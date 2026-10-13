@@ -441,8 +441,9 @@ public final class IOUtilities {
                 }
             }
 
-            // Check for attempts to access system directories (Unix/Linux specific)
-            String lowerCanonical = canonicalPath.toLowerCase(Locale.ROOT);
+            // Check for attempts to access system directories (Unix/Linux specific). On macOS the canonical
+            // form of /etc/passwd is /private/etc/passwd
+            String lowerCanonical = withoutMacOsPrivatePrefix(canonicalPath.toLowerCase(Locale.ROOT));
             if (lowerCanonical.startsWith("/proc/") || lowerCanonical.startsWith("/sys/") ||
                 lowerCanonical.startsWith("/dev/") || lowerCanonical.equals("/etc/passwd") ||
                 lowerCanonical.equals("/etc/shadow") || lowerCanonical.startsWith("/etc/ssh/")) {
@@ -673,7 +674,7 @@ public final class IOUtilities {
     private static boolean isSystemPath(String path) {
         if (path == null) return false;
 
-        String lowerPath = path.toLowerCase(Locale.ROOT);
+        String lowerPath = withoutMacOsPrivatePrefix(path.toLowerCase(Locale.ROOT));
         
         // Unix/Linux system paths. The directory itself counts: the JDK answers a file URL that names a
         // directory with the listing of that directory
@@ -689,6 +690,23 @@ public final class IOUtilities {
         }
         
         return false;
+    }
+
+    /**
+     * On macOS /etc, /tmp and /var are links into /private: the canonical form of /etc/passwd is
+     * /private/etc/passwd, and every temporary file lives under /private/var/folders or /private/tmp. A path
+     * that begins with one of those three is returned as the path it stands for (/private/tmp/a is /tmp/a), so
+     * that the checks judge the two forms alike; any other path is returned as it is. The comparison is exact:
+     * pass a lower-cased path to take the prefix in any case.
+     */
+    private static String withoutMacOsPrivatePrefix(String path) {
+        if (path.startsWith("/private/")) {
+            String shortForm = path.substring("/private".length());
+            if (isAtOrUnder(shortForm, "/etc") || isAtOrUnder(shortForm, "/tmp") || isAtOrUnder(shortForm, "/var")) {
+                return shortForm;
+            }
+        }
+        return path;
     }
 
     /**
@@ -708,6 +726,9 @@ public final class IOUtilities {
      */
     private static boolean isSuspiciousPath(String path) {
         if (path == null) return false;
+
+        // The "private" of macOS's /private/tmp and /private/var says nothing about the file
+        path = withoutMacOsPrivatePrefix(path);
         
         // Check for hidden directories that might contain sensitive files, and for those directories
         // themselves (a file URL that names a directory is answered with its listing)

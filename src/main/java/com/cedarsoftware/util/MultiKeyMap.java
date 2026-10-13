@@ -3700,7 +3700,9 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      * @return a snapshot set view of the keys contained in this map
      */
     public Set<Object> keySet() {
-        Set<Object> set = new HashSet<>(Math.max(16, (int) (size() / 0.75f) + 1));
+        // In the order values() and entrySet() go through the map, so that the three line up: the n-th key
+        // belongs to the n-th value. A HashSet handed the keys back in the order of their own hash codes.
+        Set<Object> set = new LinkedHashSet<>(Math.max(16, (int) (size() / 0.75f) + 1));
         final AtomicReferenceArray<MultiKey<V>[]> snapshot = buckets;
         final int len = snapshot.length();
         for (int bucketIdx = 0; bucketIdx < len; bucketIdx++) {

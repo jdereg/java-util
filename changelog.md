@@ -1,6 +1,6 @@
 ### Revision History
 
-#### 4.114.0 - (unreleased)
+#### 4.114.0 - 2026-10-13
 * **SECURITY**: **`IOUtilities` judges a file URL by the path it opens, whatever its spelling.** The checks compared the path as written in the URL, and the same file has many spellings. Each of these was read where the plain spelling is refused: a percent-escape for any character (`file:///%65tc/hosts`, `file:///etc%2Fhosts`, `file:///home/u/%2Essh/id`); an escaped `..` (`file:///tmp/%2e%2e/etc/hosts`, and in a jar URL `jar:file:///tmp/%2e%2e/etc/x.jar!/a`); more slashes at the start (`file:////etc/hosts`); a `.` segment (`file:///./etc/hosts`); a slash after a file's name (`file:///home/u/backup/shadow/` returned the content of `shadow`).
   * **Now** the path is judged as the file system takes it: percent-escapes resolved the way the JDK resolves them when it opens the file (UTF-8, once, a plus sign stays a plus sign), a run of slashes one slash, `.` segments and the slash at the end gone. A relative path stays relative: `file:etc/app.json` is a project's own `etc`. Where the separator is a backslash, two slashes at the start still name a server (`\\dev\builds`), so a share on a server called `dev` is no system path. Links are not followed; this is about what the URL says.
   * **What passed still passes**, under any spelling; only a spelling of a refused path gets a different answer. One consequence: the URL of a directory named `passwd` or `shadow` written with a slash at the end is refused, as it was without the slash.

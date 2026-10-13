@@ -14,8 +14,10 @@ import java.io.Flushable;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.UnsupportedEncodingException;
 import java.net.HttpURLConnection;
 import java.net.URLConnection;
+import java.net.URLDecoder;
 import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.Locale;
@@ -629,8 +631,9 @@ public final class IOUtilities {
         
         // Jar protocols are generally safer as they access files within archives
         if ("jar".equals(protocol)) {
-            // Basic validation for jar URLs
-            if (urlString.contains("..") || urlString.contains("\0")) {
+            // Basic validation for jar URLs, with the percent-escapes resolved as the JDK resolves them
+            String decoded = percentDecoded(urlString);
+            if (decoded.contains("..") || decoded.contains("\0")) {
                 throw new SecurityException("Dangerous path patterns detected in jar URL");
             }
             return; // Allow jar protocols with basic validation
@@ -642,6 +645,9 @@ public final class IOUtilities {
             if (path == null) {
                 throw new SecurityException("File URL path cannot be null");
             }
+
+            // Judge the path that will be opened, not one of its spellings
+            path = asOpened(path, File.separatorChar);
             
             // Allow only if it's clearly a resource within the application's domain
             // Common patterns for legitimate resources:
@@ -665,6 +671,56 @@ public final class IOUtilities {
         }
     }
     
+    /**
+     * The path of a file URL as the file system takes it: percent-escapes resolved, a run of slashes one slash,
+     * "." segments and the slash at the end gone. "/%65tc/hosts", "//etc/hosts", "/./etc/hosts" and "/etc/hosts/"
+     * all open /etc/hosts, and the checks judge the path that is opened, whatever its spelling. A ".." segment
+     * stays, for the check that refuses it. A relative path stays relative. Links are not followed.
+     * <p>
+     * Where the separator is a backslash (Windows), two slashes at the start name a server, \\server\share, and
+     * they stay two.
+     */
+    private static String asOpened(String urlPath, char separator) {
+        String path = percentDecoded(urlPath);
+        int len = path.length();
+        boolean absolute = len > 0 && path.charAt(0) == '/';
+        StringBuilder opened = new StringBuilder(len + 1);
+        if (separator == '\\' && path.startsWith("//")) {
+            opened.append('/');
+        }
+        int start = 0;
+        while (start < len) {
+            int slash = path.indexOf('/', start);
+            int end = slash < 0 ? len : slash;
+            boolean dot = end - start == 1 && path.charAt(start) == '.';
+            if (end > start && !dot) {
+                if (absolute || opened.length() > 0) {
+                    opened.append('/');
+                }
+                opened.append(path, start, end);
+            }
+            start = end + 1;
+        }
+        return opened.length() == 0 && absolute ? "/" : opened.toString();
+    }
+
+    /**
+     * A URL path with its percent-escapes resolved the way the JDK resolves them when it opens the file: as
+     * UTF-8, once, and with a plus sign left a plus sign. A path whose escapes cannot be resolved is returned as
+     * written; the JDK does not open such a URL.
+     */
+    private static String percentDecoded(String path) {
+        if (path.indexOf('%') < 0) {
+            return path;
+        }
+        try {
+            // URLDecoder decodes form data, where '+' is a space; in a path it is a plus sign
+            return URLDecoder.decode(path.replace("+", "%2B"), "UTF-8");
+        } catch (IllegalArgumentException | UnsupportedEncodingException e) {
+            return path;
+        }
+    }
+
     /**
      * Checks if a path accesses system directories that should be protected.
      * 

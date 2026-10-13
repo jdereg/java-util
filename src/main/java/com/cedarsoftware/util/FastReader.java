@@ -502,6 +502,62 @@ public final class FastReader extends Reader {
     }
 
     /**
+     * Reads a line that only a line feed ends. Unlike {@link #readLine(char[], int, int)}, a carriage return
+     * is content wherever it stands: a lone {@code \r} does not end the line, and the {@code \r} of a
+     * {@code \r\n} pair is returned as the line's last character, for the caller to keep or drop. For formats
+     * whose lines are split at {@code \n} alone.
+     * <p>
+     * The line feed is consumed but NOT included in the output. Returns the number of characters in the line.
+     * If maxLen is reached before a line feed is found, returns maxLen and the line feed is NOT consumed — the
+     * caller should grow the buffer and call again. Returns -1 at the end of input with no data read; input that
+     * ends without a line feed gives its last line.
+     *
+     * @param dest   destination buffer
+     * @param off    offset in dest to start writing
+     * @param maxLen maximum number of characters to read
+     * @return line length (excluding the line feed), or -1 on EOF
+     */
+    public int readLineLf(final char[] dest, int off, int maxLen) {
+        if (in == null) {
+            ExceptionUtilities.uncheckedThrow(new IOException("in is null"));
+        }
+        assert noActiveBorrowedSliceForDebug() :
+                "FastReader.BufferSlice must be released before readLineLf()";
+        final char[] b = buf;
+        int pos = position;
+        int lim = limit;
+        int total = 0;
+        while (total < maxLen) {
+            if (pos >= lim) {
+                position = pos;
+                if (eof || !refill()) {
+                    return total > 0 ? total : -1;
+                }
+                pos = position;
+                lim = limit;
+            }
+            int end = pos + Math.min(maxLen - total, lim - pos);
+            int scan = pos;
+            while (scan < end && b[scan] != '\n') {
+                scan++;
+            }
+            int n = scan - pos;
+            if (n > 0) {
+                System.arraycopy(b, pos, dest, off, n);
+                off += n;
+                total += n;
+            }
+            if (scan < end) {
+                position = scan + 1;    // the line feed, consumed
+                return total;
+            }
+            pos = scan;
+        }
+        position = pos;
+        return total;
+    }
+
+    /**
      * Borrow a complete line from the current internal buffer without copying.
      * <p>
      * The line ending is consumed but not included in the borrowed slice. The slice
@@ -552,6 +608,50 @@ public final class FastReader extends Reader {
             scan++;
         }
         return COPY_REQUIRED;
+    }
+
+    /**
+     * Borrow a line that only a line feed ends, from the current internal buffer and without copying: the
+     * borrowed form of {@link #readLineLf(char[], int, int)}. A carriage return is content wherever it stands,
+     * the one before the line feed included.
+     * <p>
+     * The line feed is consumed but not included in the borrowed slice. The slice must be consumed or copied
+     * and then released via {@link BufferSlice#release()} before the next read operation on this reader. If no
+     * line feed stands in the current buffer -- the line runs on into the next fill, or the input ends without
+     * one -- this method returns {@link #COPY_REQUIRED} without consuming any characters; callers should then
+     * use {@link #readLineLf(char[], int, int)}.
+     *
+     * @param slice destination for the borrowed buffer, offset, and length
+     * @return line length, -1 on EOF before any chars, or {@link #COPY_REQUIRED}
+     */
+    public int readLineBorrowedLf(final BufferSlice slice) {
+        if (in == null) {
+            ExceptionUtilities.uncheckedThrow(new IOException("in is null"));
+        }
+        assert noActiveBorrowedSliceForDebug() :
+                "FastReader.BufferSlice must be released before readLineBorrowedLf()";
+        int pos = position;
+        int lim = limit;
+        if (pos >= lim) {
+            if (eof || !refill()) {
+                return -1;
+            }
+            pos = position;
+            lim = limit;
+        }
+        final char[] b = buf;
+        int scan = pos;
+        while (scan < lim && b[scan] != '\n') {
+            scan++;
+        }
+        if (scan == lim) {
+            return COPY_REQUIRED;
+        }
+        int len = scan - pos;
+        slice.set(b, pos, len);
+        assert borrowedSliceCreatedForDebug(slice);
+        position = scan + 1;
+        return len;
     }
 
     @Override

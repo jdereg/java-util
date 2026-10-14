@@ -838,8 +838,9 @@ final class StringConversions {
     private static final Pattern SIMPLE_DATE = Pattern.compile("\\d{4}-\\d{2}-\\d{2}");
 
     /**
-     * A time of day -- "13:14", "13:14:15", "13:14:15.123" -- or any date-time DateUtilities reads, of which the time
-     * of day (in the string's own zone) is kept, as toSqlDate keeps the date.
+     * A time of day -- "13:14", "13:14:15", "13:14:15.123" -- is that time on 1970-01-01. Text that names a date as
+     * well is the instant it names, as it is for a Date: the Time keeps the date, and getTime() is the Date's.
+     * Number text is epoch milliseconds, eight digits too (most times of day have eight).
      */
     static java.sql.Time toSqlTime(Object from, Converter converter) {
         String str = ((String) from).trim();
@@ -854,7 +855,7 @@ final class StringConversions {
             return LocalTimeConversions.toSqlTime(LocalTime.parse(str), converter);
         } catch (DateTimeParseException e) {
             ZonedDateTime zdt = DateUtilities.parseDate(str, converter.getOptions().getZoneId(), true);
-            return zdt == null ? null : LocalTimeConversions.toSqlTime(zdt.toLocalTime(), converter);
+            return zdt == null ? null : new java.sql.Time(zdt.toInstant().toEpochMilli());
         }
     }
 

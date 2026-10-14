@@ -4,11 +4,13 @@ import java.sql.Time;
 import java.time.LocalTime;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.TimeZone;
 
 /**
  * Conversions from {@link java.sql.Time}. A Time is JDBC's time of day: its date part is 1970-01-01, and it reads its
  * hours, minutes and seconds in the JVM's time zone, as {@link Time#toString()} and {@link Time#valueOf(LocalTime)}
- * do. Otherwise it is a {@link java.util.Date} and converts as one (to Long, its epoch milliseconds).
+ * do. Otherwise it is a {@link java.util.Date} and converts as one (to Long, its epoch milliseconds). A Time that
+ * holds another date ({@code new Time(millis)} takes any instant) keeps it through every conversion.
  *
  * @author John DeRegnaucourt (jdereg@gmail.com)
  *         <br>
@@ -28,6 +30,8 @@ import java.util.Map;
  */
 public final class SqlTimeConversions {
 
+    private static final long MILLIS_PER_DAY = 86_400_000L;
+
     private SqlTimeConversions() {
     }
 
@@ -41,9 +45,26 @@ public final class SqlTimeConversions {
         return time.toLocalTime().withNano(millisOf(time) * 1_000_000);
     }
 
-    /** HH:mm:ss, as Time.toString() writes it, followed by .SSS when there are milliseconds. */
+    /**
+     * True when the Time is on 1970-01-01 in the JVM's zone: a time of day, as Time.valueOf() and a JDBC driver make
+     * it. A Time is a Date, though, and can hold any instant ({@code new Time(millis)}).
+     */
+    private static boolean isTimeOfDay(Time time) {
+        long millis = time.getTime();
+        long local = millis + TimeZone.getDefault().getOffset(millis);
+        return local >= 0 && local < MILLIS_PER_DAY;
+    }
+
+    /**
+     * A time of day is HH:mm:ss, as Time.toString() writes it, followed by .SSS when there are milliseconds. A Time on
+     * any other day is written as the instant it is, like a Date, so that its date is not lost. String -> Time reads
+     * both forms back to the same Time.
+     */
     static String toString(Object from, Converter converter) {
         Time time = (Time) from;
+        if (!isTimeOfDay(time)) {
+            return DateConversions.toString(from, converter);
+        }
         int millis = millisOf(time);
         if (millis == 0) {
             return time.toString();

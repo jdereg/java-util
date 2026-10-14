@@ -124,6 +124,16 @@ class UpgradeTo4113NotesTest {
     }
 
     @Test
+    void convertingToASqlTimeGivesATimeOfTheSameInstant() {
+        long instant = LocalDateTime.parse("2020-06-28T01:00:00").atZone(ZoneId.systemDefault()).toInstant()
+                .toEpochMilli();
+        java.sql.Time time = convert("2020-06-28T01:00:00", java.sql.Time.class);
+        assertEquals(java.sql.Time.class, time.getClass());         // 4.112.0: a java.util.Date
+        assertEquals(instant, time.getTime());                      // 4.113.0 and 4.114.0: on 1970-01-01
+        assertEquals(java.sql.Time.valueOf("13:14:15"), convert("13:14:15", java.sql.Time.class));  // 4.112.0: refused
+    }
+
+    @Test
     void anOffsetThatContradictsItsZoneWins() {
         assertEquals(Instant.parse("2024-07-01T07:00:00Z"),
                 convert("2024-07-01T12:00+05:00[Europe/Berlin]", Instant.class));

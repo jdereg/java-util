@@ -3005,11 +3005,16 @@ class ConverterEverythingTest {
         TEST_DB.put(pair(java.sql.Time.class, java.sql.Time.class), new Object[][]{
                 {t123, t123},
         });
+        // A Time on another day than 1970-01-01 (new Time(millis) takes any instant): its date is kept
+        java.sql.Time dated = new java.sql.Time(Instant.parse("2020-06-28T05:00:00Z").toEpochMilli());
+        java.sql.Time dated123 = new java.sql.Time(dated.getTime() + 123);
         TEST_DB.put(pair(java.sql.Time.class, String.class), new Object[][]{
                 {t, "13:14:15", true},
                 {t123, "13:14:15.123", true},
                 {new java.sql.Time(t.getTime() + 5), "13:14:15.005", true},
                 {new java.sql.Time(t.getTime() + 50), "13:14:15.050", true},
+                {dated, "2020-06-28T05:00:00.000Z", true},      // written as the instant it is, like a Date
+                {dated123, "2020-06-28T05:00:00.123Z", true},
         });
         TEST_DB.put(pair(java.sql.Time.class, CharSequence.class), new Object[][]{
                 {t123, "13:14:15.123"},
@@ -3026,6 +3031,7 @@ class ConverterEverythingTest {
         });
         TEST_DB.put(pair(java.sql.Time.class, Map.class), new Object[][]{
                 {t123, mapOf("sqlTime", "13:14:15.123"), true},
+                {dated123, mapOf("sqlTime", "2020-06-28T05:00:00.123Z"), true},
         });
         TEST_DB.put(pair(Long.class, java.sql.Time.class), new Object[][]{
                 {t123.getTime(), t123},
@@ -3100,7 +3106,11 @@ class ConverterEverythingTest {
                 {"13:14:15.123", t123},
                 {"13:14", java.sql.Time.valueOf("13:14:00")},
                 {"  13:14:15  ", t},
-                {"2026-09-27T13:14:15+09:00", t},       // a date-time keeps its time of day, in its own zone
+                // text that names a date is the instant it names, as for a Date: the Time keeps the date
+                {"2026-09-27T13:14:15.123+09:00", new java.sql.Time(zdt.toInstant().toEpochMilli())},
+                {"2026-09-27T13:14:15.123", new java.sql.Time(zdt.toInstant().toEpochMilli())},     // in the Converter's zone
+                {"2026-09-27", new java.sql.Time(zdt.toLocalDate().atStartOfDay(TOKYO_Z).toInstant().toEpochMilli())},
+                {"2020-06-28T05:00:00Z", dated},
                 {"", null},
         });
         TEST_DB.put(pair(CharSequence.class, java.sql.Time.class), new Object[][]{
@@ -3111,6 +3121,8 @@ class ConverterEverythingTest {
                 {mapOf(VALUE, "13:14:15"), t},
                 {mapOf("epochMillis", t123.getTime()), t123},
                 {mapOf("date", t123.getTime()), t123},          // json-io wrote a Time as {"date": epochMillis}
+                {mapOf(VALUE, "2020-06-28T05:00:00.123Z"), dated123},       // a date in the text is kept
+                {mapOf("date", "2020-06-28T05:00:00Z"), dated},
         });
     }
 

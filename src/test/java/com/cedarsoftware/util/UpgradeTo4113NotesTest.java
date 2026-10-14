@@ -3,15 +3,20 @@ package com.cedarsoftware.util;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
+import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.Duration;
+import java.time.LocalTime;
+import java.time.OffsetDateTime;
 import java.time.Year;
 import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.Arrays;
 import java.util.BitSet;
+import java.util.Calendar;
 import java.util.Collections;
 import java.util.Date;
 import java.util.TimeZone;
@@ -121,6 +126,31 @@ class UpgradeTo4113NotesTest {
     void aSourceWithAZoneKeepsItsOwnWallClock() {
         ZonedDateTime tokyo = ZonedDateTime.of(2024, 1, 15, 9, 0, 0, 0, ZoneId.of("Asia/Tokyo"));
         assertEquals(LocalDateTime.of(2024, 1, 15, 9, 0), convert(tokyo, LocalDateTime.class));
+    }
+
+    @Test
+    void aSourceWithAZoneKeepsItAsACalendarOrAZonedDateTime() {
+        ZonedDateTime tokyo = ZonedDateTime.of(2024, 1, 15, 9, 0, 0, 0, ZoneId.of("Asia/Tokyo"));
+        Calendar calendar = convert(tokyo, Calendar.class);
+        assertEquals("Asia/Tokyo", calendar.getTimeZone().getID());             // 4.112.0: the Converter's zone
+        assertEquals(tokyo.toInstant().toEpochMilli(), calendar.getTimeInMillis());
+        assertEquals(tokyo, convert(calendar, ZonedDateTime.class));            // 4.112.0: 19:00-05:00 the day before
+
+        OffsetDateTime plusTwo = OffsetDateTime.of(2024, 1, 15, 9, 0, 0, 0, ZoneOffset.ofHours(2));
+        ZonedDateTime zoned = convert(plusTwo, ZonedDateTime.class);
+        assertEquals(plusTwo.toZonedDateTime(), zoned);                         // 4.112.0: 02:00-05:00[America/New_York]
+        assertEquals(plusTwo, convert(zoned, OffsetDateTime.class));
+        Calendar atOffset = convert(plusTwo, Calendar.class);
+        assertEquals(TimeUnit.HOURS.toMillis(2), atOffset.getTimeZone().getRawOffset());
+        assertEquals(plusTwo, convert(atOffset, OffsetDateTime.class));
+    }
+
+    @Test
+    void aTimestampKeepsItsNanoseconds() {
+        Timestamp timestamp = Timestamp.from(Instant.parse("2024-01-15T10:20:30.123456789Z"));
+        assertEquals(123456789, convert(timestamp, Timestamp.class).getNanos());        // 4.112.0: 123000000
+        assertEquals(123456789, convert(timestamp, ZonedDateTime.class).getNano());     // 4.112.0: 123000000
+        assertEquals(123456789, convert(timestamp, LocalTime.class).getNano());         // 4.112.0: 123000000
     }
 
     @Test

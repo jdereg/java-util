@@ -5,7 +5,7 @@
     <groupId>com.cedarsoftware</groupId>
     <artifactId>java-util</artifactId>
     <packaging>bundle</packaging>
-    <version>4.114.0</version>
+    <version>4.115.0</version>
     <description>Java Utilities</description>
     <url>https://github.com/jdereg/java-util</url>
 
@@ -33,7 +33,7 @@
         <version.mockito-junit-jupiter>4.11.0</version.mockito-junit-jupiter>   <!-- can't update until they have JDK support -->
         <version.assertj-core>3.27.7</version.assertj-core>   <!-- 4.0.0-M1 is a milestone, not a release; stay on 3.x -->
         <version.felix-framework>7.0.5</version.felix-framework>   <!-- OSGi framework for OsgiBundleIT only -->
-        <version.json-io>4.113.0</version.json-io>
+        <version.json-io>4.114.0</version.json-io>
         <version.agrona>1.22.0</version.agrona> <!-- last agrona compiled for Java 8 (class file 52): 1.23.0+ ships Java 17 bytecode (61) and fails on a JDK 8 test run. Do not increase until abandoning JDK 8 support -->
         <version.commons-collections4>4.6.0</version.commons-collections4>
         <version.guava>33.7.1-jre</version.guava>

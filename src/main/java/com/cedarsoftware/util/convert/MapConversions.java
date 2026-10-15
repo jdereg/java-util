@@ -154,7 +154,7 @@ final class MapConversions {
      * to throw an exception.
      */
     @SuppressWarnings("unchecked")
-    private static <T> T dispatch(Object from, Converter converter, Class<T> clazz, String[] keys) {
+    static <T> T dispatch(Object from, Converter converter, Class<T> clazz, String[] keys) {
         Object value = getValue((Map<String, Object>) from, keys);
         if (value != NO_MATCH) {
             return converter.convert(value, clazz);

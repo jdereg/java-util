@@ -1897,6 +1897,15 @@ public final class Converter {
             // Records not available in this JVM (JDK < 14)
         }
 
+        // XMLGregorianCalendar and javax.xml.datatype.Duration, which JAXB generates for xs:dateTime, xs:date and
+        // xs:duration: registered when the java.xml module is present. java-util requires it statically, so a modular
+        // application may run without it, and no class here may name its types until this check has passed.
+        try {
+            Class.forName("javax.xml.datatype.DatatypeFactory", false, Converter.class.getClassLoader());
+            XmlDatatypeConversions.register(CONVERSION_DB::put);
+        } catch (ClassNotFoundException | LinkageError e) {
+            // java.xml is not in this runtime
+        }
 
         // Expand bridge conversions - discover multi-hop paths and add them to CONVERSION_DB
         expandBridgeConversions();
@@ -2871,7 +2880,7 @@ public final class Converter {
      * <ul>
      * <li>For specific array types, returns the custom name</li>
      * <li>For other array types, returns the component's simple name + "[]"</li>
-     * <li>For java.sql.Date, returns the fully qualified name</li>
+     * <li>For java.sql.Date and javax.xml.datatype.Duration, returns the fully qualified name</li>
      * <li>For all other classes, returns the simple name</li>
      * </ul>
      *
@@ -2888,8 +2897,9 @@ public final class Converter {
             Class<?> componentType = type.getComponentType();
             return componentType.getSimpleName() + "[]";
         }
-        // Special handling for java.sql.Date
-        if (java.sql.Date.class.equals(type)) {
+        // A simple name two types share is the full name: java.sql.Date (java.util.Date) and javax.xml.datatype.Duration
+        // (java.time.Duration). The latter by name, as java.xml may be absent.
+        if (java.sql.Date.class.equals(type) || "javax.xml.datatype.Duration".equals(type.getName())) {
             return type.getName();
         }
         // Default: use simple name

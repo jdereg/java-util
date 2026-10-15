@@ -1,5 +1,8 @@
 ### Revision History
 
+#### 4.116.0 - (unreleased)
+* **BUILD**: Test scope: `json-io` 4.114.0 → **4.115.0**, released alongside java-util 4.115.0.
+
 #### 4.115.0 - 2026-10-14
 * **BUG FIX**: **A `java.sql.Time` keeps its date.** A `Time` is a `Date` and holds any instant (`new Time(millis)`); JDBC's time of day is the case where the date is 1970-01-01. 4.113.0 gave `Time` conversions of its own, and with them text that names a date lost it: `"2020-06-28T01:00:00"` became 01:00:00 on **1970-01-01**. Up to 4.112.0 that text became the instant it names (held in a `java.util.Date`, the defect 4.113.0 set out to fix). The two values print the same, because `Time.toString()` shows the time of day only, so the difference showed in `getTime()`, `equals()` and `compareTo()` and nowhere else. Every other source that carries a date -- a `Date`, `Timestamp`, `LocalDateTime`, `ZonedDateTime`, `Instant`, a number -- kept its instant in 4.113.0 and 4.114.0; text was the exception.
   * **Reading text.** Text with a date is the instant it names, the one a `Date` gets from the same text: `"2020-06-28T01:00:00"` (in the Converter's zone), `"2020-06-28T01:00:00Z"`, `"2020-06-28"` (the start of that day). A time of day (`"13:14"`, `"13:14:15.123"`) is that time on 1970-01-01, and number text is epoch milliseconds, both as before. The same holds for text inside a `Map` (`sqlTime`, `value`, `_v`, `epochMillis`, `date`), which is how json-io reads `{"@type":"java.sql.Time","value":"2020-06-28T01:00:00"}`.

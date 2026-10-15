@@ -1,6 +1,6 @@
 ### Revision History
 
-#### 4.116.0 - (unreleased)
+#### 4.116.0 - 2026-10-15
 * **FEATURE**: **`XMLGregorianCalendar` and `javax.xml.datatype.Duration` convert to and from text and `Map`.** They are the types JAXB generates for `xs:dateTime`, `xs:date`, `xs:time`, the `xs:g...` types and `xs:duration`. The Converter had no conversion for either, so json-io wrote them by reflecting on the JDK's implementation classes in `com.sun.org.apache.xerces.internal.jaxp.datatype`: correct on JDK 8 and 11, all zeros on JDK 17 and later (which do not open those classes), and since 4.113.0, which blocks `com.sun.` classes, refused on every JDK. json-io 4.116.0 writes them through these conversions.
   * **Text** is the XML Schema lexical form, which holds the fields a value has and no others: `"2026-10-15T10:20:30.123-04:00"`, `"2020-06-28"` (a date, no time, no zone), `"--10-15"`, `"P1DT2H"`. Surrounding spaces are ignored, blank text is `null`, and text that is not a lexical form throws `IllegalArgumentException` naming it.
   * **Map**: `{"xmlGregorianCalendar": text}` and `{"xmlDuration": text}`; `"value"` and `"_v"` are read too. A Map may instead hold the fields one by one (`eon`, `year`, `month`, `day`, `timezone`, `hour`, `minute`, `second`, `fractionalSecond`; `signum`, `years` ... `seconds`), which is how json-io wrote these values through 4.112.0, so JSON stored then still reads; a field left out is unset. The zeros json-io 4.112.0 wrote on JDK 17 and later are refused (month 0 is no month). Text, when the Map has it, wins over fields beside it.

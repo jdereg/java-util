@@ -82,6 +82,7 @@ public class GraphComparator
         private String srcPtr;
         private Object id;
         private String fieldName;
+        private String path = "";
         private Object srcValue;
         private Object targetValue;
         private Object optionalKey;
@@ -129,6 +130,27 @@ public class GraphComparator
         public String getFieldName()
         {
             return fieldName;
+        }
+
+        /**
+         * @return where the difference is, from the root of the compared graph: the names of the fields followed,
+         * dot separated, with {@code [n]} for a List or array element and {@code [key]} for a Map entry, for example
+         * {@code accounts[2].owner.address.street}. {@link #getFieldName()} is only the last field's name, which is
+         * the same for every {@code name} in a graph that has many. A delta about the root itself has the empty path.
+         * For a Set, and for the add or remove of an element, the path is that of the Set, List or Map the element
+         * belongs to (a Set element has no position).
+         */
+        public String getPath()
+        {
+            return path == null ? "" : path;
+        }
+
+        /**
+         * Set the path of the difference, see {@link #getPath()}.
+         */
+        public void setPath(String path)
+        {
+            this.path = path;
         }
 
         /**
@@ -198,6 +220,7 @@ public class GraphComparator
             return "Delta {" +
                     "id=" + id +
                     ", fieldName='" + fieldName + '\'' +
+                    ", path='" + getPath() + '\'' +
                     ", srcPtr=" + srcPtr +
                     // These come from the caller's object graphs, which may be cyclic.
                     ", srcValue=" + CycleSafeToString.value(srcValue) +
@@ -448,6 +471,18 @@ public class GraphComparator
      * morph B into A.  For example, if Graph B represents a stored object model in the
      * database, and Graph A is an inbound change of that graph, the deltas can be applied
      * to B such that the persistent storage will now be A.
+     * <p>
+     * The comparison is not symmetric, and an object that is <em>new</em> in the target graph has no command of its
+     * own. It arrives inside the command that places it: the new object is the {@code targetValue} of the
+     * {@code LIST_SET_ELEMENT}, {@code ARRAY_SET_ELEMENT}, {@code SET_ADD}, {@code MAP_PUT} or
+     * {@code OBJECT_ASSIGN_FIELD} delta that puts it in the graph. {@code OBJECT_ORPHAN} is the opposite case: an
+     * object that is in the source graph and in no place of the target graph. So taking an element out of a List
+     * reports an orphan one way round; comparing the other way round reports the element as a
+     * {@code LIST_RESIZE} followed by {@code LIST_SET_ELEMENT} deltas, one per position from the insertion point to the
+     * end of the List (a List is compared position by position, so a later element that moved is a set-element too).
+     * A caller that looks only at non-{@code LIST_SET_ELEMENT} deltas will miss the new element.
+     * <p>
+     * {@link Delta#getPath()} tells where in the graph each delta is.
      */
     public static List<Delta> compare(Object source, Object target, final ID idFetcher)
     {
@@ -582,7 +617,8 @@ public class GraphComparator
                             fieldName = field.getName();
                         }
                         String srcPtr = sysId + fieldName;
-                        stack.push(new Delta(srcId, fieldName, srcPtr, field.get(srcValue), field.get(targetValue), null));
+                        stack.push(atPath(new Delta(srcId, fieldName, srcPtr, field.get(srcValue), field.get(targetValue), null),
+                                fieldPath(delta.getPath(), fieldName)));
                     }
                     catch (Exception ignored) { }
                 }
@@ -635,6 +671,30 @@ public class GraphComparator
      * @return boolean true if the passed in object is a 'Logical' primitive.  Logical primitive is defined
      * as all primitives plus primitive wrappers, String, Date, Calendar, Number, or Character
      */
+    private static Delta atPath(Delta delta, String path)
+    {
+        delta.path = path;
+        return delta;
+    }
+
+    /** The path of a field of the object at {@code parentPath}. */
+    private static String fieldPath(String parentPath, String fieldName)
+    {
+        return parentPath.isEmpty() ? fieldName : parentPath + '.' + fieldName;
+    }
+
+    /** The path of element {@code index} of the List or array at {@code parentPath}. */
+    private static String elementPath(String parentPath, int index)
+    {
+        return parentPath + '[' + index + ']';
+    }
+
+    /** The path of the value held under {@code key} of the Map at {@code parentPath}. */
+    private static String entryPath(String parentPath, Object key)
+    {
+        return parentPath + '[' + key + ']';
+    }
+
     private static boolean isLogicalPrimitive(Class<?> c)
     {
         return c.isPrimitive() ||
@@ -789,7 +849,7 @@ public class GraphComparator
                     Object targetId = resolveId(targetValue, idFetcher, idCache);
                     if (srcId != NO_ID && targetId != NO_ID) {
                         if (targetId.equals(srcId)) {
-                            stack.push(new Delta(delta.id, delta.fieldName, srcPtr, srcValue, targetValue, i));
+                            stack.push(atPath(new Delta(delta.id, delta.fieldName, srcPtr, srcValue, targetValue, i), elementPath(delta.getPath(), i)));
                         } else {
                             copyArrayElement(delta, deltas, srcPtr, srcValue, targetValue, i);
                         }
@@ -805,7 +865,8 @@ public class GraphComparator
     
     private static void copyArrayElement(Delta delta, Collection<Delta> deltas, String srcPtr, Object srcValue, Object targetValue, int index)
     {
-        Delta copyDelta = new Delta(delta.id, delta.fieldName, srcPtr, srcValue, targetValue, index);
+        Delta copyDelta = atPath(new Delta(delta.id, delta.fieldName, srcPtr, srcValue, targetValue, index),
+                elementPath(delta.getPath(), index));
         copyDelta.setCmd(ARRAY_SET_ELEMENT);
         deltas.add(copyDelta);
     }
@@ -844,11 +905,12 @@ public class GraphComparator
 
                 if (targetIdToValue.containsKey(srcId))
                 {   // Queue item for deep, field level check as the object is still there (it's fields could have changed).
-                    stack.push(new Delta(delta.id, delta.fieldName, srcPtr, srcValue, targetIdToValue.get(srcId), null));
+                    stack.push(atPath(new Delta(delta.id, delta.fieldName, srcPtr, srcValue, targetIdToValue.get(srcId), null),
+                            entryPath(delta.getPath(), srcId)));
                 }
                 else
                 {
-                    Delta removeDelta = new Delta(delta.id, delta.fieldName, srcPtr, srcValue, null, null);
+                    Delta removeDelta = atPath(new Delta(delta.id, delta.fieldName, srcPtr, srcValue, null, null), delta.getPath());
                     removeDelta.setCmd(SET_REMOVE);
                     deltas.add(removeDelta);
                 }
@@ -857,7 +919,7 @@ public class GraphComparator
             {
                 if (!targetSet.contains(srcValue))
                 {
-                    Delta removeDelta = new Delta(delta.id, delta.fieldName, srcPtr, srcValue, null, null);
+                    Delta removeDelta = atPath(new Delta(delta.id, delta.fieldName, srcPtr, srcValue, null, null), delta.getPath());
                     removeDelta.setCmd(SET_REMOVE);
                     deltas.add(removeDelta);
                 }
@@ -873,7 +935,7 @@ public class GraphComparator
             {
                 if (!srcIdToValue.containsKey(targetId))
                 {
-                    Delta addDelta = new Delta(delta.id, delta.fieldName, srcPtr, null, targetValue, null);
+                    Delta addDelta = atPath(new Delta(delta.id, delta.fieldName, srcPtr, null, targetValue, null), delta.getPath());
                     addDelta.setCmd(SET_ADD);
                     deltas.add(addDelta);
                 }
@@ -882,7 +944,7 @@ public class GraphComparator
             {
                 if (!srcSet.contains(targetValue))
                 {
-                    Delta addDelta = new Delta(delta.id, delta.fieldName, srcPtr, null, targetValue, null);
+                    Delta addDelta = atPath(new Delta(delta.id, delta.fieldName, srcPtr, null, targetValue, null), delta.getPath());
                     addDelta.setCmd(SET_ADD);
                     deltas.add(addDelta);
                 }
@@ -929,7 +991,7 @@ public class GraphComparator
                     {
                         if (srcId.equals(targetId))
                         {
-                            stack.push(new Delta(delta.id, delta.fieldName, srcPtr, srcValue, targetValue, null));
+                            stack.push(atPath(new Delta(delta.id, delta.fieldName, srcPtr, srcValue, targetValue, null), entryPath(delta.getPath(), srcKey)));
                         }
                         else
                         {   // Different ID associated to same key, must create PUT command to overwrite source value associated to key
@@ -944,7 +1006,7 @@ public class GraphComparator
             }
             else
             {   // target does not have this Key in it's map, therefore create REMOVE command to remove it from source map.
-                Delta removeDelta = new Delta(delta.id, delta.fieldName, srcPtr, srcValue, null, srcKey);
+                Delta removeDelta = atPath(new Delta(delta.id, delta.fieldName, srcPtr, srcValue, null, srcKey), entryPath(delta.getPath(), srcKey));
                 removeDelta.setCmd(MAP_REMOVE);
                 deltas.add(removeDelta);
             }
@@ -957,7 +1019,7 @@ public class GraphComparator
 
             if (!srcMap.containsKey(targetKey))
             {   // Add Delta command map.put
-                Delta putDelta = new Delta(delta.id, delta.fieldName, srcPtr, null, entry.getValue(), targetKey);
+                Delta putDelta = atPath(new Delta(delta.id, delta.fieldName, srcPtr, null, entry.getValue(), targetKey), entryPath(delta.getPath(), targetKey));
                 putDelta.setCmd(MAP_PUT);
                 deltas.add(putDelta);
             }
@@ -966,7 +1028,7 @@ public class GraphComparator
 
     private static void addMapPutDelta(Delta delta, Collection<Delta> deltas, String srcPtr, Object srcValue, Object targetValue, Object key)
     {
-        Delta putDelta = new Delta(delta.id, delta.fieldName, srcPtr, srcValue, targetValue, key);
+        Delta putDelta = atPath(new Delta(delta.id, delta.fieldName, srcPtr, srcValue, targetValue, key), entryPath(delta.getPath(), key));
         putDelta.setCmd(MAP_PUT);
         deltas.add(putDelta);
     }
@@ -1016,7 +1078,7 @@ public class GraphComparator
                         if (targetId.equals(srcId))
                         {   // No need to copy, same object in same List position, but it's fields could have changed, so add the object to
                             // the stack for further graph delta comparison.
-                            stack.push(new Delta(delta.id, delta.fieldName, srcPtr, srcValue, targetValue, i));
+                            stack.push(atPath(new Delta(delta.id, delta.fieldName, srcPtr, srcValue, targetValue, i), elementPath(delta.getPath(), i)));
                         }
                         else
                         {   // IDs do not match?  issue a set-element-command
@@ -1038,7 +1100,8 @@ public class GraphComparator
 
     private static void copyListElement(Delta delta, Collection<Delta> deltas, String srcPtr, Object srcValue, Object targetValue, int index)
     {
-        Delta copyDelta = new Delta(delta.id, delta.fieldName, srcPtr, srcValue, targetValue, index);
+        Delta copyDelta = atPath(new Delta(delta.id, delta.fieldName, srcPtr, srcValue, targetValue, index),
+                elementPath(delta.getPath(), index));
         copyDelta.setCmd(LIST_SET_ELEMENT);
         deltas.add(copyDelta);
     }

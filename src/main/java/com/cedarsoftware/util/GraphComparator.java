@@ -138,7 +138,9 @@ public class GraphComparator
          * {@code accounts[2].owner.address.street}. {@link #getFieldName()} is only the last field's name, which is
          * the same for every {@code name} in a graph that has many. A delta about the root itself has the empty path.
          * For a Set, and for the add or remove of an element, the path is that of the Set, List or Map the element
-         * belongs to (a Set element has no position).
+         * belongs to (a Set element has no position). An object that can be reached by more than one route (held by two
+         * fields, or by itself) is compared once, so it is reported at the first route the comparison takes to it,
+         * which is not necessarily the shortest.
          */
         public String getPath()
         {
@@ -318,6 +320,7 @@ public class GraphComparator
         public DeltaError(String error, Delta delta)
         {
             super(delta.getId(), delta.fieldName, delta.srcPtr, delta.srcValue, delta.targetValue, delta.optionalKey);
+            setPath(delta.getPath());
             this.error = error;
         }
 

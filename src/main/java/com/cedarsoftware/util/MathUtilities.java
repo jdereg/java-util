@@ -918,10 +918,6 @@ public final class MathUtilities
     }
 
     /**
-     * Parses a {@link BigDecimal}. Materially faster than {@code new BigDecimal(String)}
-     * for long mantissas; uses recursive multiplication for the digit accumulation.
-     */
-    /**
      * How many digits {@code value} takes written out in full, as {@link BigDecimal#toPlainString()} writes it,
      * ignoring the sign and the decimal point: {@code 1E+3} is 4 ("1000"), {@code 0.05} is 3 ("0.05"), {@code 12.5} is
      * 3. Computed from the precision and scale, without writing anything.
@@ -965,6 +961,10 @@ public final class MathUtilities
         return fitsPlainDigits(value, maxDigits) ? value.toPlainString() : value.toString();
     }
 
+    /**
+     * Parses a {@link BigDecimal}. Materially faster than {@code new BigDecimal(String)}
+     * for long mantissas; uses recursive multiplication for the digit accumulation.
+     */
     public static BigDecimal parseBigDecimal(CharSequence s) {
         return JavaBigDecimalParser.parseBigDecimal(s);
     }

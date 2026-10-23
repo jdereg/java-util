@@ -2907,16 +2907,6 @@ public final class Converter {
     }
 
     /**
-     * Generates a descriptive name for the given object.
-     * <p>
-     * If the object is {@code null}, returns "null". Otherwise, returns a string combining the short name
-     * of the object's class and its {@code toString()} representation.
-     * </p>
-     *
-     * @param from The object for which to generate a name.
-     * @return A descriptive name of the object.
-     */
-    /**
      * The source as an error message shows it: its type, and its value cut to the first 100 characters, so that a
      * large collection does not put its whole content into every log that records the exception.
      */

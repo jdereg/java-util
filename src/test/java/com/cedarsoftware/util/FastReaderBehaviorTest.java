@@ -19,7 +19,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class FastReaderBehaviorTest {
 
-    private static final char[] ALPHABET = {'a', 'b', '"', '\\', '\r', '\n', '\u00e9', '\uD83D', '\uDE00', '\''};
+    private static final char[] ALPHABET = {'a', 'b', '"', '\\', '\r', '\n', '\u00e9', '\uD83D', '\uDE00', '\'', '\t',
+            '\u001f', ' '};
 
     /** A pushback reader over a string: pushed-back characters come first, most recent first. */
     private static final class Model {
@@ -55,7 +56,9 @@ class FastReaderBehaviorTest {
 
     /**
      * Random reads, pushbacks, readUntil, readLine and read(char[]) over random text with every buffer size from 1
-     * to 8, CR, LF, quotes, a backslash and surrogate pairs included, each answer checked against the model. A
+     * to 8, CR, LF, a tab, U+001F, quotes, a backslash and surrogate pairs included, each answer checked against the
+     * model. readUntil and readUntilBorrowed are asked with two delimiters, or also to stop below '\0' (nothing),
+     * below ' ' (a control character, as a strict JSON reader asks) or below 'b' (above both delimiters). A
      * pushback must succeed while the model holds fewer than the requested pushback capacity (it may succeed
      * beyond). A borrowed read may answer COPY_REQUIRED, and then must leave the reader unchanged.
      */
@@ -99,6 +102,9 @@ class FastReaderBehaviorTest {
                 } else if (kind == 2 || kind == 3) {
                     int maxLen = 1 + random.nextInt(6);
                     char delimiter = random.nextBoolean() ? '"' : '\'';
+                    // 0: two delimiters; also below 1: '\0' (nothing), 2: ' ' (a control char), 3: 'b' (above both)
+                    int stopKind = random.nextInt(4);
+                    char stopBelow = stopKind == 3 ? 'b' : stopKind == 2 ? ' ' : '\0';
                     StringBuilder out = new StringBuilder();
                     int result;
                     while (true) {
@@ -111,7 +117,7 @@ class FastReaderBehaviorTest {
                             result = out.length() > 0 ? out.length() : -1;
                             break;
                         }
-                        if (c == delimiter || c == '\\') {
+                        if (c == delimiter || c == '\\' || c < stopBelow) {
                             result = out.length();
                             break;
                         }
@@ -120,11 +126,13 @@ class FastReaderBehaviorTest {
                     expected = result + ":" + (result > 0 ? out : "");
                     if (kind == 2) {
                         char[] dest = new char[maxLen + 2];
-                        int got = reader.readUntil(dest, 1, maxLen, delimiter, '\\');
+                        int got = stopKind == 0 ? reader.readUntil(dest, 1, maxLen, delimiter, '\\')
+                                : reader.readUntil(dest, 1, maxLen, delimiter, '\\', stopBelow);
                         actual = got + ":" + (got > 0 ? new String(dest, 1, got) : "");
                     } else {
                         FastReader.BufferSlice slice = new FastReader.BufferSlice();
-                        int got = reader.readUntilBorrowed(slice, maxLen, delimiter, '\\');
+                        int got = stopKind == 0 ? reader.readUntilBorrowed(slice, maxLen, delimiter, '\\')
+                                : reader.readUntilBorrowed(slice, maxLen, delimiter, '\\', stopBelow);
                         if (got == FastReader.COPY_REQUIRED) {
                             next = model.copy();
                             expected = actual = "COPY_REQUIRED";
@@ -265,6 +273,37 @@ class FastReaderBehaviorTest {
         int c = one.read();
         one.pushback((char) c);                   // the caller's one pushback slot is still free
         assertEquals('c', one.read());
+    }
+
+    /**
+     * readUntil and readUntilBorrowed asked to stop below ' ' stop at a control character as at a delimiter, and
+     * leave it unread; asked to stop below '\0', they stop where the two-delimiter forms stop.
+     */
+    @Test
+    void readUntilStopsBelowAControlCharacterAndLeavesItUnread() {
+        char[] dest = new char[16];
+        FastReader reader = new FastReader(new StringReader("ab\tc\"d"));
+        assertEquals(2, reader.readUntil(dest, 0, 16, '"', '\\', ' '));
+        assertEquals("ab", new String(dest, 0, 2));
+        assertEquals('\t', reader.read());
+        assertEquals(1, reader.readUntil(dest, 0, 16, '"', '\\', ' '));      // "c", up to the quote
+        assertEquals('"', reader.read());
+
+        FastReader borrowing = new FastReader(new StringReader("xyz\u0001rest\""));
+        FastReader.BufferSlice slice = new FastReader.BufferSlice();
+        assertEquals(3, borrowing.readUntilBorrowed(slice, 64, '"', '\\', ' '));
+        assertEquals("xyz", new String(slice.getBuffer(), slice.getOffset(), 3));
+        slice.release();
+        assertEquals(1, borrowing.read());
+
+        // a buffer of 2: the control character is found after a refill
+        FastReader small = new FastReader(new StringReader("abcde\nf"), 2, 1);
+        assertEquals(5, small.readUntil(dest, 0, 16, '"', '\\', ' '));
+        assertEquals('\n', small.read());
+
+        FastReader none = new FastReader(new StringReader("a\tb\"c"));
+        assertEquals(3, none.readUntil(dest, 0, 16, '"', '\\', '\0'));       // a tab is plain text below '\0'
+        assertEquals("a\tb", new String(dest, 0, 3));
     }
 
     /** readUntil satisfied by pushed-back characters alone does not read the source (which may block). */

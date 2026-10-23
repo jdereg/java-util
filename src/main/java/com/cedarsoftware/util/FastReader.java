@@ -368,6 +368,72 @@ public final class FastReader extends Reader {
     }
 
     /**
+     * As {@link #readUntil(char[], int, int, char, char)}, and also stops at any character below {@code stopBelow},
+     * which, like a delimiter, is left unread. A strict JSON reader passes {@code ' '} (U+0020): the quote and the
+     * backslash that end a run of a string's plain characters, and a control character, which RFC 8259 allows in a
+     * string only escaped, are found in the one pass.
+     *
+     * @param dest the destination buffer to read characters into
+     * @param off the offset in the destination buffer to start writing
+     * @param maxLen the maximum number of characters to read
+     * @param delim1 first delimiter character to stop at (typically quote char)
+     * @param delim2 second delimiter character to stop at (typically backslash)
+     * @param stopBelow also stop at any character below this one; {@code '\0'} stops at none
+     * @return the number of characters read (not including the character stopped at), or -1 if EOF reached before
+     *         any chars read
+     */
+    public int readUntil(final char[] dest, int off, int maxLen, char delim1, char delim2, char stopBelow) {
+        // A char above every one that stops the read passes on one comparison: most text, for a quote and backslash
+        final char highest = (char) Math.max(Math.max(delim1, delim2), stopBelow - 1);
+        if (in == null) {
+            ExceptionUtilities.uncheckedThrow(new IOException("in is null"));
+        }
+        assert noActiveBorrowedSliceForDebug() :
+                "FastReader.BufferSlice must be released before readUntil()";
+        final char[] b = buf;
+        int pos = position;
+        int lim = limit;
+        if (pos >= lim) {
+            if (eof || !refill()) {
+                return -1;
+            }
+            pos = position;
+            lim = limit;
+        }
+        int total = 0;
+        while (total < maxLen) {
+            if (pos >= lim) {
+                position = pos;
+                if (eof || !refill()) {
+                    return total > 0 ? total : -1;
+                }
+                pos = position;
+                lim = limit;
+            }
+            int end = pos + Math.min(maxLen - total, lim - pos);
+            int scan = pos;
+            do {
+                char c = b[scan];
+                if (c <= highest && (c == delim1 || c == delim2 || c < stopBelow)) {
+                    break;
+                }
+            } while (++scan < end);
+            int n = scan - pos;
+            if (n > 0) {
+                System.arraycopy(b, pos, dest, off, n);
+                off += n;
+                total += n;
+            }
+            position = scan;
+            if (scan < end) {
+                return total;
+            }
+            pos = scan;
+        }
+        return total;
+    }
+
+    /**
      * Borrow a contiguous slice from the internal buffer up to either delimiter.
      * <p>
      * On success, the delimiter is not consumed and the returned length matches
@@ -406,6 +472,58 @@ public final class FastReader extends Reader {
         while (scan < end) {
             char c = b[scan];
             if (c == delim1 || c == delim2) {
+                int len = scan - pos;
+                slice.set(b, pos, len);
+                assert borrowedSliceCreatedForDebug(slice);
+                position = scan;
+                return len;
+            }
+            scan++;
+        }
+        if (scan - pos == maxLen) {
+            slice.set(b, pos, maxLen);
+            assert borrowedSliceCreatedForDebug(slice);
+            position = scan;
+            return maxLen;
+        }
+        return COPY_REQUIRED;
+    }
+
+    /**
+     * As {@link #readUntilBorrowed(BufferSlice, int, char, char)}, and also stops at any character below
+     * {@code stopBelow}, which is left unread; see {@link #readUntil(char[], int, int, char, char, char)}. If the
+     * range crosses the buffer boundary first, this returns {@link #COPY_REQUIRED} without consuming anything, and
+     * the caller uses that method.
+     *
+     * @param slice destination for the borrowed buffer, offset, and length
+     * @param maxLen maximum number of characters to borrow
+     * @param delim1 first delimiter character to stop at (typically quote char)
+     * @param delim2 second delimiter character to stop at (typically backslash)
+     * @param stopBelow also stop at any character below this one; {@code '\0'} stops at none
+     * @return borrowed length, -1 on EOF before any chars, or {@link #COPY_REQUIRED}
+     */
+    public int readUntilBorrowed(final BufferSlice slice, int maxLen, char delim1, char delim2, char stopBelow) {
+        final char highest = (char) Math.max(Math.max(delim1, delim2), stopBelow - 1);   // see readUntil
+        if (in == null) {
+            ExceptionUtilities.uncheckedThrow(new IOException("in is null"));
+        }
+        assert noActiveBorrowedSliceForDebug() :
+                "FastReader.BufferSlice must be released before readUntilBorrowed()";
+        int pos = position;
+        int lim = limit;
+        if (pos >= lim) {
+            if (eof || !refill()) {
+                return -1;
+            }
+            pos = position;
+            lim = limit;
+        }
+        int end = pos + Math.min(maxLen, lim - pos);
+        final char[] b = buf;
+        int scan = pos;
+        while (scan < end) {
+            char c = b[scan];
+            if (c <= highest && (c == delim1 || c == delim2 || c < stopBelow)) {
                 int len = scan - pos;
                 slice.set(b, pos, len);
                 assert borrowedSliceCreatedForDebug(slice);

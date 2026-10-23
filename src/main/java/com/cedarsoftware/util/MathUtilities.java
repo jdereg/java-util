@@ -465,15 +465,23 @@ public final class MathUtilities
      * <ul>
      *   <li>Integer values within Long range: returns {@link Long}</li>
      *   <li>Integer values outside Long range: returns {@link BigInteger}</li>
-     *   <li>Decimal values within Double precision: returns {@link Double}</li>
-     *   <li>Decimal values requiring more precision: returns {@link BigDecimal}</li>
+     *   <li>Decimal values a double holds: returns {@link Double}. A double holds a value when it reads back
+     *       ({@link Double#toString(double)}) as the same number: always for 15 significant digits or fewer in the
+     *       double range, sometimes for 16 or 17, never for more.</li>
+     *   <li>Other decimal values: returns {@link BigDecimal}, with the value unchanged: more digits than a double
+     *       keeps, a value beyond the double range (never Infinity), or one so small it would lose digits or become
+     *       0.0. On JDK 8-18, whose {@code Double.toString} does not always write the shortest form (about 3 doubles
+     *       in 1,000 get an 18th digit), the type can differ from JDK 19+ for such numbers; the value is the same.</li>
      * </ul>
      *
      * <p><strong>Examples:</strong></p>
      * <pre>{@code
      * parseToMinimalNumericType("123")      → Long(123)
      * parseToMinimalNumericType("1.23")     → Double(1.23)
-     * parseToMinimalNumericType("1e308")    → BigDecimal
+     * parseToMinimalNumericType("0.30000000000000004") → Double (what Double.toString writes for 0.1 + 0.2)
+     * parseToMinimalNumericType("8.000000000000001")   → BigDecimal (the double reads back as 8.000000000000002)
+     * parseToMinimalNumericType("1e308")    → Double(1.0E308)
+     * parseToMinimalNumericType("1e309")    → BigDecimal
      * parseToMinimalNumericType("999999999999999999999") → BigInteger
      * }</pre>
      *
@@ -529,27 +537,35 @@ public final class MathUtilities
         boolean exponentSignAllowed = false;
         boolean exponentHasDigits = false;
         int mantissaSize = 0;
-        int exponentSign = 1;
+        int mantissaEnd = len;
+        int pointIndex = -1;
         long exponentAbs = 0;
+        boolean exponentNegative = false;
         boolean exponentOverflow = false;
 
         for (int i = start; i < len; i++) {
             char c = text.charAt(i);
             if (c == '.') {
+                if (!hasDecimalPoint) {
+                    pointIndex = i;
+                }
                 hasDecimalPoint = true;
                 inExponent = false;
                 exponentSignAllowed = false;
             } else if (c == 'e' || c == 'E') {
+                if (!hasExponent) {
+                    mantissaEnd = i;
+                }
                 hasExponent = true;
                 inExponent = true;
                 exponentSignAllowed = true;
                 exponentHasDigits = false;
-                exponentSign = 1;
                 exponentAbs = 0;
+                exponentNegative = false;
                 exponentOverflow = false;
             } else if (inExponent) {
                 if (exponentSignAllowed && (c == '+' || c == '-')) {
-                    exponentSign = c == '-' ? -1 : 1;
+                    exponentNegative = c == '-';
                     exponentSignAllowed = false;
                 } else if (c >= '0' && c <= '9') {
                     exponentSignAllowed = false;
@@ -568,13 +584,15 @@ public final class MathUtilities
 
         if (hasDecimalPoint || hasExponent)
         {
-            if (mantissaSize < 17)
+            if (!hasExponent || (exponentHasDigits && !exponentOverflow))
             {
                 try
                 {
-                    if (!hasExponent || (exponentHasDigits && !exponentOverflow && Math.abs(exponentSign * (int) exponentAbs) < 308))
+                    long exponent = exponentNegative ? -exponentAbs : exponentAbs;
+                    Double d = doubleThatReadsBack(text, start, pointIndex, mantissaEnd, exponent, mantissaSize);
+                    if (d != null)
                     {
-                        return JavaDoubleParser.parseDouble(text);
+                        return d;
                     }
                 }
                 catch (NumberFormatException ignore)
@@ -594,6 +612,236 @@ public final class MathUtilities
             } else {
                 return bigInt;
             }
+        }
+    }
+
+    /**
+     * The double {@code text} reads as, when it reads back as the same number ({@link Double#toString(double)} writes
+     * that number); else null, and the caller makes a BigDecimal. A double in its normal range always reads back as
+     * text of 15 significant digits or fewer (DBL_DIG), and never as text of more than 17, since no double is written
+     * with more. For 16 or 17 digits, or a subnormal, compare the text with what Double.toString writes for the double.
+     *
+     * @param pointIndex     where the decimal point is, or -1
+     * @param exponent       the value of the exponent, 0 without one
+     * @param mantissaDigits the digits in {@code text[start, mantissaEnd)}, the digits before any exponent
+     */
+    private static Double doubleThatReadsBack(String text, int start, int pointIndex, int mantissaEnd, long exponent,
+                                              int mantissaDigits)
+    {
+        int digits = mantissaDigits <= 15 ? mantissaDigits
+                : significantDigits(text, start, mantissaEnd, mantissaDigits);
+        if (digits > 17)
+        {
+            return null;
+        }
+        double d = JavaDoubleParser.parseDouble(text);
+        double abs = Math.abs(d);
+        if (abs > Double.MAX_VALUE)
+        {
+            return null;        // finite text past the double range
+        }
+        if (abs < Double.MIN_NORMAL)
+        {
+            digits = significantDigits(text, start, mantissaEnd, mantissaDigits);
+            if (digits == 0)
+            {
+                return d;       // zero, whatever its exponent
+            }
+            if (abs == 0.0)
+            {
+                return null;    // nonzero text too small for any double
+            }
+        }
+        else if (digits <= 15)
+        {
+            return d;
+        }
+        else if (digits == 16 && leadingExponent(text, start, pointIndex, mantissaEnd, exponent) - 15
+                > (Math.getExponent(d) - 52) * LOG10_2)
+        {
+            // 16-digit decimals here lie farther apart than this double's ulp: no other reads as it, nor a shorter one
+            return d;
+        }
+        String printed = Double.toString(d);
+        if (printed.equals(text))
+        {
+            return d;           // what Double.toString writes, as json-io and TOON write doubles
+        }
+        Decimal written = Decimal.parse(text);
+        if (written == null)
+        {
+            return d;           // text only the double parser reads (a d suffix, spaces, hex): it has no other reading
+        }
+        return written.sameNumber(Decimal.parse(printed)) ? d : null;
+    }
+
+    /** log10(2): the decimal digits one binary digit is worth. */
+    private static final double LOG10_2 = 0.30102999566398119521;
+
+    /**
+     * The power of ten of the first nonzero digit in {@code text[start, end)}, which has one, with its decimal point at
+     * {@code pointIndex} (-1 for none) and {@code exponent} after it: "0.0012" is -3, "123.4" is 2.
+     */
+    private static long leadingExponent(String text, int start, int pointIndex, int end, long exponent)
+    {
+        int i = start;
+        while (i < end && !isNonzeroDigit(text.charAt(i)))
+        {
+            i++;
+        }
+        int point = pointIndex < 0 ? end : pointIndex;
+        return (i < point ? point - i - 1 : point - i) + exponent;
+    }
+
+    /**
+     * The significant digits in {@code text[start, end)}: its {@code digits} digits less the zeros before the first
+     * nonzero digit and after the last ("0.0120" has 2). 0 when every digit is zero.
+     */
+    private static int significantDigits(String text, int start, int end, int digits)
+    {
+        int i = start;
+        for (; i < end && !isNonzeroDigit(text.charAt(i)); i++)
+        {
+            if (text.charAt(i) == '0')
+            {
+                digits--;
+            }
+        }
+        if (i == end)
+        {
+            return 0;
+        }
+        for (int j = end - 1; j > i && !isNonzeroDigit(text.charAt(j)); j--)
+        {
+            if (text.charAt(j) == '0')
+            {
+                digits--;
+            }
+        }
+        return digits;
+    }
+
+    private static boolean isNonzeroDigit(char c)
+    {
+        return c >= '1' && c <= '9';
+    }
+
+    /** Plain decimal text: sign, significant digits (no leading or trailing zeros), the last one's power of ten. */
+    private static final class Decimal
+    {
+        private final boolean negative;
+        private final long significand;     // exact for 18 digits or fewer
+        private final int digits;           // significant digits, counted past 18 too
+        private final long exponent;        // the value is significand x 10^exponent
+
+        private Decimal(boolean negative, long significand, int digits, long exponent)
+        {
+            this.negative = negative;
+            this.significand = significand;
+            this.digits = digits;
+            this.exponent = exponent;
+        }
+
+        /** {@code [sign] digits [. digits] [e|E [sign] digits]}, with a digit before the exponent; else null. */
+        static Decimal parse(String s)
+        {
+            final int len = s.length();
+            int i = 0;
+            boolean negative = false;
+            if (i < len && (s.charAt(i) == '-' || s.charAt(i) == '+'))
+            {
+                negative = s.charAt(i) == '-';
+                i++;
+            }
+            long significand = 0;
+            int digits = 0;
+            int zeroRun = 0;        // zeros since the last nonzero digit: significant only if another nonzero follows
+            long exponent = 0;
+            boolean point = false;
+            boolean anyDigit = false;
+            for (; i < len; i++)
+            {
+                char c = s.charAt(i);
+                if (c >= '0' && c <= '9')
+                {
+                    anyDigit = true;
+                    if (point)
+                    {
+                        exponent--;
+                    }
+                    if (c == '0')
+                    {
+                        if (digits > 0)
+                        {
+                            zeroRun++;
+                        }
+                        continue;
+                    }
+                    for (; zeroRun > 0; zeroRun--)
+                    {
+                        if (digits++ < 18)
+                        {
+                            significand *= 10;
+                        }
+                    }
+                    if (digits++ < 18)
+                    {
+                        significand = significand * 10 + (c - '0');
+                    }
+                }
+                else if (c == '.' && !point)
+                {
+                    point = true;
+                }
+                else
+                {
+                    break;
+                }
+            }
+            if (!anyDigit)
+            {
+                return null;
+            }
+            exponent += zeroRun;    // trailing zeros
+            if (i < len)
+            {
+                char c = s.charAt(i++);
+                if (c != 'e' && c != 'E')
+                {
+                    return null;
+                }
+                boolean negativeExponent = false;
+                if (i < len && (s.charAt(i) == '-' || s.charAt(i) == '+'))
+                {
+                    negativeExponent = s.charAt(i) == '-';
+                    i++;
+                }
+                if (i == len)
+                {
+                    return null;
+                }
+                long e = 0;
+                for (; i < len; i++)
+                {
+                    c = s.charAt(i);
+                    if (c < '0' || c > '9')
+                    {
+                        return null;
+                    }
+                    if (e < 1_000_000_000L)
+                    {
+                        e = e * 10 + (c - '0');
+                    }
+                }
+                exponent += negativeExponent ? -e : e;
+            }
+            return new Decimal(negative, significand, digits, exponent);
+        }
+
+        boolean sameNumber(Decimal other)
+        {
+            return other != null && digits == other.digits && significand == other.significand
+                    && exponent == other.exponent && negative == other.negative;
         }
     }
 

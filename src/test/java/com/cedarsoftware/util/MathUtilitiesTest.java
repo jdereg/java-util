@@ -10,7 +10,6 @@ import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import static com.cedarsoftware.util.MathUtilities.parseToMinimalNumericType;
@@ -442,30 +441,24 @@ class MathUtilitiesTest
         catch (IllegalArgumentException ignored) { }
     }
 
-    // The very edges are hard to hit, without expensive additional processing to detect there difference in
-    // Examples like this: "12345678901234567890.12345678901234567890" needs to be a BigDecimal, but Double
-    // will parse this correctly in it's short-handed notation.  My algorithm catches these.  However, the values
-    // right near e+308 positive or negative will be returned as BigDecimals to ensure accuracy
-    @Disabled
+    // The edges of the double range: a Double when it reads back as the same number (since 4.118.0; these were
+    // BigDecimals while the choice was made from the exponent alone)
     @Test
     void testMaxDoubleScientificNotation() {
         String maxDoubleSci = "1.7976931348623157e308"; // Double.MAX_VALUE in scientific notation
         assertEquals(Double.parseDouble(maxDoubleSci), parseToMinimalNumericType(maxDoubleSci));
     }
 
-    @Disabled
     @Test
     void testMaxDoubleBoundary() {
         assertEquals(Double.MAX_VALUE, parseToMinimalNumericType(Double.toString(Double.MAX_VALUE)));
     }
 
-    @Disabled
     @Test
     void testMinDoubleBoundary() {
         assertEquals(-Double.MAX_VALUE, parseToMinimalNumericType(Double.toString(-Double.MAX_VALUE)));
     }
 
-    @Disabled
     @Test
     void testTinyDoubleScientificNotation() {
         String tinyDoubleSci = "2.2250738585072014e-308"; // A very small double value

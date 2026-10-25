@@ -1,9 +1,14 @@
 package com.cedarsoftware.util.convert;
 
+import java.sql.Timestamp;
+import java.util.LinkedHashMap;
+import java.util.Map;
+
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -113,5 +118,37 @@ class ConverterUserOverridePrecedenceTest {
         assertTrue(custom.isConversionSupportedFor(ChildSource.class, InheritTarget.class),
                 "inheritance-level user conversion must not be masked by a shared negative entry");
         assertTrue(custom.convert(new ChildSource(), InheritTarget.class) instanceof InheritTarget);
+    }
+
+    /**
+     * A built-in conversion exists for the parent pair (Map -> Timestamp), so a plain instance caches a POSITIVE shared
+     * entry for the child pair (a LinkedHashMap -> Timestamp): an instance's own conversion for the parent pair must
+     * still be the one it runs. The shared entry won: which conversion ran depended on what else the JVM converted
+     * first (json-io read a legacy {"time","nanos"} Timestamp through cube-common's override, or did not).
+     */
+    @Test
+    void inheritanceLevelUserConversionBeatsSharedBuiltIn() {
+        Map<String, Object> legacy = new LinkedHashMap<>();
+        legacy.put("epochMillis", 5L);
+        Converter plain = new Converter(new DefaultConverterOptions());
+        assertEquals(new Timestamp(5L), plain.convert(legacy, Timestamp.class));   // the built-in, now cached shared
+
+        Timestamp mark = new Timestamp(86400000L);
+        DefaultConverterOptions options = new DefaultConverterOptions();
+        options.getConverterOverrides().put(Converter.pair(Map.class, Timestamp.class), (from, c) -> mark);
+        assertSame(mark, new Converter(options).convert(legacy, Timestamp.class));
+
+        Converter added = new Converter(new DefaultConverterOptions());
+        added.addConversion((from, c) -> mark, Map.class, Timestamp.class);
+        assertSame(mark, added.convert(legacy, Timestamp.class));
+
+        // one added after the instance resolved the pair is the one it then runs
+        Converter later = new Converter(options);
+        assertSame(mark, later.convert(legacy, Timestamp.class));
+        Timestamp other = new Timestamp(172800000L);
+        later.addConversion((from, c) -> other, Map.class, Timestamp.class);
+        assertSame(other, later.convert(legacy, Timestamp.class));
+
+        assertEquals(new Timestamp(5L), plain.convert(legacy, Timestamp.class));   // and the plain one is unaffected
     }
 }

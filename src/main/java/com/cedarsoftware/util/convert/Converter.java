@@ -376,6 +376,12 @@ public final class Converter {
     private final long instanceId;
     private volatile boolean hasUserConversions;
 
+    // This instance's own resolutions, for one with conversions of its own (ConverterOptions overrides, addConversion):
+    // FULL_CONVERSION_CACHE holds only what instances without any resolved, and a conversion this instance has for a
+    // supertype of the source (Map, for a LinkedHashMap) outranks the built-in one cached there for the pair. Made on
+    // first use, dropped when a conversion is added.
+    private volatile ClassPairMap<Convert<?>> resolvedByThis;
+
     // Efficient key that combines two Class instances and instance ID for fast creation and lookup
     public static final class ConversionPair {
         private final Class<?> source;
@@ -2386,8 +2392,12 @@ public final class Converter {
             }
         }
 
-        // Shared resolution cache (built-in-derived entries only; see cacheConverter).
-        Convert<?> cached = getCachedConverter(sourceType, toType);
+        // Shared resolution cache (built-in-derived entries only; see cacheConverter) -- or, for an instance with
+        // conversions of its own, its own: the shared entry another instance wrote (a built-in Map -> Timestamp for a
+        // LinkedHashMap) masked this instance's conversion for a supertype of the source (Map -> Timestamp), so which
+        // conversion ran depended on what else the JVM had converted first.
+        Convert<?> cached = hasUserConversions ? resolvedByThis().get(sourceType, toType)
+                : getCachedConverter(sourceType, toType);
         if (isValidConversion(cached)) {
             return (T) cached.convert(from, this, toType);
         }
@@ -2467,7 +2477,18 @@ public final class Converter {
         // entries never looked up again after GC — unbounded static cache growth.)
         if (!hasUserConversions) {
             FULL_CONVERSION_CACHE.put(source, target, converter);
+        } else {
+            resolvedByThis().put(source, target, converter);
         }
+    }
+
+    private ClassPairMap<Convert<?>> resolvedByThis() {
+        ClassPairMap<Convert<?>> resolved = resolvedByThis;
+        if (resolved == null) {
+            resolved = new ClassPairMap<>();
+            resolvedByThis = resolved;      // two threads may each make one: either holds right answers
+        }
+        return resolved;
     }
 
     @SuppressWarnings("unchecked")
@@ -3386,6 +3407,7 @@ public final class Converter {
 
         // Clear caches for all affected combinations in one pass
         clearCachesForTypeVariations(sourceTypes, targetTypes);
+        resolvedByThis = null;      // this instance's resolutions: any may now resolve to the conversion added
 
         // Store the wrapper version first to capture return value
         Class<?> wrapperSource = ClassUtilities.toPrimitiveWrapperClass(source);

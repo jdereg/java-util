@@ -385,6 +385,10 @@ public final class Converter
      *   <li>That String-to-Integer conversion is supported for the components</li>
      * </ul>
      *
+     * <p>The answer is about the classes, not a value: {@code true} does not mean every value converts, nor
+     * {@code false} that none does. See
+     * {@link com.cedarsoftware.util.convert.Converter#isConversionSupportedFor(Class, Class)}.</p>
+     *
      * @param source The source class type
      * @param target The target class type
      * @return true if the conversion is fully supported (including component type conversions for arrays),

@@ -3292,6 +3292,15 @@ public final class Converter {
      *   <li>That String-to-Integer conversion is supported for the components</li>
      * </ul>
      *
+     * <p><b>An answer about the classes, not about a value.</b> {@code true} means this Converter has a conversion for
+     * the pair; a particular value can still fail it ({@code "abc"} to {@code Integer}, or a {@code Map} without the
+     * keys a {@code LocalDate} is built from). {@code false} means it has none for the classes as named, and
+     * {@link #convert(Object, Class)} can still succeed for a particular value: a value that is already an instance of
+     * the target is returned as it is ({@code String} to {@code Object} is {@code false}), an object of a class with
+     * fields becomes a {@code Map} of them, and a broad pair whose outcome depends on the value ({@code Map} to
+     * {@code Map}, {@code Object} to {@code String}) answers {@code false}. Ask with the value's own class for the
+     * closest answer ({@code LinkedHashMap} to {@code Map} is {@code true}); to know about one value, convert it.</p>
+     *
      * @param source The source class type
      * @param target The target class type
      * @return true if the conversion is fully supported (including component type conversions for arrays),
@@ -3374,7 +3383,9 @@ public final class Converter {
      * {@code Map<Integer, UUID>} asks String to Integer and String to UUID. Where either side does not say
      * ({@code List}, {@code List<?>}, {@code List<Object>}), the elements are taken to convert, as an Object[]'s are.
      * To {@code Optional<X>}, the source's content (an Optional's) or the source itself must convert to X. A wildcard
-     * or a type variable target is answered as {@link #convert(Object, Type)} treats it.
+     * or a type variable target is answered as {@link #convert(Object, Type)} treats it. The answer is about the types,
+     * not a value, as for two classes: {@code true} does not mean every value converts, nor {@code false} that none
+     * does.
      *
      * @param source the type of the value to convert, a Class or a generic type
      * @param target the type to convert to, a Class or a generic type

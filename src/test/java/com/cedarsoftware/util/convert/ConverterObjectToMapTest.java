@@ -10,11 +10,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import com.cedarsoftware.util.DeepEquals;
+import com.cedarsoftware.util.MapUtilities;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * An object with no conversion of its own converts to a Map of its fields: values as values, objects as Maps.
@@ -99,11 +101,12 @@ class ConverterObjectToMapTest {
     }
 
     /**
-     * A cycle (an object that is its own ancestor) ends in null, through a collection as through a field. A cycle
-     * through a List overflowed the stack: each element was converted afresh, with no record of its ancestors.
+     * A loop (an object that is its own ancestor) is the same Map, through a collection as through a field: the Map is
+     * a graph like the object's, nothing dropped. It was null (4.117.0); before that a loop through a List overflowed
+     * the stack, each element converted afresh with no record of its ancestors.
      */
     @Test
-    void aCycleEndsInNull() {
+    void aLoopIsTheSameMap() {
         Node root = new Node("root");
         Node kid = new Node("kid");
         kid.parent = root;
@@ -113,8 +116,39 @@ class ConverterObjectToMapTest {
         List<?> children = (List<?>) map.get("children");
         Map<?, ?> kidMap = (Map<?, ?>) children.get(0);
         assertEquals("kid", kidMap.get("name"));
-        assertNull(kidMap.get("parent"), "the cycle back to root");
+        assertSame(map, kidMap.get("parent"), "the loop back to root");
         assertEquals(new ArrayList<>(), kidMap.get("children"));
+    }
+
+    static class Loops {
+        Loops self;
+        Map<String, Object> byName = new LinkedHashMap<>();
+        Object[] array;
+        List<Object> list = new ArrayList<>();
+    }
+
+    /**
+     * Each loop is the container it loops back to -- through a field to itself, a Map's value, an array's element,
+     * and a List that holds itself -- so the Map is printed with MapUtilities.mapToString() and compared with
+     * DeepEquals, which follow a loop (a JDK map's own toString() and hashCode() do not).
+     */
+    @Test
+    void everyLoopIsTheContainerItLoopsTo() {
+        Loops loops = new Loops();
+        loops.self = loops;
+        loops.byName.put("back", loops);
+        loops.array = new Object[] {loops};
+        loops.list.add(loops.list);
+        Map<?, ?> map = converter.convert(loops, Map.class);
+        assertSame(map, map.get("self"));
+        assertSame(map, ((Map<?, ?>) map.get("byName")).get("back"));
+        assertSame(map, ((List<?>) map.get("array")).get(0));
+        List<?> list = (List<?>) map.get("list");
+        assertSame(list, list.get(0));
+
+        String text = MapUtilities.mapToString(map);
+        assertTrue(text.contains("self=(this Map)"), text);
+        assertTrue(DeepEquals.deepEquals(map, converter.convert(loops, Map.class)));
     }
 
     /** A subclass field hides the superclass field of the same name, as in Java. The superclass's value won. */

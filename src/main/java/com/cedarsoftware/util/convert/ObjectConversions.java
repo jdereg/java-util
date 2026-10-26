@@ -79,15 +79,18 @@ final class ObjectConversions {
     /**
      * An object's fields as a Map, walked depth first without recursion, so a deep graph cannot overflow the stack.
      * A value (a primitive or wrapper, String, enum, a type the Converter treats as simple, a JDK class that is not a
-     * container) stays a value; an object, Collection, Map or array becomes a Map or List. An object reached a second
-     * time is the same Map in both places; one reached from inside itself (a cycle) is null. A field the class
-     * hides (one its superclass declares under the same name) is left out, as Java hides it; a null field too.
+     * container) stays a value; an object, Collection, Map or array becomes a Map or List. An object reached again --
+     * a second time, or from inside itself (a loop) -- is the same Map or List in each place, so the result is a graph
+     * like the object's, nothing dropped. Print one that loops with {@code MapUtilities.mapToString()} and compare it
+     * with {@code DeepEquals}: a JDK map's own toString(), hashCode() and equals() follow the loop without end. A
+     * field the class hides (one its superclass declares under the same name) is left out, as Java hides it; a null
+     * field too.
      */
     private static Map<String, Object> traverseObjectFields(Object rootObj, Converter converter) {
         if (rootObj == null) {
             return null;
         }
-        // Each object begun, with its Frame: one not yet done is on the current path, so reaching it is a cycle
+        // Each object begun, with its Frame: its Map or List is made when it is begun, so a loop back to it finds it
         Map<Object, Frame> converted = new IdentityHashMap<>(8);
         Deque<Frame> path = new ArrayDeque<>(8);
         Map<String, Object> rootMap = new LinkedHashMap<>();
@@ -98,7 +101,7 @@ final class ObjectConversions {
         while (!path.isEmpty()) {
             Frame frame = path.peek();
             if (!frame.advance()) {
-                path.pop().done = true;
+                path.pop();
                 continue;
             }
             Object child = frame.childValue;
@@ -110,7 +113,7 @@ final class ObjectConversions {
             } else {
                 Frame seen = converted.get(child);
                 if (seen != null) {
-                    out = seen.done ? seen.container : null;         // reached again: the same Map; a cycle: null
+                    out = seen.container;           // reached again, or from inside itself: the same Map
                 } else if (ReflectionUtils.isRecord(child.getClass())) {
                     Frame record = new Frame(child, recordToMap(child, converter));
                     converted.put(child, record);
@@ -185,7 +188,6 @@ final class ObjectConversions {
         private int fieldIndex;
         private String key;
         Object childValue;
-        boolean done;
 
         /** A record, already converted: nothing left to walk. */
         Frame(Object source, Object converted) {
@@ -193,7 +195,6 @@ final class ObjectConversions {
             this.container = converted;
             this.kind = ELEMENTS;
             this.children = java.util.Collections.emptyIterator();
-            this.done = true;
         }
 
 

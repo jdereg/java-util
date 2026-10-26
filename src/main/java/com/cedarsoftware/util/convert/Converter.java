@@ -3,8 +3,14 @@ package com.cedarsoftware.util.convert;
 import java.io.Externalizable;
 import java.io.File;
 import java.io.Serializable;
+import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
+import java.lang.reflect.GenericArrayType;
 import java.lang.reflect.Modifier;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
+import java.lang.reflect.TypeVariable;
+import java.lang.reflect.WildcardType;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.net.InetAddress;
@@ -47,9 +53,11 @@ import java.util.EnumSet;
 import java.util.GregorianCalendar;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.SortedSet;
 import java.util.TimeZone;
@@ -78,6 +86,7 @@ import com.cedarsoftware.util.IdentitySet;
 import com.cedarsoftware.util.LRUCache;
 import com.cedarsoftware.util.ReflectionUtils;
 import com.cedarsoftware.util.TTLCache;
+import com.cedarsoftware.util.TypeUtilities;
 import com.cedarsoftware.util.geom.Color;
 import com.cedarsoftware.util.geom.Dimension;
 import com.cedarsoftware.util.geom.Insets;
@@ -2455,6 +2464,161 @@ public final class Converter {
                 "] target type '" + getShortName(toType) + "'");
     }
 
+    /**
+     * Converts the given object to a {@link Type}, which may be generic: the elements of a {@code List<LocalDate>},
+     * the keys and values of a {@code Map<String, ZonedDateTime>} and the content of an {@code Optional<UUID>} are
+     * each converted to their own type, which a Class target cannot name. A Class is converted to exactly as
+     * {@link #convert(Object, Class)} converts to it, and so is the raw class of a generic type whose arguments ask
+     * for nothing ({@code List<?>}, {@code Map<Object, Object>}) or which is not a container
+     * ({@code Comparable<String>}).
+     * <ul>
+     *     <li><b>A collection</b> ({@code List<E>}, {@code Set<E>}, {@code EnumSet<E>} and the other collection
+     *     types): from a collection or an array, or what converts to the raw class, a collection of the raw class,
+     *     each element converted to E in the source's order. A sorted set orders its elements as converted.</li>
+     *     <li><b>A map</b> ({@code Map<K, V>} and its subtypes): from a map, or what converts to the raw class, a map
+     *     of the raw class, each key converted to K and each value to V. A sorted map orders its keys as converted.
+     *     </li>
+     *     <li><b>{@code Optional<X>}</b>: an Optional's content converted to X; any other value converted to X and
+     *     wrapped; null is {@code Optional.empty()}.</li>
+     *     <li><b>A generic array</b> ({@code List<String>[]}): each element converted to the component type.</li>
+     *     <li><b>A wildcard</b>: its lower bound ({@code ? super Integer}: Integer), else its upper bound
+     *     ({@code ? extends Number}: Number). <b>A type variable</b>: its bound's class.</li>
+     * </ul>
+     * Each element is converted on its own, so an object the source holds twice is converted twice. Otherwise null
+     * converts as it converts to the raw class.
+     *
+     * <pre>{@code
+     * Type type = Invoice.class.getField("dueDates").getGenericType();     // List<LocalDate>
+     * List<LocalDate> dates = converter.convert(Arrays.asList("2026-01-15", "2026-02-01"), type);
+     * }</pre>
+     *
+     * @param from   the value to convert; may be null
+     * @param toType the type to convert to, a Class or a generic type; not null
+     * @param <T>    the type of the result
+     * @return the value converted to {@code toType}
+     * @throws IllegalArgumentException if {@code toType} is null, or the value or one of its elements cannot be
+     *                                  converted
+     * @see #isConversionSupportedFor(Type, Type)
+     */
+    @SuppressWarnings("unchecked")
+    public <T> T convert(Object from, Type toType) {
+        if (toType == null || toType instanceof Class) {
+            return convert(from, (Class<T>) toType);
+        }
+        if (toType instanceof ParameterizedType) {
+            return (T) toParameterized(from, (ParameterizedType) toType);
+        }
+        if (toType instanceof GenericArrayType) {
+            return (T) toGenericArray(from, (GenericArrayType) toType);
+        }
+        return convert(from, targetOf(toType));
+    }
+
+    /** What converting to a wildcard or a type variable converts to: see {@link #convert(Object, Type)}. */
+    private static Type targetOf(Type type) {
+        if (type instanceof WildcardType) {
+            WildcardType wildcard = (WildcardType) type;
+            Type[] lower = wildcard.getLowerBounds();
+            Type[] upper = wildcard.getUpperBounds();
+            return lower.length > 0 ? lower[0] : upper.length > 0 ? upper[0] : Object.class;
+        }
+        return TypeUtilities.getRawClass(type);
+    }
+
+    /** Whether converting to the type leaves any value as it is: Object, {@code ?}, a type variable bound by Object. */
+    private static boolean asksNothing(Type type) {
+        return type == null || type == Object.class || (type instanceof WildcardType || type instanceof TypeVariable)
+                && targetOf(type) == Object.class;
+    }
+
+    private Object toParameterized(Object from, ParameterizedType toType) {
+        Class<?> raw = TypeUtilities.getRawClass(toType);
+        if (raw == Optional.class) {
+            Type content = toType.getActualTypeArguments()[0];
+            if (from instanceof Optional) {
+                return ((Optional<?>) from).map(value -> convert(value, content));
+            }
+            return from == null ? Optional.empty() : Optional.ofNullable(convert(from, content));
+        }
+        if (from != null && Collection.class.isAssignableFrom(raw)) {
+            Type element = TypeUtilities.inferElementType(toType, Object.class);
+            if (!asksNothing(element)) {
+                return toCollection(from, raw, element);
+            }
+        } else if (from != null && Map.class.isAssignableFrom(raw)) {
+            Type key = TypeUtilities.inferKeyType(toType);
+            Type value = TypeUtilities.inferElementType(toType, Object.class);
+            if (!asksNothing(key) || !asksNothing(value)) {
+                return toMap(from, raw, key, value);
+            }
+        }
+        return convert(from, raw);
+    }
+
+    private Object toCollection(Object from, Class<?> raw, Type element) {
+        Class<?> elementClass = TypeUtilities.getRawClass(element);
+        boolean enumSet = EnumSet.class.isAssignableFrom(raw);
+        if (enumSet && !elementClass.isEnum()) {
+            return convert(from, raw);          // no enum to make it of: the Converter says so
+        }
+        List<Object> elements = convertElements(from, raw, element);
+        if (elements == null || raw == List.class || raw == ArrayList.class || raw == Collection.class) {
+            return elements;
+        }
+        return enumSet ? convert(elements, elementClass) : CollectionConversions.collectionOf(elements, raw);
+    }
+
+    private Object toGenericArray(Object from, GenericArrayType toType) {
+        Class<?> arrayClass = TypeUtilities.getRawClass(toType);
+        if (from == null) {
+            return convert(null, arrayClass);
+        }
+        List<Object> elements = convertElements(from, arrayClass, toType.getGenericComponentType());
+        return elements == null ? null
+                : elements.toArray((Object[]) Array.newInstance(arrayClass.getComponentType(), elements.size()));
+    }
+
+    /**
+     * The elements of a collection or an array, or of what {@code from} converts to as the container class, each
+     * converted; null when it converts to null.
+     */
+    private List<Object> convertElements(Object from, Class<?> container, Type element) {
+        Object source = from instanceof Collection || from.getClass().isArray() ? from : convert(from, container);
+        if (source == null) {
+            return null;
+        }
+        List<Object> elements;
+        if (source instanceof Collection) {
+            elements = new ArrayList<>(((Collection<?>) source).size());
+            for (Object item : (Collection<?>) source) {
+                elements.add(convert(item, element));
+            }
+        } else {
+            int length = Array.getLength(source);
+            elements = new ArrayList<>(length);
+            for (int i = 0; i < length; i++) {
+                elements.add(convert(Array.get(source, i), element));
+            }
+        }
+        return elements;
+    }
+
+    private Object toMap(Object from, Class<?> raw, Type key, Type value) {
+        Map<?, ?> source = from instanceof Map ? (Map<?, ?>) from : (Map<?, ?>) convert(from, raw);
+        if (source == null) {
+            return null;
+        }
+        boolean keys = !asksNothing(key);
+        boolean values = !asksNothing(value);
+        Map<Object, Object> entries = new LinkedHashMap<>(source.size() * 4 / 3 + 1);
+        for (Map.Entry<?, ?> entry : source.entrySet()) {
+            entries.put(keys ? convert(entry.getKey(), key) : entry.getKey(),
+                    values ? convert(entry.getValue(), value) : entry.getValue());
+        }
+        return raw == Map.class || raw == LinkedHashMap.class ? entries
+                : MapConversions.mapToMapWithTarget(entries, this, raw);
+    }
+
     private Convert<?> getCachedConverter(Class<?> source, Class<?> target) {
         // ClassPairMap makes this a zero-allocation, thread-safe fast path.
         // No L1 slot: a volatile-field slot was measured to be ~3-4 ns per hit but
@@ -3197,6 +3361,111 @@ public final class Converter {
         // addConversion() calls clearCachesForTypeVariations() to invalidate if a conversion is added later.
         cacheConverter(source, target, UNSUPPORTED);
         return false;
+    }
+
+    /**
+     * Determines whether {@link #convert(Object, Type)} converts a value of the source type to the target type, either
+     * of which may be generic. Two classes are answered as {@link #isConversionSupportedFor(Class, Class)} answers
+     * them. Otherwise the raw classes must convert -- or, for a collection, a map or an array whose elements
+     * {@link #convert(Object, Type)} converts, the source must be what it takes them from: a collection or an array
+     * (a map, for a map) -- and where both types say what their elements are, each element type must convert to its
+     * counterpart: {@code List<String>} to {@code Set<LocalDate>} asks String to LocalDate,
+     * so does {@code String[]} to {@code List<LocalDate>}, and {@code Map<String, String>} to
+     * {@code Map<Integer, UUID>} asks String to Integer and String to UUID. Where either side does not say
+     * ({@code List}, {@code List<?>}, {@code List<Object>}), the elements are taken to convert, as an Object[]'s are.
+     * To {@code Optional<X>}, the source's content (an Optional's) or the source itself must convert to X. A wildcard
+     * or a type variable target is answered as {@link #convert(Object, Type)} treats it.
+     *
+     * @param source the type of the value to convert, a Class or a generic type
+     * @param target the type to convert to, a Class or a generic type
+     * @return true if the conversion is supported, elements included where both types name them
+     * @throws IllegalArgumentException if either type is null (with two classes or nulls, as
+     *                                  {@link #isConversionSupportedFor(Class, Class)} says it)
+     */
+    public boolean isConversionSupportedFor(Type source, Type target) {
+        if ((source == null || source instanceof Class) && (target == null || target instanceof Class)) {
+            return isConversionSupportedFor((Class<?>) source, (Class<?>) target);     // a null answered as there
+        }
+        if (source == null || target == null) {
+            throw new IllegalArgumentException("source and target types cannot be null");
+        }
+        if (target instanceof WildcardType || target instanceof TypeVariable) {
+            return isConversionSupportedFor(source, targetOf(target));
+        }
+        Class<?> rawSource = TypeUtilities.getRawClass(source);
+        Class<?> rawTarget = TypeUtilities.getRawClass(target);
+        if (rawTarget == Optional.class && target instanceof ParameterizedType) {
+            Type content = elementTypes(target)[0];
+            if (asksNothing(content)) {
+                return true;
+            }
+            if (rawSource != Optional.class) {
+                return isConversionSupportedFor(source, content);
+            }
+            Type[] held = elementTypes(source);
+            return held == null || asksNothing(held[0]) || isConversionSupportedFor(held[0], content);
+        }
+        if (!holdsWhatItConverts(rawSource, target) && !isConversionSupportedFor(rawSource, rawTarget)) {
+            return false;
+        }
+        Type[] from = elementTypes(source);
+        Type[] to = elementTypes(target);
+        if (from == null || to == null || from.length != to.length) {
+            return true;
+        }
+        for (int i = 0; i < from.length; i++) {
+            if (!asksNothing(from[i]) && !asksNothing(to[i]) && !isConversionSupportedFor(from[i], to[i])) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Whether {@link #convert(Object, Type)} makes the target itself, converting the elements (or keys and values) of
+     * a source of this class: a collection or an array to a collection or an array whose elements it converts, a map
+     * to a map whose keys or values it converts. (Then the raw classes need not convert: Map to Map, to an EnumSet.)
+     */
+    private static boolean holdsWhatItConverts(Class<?> source, Type target) {
+        boolean elements = source.isArray() || Collection.class.isAssignableFrom(source);
+        if (target instanceof GenericArrayType) {
+            return elements;
+        }
+        Class<?> raw = TypeUtilities.getRawClass(target);
+        if (Collection.class.isAssignableFrom(raw)) {
+            Type element = TypeUtilities.inferElementType(target, Object.class);
+            return elements && !asksNothing(element)
+                    && (!EnumSet.class.isAssignableFrom(raw) || TypeUtilities.getRawClass(element).isEnum());
+        }
+        return Map.class.isAssignableFrom(raw) && Map.class.isAssignableFrom(source)
+                && (!asksNothing(TypeUtilities.inferKeyType(target))
+                || !asksNothing(TypeUtilities.inferElementType(target, Object.class)));
+    }
+
+    /**
+     * The types a container type holds: an array's component, a collection's element, a map's key and value, an
+     * Optional's content; null for a raw container or a type that holds none.
+     */
+    private static Type[] elementTypes(Type type) {
+        if (type instanceof GenericArrayType) {
+            return new Type[] {((GenericArrayType) type).getGenericComponentType()};
+        }
+        if (type instanceof Class) {
+            Class<?> c = (Class<?>) type;
+            return c.isArray() ? new Type[] {c.getComponentType()} : null;
+        }
+        if (!(type instanceof ParameterizedType)) {
+            return null;
+        }
+        Class<?> raw = TypeUtilities.getRawClass(type);
+        if (raw == Optional.class) {
+            return ((ParameterizedType) type).getActualTypeArguments();
+        }
+        if (Map.class.isAssignableFrom(raw)) {
+            return new Type[] {TypeUtilities.inferKeyType(type), TypeUtilities.inferElementType(type, Object.class)};
+        }
+        return Collection.class.isAssignableFrom(raw)
+                ? new Type[] {TypeUtilities.inferElementType(type, Object.class)} : null;
     }
 
     private static boolean isValidConversion(Convert<?> method) {

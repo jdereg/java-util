@@ -230,6 +230,26 @@ public final class CollectionConversions {
     }
 
     /**
+     * A collection of the target type holding the given elements as they are: a collection among them stays as it is
+     * (collectionToCollection makes it one of the target type too). {@link Converter#convert(Object,
+     * java.lang.reflect.Type)} hands it the elements it has converted.
+     *
+     * @param elements   the elements, in order
+     * @param targetType the collection type to make
+     * @return a collection of the target type
+     */
+    @SuppressWarnings("unchecked")
+    static Object collectionOf(Collection<?> elements, Class<?> targetType) {
+        Collection<Object> made = (Collection<Object>) createCollection(elements, targetType);
+        if (isEmptyCollection(targetType)) {
+            return made;
+        }
+        made.addAll(elements);
+        // a synchronized or checked target's collection is made wrapped already; an unmodifiable one is filled first
+        return isUnmodifiable(targetType) ? getUnmodifiableCollection(made) : made;
+    }
+
+    /**
      * Determines if the specified target type represents one of the empty
      * collection wrapper classes.
      */

@@ -3645,6 +3645,45 @@ Object[] enumArray = {Day.MONDAY, "TUESDAY", 3};
 EnumSet<Day> days = (EnumSet<Day>)(Object)converter.convert(enumArray, Day.class);
 ```
 
+**Generic Types:**
+
+`convert(Object, java.lang.reflect.Type)` takes a generic type, such as a field's `getGenericType()`, and converts
+what the container holds as well: each element of a `List<LocalDate>`, each key and value of a
+`Map<String, ZonedDateTime>`, the content of an `Optional<UUID>`. A `Class` argument still calls
+`convert(Object, Class)`, which can't say what a collection should hold.
+```java
+public class Invoice {
+    public List<LocalDate> dueDates;
+    public Map<String, ZonedDateTime> events;
+    public Optional<UUID> account;
+}
+
+Type dates = Invoice.class.getField("dueDates").getGenericType();
+List<LocalDate> dueDates = converter.convert(Arrays.asList("2026-01-15", "2026-02-01"), dates);   // LocalDates
+List<LocalDate> fromArray = converter.convert(new String[] {"2026-01-15"}, dates);
+
+Map<String, ZonedDateTime> events = converter.convert(textMap, Invoice.class.getField("events").getGenericType());
+Optional<UUID> account = converter.convert("123e4567-e89b-12d3-a456-426614174000",
+        Invoice.class.getField("account").getGenericType());   // Optional.of(uuid); null gives Optional.empty()
+```
+- **Collections** (`List<E>`, `Set<E>`, `TreeSet<E>`, `EnumSet<E>`, ...) are built from a collection or an array, each
+  element converted to E in the source's order. A sorted set is ordered by the converted values: `["10", "9"]` to a
+  `TreeSet<Integer>` gives `[9, 10]`.
+- **Maps** (`Map<K, V>` and subtypes) convert each key to K and each value to V. A sorted map is ordered by the
+  converted keys. A map class whose type argument is only its value (`Codes<V> extends HashMap<String, V>`) is
+  handled.
+- **Nested types** are converted at every level: `Map<String, List<LocalDate>>`, `List<List<Integer>>`. An inner
+  collection keeps the type it is declared as. A Class target works differently: `convert(listOfLists, Set.class)`
+  turns the inner lists into sets as well.
+- **Wildcards and type variables**: `? super Integer` converts to Integer, `? extends Number` to Number, and a type
+  variable to its bound's class.
+- **The raw class is used** when the type asks nothing of its contents (`List<?>`, `Map<Object, Object>`) or isn't a
+  container (`Comparable<String>`). Null is also converted as it is for the raw class, except that `Optional<X>` gives
+  `Optional.empty()`.
+
+The static `com.cedarsoftware.util.Converter` has the same `convert(Object, Type)` and
+`isConversionSupportedFor(Type, Type)`.
+
 **Custom Conversions:**
 ```java
 // Instance-specific custom converter (recommended)
@@ -3929,6 +3968,10 @@ import java.util.concurrent.atomic.AtomicInteger;
 // Check if conversion is supported
 boolean canConvert = converter.isConversionSupportedFor(
         String.class, Integer.class);  // will look up inheritance chain
+
+// With generic types, the element types are checked where both sides name them
+boolean datesOk = converter.isConversionSupportedFor(
+        stringListType, localDateSetType);   // List<String> to Set<LocalDate>: asks String to LocalDate
 
 // Check direct conversion
 boolean directSupport = converter.isDirectConversionSupported(

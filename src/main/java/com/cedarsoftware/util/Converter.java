@@ -1,5 +1,6 @@
 package com.cedarsoftware.util;
 
+import java.lang.reflect.Type;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
@@ -321,6 +322,23 @@ public final class Converter
     }
 
     /**
+     * Converts the given object to a {@link Type}, which may be generic ({@code List<LocalDate>},
+     * {@code Map<String, ZonedDateTime>}, {@code Optional<UUID>}): the elements, keys and values, or content are
+     * each converted to their own type. A Class is converted to exactly as {@link #convert(Object, Class)} converts
+     * to it. See {@link com.cedarsoftware.util.convert.Converter#convert(Object, Type)} for each kind of type.
+     *
+     * @param from   the value to convert; may be null
+     * @param toType the type to convert to, a Class or a generic type; not null
+     * @param <T>    the type of the result
+     * @return the value converted to {@code toType}
+     * @throws IllegalArgumentException if {@code toType} is null, or the value or one of its elements cannot be
+     *                                  converted
+     */
+    public static <T> T convert(Object from, Type toType) {
+        return instance.convert(from, toType);
+    }
+
+    /**
      * Adds a new conversion function for converting from one type to another in the global static context.
      * This conversion will be available to all static {@link #convert(Object, Class)} calls but will NOT 
      * be visible to individual Converter instances created via {@code new Converter()}.
@@ -373,6 +391,19 @@ public final class Converter
      *         false otherwise
      */
     public static boolean isConversionSupportedFor(Class<?> source, Class<?> target) {
+        return instance.isConversionSupportedFor(source, target);
+    }
+
+    /**
+     * Determines whether {@link #convert(Object, Type)} converts a value of the source type to the target type, either
+     * of which may be generic: the raw classes must convert, and where both types name their elements, so must the
+     * elements. See {@link com.cedarsoftware.util.convert.Converter#isConversionSupportedFor(Type, Type)}.
+     *
+     * @param source the type of the value to convert, a Class or a generic type
+     * @param target the type to convert to, a Class or a generic type
+     * @return true if the conversion is supported, elements included where both types name them
+     */
+    public static boolean isConversionSupportedFor(Type source, Type target) {
         return instance.isConversionSupportedFor(source, target);
     }
 

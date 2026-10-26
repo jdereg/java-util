@@ -777,6 +777,8 @@ public class ClassUtilities {
         private final boolean allowNullsFirst;
         /** The matcher's decisions for this argument shape, or null: match on every call. */
         private final ArgumentBinding binding;
+        /** For a plan that remembers no constructor builds this shape: why not, as the first attempt said; else null. */
+        private final String failure;
 
         private ConstructorPlan(Constructor<?> constructor, Parameter[] parameters, boolean allowNullsFirst) {
             this(constructor, parameters, allowNullsFirst, null);
@@ -788,6 +790,16 @@ public class ClassUtilities {
             this.parameters = parameters == null ? EMPTY_PARAMETERS : parameters;
             this.allowNullsFirst = allowNullsFirst;
             this.binding = binding == null || !binding.replayable ? null : binding;
+            this.failure = null;
+        }
+
+        /** That no constructor builds this shape, and why. */
+        private ConstructorPlan(String failure) {
+            this.constructor = null;
+            this.parameters = EMPTY_PARAMETERS;
+            this.allowNullsFirst = false;
+            this.binding = null;
+            this.failure = failure;
         }
     }
 
@@ -3342,12 +3354,15 @@ public class ClassUtilities {
 
         Optional<ConstructorPlan> cachedPlanResult = classPlanCache.get(argumentShapeKey);
         if (cachedPlanResult != null) {
-            if (!cachedPlanResult.isPresent()) {
+            if (!cachedPlanResult.isPresent() || cachedPlanResult.get().failure != null) {
                 Object instance = tryUnsafeInstantiation(c);
                 if (instance != null) {
                     return instance;
                 }
-                throw new IllegalArgumentException("Unable to instantiate (cached): " + c.getName());
+                // The first attempt's reason: the outcome of this shape depends on no value, so it is this call's too.
+                // It was "Unable to instantiate (cached)", the constructors' own errors gone.
+                throw new IllegalArgumentException(cachedPlanResult.isPresent() ? cachedPlanResult.get().failure
+                        : "Unable to instantiate (cached): " + c.getName());
             }
 
             try {
@@ -3603,10 +3618,6 @@ public class ClassUtilities {
             return instance;
         }
 
-        if (cacheFailure) {
-            rememberPlan(classPlanCache, argumentShapeKey, Optional.empty());
-        }
-
         // If we get here, we couldn't create the instance
         String msg = "Unable to instantiate: " + c.getName();
         if (!exceptions.isEmpty()) {
@@ -3627,6 +3638,9 @@ public class ClassUtilities {
             }
         }
 
+        if (cacheFailure) {
+            rememberPlan(classPlanCache, argumentShapeKey, Optional.of(new ConstructorPlan(msg)));
+        }
         throw new IllegalArgumentException(msg);
     }
 

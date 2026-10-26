@@ -153,4 +153,36 @@ class ClassUtilitiesConstructorPlanCacheTest {
         Positive after = (Positive) ClassUtilities.newInstance(converter, Positive.class, Collections.singletonList(9));
         assertEquals(9, after.x);
     }
+
+    /** Its only constructor refuses the defaults a call without arguments gives it. */
+    static class Refuses {
+        static final java.util.concurrent.atomic.AtomicInteger RUNS = new java.util.concurrent.atomic.AtomicInteger();
+        final String number;
+
+        Refuses(String number) {
+            RUNS.incrementAndGet();
+            if (number == null || !number.startsWith("P-")) {
+                throw new IllegalArgumentException("number must start with P-");
+            }
+            this.number = number;
+        }
+    }
+
+    /**
+     * A call whose outcome depends on no value (no arguments: the constructors get defaults) is remembered as failing,
+     * and a later one says why, as the first did. It was "Unable to instantiate (cached): ..", the constructors' own
+     * errors gone -- json-io's error for a class it could not build read so after the first read of that class.
+     */
+    @Test
+    void aRememberedFailureSaysWhy() {
+        IllegalArgumentException first = assertThrows(IllegalArgumentException.class,
+                () -> ClassUtilities.newInstance(converter, Refuses.class, Collections.emptyList()));
+        assertTrue(first.getMessage().contains("must start with P-"), first.getMessage());
+        int runs = Refuses.RUNS.get();
+        IllegalArgumentException second = assertThrows(IllegalArgumentException.class,
+                () -> ClassUtilities.newInstance(converter, Refuses.class, Collections.emptyList()));
+        assertEquals(first.getMessage(), second.getMessage());
+        assertFalse(second.getMessage().contains("(cached)"), second.getMessage());
+        assertEquals(runs, Refuses.RUNS.get());     // remembered: the constructor is not run again
+    }
 }

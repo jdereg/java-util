@@ -555,7 +555,10 @@ public final class DateUtilities {
     // an offset zone java.time writes ("UTC+05:00", "UT-03:00", "GMT+05:30", "UTC+05:00:30"), or a region / name
     private static final String tzNamedCore =
             "(?:(?:GMT|UTC|UT)[+-]\\d{2}:\\d{2}(?::\\d{2})?|[A-Za-z][A-Za-z0-9~/._+-]{1,50})";
-    private static final String tzNamed = wsOp + "(?:\\[" + tzNamedCore + "]|" + tzNamedCore + ")";
+    // In brackets an offset too: "2026-01-15T10:00:00+05:00[+05:00]", as java.time's appendZoneId() writes an offset
+    // zone (json-io did; it was left over, and the text refused)
+    private static final String tzNamed = wsOp + "(?:\\[(?:" + tzNamedCore + "|" + tz_Hh_MM_SS + "|" + tz_Hh_MM + ")]|"
+            + tzNamedCore + ")";
     private static final String nano = "\\.\\d+";      // past 9 digits, truncated to nanoseconds
 
     // Patterns defined in BNF influenced style using above named elements

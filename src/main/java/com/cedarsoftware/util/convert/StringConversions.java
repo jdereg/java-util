@@ -27,6 +27,7 @@ import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
+import java.time.temporal.TemporalAccessor;
 import java.util.Base64;
 import java.util.Calendar;
 import java.util.Currency;
@@ -1079,7 +1080,41 @@ final class StringConversions {
         if (number != null) {
             return number;
         }
-        return parseZoned(from, converter);
+        ZonedDateTime iso = isoZoned(((String) from).trim());
+        return iso != null ? iso : parseZoned(from, converter);
+    }
+
+    /**
+     * ISO-8601 text with an offset, and a zone in brackets or not -- what {@code ZonedDateTime.toString()} and this
+     * Converter write -- in the zone it names, exactly: {@code ..+05:00} the offset +05:00, {@code ..Z[GMT]} GMT, as
+     * {@code ZonedDateTime.parse} reads them. DateUtilities, which reads all other text, gives those as GMT+05:00 and
+     * Etc/GMT, so the Converter's own text did not read back equal. Null for other text, and for an offset the zone
+     * did not have then (a region's local mean time written to the minute): DateUtilities keeps its instant. A
+     * trailing Z is left to DateUtilities too, which reads it as the zone Z, and faster.
+     */
+    private static ZonedDateTime isoZoned(String text) {
+        int len = text.length();
+        if (len < 17 || text.charAt(len - 1) == 'Z' || text.charAt(4) != '-' || text.charAt(7) != '-'
+                || text.charAt(10) != 'T') {
+            return null;
+        }
+        // the offset after the time, Z or a sign and hh:mm, checked here: a failed parse costs an exception
+        int i = 16;
+        char c;
+        while ((c = text.charAt(i)) == ':' || c == '.' || (c >= '0' && c <= '9')) {
+            if (++i == len) {
+                return null;
+            }
+        }
+        if (c != 'Z' && ((c != '+' && c != '-') || i + 3 >= len || text.charAt(i + 3) != ':')) {
+            return null;
+        }
+        try {
+            TemporalAccessor parsed = DateTimeFormatter.ISO_ZONED_DATE_TIME.parse(text);
+            return ZonedDateTime.ofStrict(LocalDateTime.from(parsed), ZoneOffset.from(parsed), ZoneId.from(parsed));
+        } catch (DateTimeException notIsoZoned) {
+            return null;
+        }
     }
 
     /** The date-time text names, read by DateUtilities, for a caller that has already ruled out number text. */

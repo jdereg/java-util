@@ -1,4 +1,8 @@
 ### Revision History
+* 2.2.1
+  * `AiClient` now streams responses (server-sent events) for OpenAI, Gemini and Claude, fixing timeouts on long generations. The 5-minute total request timeout is replaced by a 2-minute wait for the response headers and a 5-minute limit on silence within the stream.
+  * `AiClient`: errors reported inside the stream (e.g. Claude `overloaded_error`) are returned with `"httpError"` and retried. An empty response text now counts as an error (`"aiError"`) and is retried.
+  * `AiClient`: Gemini responses join all text parts and skip thought parts.
 * 2.0.0
   * Upgraded from Java 8 to Java 11.
   * Updated `ReflectionUtils.getClassNameFromByteCode()` to handle up to Java 17 `class` file format.

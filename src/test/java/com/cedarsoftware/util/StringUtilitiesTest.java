@@ -1100,4 +1100,71 @@ public class StringUtilitiesTest
         assertEquals("", StringUtilities.repeat("", 5));
         assertNull(StringUtilities.repeat(null, 5));
     }
+
+    /** What containsIgnoreCase() answered before it skipped anything: a case-blind compare at every index. */
+    private static boolean containsAtEveryIndex(String text, String sought) {
+        for (int i = 0; i <= text.length() - sought.length(); i++) {
+            if (text.regionMatches(true, i, sought, 0, sought.length())) {
+                return true;
+            }
+        }
+        return sought.isEmpty();
+    }
+
+    /**
+     * containsIgnoreCase() skips the places an ASCII character rules out, and answers as a compare at every place
+     * does: 300,000 random texts and words from letters in both cases and from the characters that fold into ASCII
+     * or out of it (the Kelvin sign, the long s, the dotless and dotted i, the sharp s, a Greek pair, surrogates).
+     */
+    @Test
+    void containsIgnoreCaseAnswersAsACompareAtEveryIndex() {
+        String alphabet = "abkKsSiI zZ0-\u212A\u017F\u0131\u0130\u00DF\u03A3\u03C3\u03C2\uD801\uDC00\uD801\uDC28";
+        java.util.Random random = new java.util.Random(20261125L);
+        for (int n = 0; n < 300_000; n++) {
+            StringBuilder text = new StringBuilder();
+            StringBuilder sought = new StringBuilder();
+            for (int i = random.nextInt(14); i > 0; i--) {
+                text.append(alphabet.charAt(random.nextInt(alphabet.length())));
+            }
+            for (int i = 1 + random.nextInt(4); i > 0; i--) {
+                sought.append(alphabet.charAt(random.nextInt(alphabet.length())));
+            }
+            String t = text.toString();
+            String s = sought.toString();
+            if (t.length() >= s.length()) {
+                assertEquals(containsAtEveryIndex(t, s), StringUtilities.containsIgnoreCase(t, s),
+                        "text [" + t + "] sought [" + s + "]");
+            }
+        }
+        assertTrue(StringUtilities.containsIgnoreCase("gzip, deflate", "GZIP"));
+        assertTrue(StringUtilities.containsIgnoreCase("deflate, gzip", "GZip"));
+        assertTrue(StringUtilities.containsIgnoreCase("x-\u212Aelvin", "kelvin"));       // Kelvin sign folds to k
+        assertFalse(StringUtilities.containsIgnoreCase("deflate, br", "gzip"));
+        assertTrue(StringUtilities.containsIgnoreCase("abc", ""));
+        assertFalse(StringUtilities.containsIgnoreCase("ab", "abc"));
+        assertFalse(StringUtilities.containsIgnoreCase(null, "a"));
+    }
+
+    /** The two rules for whitespace, as the Javadoc now states them: isEmpty()'s is wider than trim()'s. */
+    @Test
+    void theTwoWhitespaceRulesAreTheOnesTheJavadocStates() {
+        String ideographicSpace = "\u3000";
+        assertTrue(StringUtilities.isEmpty(ideographicSpace));
+        assertFalse(StringUtilities.hasContent(ideographicSpace));
+        assertEquals(1, StringUtilities.trimLength(ideographicSpace));
+        assertEquals(ideographicSpace, StringUtilities.trimToEmpty(ideographicSpace));
+        assertNull(StringUtilities.trimToNull(ideographicSpace));                        // the wider rule decides
+        String nul = "\u0000";
+        assertTrue(StringUtilities.hasContent(nul));
+        assertEquals(0, StringUtilities.trimLength(nul));
+        assertNull(StringUtilities.trimToNull(nul));
+        assertEquals("x", StringUtilities.trimToNull(" x\t"));
+        // isNumeric: the digits Character.isDigit(char) knows, at any length
+        assertTrue(StringUtilities.isNumeric("0123456789"));
+        assertTrue(StringUtilities.isNumeric("\u0661\u0662"));                           // Arabic-Indic 1 and 2
+        assertTrue(StringUtilities.isNumeric("12345678901234567890"));                   // twenty digits: past a long
+        assertFalse(StringUtilities.isNumeric("\uD835\uDFCF"));                          // a digit outside the BMP
+        assertFalse(StringUtilities.isNumeric("12a"));
+        assertFalse(StringUtilities.isNumeric(""));
+    }
 }

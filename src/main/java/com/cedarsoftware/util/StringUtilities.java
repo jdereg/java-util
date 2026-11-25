@@ -307,8 +307,32 @@ public final class StringUtilities {
         
         int searchLen = s2.length();
         int maxIndex = s1.length() - searchLen;
-        
-        for (int i = 0; i <= maxIndex; i++) {
+
+        // The start of the text first, where a match most often is ("gzip" in "gzip, deflate").
+        if (s1.regionMatches(true, 0, s2, 0, searchLen)) {
+            return true;
+        }
+
+        char first = s2.charAt(0);
+        if (first < 128) {
+            // An ASCII character of the text that is neither case of the first character sought cannot begin a
+            // match, so the compare is not started there. A character outside ASCII may fold to an ASCII letter
+            // (the Kelvin sign to k, the long s to s), so the compare always decides for those.
+            char lower = first >= 'A' && first <= 'Z' ? (char) (first + 32) : first;
+            char upper = first >= 'a' && first <= 'z' ? (char) (first - 32) : first;
+            for (int i = 1; i <= maxIndex; i++) {
+                char c = s1.charAt(i);
+                if (c < 128 && c != lower && c != upper) {
+                    continue;
+                }
+                if (s1.regionMatches(true, i, s2, 0, searchLen)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        for (int i = 1; i <= maxIndex; i++) {
             if (s1.regionMatches(true, i, s2, 0, searchLen)) {
                 return true;
             }

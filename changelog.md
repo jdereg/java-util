@@ -1,5 +1,7 @@
 ### Revision History
 
+#### 4.119.0 - (unreleased)
+* **BUILD**: Test scope: `json-io` 4.117.0 → **4.118.0**, released alongside java-util 4.118.0.
 #### 4.118.0 - 2026-10-26
 **Upgrading from 4.117.0 -- what can change a result.** Each row is pinned by `UpgradeTo4118NotesTest`; every
 example gave the 4.117.0 answer shown. The entries below have the details.

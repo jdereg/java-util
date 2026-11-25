@@ -498,9 +498,12 @@ public final class ArrayUtilities {
     @SuppressWarnings("unchecked")
     public static <T> T[] nullToEmpty(Class<T> componentType, T[] array) {
         Objects.requireNonNull(componentType, "componentType is null");
+        if (array != null) {
+            return array;       // nothing is created: no class to judge, and no settings to read
+        }
         // Security: Validate component type before array creation
         validateComponentType(componentType);
-        return array == null ? (T[]) Array.newInstance(componentType, 0) : array;
+        return (T[]) Array.newInstance(componentType, 0);
     }
 
     /**
@@ -730,15 +733,22 @@ public final class ArrayUtilities {
      *
      * @param array the source array from which to extract elements
      * @param start the initial index of the range, inclusive
-     * @param end   the final index of the range, exclusive
+     * @param end   the final index of the range, exclusive. It may lie past the end of the array: the result is
+     *              then padded with nulls to {@code end - start} elements, as {@link Arrays#copyOfRange} pads it
      * @param <T>   the component type of the array
      * @return a new array containing the specified range from the original array
      * @throws ArrayIndexOutOfBoundsException if {@code start} is negative or greater than the array length
      * @throws IllegalArgumentException if {@code start} is greater than {@code end}
      * @throws NullPointerException if the input array is null
+     * @throws SecurityException if {@code end - start} is past the array-size limit, when that limit is on
      * @see Arrays#copyOfRange(Object[], int, int)
      */
     public static <T> T[] getArraySubset(T[] array, int start, int end) {
+        if (array != null && end > start) {
+            // the one method that sizes an array from a number the caller passes: an end past the array's length
+            // pads with nulls, so getArraySubset(oneElement, 0, 10_000_000) is a 10 million element array
+            validateArraySize((long) end - start);
+        }
         return Arrays.copyOfRange(array, start, end);
     }
 

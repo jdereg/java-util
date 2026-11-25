@@ -9,6 +9,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -493,5 +494,40 @@ public class ArrayUtilitiesSecurityTest {
         assertDoesNotThrow(() -> {
             ArrayUtilities.nullToEmpty(Integer.class, null);
         }, "Integer should be allowed with custom patterns");
+    }
+
+    /**
+     * nullToEmpty() creates an array only when it is given none, so only then is there a class to refuse. It
+     * checked the component type first, and so refused to hand back the caller's own array: with the dangerous-class
+     * check on, nullToEmpty(Runtime.class, existing) threw though it creates nothing.
+     */
+    @Test
+    public void testNullToEmptyReturnsAnExistingArrayWithoutJudgingItsClass() {
+        Runtime[] existing = new Runtime[]{Runtime.getRuntime()};
+        assertSame(existing, ArrayUtilities.nullToEmpty(Runtime.class, existing));
+        assertThrows(SecurityException.class, () -> ArrayUtilities.nullToEmpty(Runtime.class, null));
+        String[] words = {"a"};
+        assertSame(words, ArrayUtilities.nullToEmpty(String.class, words));
+        assertEquals(0, ArrayUtilities.nullToEmpty(String.class, null).length);
+    }
+
+    /**
+     * getArraySubset() is held to the array-size limit like every other method that creates an array. It was the
+     * one that allocates from a number the caller passes: an end past the array's length pads the result with nulls
+     * (as Arrays.copyOfRange does), so with a limit of 1,000 getArraySubset(oneElement, 0, 10_000_000) still made a
+     * 10 million element array.
+     */
+    @Test
+    public void testGetArraySubsetIsHeldToTheArraySizeLimit() {
+        System.setProperty("arrayutilities.max.array.size", "1000");
+        String[] small = {"a", "b"};
+        SecurityException e = assertThrows(SecurityException.class,
+                () -> ArrayUtilities.getArraySubset(small, 0, 10_000_000));
+        assertTrue(e.getMessage().contains("Array size too large"), e.getMessage());
+        assertArrayEquals(new String[]{"b", null, null}, ArrayUtilities.getArraySubset(small, 1, 4));   // padded
+        assertEquals(1000, ArrayUtilities.getArraySubset(small, 0, 1000).length);                       // at the limit
+        assertArrayEquals(new String[]{"a"}, ArrayUtilities.getArraySubset(small, 0, 1));
+        assertThrows(IllegalArgumentException.class, () -> ArrayUtilities.getArraySubset(small, 2, 1)); // as before
+        assertThrows(NullPointerException.class, () -> ArrayUtilities.getArraySubset((String[]) null, 0, 1));
     }
 }

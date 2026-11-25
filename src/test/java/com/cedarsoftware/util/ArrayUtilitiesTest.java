@@ -116,6 +116,7 @@ public class ArrayUtilitiesTest
         }
     }
 
+    @Test
     public void testInvalidClassDuringAddAll()
     {
         Long[] one = new Long[] { 1L, 2L };

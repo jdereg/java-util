@@ -93,8 +93,11 @@ import java.util.zip.InflaterInputStream;
  *   <li><code>io.debug=false</code> &mdash; Enable debug logging</li>
  *   <li><code>io.connect.timeout=5000</code> &mdash; Connection timeout (1s-5min)</li>
  *   <li><code>io.read.timeout=30000</code> &mdash; Read timeout (1s-5min)</li>
- *   <li><code>io.max.stream.size=2147483647</code> &mdash; Stream size limit (2GB)</li>
- *   <li><code>io.max.decompression.size=2147483647</code> &mdash; Decompression size limit (2GB)</li>
+ *   <li><code>io.max.stream.size</code> &mdash; Limit on a stream read into memory. Not set: half the JVM's
+ *       maximum heap, at most 2 GB</li>
+ *   <li><code>io.max.decompression.size</code> &mdash; Limit on data decompressed into memory. Not set: half the
+ *       JVM's maximum heap, at most 2 GB. When set, it also limits the gzip or deflate response that
+ *       {@link #getInputStream(URLConnection)} decodes</li>
  *   <li><code>io.path.validation.disabled=false</code> &mdash; Path security validation enabled</li>
  *   <li><code>io.url.protocol.validation.disabled=false</code> &mdash; URL protocol validation enabled</li>
  *   <li><code>io.allowed.protocols=http,https,file,jar</code> &mdash; Allowed URL protocols</li>
@@ -140,9 +143,9 @@ public final class IOUtilities {
     private static volatile String cachedReadTimeoutProperty;
     private static volatile int cachedReadTimeout = DEFAULT_READ_TIMEOUT;
     private static volatile String cachedMaxStreamSizeProperty;
-    private static volatile int cachedMaxStreamSize = Integer.MAX_VALUE;
+    private static volatile int cachedMaxStreamSize = defaultMaxInMemorySize();
     private static volatile String cachedMaxDecompressionSizeProperty;
-    private static volatile int cachedMaxDecompressionSize = Integer.MAX_VALUE;
+    private static volatile int cachedMaxDecompressionSize = defaultMaxInMemorySize();
     private static volatile String cachedAllowedProtocolsProperty = DEFAULT_ALLOWED_PROTOCOLS;
     private static volatile String[] cachedAllowedProtocols = {"http", "https", "file", "jar"};
     static { LoggingConfig.init(); }
@@ -249,10 +252,10 @@ public final class IOUtilities {
                 return defaultValue;
             }
 
-            // Prevent overflow and extremely large values
-            if (size > Integer.MAX_VALUE) {
-                debug("Configured " + propertyType + " too large, using maximum safe value", null);
-                return Integer.MAX_VALUE;
+            // No array is larger than this, so no larger limit could ever be reached
+            if (size > MAX_ARRAY_SIZE) {
+                debug("Configured " + propertyType + " too large, using the largest array size", null);
+                return MAX_ARRAY_SIZE;
             }
 
             return (int) size;
@@ -306,12 +309,27 @@ public final class IOUtilities {
         return cachedReadTimeout;
     }
 
+    /** The largest array a JVM allocates: new byte[Integer.MAX_VALUE] is refused whatever the heap. */
+    private static final int MAX_ARRAY_SIZE = Integer.MAX_VALUE - 8;
+
+    /**
+     * The limit on data read into memory when its property is not set: half of the heap this JVM may use, and no
+     * more than the largest array. The default was Integer.MAX_VALUE, which no read can reach -- an array of that
+     * size cannot be allocated -- so the limit never spoke, and a small gzip that inflates past the heap ended in
+     * OutOfMemoryError (an Error, which the documented exception is not and catch (Exception) does not catch).
+     * Half the heap refuses nothing that worked: until 4.119.0 a read held its data twice at the end, in the
+     * growing buffer and in the copy returned, so a result of more than half the heap could not be produced.
+     */
+    static int defaultMaxInMemorySize() {
+        return (int) Math.min(MAX_ARRAY_SIZE, Math.max(1L, Runtime.getRuntime().maxMemory() / 2));
+    }
+
     private static int getCachedMaxStreamSize() {
         String propertyValue = getProperty(PROP_MAX_STREAM_SIZE, "max stream size");
         if (!Objects.equals(propertyValue, cachedMaxStreamSizeProperty)) {
             synchronized (CONFIG_CACHE_LOCK) {
                 if (!Objects.equals(propertyValue, cachedMaxStreamSizeProperty)) {
-                    cachedMaxStreamSize = parseValidatedSizeValue(propertyValue, Integer.MAX_VALUE, "max stream size");
+                    cachedMaxStreamSize = parseValidatedSizeValue(propertyValue, defaultMaxInMemorySize(), "max stream size");
                     cachedMaxStreamSizeProperty = propertyValue;
                 }
             }
@@ -324,7 +342,7 @@ public final class IOUtilities {
         if (!Objects.equals(propertyValue, cachedMaxDecompressionSizeProperty)) {
             synchronized (CONFIG_CACHE_LOCK) {
                 if (!Objects.equals(propertyValue, cachedMaxDecompressionSizeProperty)) {
-                    cachedMaxDecompressionSize = parseValidatedSizeValue(propertyValue, Integer.MAX_VALUE, "max decompression size");
+                    cachedMaxDecompressionSize = parseValidatedSizeValue(propertyValue, defaultMaxInMemorySize(), "max decompression size");
                     cachedMaxDecompressionSizeProperty = propertyValue;
                 }
             }
@@ -355,7 +373,7 @@ public final class IOUtilities {
     /**
      * Gets the default maximum stream size for security purposes.
      * Can be configured via system property 'io.max.stream.size'.
-     * Defaults to 2GB if not configured. Uses secure validation to prevent injection.
+     * Defaults to half the JVM's maximum heap (at most 2 GB) if not configured. Uses secure validation to prevent injection.
      *
      * @return the maximum allowed stream size in bytes
      */
@@ -366,7 +384,7 @@ public final class IOUtilities {
     /**
      * Gets the default maximum decompression size for security purposes.
      * Can be configured via system property 'io.max.decompression.size'.
-     * Defaults to 2GB if not configured. Uses secure validation to prevent injection.
+     * Defaults to half the JVM's maximum heap (at most 2 GB) if not configured. Uses secure validation to prevent injection.
      *
      * @return the maximum allowed decompressed data size in bytes
      */
@@ -956,10 +974,60 @@ public final class IOUtilities {
                 // so that InflaterInputStream.close() properly calls Inflater.end(),
                 // avoiding a native memory leak.
                 is = new InflaterInputStream(is);
+            } else {
+                return new BufferedInputStream(is, TRANSFER_BUFFER);
+            }
+            // A response this class inflates is held to io.max.decompression.size where the application has set
+            // it. Not by default: this is a stream, read on to a file or a consumer and not into memory, and a
+            // download may rightly be larger than the heap.
+            if (getProperty(PROP_MAX_DECOMPRESSION_SIZE, "max decompression size") != null) {
+                is = new LimitedInputStream(is, getCachedMaxDecompressionSize());
             }
         }
-
         return new BufferedInputStream(is, TRANSFER_BUFFER);
+    }
+
+    /** A stream that fails once more than {@code limit} bytes have been read from it. */
+    private static final class LimitedInputStream extends java.io.FilterInputStream {
+        private final long limit;
+        private long total;
+
+        LimitedInputStream(InputStream in, long limit) {
+            super(in);
+            this.limit = limit;
+        }
+
+        private int counted(int count) throws IOException {
+            if (count > 0 && (total += count) > limit) {
+                throw new IOException("Decompressed stream exceeds maximum allowed size: " + limit
+                        + " (io.max.decompression.size)");
+            }
+            return count;
+        }
+
+        @Override
+        public int read() throws IOException {
+            int b = in.read();
+            if (b != -1) {
+                counted(1);
+            }
+            return b;
+        }
+
+        @Override
+        public int read(byte[] bytes, int off, int len) throws IOException {
+            return counted(in.read(bytes, off, len));
+        }
+
+        @Override
+        public long skip(long n) throws IOException {
+            long skipped = in.skip(n);
+            if (skipped > 0 && (total += skipped) > limit) {
+                throw new IOException("Decompressed stream exceeds maximum allowed size: " + limit
+                        + " (io.max.decompression.size)");
+            }
+            return skipped;
+        }
     }
 
     /**
@@ -1350,7 +1418,7 @@ public final class IOUtilities {
      * Converts an InputStream's contents to a byte array.
      * <p>
      * This method loads the entire stream into memory, so use with appropriate consideration for memory usage.
-     * Uses a default maximum size limit (2GB) to prevent memory exhaustion attacks while allowing reasonable
+     * Uses a default maximum size limit (half the JVM's maximum heap, at most 2 GB) to prevent memory exhaustion attacks while allowing reasonable
      * data transfer operations. For custom limits, use {@link #inputStreamToBytes(InputStream, int)}.
      * </p>
      *
@@ -1505,7 +1573,7 @@ public final class IOUtilities {
      * Uncompresses a GZIP-compressed byte array with default size limits.
      * <p>
      * If the input is not GZIP-compressed, returns the original array unchanged.
-     * Uses a default maximum decompressed size (2GB) to prevent zip bomb attacks.
+     * Uses a default maximum decompressed size (half the JVM's maximum heap, at most 2 GB) to prevent zip bomb attacks.
      * </p>
      *
      * @param bytes the compressed byte array
@@ -1521,7 +1589,7 @@ public final class IOUtilities {
      * Uncompresses a portion of a GZIP-compressed byte array with default size limits.
      * <p>
      * If the input is not GZIP-compressed, returns the original array unchanged.
-     * Uses a default maximum decompressed size (2GB) to prevent zip bomb attacks.
+     * Uses a default maximum decompressed size (half the JVM's maximum heap, at most 2 GB) to prevent zip bomb attacks.
      * </p>
      *
      * @param bytes  the compressed byte array

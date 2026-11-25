@@ -5017,19 +5017,24 @@ IOUtilities provides configurable security and performance options through syste
 
 **Stream Size Limit:**
 ```bash
-# Set maximum stream size in bytes (default 2GB)
+# Set maximum stream size in bytes
 -Dio.max.stream.size=1073741824
 ```
-- **Default:** `2147483647` (2GB)
-- **Description:** Prevents memory exhaustion attacks by limiting stream size.
+- **Default:** half of the JVM's maximum heap, and at most 2,147,483,639 (the largest array). Through 4.118.0 it
+  was 2,147,483,647, which no read could reach.
+- **Description:** Limits a stream read into memory with `inputStreamToBytes()`: past the limit it throws, where
+  an unlimited read ends in `OutOfMemoryError`.
 
 **Decompression Size Limit:**
 ```bash
-# Set maximum decompressed data size in bytes (default 2GB)
+# Set maximum decompressed data size in bytes
 -Dio.max.decompression.size=1073741824
 ```
-- **Default:** `2147483647` (2GB)
-- **Description:** Prevents zip bomb attacks by limiting decompressed output size.
+- **Default:** half of the JVM's maximum heap, and at most 2,147,483,639.
+- **Description:** Limits what `uncompressBytes()` inflates into memory, so a small gzip that inflates to
+  gigabytes (a zip bomb) is refused with the documented exception. **When this property is set**, it also limits
+  a gzip or deflate response that `getInputStream(URLConnection)` decodes; by default such a stream has no limit,
+  because it is read on to a file or a consumer, not into memory, and a download may rightly be larger than the heap.
 
 **Path Validation Control:**
 ```bash

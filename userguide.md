@@ -6719,7 +6719,7 @@ public static int damerauLevenshteinDistance(CharSequence source, CharSequence t
 
 // Data generation
 public static String getRandomString(Random random, int minLen, int maxLen)
-public static String getRandomChar(Random random, boolean upper)
+public static char getRandomChar(Random random, boolean upper)
 
 // Encoding
 public static byte[] getBytes(String s, String encoding)
@@ -6736,6 +6736,7 @@ public static String removeLeadingAndTrailingQuotes(String input)
 
 // Utility
 public static int hashCodeIgnoreCase(String s)
+public static int hashCodeIgnoreCase(CharSequence cs)
 public static Set<String> commaSeparatedStringToSet(String commaSeparatedString)
 public static String snakeToCamel(String snake)
 public static String camelToSnake(String camel)
@@ -6813,8 +6814,8 @@ Random random = new Random();
 String random = StringUtilities.getRandomString(random, 5, 10);  // "Abcdef"
 
 // Generate random character
-String char = StringUtilities.getRandomChar(random, true);  // Uppercase
-String char = StringUtilities.getRandomChar(random, false); // Lowercase
+char upper = StringUtilities.getRandomChar(random, true);   // Uppercase
+char lower = StringUtilities.getRandomChar(random, false);  // Lowercase
 ```
 
 `getRandomString` validates its arguments and will throw
@@ -6857,14 +6858,13 @@ String reversed = StringUtilities.reverse("abc");    // "cba"
 // Efficient case-insensitive hash code
 int hash = StringUtilities.hashCodeIgnoreCase("Text");
 
-// The locale check is refreshed whenever the default locale changes
 
 // Optimized string counting
 int count = StringUtilities.count("text", 't');
 int count = StringUtilities.count("text text", "text");
 ```
 
-`count` now uses a standard `indexOf` loop to avoid overlap issues.
+`count` counts occurrences that do not overlap: `count("aaaa", "aa")` is 2.
 
 **Pattern Conversion:**
 ```java
@@ -6894,7 +6894,7 @@ int len = StringUtilities.trimLength(nullString);  // Returns 0
 ### Constants
 ```java
 StringUtilities.EMPTY           // Empty string ""
-StringUtilities.FOLDER_SEPARATOR // Forward slash "/"
+StringUtilities.FOLDER_SEPARATOR // File.separator: "/" or "\\" by platform
 ```
 
 Both constants are immutable (`final`).

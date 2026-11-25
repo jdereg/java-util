@@ -248,16 +248,11 @@ public class StringUtilitiesTest
         assertNull(StringUtilities.decode("1Z"));
     }
 
+    /** null in, null out, as encode(null) and the Javadoc say. (This test had no @Test, and expected an NPE.) */
+    @Test
     void testDecodeWithNull()
     {
-        try
-        {
-            StringUtilities.decode(null);
-            fail("should not make it here");
-        }
-        catch (NullPointerException e)
-        {
-        }
+        assertNull(StringUtilities.decode(null));
     }
 
 
@@ -617,6 +612,7 @@ public class StringUtilitiesTest
                 .isThrownBy(() -> StringUtilities.getRandomString(random, 5, 2));
     }
 
+    @Test
     void testGetBytesWithInvalidEncoding() {
         try
         {

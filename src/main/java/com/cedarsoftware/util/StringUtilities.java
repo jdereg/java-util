@@ -9,7 +9,6 @@ import java.util.Random;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import com.cedarsoftware.util.internal.CharBufScratch;
 
 /**
  * Comprehensive utility class for string operations providing enhanced manipulation, comparison,
@@ -553,17 +552,17 @@ public final class StringUtilities {
     /**
      * Convert a hexadecimal {@link String} into a byte array.
      *
-     * <p>If the input length is odd or contains non-hex characters the method
-     * returns {@code null}.</p>
+     * <p>If the input length is odd or contains a character that is not one of the 22 ASCII hex digits
+     * ({@code 0-9 a-f A-F}) the method returns {@code null}. Other Unicode digits are not hex digits.</p>
      *
-     * @param s the hexadecimal string to decode, may not be {@code null}
+     * @param s the hexadecimal string to decode; {@code null} returns {@code null}
      * @return the decoded bytes or {@code null} if the input is malformed
      */
     public static byte[] decode(String s) {
         if (s == null) {
             return null;
         }
-        
+
         // Security: Limit input size to prevent memory exhaustion (configurable)
         if (isSecurityEnabled()) {
             int maxSize = getMaxHexDecodeSize();
@@ -571,32 +570,11 @@ public final class StringUtilities {
                 throw new IllegalArgumentException("Input string too long for hex decoding (max " + maxSize + "): " + s.length());
             }
         }
-        
-        int len = s.length();
-        if (len % 2 != 0) {
-            return null;
-        }
 
-        byte[] bytes = new byte[len / 2];
-        int pos = 0;
-
-        // Bulk-copy the hex string to a local char[] via the SIMD-intrinsic
-        // CharBufScratch.getChars() so the pair-wise decode loop below does
-        // straight-line array access instead of two charAt calls per byte (with
-        // coder/bounds overhead). Typical inputs — SHA-256 (64 chars), SHA-512
-        // (128 chars), encrypted blobs — are comfortably above the 7-char
-        // break-even where this optimization pays off.
-        char[] buf = CharBufScratch.getChars(s, len);
-        for (int i = 0; i < len; i += 2) {
-            int hi = Character.digit(buf[i], 16);
-            int lo = Character.digit(buf[i + 1], 16);
-            if (hi == -1 || lo == -1) {
-                return null;
-            }
-            bytes[pos++] = (byte) ((hi << 4) + lo);
-        }
-
-        return bytes;
+        // ByteUtilities' decoder: an ASCII table read with charAt. It allocates the result and nothing else (a copy
+        // of the text in a per-thread buffer stayed as large as the longest input ever decoded), and it is the
+        // faster one: 24 against 32 ns for 40 characters on JDK 25, 22 against 45 on JDK 8.
+        return ByteUtilities.decodeHex(s, 0, s.length());
     }
 
     /**

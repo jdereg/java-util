@@ -1032,4 +1032,76 @@ public class StringUtilitiesTest
         assertEquals('A', StringUtilities.getRandomChar(random, true));
         assertEquals('h', StringUtilities.getRandomChar(random, false));
     }
+
+    /**
+     * decode() reads the 22 ASCII hex digits and nothing else, as its Javadoc and ByteUtilities.decode() say.
+     * It read each character with Character.digit(c, 16), which also accepts every Unicode decimal digit and the
+     * fullwidth letters, and which digits those are depends on the JDK's Unicode version: the Tai Laing digits
+     * decoded on JDK 25 and returned null on JDK 8.
+     */
+    @Test
+    void decodeReadsAsciiHexDigitsOnly() {
+        assertArrayEquals(new byte[]{0x0a, (byte) 0xf9, 0x00, (byte) 0xff}, StringUtilities.decode("0aF900fF"));
+        assertArrayEquals(new byte[0], StringUtilities.decode(""));
+        assertNull(StringUtilities.decode(null));
+        assertNull(StringUtilities.decode("abc"));                              // odd length
+        assertNull(StringUtilities.decode("zz"));
+        assertNull(StringUtilities.decode("0g"));
+        assertNull(StringUtilities.decode("\uFF11\uFF21"));                     // fullwidth 1 and A: were 0x1A
+        assertNull(StringUtilities.decode("\u0661\u0662"));                     // Arabic-Indic 1 and 2: were 0x12
+        assertNull(StringUtilities.decode("\uA9F1\uA9F2"));                     // Tai Laing 1 and 2: 0x12 on JDK 25 only
+        assertNull(StringUtilities.decode("1\u0661"));
+        for (char c = 0; c < 0x3000; c++) {                                     // every character, in both places
+            boolean hex = (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F');
+            assertEquals(hex, StringUtilities.decode("0" + c) != null, "U+" + Integer.toHexString(c));
+            assertEquals(hex, StringUtilities.decode(c + "0") != null, "U+" + Integer.toHexString(c));
+        }
+        byte[] all = new byte[256];
+        for (int i = 0; i < 256; i++) {
+            all[i] = (byte) i;
+        }
+        String hex = StringUtilities.encode(all);
+        assertArrayEquals(all, StringUtilities.decode(hex));
+        assertArrayEquals(all, StringUtilities.decode(hex.toLowerCase()));
+    }
+
+    /**
+     * decode() allocates its result and nothing else. It copied the text into a per-thread char[] that grew to the
+     * longest input ever decoded on that thread and was kept: a 20 million character input left 40 MB behind.
+     */
+    @Test
+    void decodeKeepsNoCopyOfItsInput() {
+        java.lang.management.ThreadMXBean bean = java.lang.management.ManagementFactory.getThreadMXBean();
+        org.junit.jupiter.api.Assumptions.assumeTrue(bean instanceof com.sun.management.ThreadMXBean);
+        com.sun.management.ThreadMXBean counts = (com.sun.management.ThreadMXBean) bean;
+        org.junit.jupiter.api.Assumptions.assumeTrue(counts.isThreadAllocatedMemorySupported()
+                && counts.isThreadAllocatedMemoryEnabled());
+        String hex = StringUtilities.repeat("0A", 1_000_000);                   // 2,000,000 characters: 1 MB decoded
+        StringUtilities.decode("0A0B");
+        long id = Thread.currentThread().getId();
+        long before = counts.getThreadAllocatedBytes(id);
+        byte[] decoded = StringUtilities.decode(hex);
+        long allocated = counts.getThreadAllocatedBytes(id) - before;
+        assertEquals(1_000_000, decoded.length);
+        assertTrue(allocated < 1_500_000, "decode allocated " + allocated + " bytes for a 1,000,000 byte result");
+    }
+
+    /** repeat() is the string written count times, for every count and length that changes how it is filled. */
+    @Test
+    void repeatIsTheStringWrittenCountTimes() {
+        for (String s : new String[]{"a", "ab", "abc", "-", "\uD83D\uDE00x", "\u00E9\u4E2D"}) {
+            StringBuilder expected = new StringBuilder();
+            for (int count = 0; count <= 70; count++) {
+                assertEquals(expected.toString(), StringUtilities.repeat(s, count), s + " x " + count);
+                expected.append(s);
+            }
+        }
+        String million = StringUtilities.repeat("xy", 500_000);
+        assertEquals(1_000_000, million.length());
+        for (int i = 0; i < million.length(); i += 9973) {
+            assertEquals(i % 2 == 0 ? 'x' : 'y', million.charAt(i));
+        }
+        assertEquals("", StringUtilities.repeat("", 5));
+        assertNull(StringUtilities.repeat(null, 5));
+    }
 }

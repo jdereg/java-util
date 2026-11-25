@@ -359,8 +359,9 @@ public final class ByteUtilities {
         return bytes != null ? bytes : decodeAnyNotation(s.toString().trim());
     }
 
-    // Hex digits from 'from' to 'to', an even count of them, or null
-    private static byte[] decodeHex(final CharSequence s, final int from, final int to) {
+    // Hex digits from 'from' to 'to', an even count of them, or null. The 22 ASCII hex digits only: Character.digit()
+    // also accepts every Unicode decimal digit, and which those are depends on the JDK. StringUtilities.decode() too.
+    static byte[] decodeHex(final CharSequence s, final int from, final int to) {
         final int len = to - from;
         if ((len & 1) != 0) {
             return null;

@@ -801,25 +801,18 @@ public final class StringUtilities {
         int sLen = s.length();
         int tLen = t.length();
 
-        // Copy both inputs into local char[] once. The inner loop runs O(sLen * tLen)
-        // times; paying a one-time bulk-copy (SIMD-intrinsic for String) so the inner
-        // loop becomes straight-line char[] access instead of O(n*m) charAt coder/bounds
-        // checks is a significant win for any non-trivial input. Using local allocations
-        // (not the thread-local getChars buffer) because we need BOTH buffers alive
-        // simultaneously throughout the nested scan.
-        char[] sBuf = new char[sLen];
+        // t is read sLen times over, so it is copied into a char[] once (a bulk copy for a String): the inner loop
+        // is then straight array access. s is read once per row, where it is.
         char[] tBuf = new char[tLen];
-        fillCharArray(s, sBuf, sLen);
         fillCharArray(t, tBuf, tLen);
 
         for (int i = 0; i < sLen; i++) {
             // calculate v1 (current row distances) from the previous row v0
-
             // first element of v1 is A[i+1][0]
             //   edit distance is delete (i+1) chars from s to match empty t
             v1[0] = i + 1;
+            final char si = s.charAt(i);
 
-            final char si = sBuf[i];  // hoist out of inner loop
             // use formula to fill in the rest of the row
             for (int j = 0; j < tLen; j++) {
                 int cost = (si == tBuf[j]) ? 0 : 1;
@@ -829,11 +822,13 @@ public final class StringUtilities {
                 v1[j + 1] = Math.min(left, Math.min(up, diagonal));
             }
 
-            // copy v1 (current row) to v0 (previous row) for next iteration
-            System.arraycopy(v1, 0, v0, 0, v0.length);
+            // the current row becomes the previous one: the two arrays change places (the row was copied)
+            int[] previous = v0;
+            v0 = v1;
+            v1 = previous;
         }
 
-        return v1[t.length()];
+        return v0[tLen];
     }
 
     /**
@@ -855,7 +850,8 @@ public final class StringUtilities {
     /**
      * Calculate the Damerau-Levenshtein Distance between two strings.  The basic difference
      * between this algorithm and the general Levenshtein algorithm is that damerau-Levenshtein
-     * counts a swap of two characters next to each other as 1 instead of 2.  This breaks the
+     * counts a swap of two characters next to each other as 1 instead of 2.  It is the restricted form (also
+     * called optimal string alignment): a swapped pair is not edited again, so "CA" to "ABC" is 3.  This breaks the
      * 'triangular equality', which makes it unusable for Metric trees.  See Wikipedia pages on
      * both Levenshtein and Damerau-Levenshtein and then make your decision as to which algorithm
      * is appropriate for your situation.
@@ -888,66 +884,50 @@ public final class StringUtilities {
 
         int srcLen = source.length();
         int targetLen = target.length();
-        int[][] distanceMatrix = new int[srcLen + 1][targetLen + 1];
 
-        // We need indexers from 0 to the length of the source string.
-        // This sequential set of numbers will be the row "headers"
-        // in the matrix.
-        for (int srcIndex = 0; srcIndex <= srcLen; srcIndex++) {
-            distanceMatrix[srcIndex][0] = srcIndex;
-        }
-
-        // We need indexers from 0 to the length of the target string.
-        // This sequential set of numbers will be the
-        // column "headers" in the matrix.
+        // A cell reads the row above it and, for a swap, the row above that: three rows of the target's length
+        // hold everything, where the whole (srcLen + 1) x (targetLen + 1) table was 36 MB for two 3,000-character
+        // strings. The rows change places after each source character.
+        int[] twoBack = new int[targetLen + 1];
+        int[] previous = new int[targetLen + 1];
+        int[] current = new int[targetLen + 1];
         for (int targetIndex = 0; targetIndex <= targetLen; targetIndex++) {
-            // Set the value of the first cell in the column
-            // equivalent to the current value of the iterator
-            distanceMatrix[0][targetIndex] = targetIndex;
+            previous[targetIndex] = targetIndex;        // row 0: the distance from an empty source
         }
 
-        // Bulk-copy both inputs into local char[] once so the O(n*m) nested loop
-        // (up to 6 CharAt hits per inner iteration for transposition check) becomes
-        // straight-line array access, avoiding per-char coder/bounds overhead.
-        char[] srcBuf = new char[srcLen];
+        // The target is read once per source character, so it is copied into a char[] once.
         char[] tgtBuf = new char[targetLen];
-        fillCharArray(source, srcBuf, srcLen);
         fillCharArray(target, tgtBuf, targetLen);
 
+        char srcPrevChar = 0;                           // only read from the second source character on
         for (int srcIndex = 1; srcIndex <= srcLen; srcIndex++) {
-            final char srcChar = srcBuf[srcIndex - 1];                          // hoist out of inner loop
-            final char srcPrevChar = srcIndex >= 2 ? srcBuf[srcIndex - 2] : 0;  // only used in transposition
+            final char srcChar = source.charAt(srcIndex - 1);
+            current[0] = srcIndex;                      // column 0: the distance to an empty target
+
             for (int targetIndex = 1; targetIndex <= targetLen; targetIndex++) {
                 final char tgtChar = tgtBuf[targetIndex - 1];
-                // If the current characters in both strings are equal
                 int cost = srcChar == tgtChar ? 0 : 1;
 
-                // Find the current distance by determining the shortest path to a
-                // match (hence the 'minimum' calculation on distances).
-                int deleteCost = distanceMatrix[srcIndex - 1][targetIndex] + 1;
-                int insertCost = distanceMatrix[srcIndex][targetIndex - 1] + 1;
-                int substituteCost = distanceMatrix[srcIndex - 1][targetIndex - 1] + cost;
-                distanceMatrix[srcIndex][targetIndex] = Math.min(deleteCost, Math.min(insertCost, substituteCost));
+                int deleteCost = previous[targetIndex] + 1;
+                int insertCost = current[targetIndex - 1] + 1;
+                int substituteCost = previous[targetIndex - 1] + cost;
+                int distance = Math.min(deleteCost, Math.min(insertCost, substituteCost));
 
-                // We don't want to do the next series of calculations on
-                // the first pass because we would get an index out of bounds
-                // exception.
-                if (srcIndex == 1 || targetIndex == 1) {
-                    continue;
+                // transposition check: the current and previous characters switched around (t[se]t and t[es]t)
+                if (srcIndex > 1 && targetIndex > 1 && srcChar == tgtBuf[targetIndex - 2] && srcPrevChar == tgtChar) {
+                    distance = Math.min(distance, twoBack[targetIndex - 2] + cost);
                 }
-
-                // transposition check (if the current and previous
-                // character are switched around (e.g.: t[se]t and t[es]t)...
-                if (srcChar == tgtBuf[targetIndex - 2] && srcPrevChar == tgtChar) {
-                    // What's the minimum cost between the current distance
-                    // and a transposition.
-                    int transpositionCost = distanceMatrix[srcIndex - 2][targetIndex - 2] + cost;
-                    distanceMatrix[srcIndex][targetIndex] = Math.min(distanceMatrix[srcIndex][targetIndex], transpositionCost);
-                }
+                current[targetIndex] = distance;
             }
+
+            int[] oldest = twoBack;
+            twoBack = previous;
+            previous = current;
+            current = oldest;
+            srcPrevChar = srcChar;
         }
 
-        return distanceMatrix[srcLen][targetLen];
+        return previous[targetLen];
     }
 
     /**
@@ -1360,19 +1340,16 @@ public final class StringUtilities {
             }
         }
 
-        // Use doubling algorithm for efficiency: O(log n) StringBuilder operations
-        StringBuilder result = new StringBuilder((int) totalLength);
-        StringBuilder current = new StringBuilder(s);
-        while (count > 0) {
-            if ((count & 1) == 1) {
-                result.append(current);
-            }
-            count >>= 1;
-            if (count > 0) {
-                current.append(current.toString());  // Double using StringBuilder
-            }
+        // One array of the result's length, filled by doubling what is already there: copies of 1, 2, 4, ...
+        // repeats. Two StringBuilders and a toString() at each doubling allocated up to 2.5 times the result.
+        int length = s.length();
+        int total = (int) totalLength;
+        char[] chars = new char[total];
+        s.getChars(0, length, chars, 0);
+        for (int filled = length; filled < total; filled <<= 1) {
+            System.arraycopy(chars, 0, chars, filled, Math.min(filled, total - filled));
         }
-        return result.toString();
+        return new String(chars);
     }
 
     /**

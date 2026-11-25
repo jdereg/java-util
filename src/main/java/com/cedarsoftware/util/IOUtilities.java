@@ -648,6 +648,13 @@ public final class IOUtilities {
 
             // Judge the path that will be opened, not one of its spellings
             path = asOpened(path, File.separatorChar);
+            if (!path.startsWith("/")) {
+                // A relative path is opened under the working directory, and every check below looks for "/etc",
+                // "/.aws/" and the rest with a slash in front: "file:.aws/credentials" passed them all and read
+                // ~/.aws/credentials from a process started in a home directory, "file:etc" listed /etc from one
+                // started in the root.
+                path = underWorkingDirectory(path, new File("").getAbsolutePath(), File.separatorChar);
+            }
             
             // Allow only if it's clearly a resource within the application's domain
             // Common patterns for legitimate resources:
@@ -702,6 +709,17 @@ public final class IOUtilities {
             start = end + 1;
         }
         return opened.length() == 0 && absolute ? "/" : opened.toString();
+    }
+
+    /**
+     * A relative path as the file system opens it: under the working directory, in the form the checks read (slashes,
+     * one at the start, a Windows drive after it: /C:/Users/app/etc/x). A path that is already absolute for the
+     * platform (C:/x where the separator is a backslash) only takes that form.
+     */
+    private static String underWorkingDirectory(String path, String workingDirectory, char separator) {
+        boolean drive = separator == '\\' && path.length() > 1 && path.charAt(1) == ':';
+        String absolute = drive ? path : workingDirectory.replace(separator, '/') + '/' + path;
+        return asOpened(absolute.startsWith("/") ? absolute : '/' + absolute, separator);
     }
 
     /**
@@ -786,18 +804,23 @@ public final class IOUtilities {
         // The "private" of macOS's /private/tmp and /private/var says nothing about the file
         path = withoutMacOsPrivatePrefix(path);
         
+        // These names are matched in any case: on a file system that ignores case (macOS and Windows by default)
+        // /home/u/.AWS/credentials and /home/u/.Ssh open the files of .aws and .ssh
+        String lower = path.toLowerCase(Locale.ROOT);
+
         // Check for hidden directories that might contain sensitive files, and for those directories
         // themselves (a file URL that names a directory is answered with its listing)
-        if (path.contains("/.ssh/") || path.contains("/.gnupg/") || 
-            path.contains("/.aws/") || path.contains("/.docker/") ||
-            path.endsWith("/.ssh") || path.endsWith("/.gnupg") ||
-            path.endsWith("/.aws") || path.endsWith("/.docker")) {
+        if (lower.contains("/.ssh/") || lower.contains("/.gnupg/") ||
+            lower.contains("/.aws/") || lower.contains("/.docker/") ||
+            lower.endsWith("/.ssh") || lower.endsWith("/.gnupg") ||
+            lower.endsWith("/.aws") || lower.endsWith("/.docker")) {
             return true;
         }
-        
-        // Check for passwd, shadow files, and other sensitive files
-        if (path.endsWith("/passwd") || path.endsWith("/shadow") || 
-            path.contains("id_rsa") || path.contains("private")) {
+
+        // Check for passwd, shadow files, and other sensitive files ("private" as written: the word in another
+        // case, a class named PrivateKeyReader say, is let through)
+        if (lower.endsWith("/passwd") || lower.endsWith("/shadow") ||
+            lower.contains("id_rsa") || path.contains("private")) {
             return true;
         }
         

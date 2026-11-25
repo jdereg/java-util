@@ -166,6 +166,60 @@ class IOUtilitiesPathSpellingTest {
         }
     }
 
+    /**
+     * A relative file URL is opened under the working directory, and is judged as that path. Every check looks for
+     * "/etc", "/.aws/" and the rest with a slash in front, so "file:.aws/credentials" passed them all: it read
+     * ~/.aws/credentials from a process started in a home directory, and "file:etc" listed /etc from one started
+     * in the root.
+     */
+    @Test
+    void aRelativePathIsJudgedWhereItIsOpened() throws Exception {
+        assertEquals(SUSPICIOUS, verdict("file:.aws/credentials"));
+        assertEquals(SUSPICIOUS, verdict("file:.ssh/config"));
+        assertEquals(SUSPICIOUS, verdict("file:.ssh"));
+        assertEquals(SUSPICIOUS, verdict("file:./.gnupg/."));
+        assertEquals(SUSPICIOUS, verdict("file:.docker/config.json"));
+        assertEquals(SUSPICIOUS, verdict("file:%2Eaws/credentials"));
+
+        // the verdict of a relative path is the verdict of the path under the working directory
+        String here = new java.io.File("").getAbsolutePath().replace(java.io.File.separatorChar, '/');
+        String root = here.startsWith("/") ? here : "/" + here;
+        for (String relative : new String[]{".aws/credentials", ".ssh", "etc/app.json", "dev/notes.txt", "work/a.txt",
+                "backup/shadow", "keys/private.pem"}) {
+            assertEquals(verdict("file://" + root + "/" + relative), verdict("file:" + relative), relative);
+        }
+
+        // where the working directory is the root, or a home directory
+        assertEquals("/etc/hosts", call("underWorkingDirectory", "etc/hosts", "/", '/'));
+        assertEquals("/etc", call("underWorkingDirectory", "etc", "/", '/'));
+        assertEquals("/proc/self/environ", call("underWorkingDirectory", "proc/self/environ", "/", '/'));
+        assertEquals("/home/u/.aws/credentials", call("underWorkingDirectory", ".aws/credentials", "/home/u", '/'));
+        assertEquals("/C:/Users/u/.ssh/config", call("underWorkingDirectory", ".ssh/config", "C:\\Users\\u", '\\'));
+        assertEquals("/C:/Windows/win.ini", call("underWorkingDirectory", "C:/Windows/win.ini", "D:\\app", '\\'));
+    }
+
+    /**
+     * The hidden directories and key files are refused in any case. On a file system that ignores case, the default
+     * on macOS and Windows, /home/u/.AWS/credentials opens the file of .aws, and it was read. "private" is still
+     * matched as written.
+     */
+    @Test
+    void theHiddenDirectoriesAreRefusedInAnyCase() {
+        assertEquals(SUSPICIOUS, verdict("file:///home/u/.AWS/credentials"));
+        assertEquals(SUSPICIOUS, verdict("file:///home/u/.Aws/credentials"));
+        assertEquals(SUSPICIOUS, verdict("file:///home/u/.SSH/config"));
+        assertEquals(SUSPICIOUS, verdict("file:///home/u/.Ssh"));
+        assertEquals(SUSPICIOUS, verdict("file:///home/u/.GnuPG/pubring.kbx"));
+        assertEquals(SUSPICIOUS, verdict("file:///home/u/.DOCKER/config.json"));
+        assertEquals(SUSPICIOUS, verdict("file:///home/u/keys/ID_RSA"));
+        assertEquals(SUSPICIOUS, verdict("file:///home/u/backup/PASSWD"));
+        assertEquals(SUSPICIOUS, verdict("file:///home/u/backup/Shadow"));
+        assertEquals(SUSPICIOUS, verdict("file:///home/u/.aws/credentials"));            // as written, as before
+        assertEquals(PASSED, verdict("file:///home/u/src/PrivateKeyReader.java"));       // "private" as written only
+        assertEquals(PASSED, verdict("file:///home/u/docs/awsnotes.txt"));
+        assertEquals(PASSED, verdict("file:///home/u/ssh/notes.txt"));
+    }
+
     @Test
     void aJarUrlIsJudgedWithItsEscapesResolved() {
         assertEquals(JAR_TRAVERSAL, verdict("jar:file:///tmp/%2e%2e/etc/x.jar!/a.txt"));

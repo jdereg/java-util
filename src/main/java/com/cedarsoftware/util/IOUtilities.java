@@ -1557,14 +1557,66 @@ public final class IOUtilities {
         // len >= 2: isGzipped reads two bytes at offset — with len < 2 it could read past the
         // caller's declared range and misclassify a 1-byte slice of a larger gzip array
         if (len >= 2 && ByteUtilities.isGzipped(bytes, offset)) {
+            // The input buffer is no larger than the input: 32 KB for a 400-byte value was most of its cost
             try (ByteArrayInputStream byteStream = new ByteArrayInputStream(bytes, offset, len);
-                 GZIPInputStream gzipStream = new GZIPInputStream(byteStream, TRANSFER_BUFFER)) {
-                return inputStreamToBytes(gzipStream, maxSize);
+                 GZIPInputStream gzipStream = new GZIPInputStream(byteStream,
+                         Math.max(512, Math.min(len, TRANSFER_BUFFER)))) {
+                return readAll(gzipStream, maxSize, gzipSizeHint(bytes, offset, len, maxSize));
             } catch (IOException e) {
                 throw new RuntimeException("Error uncompressing bytes", e);
             }
         }
         return Arrays.copyOfRange(bytes, offset, offset + len);
+    }
+
+    /** The most the size a gzip trailer states is trusted for the first allocation: the trailer may lie. */
+    private static final int MAX_GZIP_SIZE_HINT = 16 * 1024 * 1024;
+
+    /**
+     * How large the uncompressed data probably is, from the last four bytes of the gzip data: the size, modulo
+     * 2^32, of the last member. It is a hint for the first allocation only, never a limit and never trusted:
+     * it is held to the caller's maximum, to 1,032 times the input (deflate cannot expand further, so a small
+     * input cannot ask for a large array), and to 16 MB. A wrong hint costs a copy, as before; the data read is
+     * what the stream holds.
+     */
+    private static int gzipSizeHint(byte[] bytes, int offset, int len, int maxSize) {
+        if (len < 18) {
+            return 0;       // shorter than an empty gzip member: let the stream say what is wrong
+        }
+        int end = offset + len;
+        long stated = (bytes[end - 4] & 0xFFL) | (bytes[end - 3] & 0xFFL) << 8
+                | (bytes[end - 2] & 0xFFL) << 16 | (bytes[end - 1] & 0xFFL) << 24;
+        return (int) Math.min(Math.min(stated, maxSize), Math.min(len * 1032L, MAX_GZIP_SIZE_HINT));
+    }
+
+    /**
+     * Everything {@code in} holds, read straight into the array that is returned: first one of {@code sizeHint}
+     * bytes (16 KB without a hint), which is returned as it is when the hint was exact, doubled while the stream
+     * has more, trimmed if it had less. More than {@code maxSize} bytes is an IOException, as
+     * {@link #inputStreamToBytes(InputStream, int)} throws it.
+     */
+    private static byte[] readAll(InputStream in, int maxSize, int sizeHint) throws IOException {
+        byte[] buffer = new byte[Math.min(sizeHint > 0 ? sizeHint : 16384, maxSize)];
+        int total = 0;
+        while (true) {
+            if (total == buffer.length) {
+                int next = in.read();           // full: the stream ends here, or the array must grow
+                if (next == -1) {
+                    return buffer;
+                }
+                if (total >= maxSize) {
+                    throw new IOException("Stream exceeds maximum allowed size: " + maxSize);
+                }
+                buffer = Arrays.copyOf(buffer, (int) Math.min(maxSize, Math.max(16384L, (long) buffer.length << 1)));
+                buffer[total++] = (byte) next;
+            } else {
+                int count = in.read(buffer, total, buffer.length - total);
+                if (count == -1) {
+                    return Arrays.copyOf(buffer, total);
+                }
+                total += count;
+            }
+        }
     }
 
     private static void validateByteArrayRange(byte[] bytes, int offset, int len) {

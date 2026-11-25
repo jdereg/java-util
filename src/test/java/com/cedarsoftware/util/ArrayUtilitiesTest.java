@@ -726,4 +726,24 @@ public class ArrayUtilitiesTest
         assertThrows(NullPointerException.class, () -> ArrayUtilities.setPrimitiveElement(null, 0, 1));
         assertThrows(IllegalArgumentException.class, () -> ArrayUtilities.setPrimitiveElement("not an array", 0, 1));
     }
+
+    private static <T> Object[] madeFromATypeVariable(T first, T second) {
+        return ArrayUtilities.createArray(first, second);
+    }
+
+    /**
+     * createArray() returns an array of the type the compiler made for the call: the element type where it is a
+     * concrete type, Object[] where it is a type variable of the caller. That second case is why the method is
+     * not @SafeVarargs: the annotation hid the compiler's warning at exactly the call that later fails.
+     */
+    @Test
+    public void testCreateArrayHasTheTypeOfTheCallSite() {
+        Object strings = ArrayUtilities.createArray("a", "b");
+        assertEquals(String[].class, strings.getClass());
+        Object numbers = ArrayUtilities.createArray(1, 2, 3);
+        assertEquals(Integer[].class, numbers.getClass());
+        assertEquals(Object[].class, madeFromATypeVariable("a", "b").getClass());      // not String[]
+        String[] none = null;
+        assertNull(ArrayUtilities.createArray(none));
+    }
 }

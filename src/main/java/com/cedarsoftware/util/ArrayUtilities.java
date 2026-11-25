@@ -512,9 +512,13 @@ public final class ArrayUtilities {
      *     <li><strong>Type Safety:</strong> Due to type erasure in Java generics, this method does not perform any type checks
      *     beyond what is already enforced by the compiler. Ensure that all elements are of the expected type {@code T} to avoid
      *     {@code ClassCastException} at runtime.</li>
-     *     <li><strong>Heap Pollution:</strong> The method is annotated with {@link SafeVarargs} to suppress warnings related to heap
-     *     pollution when using generics with varargs. It is safe to use because the method does not perform any unsafe operations
-     *     on the varargs parameter.</li>
+     *     <li><strong>Called with a type variable:</strong> the array returned has the type of the array the compiler made
+     *     for the call. Where {@code T} is a concrete type ({@code createArray("a", "b")}) that is a {@code String[]}.
+     *     Where {@code T} is a type variable of the calling method, the compiler can only make an {@code Object[]},
+     *     and assigning the result to a {@code String[]} throws {@code ClassCastException}. The compiler warns at
+     *     such a call ("unchecked generic array creation"); the method is not annotated {@link SafeVarargs},
+     *     which would hide that warning, because returning the varargs array is exactly the unsafe case.
+     *     Use {@link #toArray(Class, java.util.Collection)} where the element type is only known at run time.</li>
      *     <li><strong>Null Elements:</strong> The method does not explicitly handle {@code null} elements. If {@code null} values
      *     are passed, they will be included in the returned array.</li>
      * </ul>
@@ -523,7 +527,7 @@ public final class ArrayUtilities {
      * @param elements the elements to be stored in the array
      * @return an array containing the provided elements, or {@code null} if {@code elements} is {@code null}
      */
-    @SafeVarargs
+    @SuppressWarnings("unchecked")      // the declaration's own warning; a generic caller still gets its warning
     public static <T> T[] createArray(T... elements) {
         if (elements == null) {
             return null;

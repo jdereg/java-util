@@ -178,22 +178,10 @@ public final class ArrayUtilities {
         }
     }
     
-    static {
-        // Initialize system properties with defaults if not already set (backward compatibility)
-        initializeSystemPropertyDefaults();
-    }
-    
-    private static void initializeSystemPropertyDefaults() {
-        // Set dangerous class patterns if not explicitly configured
-        if (System.getProperty("arrayutilities.dangerous.class.patterns") == null) {
-            System.setProperty("arrayutilities.dangerous.class.patterns", DEFAULT_DANGEROUS_CLASS_PATTERNS);
-        }
-        
-        // Set max array size if not explicitly configured
-        if (System.getProperty("arrayutilities.max.array.size") == null) {
-            System.setProperty("arrayutilities.max.array.size", String.valueOf(DEFAULT_MAX_ARRAY_SIZE));
-        }
-    }
+    // The class reads its settings and writes none. It used to write its two defaults into the system properties
+    // when it was loaded: a global side effect of touching ArrayUtilities.isEmpty(), and under a SecurityManager
+    // that does not let the library write properties the class failed to initialize, after which every method
+    // threw NoClassDefFoundError. The defaults were never needed there: getSecurityConfig() falls back to them.
     
     // Security configuration methods
 

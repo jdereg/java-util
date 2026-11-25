@@ -7925,10 +7925,10 @@ String[] huge = ArrayUtilities.toArray(String.class, hugeCollection);
 - **Package prefixes:** `java.security.` blocks all classes in java.security package
 - **Multiple patterns:** Comma-separated list of patterns
 
-**Static Initialization:**
-- Default dangerous class patterns are set automatically if not configured
-- Ensures backward compatibility when users haven't set system properties
-- Users can override defaults by setting system properties before class loading
+**Defaults:**
+- The default dangerous class patterns and the default size limit apply whenever their properties are not set
+- ArrayUtilities reads its settings and writes none: loading the class leaves the system properties as they were
+  (through 4.118.0 it wrote both defaults into them)
 
 ### Security Considerations
 
@@ -7944,8 +7944,7 @@ String[] huge = ArrayUtilities.toArray(String.class, hugeCollection);
 
 **Thread Safety:**
 - All security checks are thread-safe
-- System property changes require application restart
-- Configuration is read dynamically for maximum flexibility
+- Configuration is read each time it is needed: a property set or changed at run time takes effect at once
 
 ## ReflectionUtils Security Configuration
 

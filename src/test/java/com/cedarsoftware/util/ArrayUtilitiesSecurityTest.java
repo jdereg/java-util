@@ -530,4 +530,22 @@ public class ArrayUtilitiesSecurityTest {
         assertThrows(IllegalArgumentException.class, () -> ArrayUtilities.getArraySubset(small, 2, 1)); // as before
         assertThrows(NullPointerException.class, () -> ArrayUtilities.getArraySubset((String[]) null, 0, 1));
     }
+
+    /**
+     * The defaults apply with neither property set: ArrayUtilities reads its settings and writes none. It wrote
+     * both defaults into the system properties when the class was loaded, which nothing needed (the settings fall
+     * back to the same defaults) and which failed class initialization under a SecurityManager that does not let
+     * the library write properties.
+     */
+    @Test
+    public void testDefaultsApplyWithoutTheirPropertiesAndNoneIsWritten() {
+        System.clearProperty("arrayutilities.dangerous.class.patterns");
+        System.clearProperty("arrayutilities.max.array.size");
+        assertThrows(SecurityException.class, () -> ArrayUtilities.nullToEmpty(Runtime.class, null));     // default patterns
+        assertEquals(0, ArrayUtilities.nullToEmpty(String.class, null).length);
+        assertEquals(3, ArrayUtilities.toArray(String.class, java.util.Arrays.asList("a", "b", "c")).length);
+        assertEquals(1000, ArrayUtilities.getArraySubset(new String[]{"a"}, 0, 1000).length);            // default limit
+        assertNull(System.getProperty("arrayutilities.dangerous.class.patterns"));
+        assertNull(System.getProperty("arrayutilities.max.array.size"));
+    }
 }

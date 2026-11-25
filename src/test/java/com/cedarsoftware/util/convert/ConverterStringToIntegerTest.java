@@ -37,6 +37,9 @@ class ConverterStringToIntegerTest {
         }
         try {
             BigDecimal big = MathUtilities.parseBigDecimal(str);
+            if (big.signum() == 0) {
+                return 0L;      // 4.119.0: zero is zero however it is written. "0e83" counted as 84 digits, and failed
+            }
             long wholeDigits = (long) big.precision() - big.scale();     // as the converter: no huge setScale
             if (wholeDigits > 19) {
                 return "fails";

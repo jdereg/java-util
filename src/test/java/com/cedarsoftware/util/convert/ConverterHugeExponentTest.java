@@ -1,6 +1,12 @@
 package com.cedarsoftware.util.convert;
 
+import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.time.Duration;
+import java.time.Instant;
+import java.util.Date;
+import java.util.UUID;
+import java.util.concurrent.atomic.AtomicLong;
 
 import org.junit.jupiter.api.Test;
 
@@ -40,5 +46,34 @@ class ConverterHugeExponentTest {
         assertEquals(Long.MAX_VALUE, (long) converter.convert("9223372036854775807.5", Long.class));
         assertThrows(IllegalArgumentException.class, () -> converter.convert("9223372036854775808", Long.class));
         assertThrows(IllegalArgumentException.class, () -> converter.convert("1e10", Integer.class));
+    }
+
+    /**
+     * Zero written with an exponent is zero. The whole part's digits were counted as precision minus scale, which
+     * for 0E+30 is 31, so zero was refused as outside a long ("Unable to convert 0E+30 to long: it is outside
+     * -9223372036854775808 to 9223372036854775807"), outside an int and outside the range of Instant, and 0E+2000 was
+     * refused as a whole number of 2,001 digits. MathUtilities.wholeDigits() counts none for zero.
+     */
+    @Test
+    void aZeroWrittenWithAnExponentIsZero() {
+        for (String zero : new String[]{"0E+30", "0E+2000", "0e600000000", "-0E+30", "0E+1", "0E-2000", "0.000", "0"}) {
+            BigDecimal decimal = new BigDecimal(zero);
+            for (Object source : new Object[]{decimal, zero}) {
+                String what = source.getClass().getSimpleName() + " " + zero;
+                for (Class<?> type : new Class<?>[]{Byte.class, Short.class, Integer.class, Long.class,
+                        byte.class, short.class, int.class, long.class}) {
+                    assertEquals(0L, ((Number) converter.convert(source, type)).longValue(), what + " to " + type);
+                }
+                assertEquals(BigInteger.ZERO, converter.convert(source, BigInteger.class), what);
+                assertEquals(0L, converter.convert(source, AtomicLong.class).get(), what);
+            }
+            assertEquals(new Date(0), converter.convert(decimal, Date.class), zero);
+            assertEquals(Instant.EPOCH, converter.convert(decimal, Instant.class), zero);
+            assertEquals(Duration.ZERO, converter.convert(decimal, Duration.class), zero);
+            assertEquals(new UUID(0, 0), converter.convert(decimal, UUID.class), zero);
+        }
+        // zero has a plain form of one digit whatever its exponent, so it is written out, as 0E+30 always was
+        assertEquals("0", converter.convert(new BigDecimal("0E+2000"), String.class));
+        assertEquals("0", converter.convert(new BigDecimal("0E+30"), String.class));
     }
 }

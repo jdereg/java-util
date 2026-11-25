@@ -21,6 +21,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.DoubleAdder;
 import java.util.concurrent.atomic.LongAdder;
 
+import com.cedarsoftware.util.MathUtilities;
 import com.cedarsoftware.util.internal.DoubleDecimal;
 import com.cedarsoftware.util.internal.FloatDecimal;
 
@@ -203,9 +204,9 @@ final class NumberConversions {
      * them, without computing it: toBigInteger() of 1e999999999 builds a billion digits.
      */
     static long wholeLong(BigDecimal d, Object from, String type, long min, long max) {
-        long wholeDigits = (long) d.precision() - d.scale();
-        if (wholeDigits <= 0) {
-            return 0L;
+        long wholeDigits = MathUtilities.wholeDigits(d);
+        if (wholeDigits == 0) {
+            return 0L;                  // zero however written (0E+30), or below 1 in magnitude
         }
         if (wholeDigits <= 18) {
             return d.longValue();       // below 10^18 in magnitude: fits, and longValue() truncates toward zero
@@ -256,8 +257,8 @@ final class NumberConversions {
 
     /** As {@link #timeUnits(double, Object, String)}, for a BigDecimal count, its whole part, refused by digit count. */
     static long timeUnits(BigDecimal units, Object from, String type) {
-        long wholeDigits = (long) units.precision() - units.scale();
-        if (wholeDigits <= 0) {
+        long wholeDigits = MathUtilities.wholeDigits(units);
+        if (wholeDigits == 0) {
             return 0L;
         }
         if (wholeDigits > 19) {

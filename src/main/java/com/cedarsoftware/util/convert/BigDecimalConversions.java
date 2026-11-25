@@ -139,22 +139,21 @@ final class BigDecimalConversions {
     }
 
     /**
-     * {@code value}'s whole part, as toBigInteger() gives it; 0 at once below 1 in magnitude, where toBigInteger()
-     * divides by 10 to the power of the scale (minutes for 1e-999999999). A whole part longer than
-     * {@link ConverterOptions#getMaxPlainDigits()} allows (and than the value's own digits) is refused from its digit
-     * count, without building it: 1e999999999 is about 415 MB as a BigInteger.
+     * {@code value}'s whole part, as toBigInteger() gives it, by {@link MathUtilities#toBigInteger(BigDecimal, int)}:
+     * 0 at once for zero and below 1 in magnitude, where toBigInteger() divides by 10 to the power of the scale
+     * (minutes for 1e-600000000), and a whole part longer than {@link ConverterOptions#getMaxPlainDigits()} allows
+     * (and than the value's own digits) refused from its digit count, without building it: 1e600000000 is 237 MB as
+     * a BigInteger.
      */
     static BigInteger wholePart(BigDecimal value, Converter converter) {
-        long wholeDigits = (long) value.precision() - value.scale();
-        if (wholeDigits <= 0) {
-            return BigInteger.ZERO;
-        }
         int maxDigits = converter.getOptions().getMaxPlainDigits();
-        if (wholeDigits > Math.max(maxDigits, value.precision())) {
+        try {
+            return MathUtilities.toBigInteger(value, maxDigits);
+        } catch (ArithmeticException e) {
             throw new IllegalArgumentException("Unable to convert " + value + " to a whole number: it would take "
-                    + wholeDigits + " digits, more than " + maxDigits + " (ConverterOptions.getMaxPlainDigits())");
+                    + MathUtilities.wholeDigits(value) + " digits, more than " + maxDigits
+                    + " (ConverterOptions.getMaxPlainDigits())");
         }
-        return value.toBigInteger();
     }
 
     /** {@code value} for text: plain digits, or its exponent form past the Converter's plain-digit limit. */

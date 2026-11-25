@@ -14,6 +14,7 @@ import java.time.ZonedDateTime;
 import java.util.Calendar;
 import java.util.Date;
 
+import com.cedarsoftware.util.MathUtilities;
 import com.cedarsoftware.util.internal.DoubleDecimal;
 
 /**
@@ -70,8 +71,8 @@ final class DoubleConversions {
         // is -9.223372036854776E15, whose decimal in milliseconds is just past a long; it comes back, as -2^63 does
         // to Long
         BigDecimal decimal = DoubleDecimal.printedDecimal(seconds).movePointRight(scale);
-        long wholeDigits = (long) decimal.precision() - decimal.scale();
-        return wholeDigits <= 19 && decimal.toBigInteger().bitLength() <= 63 ? decimal.longValue() : binary;
+        return MathUtilities.wholeDigits(decimal) <= 19 && decimal.toBigInteger().bitLength() <= 63
+                ? decimal.longValue() : binary;
     }
 
     static Date toDate(Object from, Converter converter) {

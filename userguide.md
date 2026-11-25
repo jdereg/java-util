@@ -6117,6 +6117,40 @@ Number n4 = MathUtilities.parseToMinimalNumericType("1.23456789012345678901");
 // Returns BigDecimal
 ```
 
+### A BigDecimal with a Huge Exponent
+
+`new BigDecimal("1E+600000000")` is a dozen characters and costs nothing to hold, but several JDK methods build the
+number it names: `toBigInteger()`, `toPlainString()`, `setScale()`, and `add()` with an ordinary value. That is 600
+million digits -- five minutes and 237 MB on JDK 25 -- and `toBigInteger()` of `1E-600000000`, whose whole part is 0,
+costs the same division. Where the value comes from untrusted input, ask first, from the precision and scale alone:
+
+```java
+BigDecimal huge = new BigDecimal("1E+600000000");
+
+MathUtilities.wholeDigits(huge);                    // 600000001: digits before the decimal point
+MathUtilities.wholeDigits(new BigDecimal("12.5"));  // 2
+MathUtilities.wholeDigits(new BigDecimal("0.05"));  // 0: the whole part is 0
+MathUtilities.wholeDigits(new BigDecimal("0E+30")); // 0: zero, however it is written
+
+MathUtilities.plainDigits(huge);                    // 600000001: digits toPlainString() would write
+MathUtilities.fitsPlainDigits(huge, 1000);          // false
+
+// The whole part, toward zero as BigDecimal.toBigInteger() gives it, never built from an exponent
+MathUtilities.toBigInteger(new BigDecimal("2.9"), 1000);          // 2
+MathUtilities.toBigInteger(new BigDecimal("1E-600000000"), 1000); // 0, at once
+MathUtilities.toBigInteger(new BigDecimal("1E+999"), 1000);       // 10^999: 1,000 digits, within the limit
+MathUtilities.toBigInteger(huge, 1000);                           // ArithmeticException, at once
+
+// Plain digits while they fit, else the exponent form
+MathUtilities.toPlainString(new BigDecimal("1E+3"), 1000);        // "1000"
+MathUtilities.toPlainString(huge, 1000);                          // "1E+600000000"
+```
+
+The limit applies only to what an exponent adds. A number written out in 5,000 digits of its own has a whole part of
+5,000 digits at any limit: the caller already holds them. The `Converter` uses these with
+`ConverterOptions.getMaxPlainDigits()` (1,000 by default) for every conversion from a `BigDecimal`, or from text, to a
+whole number, a date or a String.
+
 ### Permutation Generation
 
 **Generate All Permutations:**

@@ -920,7 +920,8 @@ public final class MathUtilities
     /**
      * How many digits {@code value} takes written out in full, as {@link BigDecimal#toPlainString()} writes it,
      * ignoring the sign and the decimal point: {@code 1E+3} is 4 ("1000"), {@code 0.05} is 3 ("0.05"), {@code 12.5} is
-     * 3. Computed from the precision and scale, without writing anything.
+     * 3, and zero with an exponent ({@code 0E+3}) is 1 ("0"). Computed from the precision and scale, without writing
+     * anything.
      *
      * @param value the number
      * @return its digit count written out in full
@@ -928,7 +929,53 @@ public final class MathUtilities
     public static long plainDigits(BigDecimal value) {
         long precision = value.precision();
         long scale = value.scale();
-        return scale <= 0 ? precision - scale : Math.max(precision, scale + 1);
+        if (scale <= 0) {
+            return value.signum() == 0 ? 1 : precision - scale;     // 0E+30 is written "0", not 31 digits
+        }
+        return Math.max(precision, scale + 1);
+    }
+
+    /**
+     * How many digits {@code value}'s whole part takes written out in full -- the digits before the decimal point:
+     * {@code 12.5} is 2, {@code 1E+3} is 4 ("1000"), {@code 1E+999999999} is a billion. 0 when the whole part is
+     * 0: for zero however it is written ({@code 0E+30}), and for any value below 1 in magnitude ({@code 0.05},
+     * {@code 1E-999999999}). Computed from the precision and scale, without building anything, so it is the way to
+     * learn whether {@link BigDecimal#toBigInteger()}, {@code longValue()} or {@code setScale()} would have to build
+     * a number an exponent names.
+     *
+     * @param value the number
+     * @return the digit count of its whole part, 0 if that is 0
+     */
+    public static long wholeDigits(BigDecimal value) {
+        long digits = (long) value.precision() - value.scale();
+        return digits <= 0 || value.signum() == 0 ? 0 : digits;
+    }
+
+    /**
+     * {@code value}'s whole part, as {@link BigDecimal#toBigInteger()} gives it (truncated toward zero), without
+     * doing work in proportion to an exponent. {@code toBigInteger()} multiplies by 10 to the power of the exponent,
+     * or divides by it to find that a fraction's whole part is 0: {@code 1E+30000000} and {@code 1E-30000000} each
+     * take seconds, and {@code 1E+600000000} minutes and a 237 MB result, all from a dozen characters of text. Here
+     * a value whose whole part is 0 ({@link #wholeDigits(BigDecimal)}) is 0 at once, and a whole part that an
+     * exponent expands to more than {@code maxDigits} digits is refused from its digit count. A value's own digits
+     * are never refused: a number written out in 5,000 digits has a whole part of 5,000 digits, at any limit.
+     *
+     * @param value     the number
+     * @param maxDigits the most digits an exponent may expand the whole part to (the Converter's default is 1,000)
+     * @return its whole part
+     * @throws ArithmeticException if the whole part would take more than {@code maxDigits} digits, and more than
+     *                             the value's own
+     */
+    public static BigInteger toBigInteger(BigDecimal value, int maxDigits) {
+        long wholeDigits = wholeDigits(value);
+        if (wholeDigits == 0) {
+            return BigInteger.ZERO;
+        }
+        if (wholeDigits > Math.max(maxDigits, value.precision())) {
+            throw new ArithmeticException("The whole part of " + value + " would take " + wholeDigits
+                    + " digits, more than " + maxDigits);
+        }
+        return value.toBigInteger();
     }
 
     /**

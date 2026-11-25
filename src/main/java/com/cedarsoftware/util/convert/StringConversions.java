@@ -259,12 +259,12 @@ final class StringConversions {
             BigDecimal big = parseBigDecimal(s);
             // Settle out of range, or below 1, from the digit count before setScale: truncating builds the whole
             // number, so "1e999999999" (or "1e-999999999") held a thread for minutes
-            long wholeDigits = (long) big.precision() - big.scale();
+            long wholeDigits = MathUtilities.wholeDigits(big);
             if (wholeDigits > 19) {
                 return null;                // beyond any long
             }
-            if (wholeDigits <= 0) {
-                return 0L;                  // below 1 in magnitude: truncates to 0, within every range
+            if (wholeDigits == 0) {
+                return 0L;                  // zero, or below 1 in magnitude: truncates to 0, within every range
             }
             big = big.setScale(0, RoundingMode.DOWN);
             if (big.compareTo(low) < 0 || big.compareTo(high) > 0) {

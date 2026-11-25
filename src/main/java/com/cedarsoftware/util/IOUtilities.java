@@ -666,7 +666,8 @@ public final class IOUtilities {
             if (decoded.contains("..") || decoded.contains("\0")) {
                 throw new SecurityException("Dangerous path patterns detected in jar URL");
             }
-            return; // Allow jar protocols with basic validation
+            validateJarArchive(connection.getURL().getPath(), urlString);
+            return;
         }
         
         // For file protocols, apply more strict validation
@@ -708,6 +709,60 @@ public final class IOUtilities {
         }
     }
     
+    /**
+     * A jar: URL wraps another URL, jar:&lt;archive URL&gt;!/&lt;entry&gt;, and only "jar" itself was judged:
+     * jar:ftp://host/x.jar!/a opened an FTP connection though ftp is not an allowed protocol, and
+     * jar:file:/home/u/.aws/keys.zip!/credentials read an archive where a file: URL is refused.
+     * <p>
+     * The archive must be a local file -- file:, or nested:, by which Spring Boot 3.2 and later name a jar inside
+     * the application's jar -- or come over a protocol that is allowed in its own right (and not jar again). A local
+     * archive may not lie in a hidden credentials directory or a Unix system directory. The word tests of a file:
+     * URL ("private", a folder named windows) are not applied here: applications keep their jars wherever a
+     * deployment puts them.
+     */
+    private static void validateJarArchive(String jarPath, String urlString) {
+        if (jarPath == null) {
+            throw new SecurityException("Jar URL without an archive");
+        }
+        int entry = jarPath.indexOf("!/");
+        String archive = entry < 0 ? jarPath : jarPath.substring(0, entry);
+        int colon = archive.indexOf(':');
+        if (colon <= 0) {
+            throw new SecurityException("Jar URL without an archive URL: " + sanitizeUrlForLogging(urlString));
+        }
+        String protocol = archive.substring(0, colon).toLowerCase(Locale.ROOT);
+
+        if (protocol.equals("file") || protocol.equals("nested")) {
+            String path = asOpened(archive.substring(colon + 1), File.separatorChar);
+            if (!path.startsWith("/")) {
+                path = underWorkingDirectory(path, new File("").getAbsolutePath(), File.separatorChar);
+            }
+            String lower = withoutMacOsPrivatePrefix(path.toLowerCase(Locale.ROOT));
+            if (isAtOrUnder(lower, "/etc") || isAtOrUnder(lower, "/proc") || isAtOrUnder(lower, "/sys")
+                    || isAtOrUnder(lower, "/dev") || lower.contains("/.ssh/") || lower.contains("/.gnupg/")
+                    || lower.contains("/.aws/") || lower.contains("/.docker/")) {
+                throw new SecurityException("Jar URL reads an archive in a protected directory: "
+                        + sanitizeUrlForLogging(urlString));
+            }
+            return;
+        }
+
+        String allowedProperty = getPropertyWithDefault(PROP_ALLOWED_PROTOCOLS, DEFAULT_ALLOWED_PROTOCOLS, "allowed protocols");
+        boolean allowed = false;
+        if (!protocol.equals("jar")) {
+            for (String allowedProtocol : getCachedAllowedProtocols(allowedProperty)) {
+                if (protocol.equals(allowedProtocol)) {
+                    allowed = true;
+                    break;
+                }
+            }
+        }
+        if (!allowed) {
+            throw new SecurityException("The archive of a jar URL is read over protocol '" + protocol
+                    + "', which is not allowed. Allowed protocols: " + allowedProperty);
+        }
+    }
+
     /**
      * The path of a file URL as the file system takes it: percent-escapes resolved, a run of slashes one slash,
      * "." segments and the slash at the end gone. "/%65tc/hosts", "//etc/hosts", "/./etc/hosts" and "/etc/hosts/"

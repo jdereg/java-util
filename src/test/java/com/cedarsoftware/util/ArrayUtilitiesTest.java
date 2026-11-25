@@ -676,4 +676,54 @@ public class ArrayUtilitiesTest
         assertEquals(20, ints[1]);
         assertEquals(30, ints[2]);  // 30.7 truncated to 30
     }
+
+    /**
+     * setPrimitiveElement() has a short path for the numeric and boolean arrays, small enough to be inlined, and a
+     * checked path that does everything. For every array type and every kind of element they must agree: the same
+     * array contents, or the same exception with the same message.
+     */
+    @Test
+    public void testSetPrimitiveElementShortPathAgreesWithTheCheckedPath() throws Exception {
+        java.lang.reflect.Method checked = ArrayUtilities.class.getDeclaredMethod("setPrimitiveElementChecked",
+                Object.class, int.class, Object.class);
+        checked.setAccessible(true);
+        Object[] elements = {null, 0, 1, -1, 42, 300, 70000, Integer.MAX_VALUE, Integer.MIN_VALUE, 5L, Long.MAX_VALUE,
+                (short) 7, (byte) -8, 2.75d, -0.0d, Double.NaN, Double.MAX_VALUE, 1.5f, Float.NaN,
+                new java.math.BigDecimal("12.9"), new java.math.BigInteger("123456789012345678901234567890"),
+                new java.util.concurrent.atomic.AtomicInteger(9), Boolean.TRUE, Boolean.FALSE, 'x', "y", "", "text",
+                new Object(), new int[]{1}};
+        Class<?>[] types = {int.class, long.class, double.class, boolean.class, byte.class, short.class, float.class,
+                char.class, String.class, Object.class, Integer.class};
+        int cases = 0;
+        for (Class<?> type : types) {
+            for (Object element : elements) {
+                for (int index : new int[]{0, 2, 3, -1}) {             // 3 and -1 are out of bounds
+                    Object viaShort = java.lang.reflect.Array.newInstance(type, 3);
+                    Object viaChecked = java.lang.reflect.Array.newInstance(type, 3);
+                    String shortResult;
+                    String checkedResult;
+                    try {
+                        ArrayUtilities.setPrimitiveElement(viaShort, index, element);
+                        shortResult = "stored";
+                    } catch (RuntimeException e) {
+                        shortResult = e.getClass().getName() + ": " + e.getMessage();
+                    }
+                    try {
+                        checked.invoke(null, viaChecked, index, element);
+                        checkedResult = "stored";
+                    } catch (java.lang.reflect.InvocationTargetException e) {
+                        checkedResult = e.getCause().getClass().getName() + ": " + e.getCause().getMessage();
+                    }
+                    String what = type.getSimpleName() + "[] index " + index + " element "
+                            + (element == null ? "null" : element.getClass().getSimpleName() + " " + element);
+                    assertEquals(checkedResult, shortResult, what);
+                    assertTrue(DeepEquals.deepEquals(viaChecked, viaShort), what);
+                    cases++;
+                }
+            }
+        }
+        assertEquals(11 * 30 * 4, cases);
+        assertThrows(NullPointerException.class, () -> ArrayUtilities.setPrimitiveElement(null, 0, 1));
+        assertThrows(IllegalArgumentException.class, () -> ArrayUtilities.setPrimitiveElement("not an array", 0, 1));
+    }
 }

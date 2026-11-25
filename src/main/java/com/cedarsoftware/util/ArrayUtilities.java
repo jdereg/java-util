@@ -1045,6 +1045,48 @@ public final class ArrayUtilities {
      * @see Array#set(Object, int, Object)
      */
     public static void setPrimitiveElement(Object array, int index, Object element) {
+        // The seven numeric and boolean array types, kept small enough for the JIT to inline into the caller's loop
+        // (under HotSpot's 325 bytes of bytecode; the whole method in one piece was 497 and was never inlined, at
+        // five to eight times the cost per element). Everything else -- char[], a type that does not fit, an
+        // array that is not primitive, no array at all -- goes to setPrimitiveElementChecked, which does it all and
+        // writes the error messages.
+        try {
+            if (array instanceof int[]) {
+                ((int[]) array)[index] = element == null ? 0 : ((Number) element).intValue();
+                return;
+            }
+            if (array instanceof long[]) {
+                ((long[]) array)[index] = element == null ? 0L : ((Number) element).longValue();
+                return;
+            }
+            if (array instanceof double[]) {
+                ((double[]) array)[index] = element == null ? 0.0 : ((Number) element).doubleValue();
+                return;
+            }
+            if (array instanceof boolean[]) {
+                ((boolean[]) array)[index] = element != null && (Boolean) element;
+                return;
+            }
+            if (array instanceof byte[]) {
+                ((byte[]) array)[index] = element == null ? 0 : ((Number) element).byteValue();
+                return;
+            }
+            if (array instanceof short[]) {
+                ((short[]) array)[index] = element == null ? 0 : ((Number) element).shortValue();
+                return;
+            }
+            if (array instanceof float[]) {
+                ((float[]) array)[index] = element == null ? 0.0f : ((Number) element).floatValue();
+                return;
+            }
+        } catch (ClassCastException e) {
+            // the element does not fit: the checked path says so
+        }
+        setPrimitiveElementChecked(array, index, element);
+    }
+
+    /** {@link #setPrimitiveElement} in full: every array type, and the error for each thing that does not fit. */
+    private static void setPrimitiveElementChecked(Object array, int index, Object element) {
         // For primitive arrays, use type-specific assignments to avoid boxing/unboxing
         // NOTE: Caller should handle Object[] case directly for maximum performance
         Class<?> arrayClass = array.getClass();

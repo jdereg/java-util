@@ -6937,7 +6937,7 @@ StringUtilities.repeat("a", 50000);               // Checks repeat limits
 **Security Features:**
 
 - **Memory Exhaustion Protection:** Prevents out-of-memory attacks by limiting input sizes
-- **ReDoS Prevention:** Limits wildcard pattern complexity in `wildcardToRegexString()`
+- **ReDoS Prevention:** `wildcardToRegexString()` writes a regex that matches in time proportional to the text, however many stars the wildcard has (since 4.119.0; each star was its own `.*`, and eight in a row took seconds). The length and count limits cap the pattern itself
 - **Integer Overflow Protection:** Prevents arithmetic overflow in size calculations
 - **Configurable Limits:** All limits can be customized or disabled independently
 

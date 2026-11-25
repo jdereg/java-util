@@ -677,7 +677,15 @@ public final class StringUtilities {
     }
 
     /**
-     * Convert strings containing DOS-style '*' or '?' to a regex String.
+     * Convert strings containing DOS-style '*' or '?' to a regex String, anchored with {@code ^} and {@code $}:
+     * {@code "*.txt"} is {@code "^.*\\.txt$"}. '*' is any run of characters and '?' any one character, neither
+     * matching a line terminator (they are the regex dot), and every other character is itself. A wildcard with
+     * several stars matches in time that grows with the text, not with the stars: the text between two stars is
+     * matched at its first place and kept ({@code "a*b*c"} is {@code "^a(?>.*?b).*c$"}), and stars in a row are one.
+     *
+     * @param wildcard the pattern; not null
+     * @return its regex
+     * @throws IllegalArgumentException if the pattern is null, or past the configured limits when security is on
      */
     public static String wildcardToRegexString(String wildcard) {
         if (wildcard == null) {
@@ -707,15 +715,41 @@ public final class StringUtilities {
         }
         
         int len = wildcard.length();
-        StringBuilder s = new StringBuilder(len);
+        StringBuilder s = new StringBuilder(len + 16);
         s.append('^');
-        for (int i = 0; i < len; i++) {
+        int first = wildcard.indexOf('*');
+        if (first < 0) {
+            appendWildcardText(s, wildcard, 0, len);
+        } else {
+            // Each '*' as its own ".*" lets the regex engine try every way of sharing the text among them when the
+            // match fails: "*********x" against 40 letters took seconds, and each further star multiplied it. So
+            // the text between two stars is matched at its first place and kept -- (?>.*?text), an atomic group, as
+            // a glob matcher walks a pattern -- and stars in a row are one star. Only the last star, which has the
+            // end of the text to reach, is a plain ".*". What matches is unchanged.
+            int last = wildcard.lastIndexOf('*');
+            appendWildcardText(s, wildcard, 0, first);
+            int start = first + 1;
+            while (start <= last) {
+                int next = wildcard.indexOf('*', start);
+                if (next > start) {
+                    s.append("(?>.*?");
+                    appendWildcardText(s, wildcard, start, next);
+                    s.append(')');
+                }
+                start = next + 1;
+            }
+            s.append(".*");
+            appendWildcardText(s, wildcard, last + 1, len);
+        }
+        s.append('$');
+        return s.toString();
+    }
+
+    /** The star-free part of a wildcard from {@code from} to {@code to}, as regex: '?' any character, the rest itself. */
+    private static void appendWildcardText(StringBuilder s, String wildcard, int from, int to) {
+        for (int i = from; i < to; i++) {
             char c = wildcard.charAt(i);
             switch (c) {
-                case '*':
-                    s.append(".*");
-                    break;
-
                 case '?':
                     s.append('.');
                     break;
@@ -742,8 +776,6 @@ public final class StringUtilities {
                     break;
             }
         }
-        s.append('$');
-        return s.toString();
     }
 
     /**

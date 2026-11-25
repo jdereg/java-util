@@ -73,7 +73,8 @@ public final class ExceptionUtilities {
      * @param <T>          the type of the result returned by the callable
      * @param callable     the {@link Callable} to execute
      * @param defaultValue the default value to return if the callable throws an exception
-     * @return the result of {@code callable.call()} if no exception is thrown, otherwise {@code defaultValue}
+     * @return the result of {@code callable.call()} if no exception is thrown, otherwise {@code defaultValue}.
+     *         After an {@link InterruptedException} the thread's interrupt flag is set again.
      *
      * @throws IllegalArgumentException if {@code callable} is {@code null}
      *
@@ -87,7 +88,19 @@ public final class ExceptionUtilities {
         try {
             return callable.call();
         } catch (Throwable e) {
+            keepInterrupt(e);
             return defaultValue;
+        }
+    }
+
+    /**
+     * A swallowed InterruptedException must not swallow the interrupt: catching it clears the thread's interrupt
+     * flag, so the flag is set again and whoever asked the thread to stop (shutdownNow(), cancel(true)) still
+     * stops it.
+     */
+    private static void keepInterrupt(Throwable e) {
+        if (e instanceof InterruptedException) {
+            Thread.currentThread().interrupt();
         }
     }
 
@@ -100,12 +113,15 @@ public final class ExceptionUtilities {
      * by hiding critical errors.
      * </p>
      *
+     * <p>After an {@link InterruptedException} the thread's interrupt flag is set again.</p>
+     *
      * @param runnable the {@code Runnable} to execute
      */
     public static void safelyIgnoreException(Runnable runnable) {
         try {
             runnable.run();
         } catch (Throwable ignored) {
+            keepInterrupt(ignored);
         }
     }
 
@@ -131,7 +147,7 @@ public final class ExceptionUtilities {
      *
      * @param t throwable to be rethrown unchecked
      * @param <T> type parameter used to trick the compiler
-     * @throws T never actually thrown, but declared for compiler satisfaction
+     * @throws T always: it is {@code t} itself, declared this way so the compiler asks for no throws clause
      */
     @SuppressWarnings("unchecked")
     public static <T extends Throwable> void uncheckedThrow(Throwable t) throws T {

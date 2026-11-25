@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.assertj.core.api.Assertions.assertThatNoException;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -105,5 +106,49 @@ public class ExceptionUtilitiesTest
         // catch(Throwable) and defaultValue was silently returned
         assertThatExceptionOfType(IllegalArgumentException.class)
                 .isThrownBy(() -> ExceptionUtilities.safelyIgnoreException(null, "default"));
+    }
+
+    /**
+     * A swallowed InterruptedException does not swallow the interrupt. The task overloads catch every Throwable;
+     * for an InterruptedException the thread's interrupt flag was left cleared, so a thread asked to stop by
+     * shutdownNow() or cancel(true) went on as if nobody had asked.
+     */
+    @Test
+    void safelyIgnoreExceptionKeepsTheInterrupt() {
+        try {
+            String result = ExceptionUtilities.safelyIgnoreException(() -> {
+                throw new InterruptedException("stop");
+            }, "default");
+            assertEquals("default", result);
+            assertTrue(Thread.interrupted(), "the Callable overload restores the interrupt");
+
+            ExceptionUtilities.safelyIgnoreException(() -> ExceptionUtilities.uncheckedThrow(new InterruptedException("stop")));
+            assertTrue(Thread.interrupted(), "the Runnable overload restores the interrupt");
+
+            // any other exception leaves the flag alone
+            assertEquals("default", ExceptionUtilities.safelyIgnoreException(() -> {
+                throw new IllegalStateException("other");
+            }, "default"));
+            ExceptionUtilities.safelyIgnoreException(() -> {
+                throw new IllegalStateException("other");
+            });
+            assertFalse(Thread.currentThread().isInterrupted());
+        } finally {
+            Thread.interrupted();           // never leave the test thread interrupted
+        }
+    }
+
+    /** A cause chain that loops back on itself ends: the walk stops at the first exception it meets again. */
+    @Test
+    @org.junit.jupiter.api.Timeout(value = 10, threadMode = org.junit.jupiter.api.Timeout.ThreadMode.SEPARATE_THREAD)
+    void getDeepestExceptionEndsOnACauseChainThatLoops() {
+        Exception a = new Exception("a");
+        Exception b = new Exception("b", a);
+        a.initCause(b);                                     // a -> b -> a
+        Throwable deepest = ExceptionUtilities.getDeepestException(a);
+        assertTrue(deepest == a || deepest == b);
+        Exception outer = new Exception("outer", a);        // outer -> a -> b -> a
+        deepest = ExceptionUtilities.getDeepestException(outer);
+        assertTrue(deepest == a || deepest == b);
     }
 }

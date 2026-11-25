@@ -81,8 +81,24 @@ public class EncryptionUtilitiesLowLevelTest {
         assertNotNull(cipherText, "Unable to generate legacy collision ciphertext");
         String hex = ByteUtilities.encode(cipherText);
 
-        assertEquals(new String(plain, StandardCharsets.UTF_8), EncryptionUtilities.decrypt(key, hex));
-        assertArrayEquals(plain, EncryptionUtilities.decryptBytes(key, hex));
+        // 4.119.0: the old format is read only when the application asks for it. This ciphertext looks like an
+        // AES-GCM payload (its first byte is the version byte), so without the switch it fails its tag check.
+        String switchName = "encryptionutilities.legacy.decrypt.enabled";
+        String before = System.getProperty(switchName);
+        try {
+            System.clearProperty(switchName);
+            assertThrows(IllegalStateException.class, () -> EncryptionUtilities.decrypt(key, hex));
+
+            System.setProperty(switchName, "true");
+            assertEquals(new String(plain, StandardCharsets.UTF_8), EncryptionUtilities.decrypt(key, hex));
+            assertArrayEquals(plain, EncryptionUtilities.decryptBytes(key, hex));
+        } finally {
+            if (before == null) {
+                System.clearProperty(switchName);
+            } else {
+                System.setProperty(switchName, before);
+            }
+        }
     }
 
     @Test

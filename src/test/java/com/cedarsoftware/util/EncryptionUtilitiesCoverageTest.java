@@ -585,20 +585,28 @@ class EncryptionUtilitiesCoverageTest {
 
     @Test
     @SuppressWarnings("deprecation")
-    void testDecryptLegacyPayload() {
+    void testDecryptLegacyPayload() throws Exception {
         // Encrypt with legacy AES/CBC to create old-format ciphertext
         javax.crypto.Cipher cipher = EncryptionUtilities.createAesEncryptionCipher("legacyKey");
-        byte[] plainBytes = "legacy secret".getBytes(StandardCharsets.UTF_8);
-        try {
-            byte[] encrypted = cipher.doFinal(plainBytes);
-            String hexStr = ByteUtilities.encode(encrypted);
+        String hexStr = ByteUtilities.encode(cipher.doFinal("legacy secret".getBytes(StandardCharsets.UTF_8)));
 
-            // Decrypt — should detect non-version1 payload and use legacy path (line 1017)
-            String decrypted = EncryptionUtilities.decrypt("legacyKey", hexStr);
-            assertThat(decrypted).isEqualTo("legacy secret");
-        } catch (Exception e) {
-            // If legacy cipher fails, that's also a valid test outcome
-            assertThat(e).isNotNull();
+        // 4.119.0: read only when the application asks for the old format. (This test caught every exception and
+        // so could not fail; it now asserts both outcomes.)
+        String switchName = "encryptionutilities.legacy.decrypt.enabled";
+        String before = System.getProperty(switchName);
+        try {
+            System.clearProperty(switchName);
+            assertThatThrownBy(() -> EncryptionUtilities.decrypt("legacyKey", hexStr))
+                    .isInstanceOf(IllegalStateException.class).hasMessageContaining(switchName);
+
+            System.setProperty(switchName, "true");
+            assertThat(EncryptionUtilities.decrypt("legacyKey", hexStr)).isEqualTo("legacy secret");
+        } finally {
+            if (before == null) {
+                System.clearProperty(switchName);
+            } else {
+                System.setProperty(switchName, before);
+            }
         }
     }
 

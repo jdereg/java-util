@@ -5422,9 +5422,21 @@ new data with them:**
 Cipher legacy = EncryptionUtilities.createAesDecryptionCipher("password");
 ```
 
-`decrypt()` and `decryptBytes()` read both formats: an input that is not a version-1 (AES-GCM) payload is decrypted
-with the legacy cipher. That keeps old data readable, and it means an application that accepts ciphertext from an
-untrusted party is accepting the unauthenticated format as well.
+**`decrypt()` and `decryptBytes()` read the legacy format only when asked.** Since 4.119.0 they accept what
+`encrypt()` writes, AES-GCM, and refuse anything else. An application that still holds ciphertext written by
+java-util 3.3.2 or earlier (before June 2025) turns the old format on to read it, and should re-encrypt it:
+
+```java
+System.setProperty("encryptionutilities.legacy.decrypt.enabled", "true");   // or -Dencryptionutilities.legacy.decrypt.enabled=true
+String text = EncryptionUtilities.decrypt(password, oldCiphertext);
+String rewritten = EncryptionUtilities.encrypt(password, text);              // AES-GCM
+```
+
+Leave it off wherever the ciphertext can come from someone else. The old format's padding check answers "decrypted"
+or "failed", and a party who can submit inputs and see that answer can, in a few thousand tries and without the
+password, build a ciphertext that `decrypt()` accepts and that decrypts to text of their choosing. With the switch
+on, a changed AES-GCM ciphertext can also come back as noise instead of failing, because a failed tag check is
+retried as the old format. Through 4.118.0 the old format was always read.
 
 ### Implementation Notes
 

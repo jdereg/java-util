@@ -964,7 +964,8 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
      * @throws DateTimeException             if Temporal type does not support Duration.between
      * @throws ArithmeticException           if numeric/date-time subtraction overflows long (a BigInteger or
      *                                       BigDecimal difference past a long, a double bound past a long, NaN
-     *                                       or infinite, included)
+     *                                       or infinite, and a BigDecimal bound whose exponent names more than
+     *                                       1,000 digits, such as 1E+1001, included)
      */
     public Duration totalDuration() {
         return totalDuration(this::defaultToDuration);
@@ -991,10 +992,14 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
         }
     }
 
+    /** The most digits an exponent may expand a BigDecimal bound to: ConverterOptions.getMaxPlainDigits()'s default. */
+    private static final int MAX_PLAIN_DIGITS = 1000;
+
     /**
      * {@code end - start} over the bounds' whole parts (each as {@code longValue()} takes it), exactly: a difference
      * that does not fit a long, or a bound that is NaN, infinite or past a long, throws ArithmeticException instead
-     * of wrapping or saturating as {@code longValue()} does.
+     * of wrapping or saturating as {@code longValue()} does. So does a BigDecimal bound whose exponent names more
+     * than {@link #MAX_PLAIN_DIGITS} digits (1E+1001), without being built.
      */
     private static long wholeDifference(Number start, Number end) {
         if (start instanceof BigInteger || start instanceof BigDecimal
@@ -1006,7 +1011,9 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
 
     private static BigInteger whole(Number n) {
         if (n instanceof BigDecimal) {
-            return ((BigDecimal) n).toBigInteger();
+            // not toBigInteger(): it builds the number an exponent names (1E+600000000: five minutes, 237 MB; and
+            // 1E-30000000, which is 0, the same seconds as 1E+30000000). Refused past the limit: ArithmeticException.
+            return MathUtilities.toBigInteger((BigDecimal) n, MAX_PLAIN_DIGITS);
         }
         return n instanceof BigInteger ? (BigInteger) n : BigInteger.valueOf(exactLong(n));
     }

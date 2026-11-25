@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -23,6 +24,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * Verifies that the validateFilePath method properly detects and prevents various file system security attacks.
  */
 class IOUtilitiesFileValidationTest {
+
+    @org.junit.jupiter.api.io.TempDir
+    Path tempDir;
+
     private static final Logger LOG = Logger.getLogger(IOUtilitiesFileValidationTest.class.getName());
     static {
         LoggingConfig.initForTests();
@@ -100,27 +105,47 @@ class IOUtilitiesFileValidationTest {
         }
     }
     
+    /**
+     * 4.119.0: | ; & ` and $ are legal in file names (Outer$Inner.class, Q&A.txt) and are not refused. Nothing in
+     * IOUtilities hands a path to a shell, so refusing them protected nothing. This test pinned the refusal.
+     */
     @Test
-    void testSuspiciousCharacterDetection() throws Exception {
-        // Test command injection character detection
-        String[] suspiciousPaths = {
-            "/tmp/file|rm -rf /",
-            "C:\\temp\\file;del C:\\windows",
-            "/tmp/file&whoami",
-            "/tmp/file`cat /etc/passwd`",
-            "/tmp/file$HOME/.ssh/id_rsa"
-        };
-        
-        for (String path : suspiciousPaths) {
-            File file = new File(path);
-            Exception exception = assertThrows(Exception.class, () -> {
-                validateFilePathMethod.invoke(null, file);
-            });
-            // Unwrap InvocationTargetException to get the actual SecurityException
-            Throwable cause = exception.getCause();
-            assertInstanceOf(SecurityException.class, cause, "Expected SecurityException but got: " + cause.getClass().getSimpleName());
-            assertTrue(cause.getMessage().contains("Suspicious characters detected"), 
-                      "Should detect suspicious characters in: " + path);
+    void testShellCharactersInAFileNameAreNotRefused() throws Exception {
+        String[] names = {"Outer$Inner.class", "Q&A.txt", "a;b.txt", "a|b.txt", "a`b`.txt"};
+        for (String name : names) {
+            File file = tempDir.resolve(name).toFile();
+            Files.write(file.toPath(), new byte[]{42});
+            assertDoesNotThrow(() -> validateFilePathMethod.invoke(null, file), name);
+            java.io.ByteArrayOutputStream read = new java.io.ByteArrayOutputStream();
+            IOUtilities.transfer(file, read);
+            assertEquals(1, read.size(), name);
+        }
+    }
+
+    /**
+     * ".." is refused as a path element, a step up, and not inside a name: "..notes.txt" and a folder "v2.." are
+     * names. They were refused because the test looked for the dots beside a separator anywhere.
+     */
+    @Test
+    void testTwoDotsInsideANameAreNotAStepUp() throws Exception {
+        File dotted = tempDir.resolve("..notes.txt").toFile();
+        Files.write(dotted.toPath(), new byte[]{1, 2});
+        File folder = tempDir.resolve("v2..").toFile();
+        assertTrue(folder.mkdir());
+        File inFolder = new File(folder, "x.txt");
+        Files.write(inFolder.toPath(), new byte[]{1, 2, 3});
+        for (File file : new File[]{dotted, inFolder, tempDir.resolve("a..b").toFile(), tempDir.resolve("...").toFile()}) {
+            assertDoesNotThrow(() -> validateFilePathMethod.invoke(null, file), file.getName());
+        }
+        java.io.ByteArrayOutputStream read = new java.io.ByteArrayOutputStream();
+        IOUtilities.transfer(inFolder, read);
+        assertEquals(3, read.size());
+
+        String base = tempDir.toString();
+        for (String path : new String[]{base + "/a/../b", base + "/..", "../x", "..", "x/..", "a\\..\\b", "..\\x"}) {
+            Exception refused = assertThrows(Exception.class, () -> validateFilePathMethod.invoke(null, new File(path)), path);
+            assertInstanceOf(SecurityException.class, refused.getCause(), path);
+            assertTrue(refused.getCause().getMessage().contains("Path traversal"), path);
         }
     }
     

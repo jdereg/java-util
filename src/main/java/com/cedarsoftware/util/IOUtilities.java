@@ -412,9 +412,9 @@ public final class IOUtilities {
         String filePath = file.getPath();
         
         // Fast checks first - no filesystem operations needed
-        // Check for obvious path traversal attempts
-        if (filePath.contains("../") || filePath.contains("..\\") || 
-            filePath.contains("/..") || filePath.contains("\\..")) {
+        // A ".." path element is a step up. Two dots inside a name ("..notes.txt", "v2..") are part of the name:
+        // they were refused too, because the test looked for the dots beside a separator anywhere.
+        if (hasParentElement(filePath)) {
             throw new SecurityException("Path traversal attempt detected: " + sanitizePathForLogging(filePath));
         }
         
@@ -423,16 +423,28 @@ public final class IOUtilities {
             throw new SecurityException("Null byte in file path: " + sanitizePathForLogging(filePath));
         }
         
-        // Check for suspicious characters that might indicate injection attempts
-        if (filePath.contains("|") || filePath.contains(";") || filePath.contains("&") || 
-            filePath.contains("`") || filePath.contains("$")) {
-            throw new SecurityException("Suspicious characters detected in file path: " + sanitizePathForLogging(filePath));
-        }
+        // No test for | ; & ` $ in the name: they are legal in file names (Outer$Inner.class, Q&A.txt), nothing
+        // here hands a path to a shell, and refusing them protected nothing.
         
         // Perform comprehensive security validation including symlink detection
         validateFileSystemSecurity(file, filePath);
     }
     
+    /** Whether a path has ".." as a whole element, between separators of either kind or at an end. */
+    private static boolean hasParentElement(String path) {
+        int len = path.length();
+        int start = 0;
+        for (int i = 0; i <= len; i++) {
+            if (i == len || path.charAt(i) == '/' || path.charAt(i) == '\\') {
+                if (i - start == 2 && path.charAt(start) == '.' && path.charAt(start + 1) == '.') {
+                    return true;
+                }
+                start = i + 1;
+            }
+        }
+        return false;
+    }
+
     /**
      * Performs comprehensive file system security validation including symlink detection,
      * special file checks, and canonical path verification.

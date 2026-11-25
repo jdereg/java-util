@@ -970,23 +970,35 @@ public final class IOUtilities {
     private static void optimizeConnection(URLConnection c) {
         // Only apply HTTP-specific optimizations to HttpURLConnection
         if (c instanceof HttpURLConnection) {
-            HttpURLConnection http = (HttpURLConnection) c;
+            applyTimeouts(c);
+            try {
+                // Disable caching to avoid disk operations
+                c.setUseCaches(false);
 
-            // Set to true to allow HTTP redirects
-            http.setInstanceFollowRedirects(true);
+                // Ask for compression, unless the caller asked for something itself
+                if (c.getRequestProperty("Accept-Encoding") == null) {
+                    c.setRequestProperty("Accept-Encoding", "gzip, x-gzip, deflate");
+                }
+            } catch (IllegalStateException connected) {
+                // The caller connected first (to read the response code, say): the connection is read as it is.
+            }
+            // Redirects are left as the caller has them. They are followed by default, and a caller that turned
+            // them off, often to keep a request on the host it checked, had them turned back on here.
+        }
+    }
 
-            // Disable caching to avoid disk operations
-            http.setUseCaches(false);
-            
-            // Use secure timeout validation to prevent injection attacks
-            int connectTimeout = getCachedConnectTimeout();
-            int readTimeout = getCachedReadTimeout();
-            
-            http.setConnectTimeout(connectTimeout);
-            http.setReadTimeout(readTimeout);
-
-            // Apply general URLConnection optimizations
-            c.setRequestProperty("Accept-Encoding", "gzip, x-gzip, deflate");
+    /**
+     * The configured connect and read timeouts (io.connect.timeout, io.read.timeout) for an HTTP connection whose
+     * caller has set none: a timeout the caller chose is kept. For a download and for an upload.
+     */
+    private static void applyTimeouts(URLConnection c) {
+        if (c instanceof HttpURLConnection) {
+            if (c.getConnectTimeout() == 0) {
+                c.setConnectTimeout(getCachedConnectTimeout());
+            }
+            if (c.getReadTimeout() == 0) {
+                c.setReadTimeout(getCachedReadTimeout());
+            }
         }
     }
 
@@ -1008,6 +1020,8 @@ public final class IOUtilities {
         validateFilePath(f);
         // Validate the destination protocol too: uploads are as SSRF-relevant as downloads
         validateUrlProtocol(c);
+        applyTimeouts(c);
+
         try (InputStream in = new BufferedInputStream(Files.newInputStream(f.toPath()));
              OutputStream out = new BufferedOutputStream(c.getOutputStream())) {
             return transfer(in, out, cb);
@@ -1124,6 +1138,7 @@ public final class IOUtilities {
                     }
                 }
             }
+            out.flush();        // as transfer(in, out) does: what was written reaches the destination, cancelled or not
             return total;
         } catch (IOException e) {
             ExceptionUtilities.uncheckedThrow(e);
@@ -1398,6 +1413,8 @@ public final class IOUtilities {
         Convention.throwIfNull(bytes, "byte array cannot be null");
         // Validate the destination protocol too: uploads are as SSRF-relevant as downloads
         validateUrlProtocol(c);
+        applyTimeouts(c);
+
         try (OutputStream out = new BufferedOutputStream(c.getOutputStream())) {
             out.write(bytes);
             return bytes.length;

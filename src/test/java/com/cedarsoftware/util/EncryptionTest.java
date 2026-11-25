@@ -122,6 +122,7 @@ public class EncryptionTest
         assertNull(EncryptionUtilities.calculateSHA512Hash(null));
     }
 
+    @Test
     public void testEncryptWithNull()
     {
 
@@ -141,6 +142,7 @@ public class EncryptionTest
         assertNull(EncryptionUtilities.fastMD5(new File("foo/bar/file")));
     }
 
+    @Test
     public void testFastMd5WithNull()
     {
         try

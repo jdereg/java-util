@@ -5352,13 +5352,11 @@ CompletableFuture.supplyAsync(() -> schedule.contains(time1))
 
 A comprehensive utility class providing cryptographic operations including high-performance hashing, encryption, and decryption capabilities.
 
--### Key Features
+### Key Features
 - Optimized file hashing (MD5, SHA-1, SHA-256, SHA-384, SHA-512, SHA3-256, SHA3-512)
 - Other variants like SHA-224 and SHA3-384 are available through `MessageDigest`
 - AES-128 encryption/decryption using AES-GCM
-- Zero-copy I/O operations
 - Thread-safe implementation
-- Custom filesystem support
 - Efficient memory usage
 
 ### Hash Operations
@@ -5403,19 +5401,25 @@ String encryptedHex = EncryptionUtilities.encryptBytes("password", originalBytes
 byte[] decryptedBytes = EncryptionUtilities.decryptBytes("password", encryptedHex);
 ```
 
-### Custom Cipher Creation
+### Legacy Ciphers (deprecated)
 
-**AES Cipher Configuration:**
+`createAesEncryptionCipher()`, `createAesDecryptionCipher()` and `createAesCipher()` are the cipher `encrypt()` used
+before it moved to AES-GCM. They are kept, byte for byte, so data written then can still be read. **Do not encrypt
+new data with them:**
+
+- the mode is AES/CBC/PKCS5Padding, with no authentication: a changed ciphertext is not detected;
+- the IV is the MD5 of the key, so it is the same for every message under one password, and the same text always
+  encrypts to the same ciphertext;
+- the key is 16 hex digits of an unsalted MD5 of the password: 64 bits.
+
 ```java
-// Create encryption cipher
-Cipher encryptCipher = EncryptionUtilities.createAesEncryptionCipher("password");
-
-// Create decryption cipher
-Cipher decryptCipher = EncryptionUtilities.createAesDecryptionCipher("password");
-
-// Create custom mode cipher
-Cipher customCipher = EncryptionUtilities.createAesCipher("password", Cipher.ENCRYPT_MODE);
+// Only to read data written by the old format
+Cipher legacy = EncryptionUtilities.createAesDecryptionCipher("password");
 ```
+
+`decrypt()` and `decryptBytes()` read both formats: an input that is not a version-1 (AES-GCM) payload is decrypted
+with the legacy cipher. That keeps old data readable, and it means an application that accepts ciphertext from an
+untrusted party is accepting the unauthenticated format as well.
 
 ### Implementation Notes
 
@@ -5425,8 +5429,8 @@ Cipher customCipher = EncryptionUtilities.createAesCipher("password", Cipher.ENC
 - Efficient memory management
 - Optimized for modern storage systems
 
--**Security Features:**
-- AES-GCM with authentication
+**Security Features:**
+- `encrypt()` writes AES-GCM with authentication
 - Random IV and salt for each encryption
 - Standard JDK security providers
 - Thread-safe operations
@@ -5448,11 +5452,11 @@ String legacyHash = EncryptionUtilities.fastMD5(file);
 String strongKey = "complex-password-here";
 String encrypted = EncryptionUtilities.encrypt(strongKey, data);
 
-// Handle exceptions appropriately
+// A wrong password or changed ciphertext throws
 try {
-    Cipher cipher = EncryptionUtilities.createAesEncryptionCipher(key);
-} catch (Exception e) {
-    // Handle cipher creation failure
+    String data = EncryptionUtilities.decrypt(strongKey, encrypted);
+} catch (IllegalArgumentException | IllegalStateException e) {
+    // not hex, or it did not decrypt
 }
 ```
 
@@ -5460,7 +5464,6 @@ try {
 - Uses optimal buffer sizes (64KB)
 - Minimizes memory allocation
 - Efficient I/O operations
-- Zero-copy where possible
 
 ### Security Notes
 ```java
@@ -5471,11 +5474,11 @@ String checksum = EncryptionUtilities.fastMD5(file);
 // For security, use SHA-256 or SHA-512
 String secure = EncryptionUtilities.fastSHA256(file);
 
-// AES implementation details
+// encrypt() implementation details
 // - Uses AES-GCM with authentication
 // - Random IV and salt stored with ciphertext
-// - 128-bit key size derived via PBKDF2
-Cipher cipher = EncryptionUtilities.createAesEncryptionCipher(key); // legacy API
+// - 128-bit key size derived via PBKDF2 (HMAC-SHA256, 65,536 iterations)
+String encrypted = EncryptionUtilities.encrypt(key, data);
 ```
 
 ### Resource Management

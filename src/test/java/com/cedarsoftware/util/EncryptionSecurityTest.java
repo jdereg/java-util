@@ -4,10 +4,14 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Arrays;
+import java.util.List;
+import java.util.function.Function;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.api.io.TempDir;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
@@ -16,6 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 /**
  * Comprehensive security tests for EncryptionUtilities configurable security features.
@@ -144,6 +149,47 @@ public class EncryptionSecurityTest {
         assertTrue(e3.getMessage().contains("File size too large"));
     }
     
+    /**
+     * The file-size limit holds while the file is read, not only for the length the file system reports beforehand.
+     * The limit was checked once, against File.length(): a device or a FIFO reports 0 and then streams without end,
+     * and a file can grow after the check, so with a 1 MB limit fastMD5(/dev/zero) read forever.
+     */
+    @Test
+    @Timeout(value = 20, threadMode = Timeout.ThreadMode.SEPARATE_THREAD)
+    void testFileSizeLimitHoldsWhileTheFileIsRead() {
+        File endless = new File("/dev/zero");
+        assumeTrue(endless.exists() && endless.length() == 0, "needs a readable device that reports no length");
+        System.setProperty("encryptionutilities.security.enabled", "true");
+        System.setProperty("encryptionutilities.file.size.validation.enabled", "true");
+        System.setProperty("encryptionutilities.max.file.size", "1048576"); // 1MB
+
+        List<Function<File, String>> hashes = Arrays.asList(EncryptionUtilities::fastMD5,
+                EncryptionUtilities::fastSHA1, EncryptionUtilities::fastSHA256, EncryptionUtilities::fastSHA384,
+                EncryptionUtilities::fastSHA512, EncryptionUtilities::fastSHA3_256, EncryptionUtilities::fastSHA3_512);
+        for (Function<File, String> hash : hashes) {
+            SecurityException e = assertThrows(SecurityException.class, () -> hash.apply(endless));
+            assertTrue(e.getMessage().contains("File size too large (max 1048576 bytes)"), e.getMessage());
+        }
+    }
+
+    /** A file of exactly the limit is hashed, and its hash is the one an unlimited read gives; one byte more is not. */
+    @Test
+    void testFileOfExactlyTheLimitIsHashed() throws IOException {
+        File exact = tempDir.resolve("exact.bin").toFile();
+        byte[] data = new byte[200_000];                    // more than three 64 KB reads
+        new java.util.Random(7).nextBytes(data);
+        Files.write(exact.toPath(), data);
+        String unlimited = EncryptionUtilities.fastSHA256(exact);
+        assertEquals(EncryptionUtilities.calculateSHA256Hash(data), unlimited);
+
+        System.setProperty("encryptionutilities.security.enabled", "true");
+        System.setProperty("encryptionutilities.file.size.validation.enabled", "true");
+        System.setProperty("encryptionutilities.max.file.size", "200000");
+        assertEquals(unlimited, EncryptionUtilities.fastSHA256(exact));
+        System.setProperty("encryptionutilities.max.file.size", "199999");
+        assertThrows(SecurityException.class, () -> EncryptionUtilities.fastSHA256(exact));
+    }
+
     @Test
     void testFileHashingWithFileSizeValidationDisabled() {
         // Enable master security but disable file size validation

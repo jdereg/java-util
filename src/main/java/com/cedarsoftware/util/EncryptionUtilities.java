@@ -11,7 +11,6 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
@@ -22,6 +21,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.security.spec.AlgorithmParameterSpec;
+import java.util.function.Supplier;
 
 /**
  * Utility class providing cryptographic operations including hashing, encryption, and decryption.
@@ -53,7 +53,6 @@ import java.security.spec.AlgorithmParameterSpec;
  *     <ul>
  *       <li>Efficient buffer management</li>
  *       <li>Large file handling</li>
- *       <li>Custom filesystem support</li>
  *     </ul>
  *   </li>
  * </ul>
@@ -81,7 +80,9 @@ import java.security.spec.AlgorithmParameterSpec;
  *
  * <h3>Security Features</h3>
  * <ul>
- *   <li><b>File Size Validation:</b> Prevents memory exhaustion through oversized file processing</li>
+ *   <li><b>File Size Validation:</b> Bounds the time spent hashing an oversized file (hashing reads through a
+ *       64 KB buffer, so memory is not at stake). The limit is checked against the reported length and again as the
+ *       file is read, so a device, a FIFO or a growing file is held to it too</li>
  *   <li><b>Buffer Size Validation:</b> Configurable limits on buffer sizes to prevent memory exhaustion</li>
  *   <li><b>Crypto Parameter Validation:</b> Validates cryptographic parameters to ensure security standards</li>
  *   <li><b>PBKDF2 Iteration Validation:</b> Ensures iteration counts meet minimum security requirements</li>
@@ -419,7 +420,6 @@ public class EncryptionUtilities {
      * <ul>
      *   <li>Heap ByteBuffer for efficient memory use</li>
      *   <li>FileChannel for optimal file access</li>
-     *   <li>Fallback for non-standard filesystems</li>
      *   <li>Optional file size validation to prevent resource exhaustion</li>
      * </ul>
      *
@@ -428,54 +428,29 @@ public class EncryptionUtilities {
      * @throws SecurityException if security validation is enabled and file exceeds size limits
      */
     public static String fastMD5(File file) {
-        // Security: Validate file size to prevent resource exhaustion
+        return hashFile(file, EncryptionUtilities::getMD5Digest);
+    }
+
+    /**
+     * The body of every {@code fast*} hash: the file read through its channel into the digest {@code digest}
+     * supplies, held to the file-size limit when that validation is on. The limit is checked against the length the
+     * file system reports, before the file is opened, and again as the bytes are read: a device or a FIFO reports
+     * length 0 and then streams without end, and a file can grow after the check.
+     *
+     * @return the hash in hexadecimal, or null if the file cannot be opened
+     */
+    private static String hashFile(File file, Supplier<MessageDigest> digest) {
         validateFileSize(file);
+        long limit = isSecurityEnabled() && isFileSizeValidationEnabled() ? getMaxFileSize() : Long.MAX_VALUE;
 
         try (FileInputStream fis = new FileInputStream(file)) {
-            return calculateFileHash(fis.getChannel(), getMD5Digest());
+            return calculateFileHash(fis.getChannel(), digest.get(), limit);
         } catch (FileNotFoundException e) {
             return null;
         } catch (IOException e) {
             ExceptionUtilities.uncheckedThrow(e);
             return null; // unreachable
         }
-    }
-
-    /**
-     * Calculates a hash from an InputStream using the specified MessageDigest.
-     * <p>
-     * This implementation uses:
-     * <ul>
-     *   <li>64KB buffer optimized for modern storage systems</li>
-     *   <li>Matches OS and filesystem page sizes</li>
-     *   <li>Aligns with SSD block sizes</li>
-     * </ul>
-     *
-     * @param in     InputStream to read from
-     * @param digest MessageDigest to use for hashing
-     * @return hexadecimal string of the hash value
-     */
-    private static String calculateStreamHash(InputStream in, MessageDigest digest) {
-        // Buffer size - configurable for security and performance:
-        // Default 64KB optimal for:
-        // 1. Modern OS page sizes
-        // 2. SSD block sizes
-        // 3. Filesystem block sizes
-        // 4. Memory usage vs. throughput balance
-        final int BUFFER_SIZE = getValidatedBufferSize(STANDARD_BUFFER_SIZE);
-
-        byte[] buffer = new byte[BUFFER_SIZE];
-        int read;
-
-        try {
-            while ((read = in.read(buffer)) != -1) {
-                digest.update(buffer, 0, read);
-            }
-        } catch (IOException e) {
-            ExceptionUtilities.uncheckedThrow(e);
-        }
-
-        return ByteUtilities.encode(digest.digest());
     }
 
     /**
@@ -485,24 +460,13 @@ public class EncryptionUtilities {
      * <ul>
      *   <li>Heap ByteBuffer for efficient memory use</li>
      *   <li>FileChannel for optimal file access</li>
-     *   <li>Fallback for non-standard filesystems</li>
      * </ul>
      *
      * @param file the file to hash
      * @return hexadecimal string of the SHA-1 hash, or null if the file cannot be read
      */
     public static String fastSHA1(File file) {
-        // Security: Validate file size to prevent resource exhaustion
-        validateFileSize(file);
-
-        try (FileInputStream fis = new FileInputStream(file)) {
-            return calculateFileHash(fis.getChannel(), getSHA1Digest());
-        } catch (FileNotFoundException e) {
-            return null;
-        } catch (IOException e) {
-            ExceptionUtilities.uncheckedThrow(e);
-            return null; // unreachable
-        }
+        return hashFile(file, EncryptionUtilities::getSHA1Digest);
     }
 
     /**
@@ -512,24 +476,13 @@ public class EncryptionUtilities {
      * <ul>
      *   <li>Heap ByteBuffer for efficient memory use</li>
      *   <li>FileChannel for optimal file access</li>
-     *   <li>Fallback for non-standard filesystems</li>
      * </ul>
      *
      * @param file the file to hash
      * @return hexadecimal string of the SHA-256 hash, or null if the file cannot be read
      */
     public static String fastSHA256(File file) {
-        // Security: Validate file size to prevent resource exhaustion
-        validateFileSize(file);
-
-        try (FileInputStream fis = new FileInputStream(file)) {
-            return calculateFileHash(fis.getChannel(), getSHA256Digest());
-        } catch (FileNotFoundException e) {
-            return null;
-        } catch (IOException e) {
-            ExceptionUtilities.uncheckedThrow(e);
-            return null; // unreachable
-        }
+        return hashFile(file, EncryptionUtilities::getSHA256Digest);
     }
 
     /**
@@ -539,17 +492,7 @@ public class EncryptionUtilities {
      * @return hexadecimal string of the SHA-384 hash, or null if the file cannot be read
      */
     public static String fastSHA384(File file) {
-        // Security: Validate file size to prevent resource exhaustion
-        validateFileSize(file);
-
-        try (FileInputStream fis = new FileInputStream(file)) {
-            return calculateFileHash(fis.getChannel(), getSHA384Digest());
-        } catch (FileNotFoundException e) {
-            return null;
-        } catch (IOException e) {
-            ExceptionUtilities.uncheckedThrow(e);
-            return null; // unreachable
-        }
+        return hashFile(file, EncryptionUtilities::getSHA384Digest);
     }
 
     /**
@@ -559,24 +502,13 @@ public class EncryptionUtilities {
      * <ul>
      *   <li>Heap ByteBuffer for efficient memory use</li>
      *   <li>FileChannel for optimal file access</li>
-     *   <li>Fallback for non-standard filesystems</li>
      * </ul>
      *
      * @param file the file to hash
      * @return hexadecimal string of the SHA-512 hash, or null if the file cannot be read
      */
     public static String fastSHA512(File file) {
-        // Security: Validate file size to prevent resource exhaustion
-        validateFileSize(file);
-
-        try (FileInputStream fis = new FileInputStream(file)) {
-            return calculateFileHash(fis.getChannel(), getSHA512Digest());
-        } catch (FileNotFoundException e) {
-            return null;
-        } catch (IOException e) {
-            ExceptionUtilities.uncheckedThrow(e);
-            return null; // unreachable
-        }
+        return hashFile(file, EncryptionUtilities::getSHA512Digest);
     }
 
     /**
@@ -586,17 +518,7 @@ public class EncryptionUtilities {
      * @return hexadecimal string of the SHA3-256 hash, or null if the file cannot be read
      */
     public static String fastSHA3_256(File file) {
-        // Security: Validate file size to prevent resource exhaustion
-        validateFileSize(file);
-
-        try (FileInputStream fis = new FileInputStream(file)) {
-            return calculateFileHash(fis.getChannel(), getSHA3_256Digest());
-        } catch (FileNotFoundException e) {
-            return null;
-        } catch (IOException e) {
-            ExceptionUtilities.uncheckedThrow(e);
-            return null; // unreachable
-        }
+        return hashFile(file, EncryptionUtilities::getSHA3_256Digest);
     }
 
     /**
@@ -606,17 +528,7 @@ public class EncryptionUtilities {
      * @return hexadecimal string of the SHA3-512 hash, or null if the file cannot be read
      */
     public static String fastSHA3_512(File file) {
-        // Security: Validate file size to prevent resource exhaustion
-        validateFileSize(file);
-
-        try (FileInputStream fis = new FileInputStream(file)) {
-            return calculateFileHash(fis.getChannel(), getSHA3_512Digest());
-        } catch (FileNotFoundException e) {
-            return null;
-        } catch (IOException e) {
-            ExceptionUtilities.uncheckedThrow(e);
-            return null; // unreachable
-        }
+        return hashFile(file, EncryptionUtilities::getSHA3_512Digest);
     }
 
     /**
@@ -635,6 +547,11 @@ public class EncryptionUtilities {
      * @throws IOException if an I/O error occurs (thrown as unchecked)
      */
     public static String calculateFileHash(FileChannel channel, MessageDigest digest) {
+        return calculateFileHash(channel, digest, Long.MAX_VALUE);
+    }
+
+    /** As {@link #calculateFileHash(FileChannel, MessageDigest)}, refusing to read more than {@code limit} bytes. */
+    private static String calculateFileHash(FileChannel channel, MessageDigest digest, long limit) {
         // Buffer size - configurable for security and performance:
         // Default 64KB optimal for modern OS/disk operations
         // Matches common SSD page sizes and OS buffer sizes  
@@ -646,7 +563,12 @@ public class EncryptionUtilities {
 
         // Read until EOF
         try {
-            while (channel.read(buffer) != -1) {
+            long total = 0;
+            int read;
+            while ((read = channel.read(buffer)) != -1) {
+                if ((total += read) > limit) {
+                    throw new SecurityException("File size too large (max " + limit + " bytes): more was read");
+                }
                 buffer.flip();  // Prepare buffer for reading
                 digest.update(buffer);  // Update digest
                 buffer.clear();  // Prepare buffer for writing
@@ -828,7 +750,8 @@ public class EncryptionUtilities {
      * <p>
      * Security: The iteration count can be validated when security features are enabled
      * to ensure it meets minimum security standards and prevent resource exhaustion attacks.
-     * Default iteration count is 65536 when security validation is disabled.
+     * The iteration count is 65,536, fixed by the ciphertext format. The iteration limits of the security
+     * configuration can refuse that count; they cannot change it.
      * </p>
      *
      * @param password   the password
@@ -873,10 +796,18 @@ public class EncryptionUtilities {
     }
 
     /**
-     * Creates an AES cipher in encryption mode.
+     * Creates the legacy AES cipher in encryption mode.
+     * <p>
+     * This is the cipher {@code encrypt()} used before it moved to AES-GCM, kept byte for byte so data written then
+     * can still be read. It is AES/CBC/PKCS5Padding with no authentication (a changed ciphertext is not detected);
+     * its IV is the MD5 of the key, the same for every message under one password, so the same text always
+     * encrypts to the same ciphertext; and its key is 16 hex digits of an unsalted MD5 of the password, 64 bits.
+     * </p>
      *
      * @param key the encryption key
      * @return Cipher configured for AES encryption
+     * @deprecated do not encrypt new data with it: use {@link #encrypt(String, String)} or
+     *             {@link #encryptBytes(String, byte[])}, which write AES-GCM with a random salt and IV
      */
     @Deprecated
     public static Cipher createAesEncryptionCipher(String key) {
@@ -884,10 +815,18 @@ public class EncryptionUtilities {
     }
 
     /**
-     * Creates an AES cipher in decryption mode.
+     * Creates the legacy AES cipher in decryption mode.
+     * <p>
+     * This is the cipher {@code encrypt()} used before it moved to AES-GCM, kept byte for byte so data written then
+     * can still be read. It is AES/CBC/PKCS5Padding with no authentication (a changed ciphertext is not detected);
+     * its IV is the MD5 of the key, the same for every message under one password, so the same text always
+     * encrypts to the same ciphertext; and its key is 16 hex digits of an unsalted MD5 of the password, 64 bits.
+     * </p>
      *
      * @param key the decryption key
      * @return Cipher configured for AES decryption
+     * @deprecated only for reading data the legacy cipher wrote; {@link #decrypt(String, String)} and
+     *             {@link #decryptBytes(String, String)} read both formats
      */
     @Deprecated
     public static Cipher createAesDecryptionCipher(String key) {
@@ -1070,6 +1009,11 @@ public class EncryptionUtilities {
 
     /**
      * Decrypts a hexadecimal string of encrypted data to its original string form.
+     * <p>
+     * Both formats are read: what {@link #encrypt(String, String)} writes (AES-GCM, authenticated), and, for any
+     * input that is not such a payload, the legacy AES-CBC format of earlier versions, which is not authenticated
+     * (see {@link #createAesDecryptionCipher(String)}).
+     * </p>
      *
      * @param key    decryption key
      * @param hexStr hexadecimal string of encrypted data
@@ -1147,7 +1091,7 @@ public class EncryptionUtilities {
      * <pre>
      * public int hashCode() {
      *     int result = Objects.hash(field1, field2, field3);
-     *     return EncryptionUtilities.murmurHash3(result);
+     *     return EncryptionUtilities.finalizeHash(result);
      * }
      * </pre>
      * </p>

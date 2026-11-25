@@ -7847,109 +7847,49 @@ This implementation provides robust HTTP/HTTPS client capabilities with emphasis
 
 [View Source](/src/main/java/com/cedarsoftware/util/ArrayUtilities.java)
 
-ArrayUtilities provides configurable security controls to prevent various attack vectors including memory exhaustion, reflection attacks, and array manipulation exploits. **All security features are disabled by default** for backward compatibility.
+ArrayUtilities can hold the arrays it creates to a size limit, so that a size taken from untrusted input cannot exhaust memory. The limit is off by default.
 
 ### System Property Configuration
 
 ```properties
-# Master switch - enables all security features
+# Master switch - turns the size limit on
 arrayutilities.security.enabled=false
 
-# Component type validation - prevents dangerous system class arrays
-arrayutilities.component.type.validation.enabled=false
-
-# Maximum array size limit - prevents memory exhaustion
+# Maximum array size - prevents memory exhaustion
 arrayutilities.max.array.size=2147483639
-
-# Dangerous class patterns - configurable list of blocked classes
-arrayutilities.dangerous.class.patterns=java.lang.Runtime,java.lang.ProcessBuilder,java.lang.System,java.security.,javax.script.,sun.,com.sun.,java.lang.Class
 ```
 
-### Security Features
+### Array Size Validation
 
-**Component Type Validation:**
-- Prevents creation of arrays with dangerous system classes
-- Configurable via comma-separated class patterns
-- Supports exact class names and package prefixes (ending with ".")
+- Applies to the methods that create an array: `addAll`, `addItem`, `removeItem`, `toArray`, and `getArraySubset`
+  (where an end past the array's length pads the result with nulls, so the size comes from the caller)
+- Refuses a size past the limit with a `SecurityException` ("Array size too large: 2000 > 1000")
+- Default limit when enabled and not set: `Integer.MAX_VALUE - 8`, the largest array a JVM allocates
 
-**Array Size Validation:**
-- Prevents integer overflow and memory exhaustion attacks
-- Configurable maximum array size limit
-- Default limit: `Integer.MAX_VALUE - 8` (JVM array size limit)
-
-**Dangerous Class Filtering:**
-- Blocks array creation for security-sensitive classes
-- Configurable patterns support package prefixes and exact matches
-- Default patterns include Runtime, ProcessBuilder, System, security classes
-
-**Error Message Sanitization:**
-- Prevents information disclosure in error messages
-- Generic error messages for security violations
-
-### Usage Examples
-
-**Enable Security with Default Settings:**
 ```java
-// Enable all security features
 System.setProperty("arrayutilities.security.enabled", "true");
-System.setProperty("arrayutilities.component.type.validation.enabled", "true");
-
-// These will now be blocked
-try {
-    Runtime[] runtimes = ArrayUtilities.nullToEmpty(Runtime.class, null);
-} catch (SecurityException e) {
-    // Array creation denied for security-sensitive class: java.lang.Runtime
-}
-```
-
-**Custom Security Configuration:**
-```java
-// Enable security with custom limits and patterns
-System.setProperty("arrayutilities.security.enabled", "true");
-System.setProperty("arrayutilities.component.type.validation.enabled", "true");
 System.setProperty("arrayutilities.max.array.size", "1000000"); // 1M limit
-System.setProperty("arrayutilities.dangerous.class.patterns", "java.lang.Runtime,com.example.DangerousClass");
 
-// Safe operations work normally
-String[] strings = ArrayUtilities.nullToEmpty(String.class, null);
-String[] combined = ArrayUtilities.addAll(new String[]{"a"}, new String[]{"b"});
+String[] combined = ArrayUtilities.addAll(new String[]{"a"}, new String[]{"b"});   // fine
+String[] huge = ArrayUtilities.toArray(String.class, collectionOfTwoMillion);        // SecurityException
 ```
 
-**Backward Compatibility (Default Behavior):**
-```java
-// By default, all security features are disabled
-// These operations work without restrictions
-Runtime[] runtimes = ArrayUtilities.nullToEmpty(Runtime.class, null);
-String[] huge = ArrayUtilities.toArray(String.class, hugeCollection);
-```
+### The dangerous-class check is gone (4.119.0)
+
+Through 4.118.0 ArrayUtilities could also be told to refuse creating an array of a "dangerous" class, with
+`arrayutilities.component.type.validation.enabled`, `arrayutilities.dangerous.classes.validation.enabled` and
+`arrayutilities.dangerous.class.patterns`. Those properties are now ignored. An array of a class grants nothing:
+`new Runtime[3]` is three nulls, and any caller can write that or call `Array.newInstance()`. The check also stood
+on 5 of the 12 paths that create an array, so it did not do what its name said. Nothing else in java-util relied on it.
 
 ### Configuration Details
 
-**Class Pattern Matching:**
-- **Exact matches:** `java.lang.Runtime` blocks only the Runtime class
-- **Package prefixes:** `java.security.` blocks all classes in java.security package
-- **Multiple patterns:** Comma-separated list of patterns
-
-**Defaults:**
-- The default dangerous class patterns and the default size limit apply whenever their properties are not set
+- The default size limit applies whenever its property is not set
 - ArrayUtilities reads its settings and writes none: loading the class leaves the system properties as they were
-  (through 4.118.0 it wrote both defaults into them)
-
-### Security Considerations
-
-**When to Enable:**
-- Production environments handling untrusted input
-- Applications creating arrays from user-controlled data
-- Systems requiring protection against reflection attacks
-
-**Performance Impact:**
-- Minimal overhead when security is disabled (default)
-- Small validation cost when enabled
-- No impact on normal array operations
-
-**Thread Safety:**
-- All security checks are thread-safe
-- Configuration is read each time it is needed: a property set or changed at run time takes effect at once
+  (through 4.118.0 it wrote its defaults into them)
+- Configuration is read each time it is needed: a property set or changed at run time takes effect at once, from
+  any thread
+- With the master switch off (the default) there is no check and no cost
 
 ## ReflectionUtils Security Configuration
 

@@ -19,9 +19,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Comprehensive security tests for ArrayUtilities.
- * Verifies that security controls prevent memory exhaustion, reflection attacks,
- * and other array-related security vulnerabilities.
+ * Security tests for ArrayUtilities: the array-size limit. (Until 4.119.0 also a "dangerous class" check, which is
+ * gone: see testNoClassIsRefusedAndTheOldPropertiesAreIgnored.)
  */
 public class ArrayUtilitiesSecurityTest {
     
@@ -65,97 +64,12 @@ public class ArrayUtilitiesSecurityTest {
     }
     
     // Test component type validation
-    
-    @Test
-    public void testNullToEmpty_dangerousClass_throwsException() {
-        Exception exception = assertThrows(SecurityException.class, () -> {
-            ArrayUtilities.nullToEmpty(Runtime.class, null);
-        });
-        
-        assertTrue(exception.getMessage().contains("Array creation denied"),
-                  "Should block dangerous class array creation");
-    }
-    
-    @Test
-    public void testNullToEmpty_systemClass_throwsException() {
-        Exception exception = assertThrows(SecurityException.class, () -> {
-            ArrayUtilities.nullToEmpty(System.class, null);
-        });
-        
-        assertTrue(exception.getMessage().contains("Array creation denied"),
-                  "Should block System class array creation");
-    }
-    
-    @Test
-    public void testNullToEmpty_processBuilderClass_throwsException() {
-        Exception exception = assertThrows(SecurityException.class, () -> {
-            ArrayUtilities.nullToEmpty(ProcessBuilder.class, null);
-        });
-
-        assertTrue(exception.getMessage().contains("Array creation denied"),
-                  "Should block ProcessBuilder class array creation");
-    }
-
-    @Test
-    public void testNullToEmpty_nestedDangerousArrayClass_throwsException() {
-        // Runtime[] as component type creates Runtime[][] — the leaf type must be
-        // validated, otherwise "[Ljava.lang.Runtime;" bypasses the pattern check
-        Exception exception = assertThrows(SecurityException.class, () -> {
-            ArrayUtilities.nullToEmpty(Runtime[].class, null);
-        });
-
-        assertTrue(exception.getMessage().contains("Array creation denied"),
-                  "Should block nested dangerous class array creation");
-    }
-
-    @Test
-    public void testNullToEmpty_deeplyNestedDangerousArrayClass_throwsException() {
-        Exception exception = assertThrows(SecurityException.class, () -> {
-            ArrayUtilities.nullToEmpty(ProcessBuilder[][].class, null);
-        });
-
-        assertTrue(exception.getMessage().contains("Array creation denied"),
-                  "Should block deeply nested dangerous class array creation");
-    }
-    
-    @Test
-    public void testNullToEmpty_securityClass_throwsException() {
-        Exception exception = assertThrows(SecurityException.class, () -> {
-            ArrayUtilities.nullToEmpty(java.security.Provider.class, null);
-        });
-        
-        assertTrue(exception.getMessage().contains("Array creation denied"),
-                  "Should block security package class array creation");
-    }
-    
-    @Test
-    public void testNullToEmpty_sunClass_throwsException() {
-        // Test sun.* package blocking (if available)
-        try {
-            Class<?> sunClass = Class.forName("sun.misc.Unsafe");
-            Exception exception = assertThrows(SecurityException.class, () -> {
-                ArrayUtilities.nullToEmpty(sunClass, null);
-            });
-            
-            assertTrue(exception.getMessage().contains("Array creation denied"),
-                      "Should block sun package class array creation");
-        } catch (ClassNotFoundException e) {
-            // sun.misc.Unsafe not available in this JVM, skip test
-            assertTrue(true, "sun.misc.Unsafe not available, test skipped");
-        }
-    }
-    
+                        
     @Test
     public void testNullToEmpty_safeClass_works() {
         String[] result = ArrayUtilities.nullToEmpty(String.class, null);
         assertNotNull(result);
         assertEquals(0, result.length);
-    }
-
-    @Test
-    public void testNullToEmpty_dangerousValidationDisabled_allowsDangerousClass() {
-        System.setProperty("arrayutilities.dangerous.classes.validation.enabled", "false");
-        assertDoesNotThrow(() -> ArrayUtilities.nullToEmpty(Runtime.class, null));
     }
     
     // Test integer overflow protection in addAll
@@ -186,20 +100,7 @@ public class ArrayUtilitiesSecurityTest {
         assertTrue(exception.getMessage().contains("Array size too large"),
                   "Should prevent creation of arrays larger than max size");
     }
-    
-    @Test
-    public void testAddAll_dangerousComponentType_throwsException() {
-        Runtime[] array1 = new Runtime[1];
-        Runtime[] array2 = new Runtime[1];
         
-        Exception exception = assertThrows(SecurityException.class, () -> {
-            ArrayUtilities.addAll(array1, array2);
-        });
-        
-        assertTrue(exception.getMessage().contains("Array creation denied"),
-                  "Should block dangerous class array operations");
-    }
-    
     @Test
     public void testAddAll_safeArrays_works() {
         String[] array1 = {"a", "b"};
@@ -227,17 +128,7 @@ public class ArrayUtilitiesSecurityTest {
         assertTrue(exception.getMessage().contains("Array size too large"),
                   "Should prevent adding item to max-sized array");
     }
-    
-    @Test
-    public void testAddItem_dangerousClass_throwsException() {
-        Exception exception = assertThrows(SecurityException.class, () -> {
-            ArrayUtilities.addItem(Runtime.class, null, null);
-        });
         
-        assertTrue(exception.getMessage().contains("Array creation denied"),
-                  "Should block dangerous class array creation");
-    }
-    
     @Test
     public void testAddItem_safeClass_works() {
         String[] array = {"a", "b"};
@@ -249,19 +140,7 @@ public class ArrayUtilitiesSecurityTest {
     }
     
     // Test removeItem security
-    
-    @Test
-    public void testRemoveItem_dangerousClass_throwsException() {
-        Runtime[] array = new Runtime[3];
         
-        Exception exception = assertThrows(SecurityException.class, () -> {
-            ArrayUtilities.removeItem(array, 1);
-        });
-        
-        assertTrue(exception.getMessage().contains("Array creation denied"),
-                  "Should block dangerous class array operations");
-    }
-    
     @Test
     public void testRemoveItem_invalidIndex_genericError() {
         String[] array = {"a", "b", "c"};
@@ -286,19 +165,7 @@ public class ArrayUtilitiesSecurityTest {
     }
     
     // Test toArray security
-    
-    @Test
-    public void testToArray_dangerousClass_throwsException() {
-        List<String> list = Arrays.asList("a", "b");
         
-        Exception exception = assertThrows(SecurityException.class, () -> {
-            ArrayUtilities.toArray(Runtime.class, list);
-        });
-        
-        assertTrue(exception.getMessage().contains("Array creation denied"),
-                  "Should block dangerous class array creation");
-    }
-    
     @Test
     public void testToArray_largeCollection_throwsException() {
         // Create a collection that claims to be too large
@@ -356,76 +223,9 @@ public class ArrayUtilitiesSecurityTest {
     }
     
     // Test thread safety of security controls
-    
-    @Test
-    public void testSecurity_threadSafety() throws InterruptedException {
-        final Exception[] exceptions = new Exception[2];
-        final boolean[] results = new boolean[2];
         
-        Thread thread1 = new Thread(() -> {
-            try {
-                ArrayUtilities.nullToEmpty(Runtime.class, null);
-                results[0] = false; // Should not reach here
-            } catch (SecurityException e) {
-                results[0] = true; // Expected
-            } catch (Exception e) {
-                exceptions[0] = e;
-            }
-        });
-        
-        Thread thread2 = new Thread(() -> {
-            try {
-                ArrayUtilities.addItem(System.class, null, null);
-                results[1] = false; // Should not reach here
-            } catch (SecurityException e) {
-                results[1] = true; // Expected
-            } catch (Exception e) {
-                exceptions[1] = e;
-            }
-        });
-        
-        thread1.start();
-        thread2.start();
-        
-        thread1.join();
-        thread2.join();
-        
-        assertNull(exceptions[0], "Thread 1 should not have thrown unexpected exception");
-        assertNull(exceptions[1], "Thread 2 should not have thrown unexpected exception");
-        assertTrue(results[0], "Thread 1 should have caught SecurityException");
-        assertTrue(results[1], "Thread 2 should have caught SecurityException");
-    }
-    
     // Test comprehensive dangerous class coverage
-    
-    @Test
-    public void testSecurity_comprehensiveDangerousClassBlocking() {
-        // Test various dangerous classes are blocked
-        String[] dangerousClasses = {
-            "java.lang.Runtime",
-            "java.lang.ProcessBuilder", 
-            "java.lang.System",
-            "java.security.Provider",
-            "javax.script.ScriptEngine",
-            "java.lang.Class"
-        };
         
-        for (String className : dangerousClasses) {
-            try {
-                Class<?> dangerousClass = Class.forName(className);
-                Exception exception = assertThrows(SecurityException.class, () -> {
-                    ArrayUtilities.nullToEmpty(dangerousClass, null);
-                }, "Should block " + className);
-                
-                assertTrue(exception.getMessage().contains("Array creation denied"),
-                          "Should block " + className + " with appropriate message");
-            } catch (ClassNotFoundException e) {
-                // Class not available in this JVM, skip
-                assertTrue(true, className + " not available, test skipped");
-            }
-        }
-    }
-    
     // Test that safe classes are allowed
     
     @Test
@@ -473,44 +273,6 @@ public class ArrayUtilitiesSecurityTest {
     
     // Test configurable dangerous class patterns
     
-    @Test
-    public void testSecurity_configurableDangerousClassPatterns() {
-        // Set custom dangerous class patterns
-        System.setProperty("arrayutilities.dangerous.class.patterns", "java.lang.String,java.util.");
-        
-        // String should now be blocked
-        Exception exception1 = assertThrows(SecurityException.class, () -> {
-            ArrayUtilities.nullToEmpty(String.class, null);
-        });
-        assertTrue(exception1.getMessage().contains("Array creation denied"));
-        
-        // java.util.List should be blocked (package pattern)
-        Exception exception2 = assertThrows(SecurityException.class, () -> {
-            ArrayUtilities.nullToEmpty(java.util.List.class, null);
-        });
-        assertTrue(exception2.getMessage().contains("Array creation denied"));
-        
-        // Integer should still be allowed
-        assertDoesNotThrow(() -> {
-            ArrayUtilities.nullToEmpty(Integer.class, null);
-        }, "Integer should be allowed with custom patterns");
-    }
-
-    /**
-     * nullToEmpty() creates an array only when it is given none, so only then is there a class to refuse. It
-     * checked the component type first, and so refused to hand back the caller's own array: with the dangerous-class
-     * check on, nullToEmpty(Runtime.class, existing) threw though it creates nothing.
-     */
-    @Test
-    public void testNullToEmptyReturnsAnExistingArrayWithoutJudgingItsClass() {
-        Runtime[] existing = new Runtime[]{Runtime.getRuntime()};
-        assertSame(existing, ArrayUtilities.nullToEmpty(Runtime.class, existing));
-        assertThrows(SecurityException.class, () -> ArrayUtilities.nullToEmpty(Runtime.class, null));
-        String[] words = {"a"};
-        assertSame(words, ArrayUtilities.nullToEmpty(String.class, words));
-        assertEquals(0, ArrayUtilities.nullToEmpty(String.class, null).length);
-    }
-
     /**
      * getArraySubset() is held to the array-size limit like every other method that creates an array. It was the
      * one that allocates from a number the caller passes: an end past the array's length pads the result with nulls
@@ -532,20 +294,75 @@ public class ArrayUtilitiesSecurityTest {
     }
 
     /**
-     * The defaults apply with neither property set: ArrayUtilities reads its settings and writes none. It wrote
-     * both defaults into the system properties when the class was loaded, which nothing needed (the settings fall
-     * back to the same defaults) and which failed class initialization under a SecurityManager that does not let
-     * the library write properties.
+     * 4.119.0: no class is refused. ArrayUtilities could be told to refuse creating an array of a "dangerous"
+     * class (Runtime, ProcessBuilder, Class, anything in java.security or sun), with three properties. An array of
+     * a class grants nothing -- new Runtime[3] is three nulls, and any caller can write that -- and the check stood
+     * on 5 of the 12 paths that create an array. It is gone, and its properties (which setUp() still sets) are
+     * ignored. Fourteen tests here pinned the refusals.
      */
     @Test
-    public void testDefaultsApplyWithoutTheirPropertiesAndNoneIsWritten() {
+    public void testNoClassIsRefusedAndTheOldPropertiesAreIgnored() {
+        System.setProperty("arrayutilities.dangerous.class.patterns", "java.lang.Runtime,java.lang.String,java.");
+        Runtime runtime = Runtime.getRuntime();
+        assertEquals(0, ArrayUtilities.nullToEmpty(Runtime.class, null).length);
+        assertEquals(0, ArrayUtilities.nullToEmpty(ProcessBuilder.class, null).length);
+        assertEquals(0, ArrayUtilities.nullToEmpty(Class.class, null).length);
+        assertEquals(0, ArrayUtilities.nullToEmpty(java.security.MessageDigest.class, null).length);
+        assertEquals(0, ArrayUtilities.nullToEmpty(Runtime[].class, null).length);
+        assertEquals(0, ArrayUtilities.nullToEmpty(String.class, null).length);
+        Runtime[] existing = {runtime};
+        assertSame(existing, ArrayUtilities.nullToEmpty(Runtime.class, existing));
+        assertEquals(2, ArrayUtilities.addAll(existing, existing).length);
+        assertEquals(2, ArrayUtilities.addItem(Runtime.class, existing, runtime).length);
+        assertEquals(1, ArrayUtilities.addItem(System.class, null, null).length);
+        assertEquals(0, ArrayUtilities.removeItem(existing, 0).length);
+        assertEquals(1, ArrayUtilities.toArray(Runtime.class, java.util.Collections.singletonList(runtime)).length);
+    }
+
+    /**
+     * The size limit, which is what remains, applies with its property unset, and nothing is written: ArrayUtilities
+     * wrote its defaults into the system properties when the class was loaded, which nothing needed and which failed
+     * class initialization under a SecurityManager that does not let the library write properties.
+     */
+    @Test
+    public void testTheSizeLimitAppliesWithoutItsPropertyAndNoneIsWritten() {
         System.clearProperty("arrayutilities.dangerous.class.patterns");
         System.clearProperty("arrayutilities.max.array.size");
-        assertThrows(SecurityException.class, () -> ArrayUtilities.nullToEmpty(Runtime.class, null));     // default patterns
-        assertEquals(0, ArrayUtilities.nullToEmpty(String.class, null).length);
         assertEquals(3, ArrayUtilities.toArray(String.class, java.util.Arrays.asList("a", "b", "c")).length);
-        assertEquals(1000, ArrayUtilities.getArraySubset(new String[]{"a"}, 0, 1000).length);            // default limit
+        assertEquals(1000, ArrayUtilities.getArraySubset(new String[]{"a"}, 0, 1000).length);
+        assertThrows(SecurityException.class, () -> ArrayUtilities.validateArraySize(Integer.MAX_VALUE));   // the default limit
         assertNull(System.getProperty("arrayutilities.dangerous.class.patterns"));
         assertNull(System.getProperty("arrayutilities.max.array.size"));
+    }
+
+    /** The settings are read on every call, from any thread: two threads see the limit one of them is refused by. */
+    @Test
+    public void testSecurity_threadSafety() throws InterruptedException {
+        System.setProperty("arrayutilities.max.array.size", "100");
+        final boolean[] refused = new boolean[2];
+        final Exception[] unexpected = new Exception[2];
+        Thread[] threads = new Thread[2];
+        for (int i = 0; i < 2; i++) {
+            final int n = i;
+            threads[n] = new Thread(() -> {
+                try {
+                    for (int round = 0; round < 2000; round++) {
+                        ArrayUtilities.getArraySubset(new String[]{"a"}, 0, 100);
+                    }
+                    ArrayUtilities.getArraySubset(new String[]{"a"}, 0, 101);
+                } catch (SecurityException e) {
+                    refused[n] = true;
+                } catch (Exception e) {
+                    unexpected[n] = e;
+                }
+            });
+            threads[n].start();
+        }
+        for (Thread thread : threads) {
+            thread.join();
+        }
+        assertNull(unexpected[0]);
+        assertNull(unexpected[1]);
+        assertTrue(refused[0] && refused[1]);
     }
 }

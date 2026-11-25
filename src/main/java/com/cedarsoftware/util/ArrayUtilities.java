@@ -31,35 +31,34 @@ import java.util.Objects;
  * </ul>
  *
  * <h2>Security Configuration</h2>
- * <p>ArrayUtilities provides configurable security controls to prevent various attack vectors including
- * memory exhaustion, reflection attacks, and array manipulation exploits.
- * All security features are <strong>disabled by default</strong> for backward compatibility.</p>
+ * <p>ArrayUtilities can hold the arrays it creates to a size limit, against memory exhaustion from a size that comes
+ * from outside. It is <strong>disabled by default</strong> for backward compatibility.</p>
  *
- * <p>Security controls can be enabled via system properties:</p>
+ * <p>It is enabled via system properties:</p>
  * <ul>
- *   <li><code>arrayutilities.security.enabled=false</code> &mdash; Master switch for all security features</li>
- *   <li><code>arrayutilities.component.type.validation.enabled=false</code> &mdash; Block dangerous system classes</li>
+ *   <li><code>arrayutilities.security.enabled=false</code> &mdash; Master switch</li>
  *   <li><code>arrayutilities.max.array.size=2147483639</code> &mdash; Maximum array size (default=Integer.MAX_VALUE-8 when enabled)</li>
- *   <li><code>arrayutilities.dangerous.class.patterns=java.lang.Runtime,java.lang.ProcessBuilder,...</code> &mdash; Comma-separated dangerous class patterns</li>
  * </ul>
  *
  * <h3>Security Features</h3>
  * <ul>
- *   <li><b>Component Type Validation:</b> Prevents creation of arrays with dangerous system classes (Runtime, ProcessBuilder, etc.)</li>
  *   <li><b>Array Size Validation:</b> Prevents integer overflow and memory exhaustion through oversized arrays</li>
- *   <li><b>Dangerous Class Filtering:</b> Blocks array creation for security-sensitive classes</li>
- *   <li><b>Error Message Sanitization:</b> Prevents information disclosure in error messages</li>
  * </ul>
+ * <p>Through 4.118.0 a "dangerous class" check could also be enabled
+ * (<code>arrayutilities.component.type.validation.enabled</code>,
+ * <code>arrayutilities.dangerous.classes.validation.enabled</code>,
+ * <code>arrayutilities.dangerous.class.patterns</code>). It is gone and those properties are ignored: an array of a
+ * class grants nothing ({@code new Runtime[3]} is three nulls, which any caller can write), and the check covered
+ * fewer than half of the methods that create an array.</p>
  *
  * <h3>Usage Example</h3>
  * <pre>{@code
  * // Enable security with custom limits
  * System.setProperty("arrayutilities.security.enabled", "true");
  * System.setProperty("arrayutilities.max.array.size", "1000000");
- * System.setProperty("arrayutilities.dangerous.classes.validation.enabled", "true");
  *
- * // These will now enforce security controls
- * String[] array = ArrayUtilities.nullToEmpty(String.class, null);
+ * // An array past the limit is now refused with a SecurityException
+ * String[] array = ArrayUtilities.toArray(String.class, collection);
  * }</pre>
  *
  * <h2>Usage Examples</h2>
@@ -119,38 +118,23 @@ public final class ArrayUtilities {
     public static final Character[] EMPTY_CHARACTER_ARRAY = new Character[0];
     public static final Class<?>[] EMPTY_CLASS_ARRAY = new Class<?>[0];
     
-    // Default security limits (used when security is enabled)
+    // Default limit (used when the limit is enabled)
     private static final int DEFAULT_MAX_ARRAY_SIZE = Integer.MAX_VALUE - 8; // JVM array size limit
-    
-    // Default dangerous class patterns (moved to system properties in static initializer)
-    private static final String DEFAULT_DANGEROUS_CLASS_PATTERNS = 
-        "java.lang.Runtime,java.lang.ProcessBuilder,java.lang.System,java.security.,javax.script.,sun.,com.sun.,java.lang.Class";
+
     private static volatile SecurityConfig securityConfigCache;
 
+    /** The two settings as last read: the master switch and the array-size limit. */
     private static final class SecurityConfig {
         private final String securityEnabledSource;
-        private final String componentTypeValidationSource;
-        private final String dangerousClassValidationSource;
         private final String maxArraySizeSource;
-        private final String dangerousClassPatternsSource;
         private final boolean securityEnabled;
-        private final boolean componentTypeValidationEnabled;
-        private final boolean dangerousClassValidationEnabled;
         private final boolean maxArraySizeValid;
         private final long maxArraySize;
-        private final String[] dangerousClassPatterns;
 
-        private SecurityConfig(String securityEnabledSource, String componentTypeValidationSource,
-                               String dangerousClassValidationSource, String maxArraySizeSource,
-                               String dangerousClassPatternsSource) {
+        private SecurityConfig(String securityEnabledSource, String maxArraySizeSource) {
             this.securityEnabledSource = securityEnabledSource;
-            this.componentTypeValidationSource = componentTypeValidationSource;
-            this.dangerousClassValidationSource = dangerousClassValidationSource;
             this.maxArraySizeSource = maxArraySizeSource;
-            this.dangerousClassPatternsSource = dangerousClassPatternsSource;
             securityEnabled = Boolean.parseBoolean(securityEnabledSource);
-            componentTypeValidationEnabled = Boolean.parseBoolean(componentTypeValidationSource);
-            dangerousClassValidationEnabled = Boolean.parseBoolean(dangerousClassValidationSource);
 
             long parsedSize = 0L;
             boolean parsedSizeValid = false;
@@ -164,31 +148,30 @@ public final class ArrayUtilities {
             }
             maxArraySize = parsedSize;
             maxArraySizeValid = parsedSizeValid;
-            dangerousClassPatterns = parseDangerousClassPatterns(dangerousClassPatternsSource);
         }
 
-        private boolean matches(String securityEnabledSource, String componentTypeValidationSource,
-                                String dangerousClassValidationSource, String maxArraySizeSource,
-                                String dangerousClassPatternsSource) {
+        private boolean matches(String securityEnabledSource, String maxArraySizeSource) {
             return Objects.equals(this.securityEnabledSource, securityEnabledSource) &&
-                    Objects.equals(this.componentTypeValidationSource, componentTypeValidationSource) &&
-                    Objects.equals(this.dangerousClassValidationSource, dangerousClassValidationSource) &&
-                    Objects.equals(this.maxArraySizeSource, maxArraySizeSource) &&
-                    Objects.equals(this.dangerousClassPatternsSource, dangerousClassPatternsSource);
+                    Objects.equals(this.maxArraySizeSource, maxArraySizeSource);
         }
     }
-    
+
     // The class reads its settings and writes none. It used to write its two defaults into the system properties
     // when it was loaded: a global side effect of touching ArrayUtilities.isEmpty(), and under a SecurityManager
     // that does not let the library write properties the class failed to initialize, after which every method
     // threw NoClassDefFoundError. The defaults were never needed there: getSecurityConfig() falls back to them.
-    
+    //
+    // There is no check of an array's component type. Through 4.118.0 a "dangerous class" check could be turned on
+    // (arrayutilities.component.type.validation.enabled and two more properties) to refuse creating, say, a
+    // Runtime[]. An array of a class grants nothing -- new Runtime[3] is three nulls, and any caller can write that
+    // or call Array.newInstance() -- and the check stood on 5 of the 12 paths that create an array. Those
+    // properties are now ignored.
+
     // Security configuration methods
 
     /**
-     * Fast path for the default (security disabled) case: one property read instead
-     * of the full five-property config snapshot. Still reads per call so runtime
-     * toggling of the master switch is honored immediately.
+     * Security: Check if ArrayUtilities security features are enabled.
+     * Default is false (disabled) for backward compatibility.
      */
     private static boolean isSecurityDisabled() {
         return !Boolean.parseBoolean(System.getProperty("arrayutilities.security.enabled", "false"));
@@ -196,47 +179,23 @@ public final class ArrayUtilities {
 
     private static SecurityConfig getSecurityConfig() {
         String securityEnabledSource = System.getProperty("arrayutilities.security.enabled", "false");
-        String componentTypeValidationSource = System.getProperty("arrayutilities.component.type.validation.enabled", "false");
-        String dangerousClassValidationSource = System.getProperty("arrayutilities.dangerous.classes.validation.enabled", "true");
         String maxArraySizeSource = System.getProperty("arrayutilities.max.array.size");
-        String dangerousClassPatternsSource = System.getProperty("arrayutilities.dangerous.class.patterns",
-                DEFAULT_DANGEROUS_CLASS_PATTERNS);
 
         SecurityConfig config = securityConfigCache;
-        if (config != null && config.matches(securityEnabledSource, componentTypeValidationSource,
-                dangerousClassValidationSource, maxArraySizeSource, dangerousClassPatternsSource)) {
+        if (config != null && config.matches(securityEnabledSource, maxArraySizeSource)) {
             return config;
         }
 
         synchronized (ArrayUtilities.class) {
             securityEnabledSource = System.getProperty("arrayutilities.security.enabled", "false");
-            componentTypeValidationSource = System.getProperty("arrayutilities.component.type.validation.enabled", "false");
-            dangerousClassValidationSource = System.getProperty("arrayutilities.dangerous.classes.validation.enabled", "true");
             maxArraySizeSource = System.getProperty("arrayutilities.max.array.size");
-            dangerousClassPatternsSource = System.getProperty("arrayutilities.dangerous.class.patterns",
-                    DEFAULT_DANGEROUS_CLASS_PATTERNS);
-
             config = securityConfigCache;
-            if (config == null || !config.matches(securityEnabledSource, componentTypeValidationSource,
-                    dangerousClassValidationSource, maxArraySizeSource, dangerousClassPatternsSource)) {
-                config = new SecurityConfig(securityEnabledSource, componentTypeValidationSource,
-                        dangerousClassValidationSource, maxArraySizeSource, dangerousClassPatternsSource);
+            if (config == null || !config.matches(securityEnabledSource, maxArraySizeSource)) {
+                config = new SecurityConfig(securityEnabledSource, maxArraySizeSource);
                 securityConfigCache = config;
             }
             return config;
         }
-    }
-
-    private static String[] parseDangerousClassPatterns(String patterns) {
-        String[] rawPatterns = patterns.split(",");
-        int size = 0;
-        for (int i = 0; i < rawPatterns.length; i++) {
-            String pattern = rawPatterns[i].trim();
-            if (!pattern.isEmpty()) {
-                rawPatterns[size++] = pattern;
-            }
-        }
-        return size == rawPatterns.length ? rawPatterns : Arrays.copyOf(rawPatterns, size);
     }
 
     /**
@@ -244,54 +203,6 @@ public final class ArrayUtilities {
      */
     private ArrayUtilities() {
         super();
-    }
-    
-    /**
-     * Security: Validates that the component type is safe for array creation.
-     * This prevents creation of arrays of dangerous system classes.
-     * 
-     * @param componentType the component type to validate
-     * @throws SecurityException if the component type is dangerous and validation is enabled
-     */
-    private static void validateComponentType(Class<?> componentType) {
-        if (componentType == null) {
-            return; // Allow null check to be handled elsewhere
-        }
-
-        if (isSecurityDisabled()) {
-            return;
-        }
-
-        // Only validate if security features are enabled (single config snapshot —
-        // the individual accessors would each re-read all five properties)
-        SecurityConfig config = getSecurityConfig();
-        if (!config.securityEnabled || !config.componentTypeValidationEnabled || !config.dangerousClassValidationEnabled) {
-            return;
-        }
-
-        // Unwrap nested array types so Runtime[][] etc. cannot bypass the check:
-        // the name "[Ljava.lang.Runtime;" matches neither exact nor prefix patterns.
-        while (componentType.isArray()) {
-            componentType = componentType.getComponentType();
-        }
-
-        String className = componentType.getName();
-        String[] dangerousPatterns = config.dangerousClassPatterns;
-
-        // Check if class name matches any dangerous patterns
-        for (String pattern : dangerousPatterns) {
-            if (pattern.endsWith(".")) {
-                // Package prefix pattern (e.g., "java.security.")
-                if (className.startsWith(pattern)) {
-                    throw new SecurityException("Array creation denied for security-sensitive class: " + className);
-                }
-            } else {
-                // Exact class name pattern (e.g., "java.lang.Class")
-                if (className.equals(pattern)) {
-                    throw new SecurityException("Array creation denied for security-sensitive class: " + className);
-                }
-            }
-        }
     }
     
     /**
@@ -486,12 +397,7 @@ public final class ArrayUtilities {
     @SuppressWarnings("unchecked")
     public static <T> T[] nullToEmpty(Class<T> componentType, T[] array) {
         Objects.requireNonNull(componentType, "componentType is null");
-        if (array != null) {
-            return array;       // nothing is created: no class to judge, and no settings to read
-        }
-        // Security: Validate component type before array creation
-        validateComponentType(componentType);
-        return (T[]) Array.newInstance(componentType, 0);
+        return array == null ? (T[]) Array.newInstance(componentType, 0) : array;
     }
 
     /**
@@ -574,8 +480,6 @@ public final class ArrayUtilities {
         validateArraySize(combinedLength);
 
         Class<?> componentType = array1.getClass().getComponentType();
-        // Security: Validate component type before array creation
-        validateComponentType(componentType);
         
         final T[] newArray = (T[]) Array.newInstance(componentType, (int) combinedLength);
         System.arraycopy(array1, 0, newArray, 0, array1.length);
@@ -615,8 +519,6 @@ public final class ArrayUtilities {
         }
 
         Class<?> componentType = array.getClass().getComponentType();
-        // Security: Validate component type before array creation
-        validateComponentType(componentType);
         
         T[] dest = (T[]) Array.newInstance(componentType, len - 1);
         System.arraycopy(array, 0, dest, 0, pos);
@@ -636,8 +538,6 @@ public final class ArrayUtilities {
     @SuppressWarnings("unchecked")
     public static <T> T[] addItem(Class<T> componentType, T[] array, T item) {
         Objects.requireNonNull(componentType, "componentType is null");
-        // Security: Validate component type before array creation
-        validateComponentType(componentType);
         
         if (array == null) {
             T[] result = (T[]) Array.newInstance(componentType, 1);
@@ -757,8 +657,6 @@ public final class ArrayUtilities {
         Objects.requireNonNull(classToCastTo, "classToCastTo is null");
         Objects.requireNonNull(c, "collection is null");
         
-        // Security: Validate component type before array creation
-        validateComponentType(classToCastTo);
         
         int size = c.size();
         // Security: Validate collection size to prevent memory exhaustion

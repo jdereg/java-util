@@ -481,9 +481,18 @@ public final class StringUtilities {
 
     /**
      * Checks if a CharSequence is empty (""), null, or only whitespace.
+     * <p>
+     * Whitespace here is what {@link Character#isWhitespace(char)} says it is, as JDK 11's {@code String.isBlank()}
+     * judges it: the space, tab and line ends, and the Unicode spaces (the ideographic space U+3000 among them).
+     * That is a wider rule than the one {@link #trim(String)}, {@link #trimToEmpty(String)} and
+     * {@link #trimLength(String)} follow, which is {@code String.trim()}'s: every character up to the space
+     * (U+0020), the control characters included, and no Unicode space. So a string of one ideographic space is
+     * empty here and keeps its length when trimmed, and a string of one NUL character has content here and trims
+     * to nothing.
+     * </p>
      *
      * @param cs the CharSequence to check, may be null
-     * @return {@code true} if the CharSequence is empty or null
+     * @return {@code true} if the CharSequence is null, empty, or whitespace only
      */
     public static boolean isEmpty(CharSequence cs) {
         return isWhitespace(cs);
@@ -516,7 +525,8 @@ public final class StringUtilities {
     }
 
     /**
-     * Checks if a String is not empty (""), not null and not whitespace only.
+     * Checks if a String is not empty (""), not null and not whitespace only: the opposite of
+     * {@link #isEmpty(CharSequence)}, by the same rule for whitespace ({@link Character#isWhitespace(char)}).
      *
      * @param s the CharSequence to check, may be null
      * @return {@code true} if the CharSequence is
@@ -1166,10 +1176,12 @@ public final class StringUtilities {
     }
 
     /**
-     * Trims a string, If the string trims to empty then we return null.
+     * Trims a string as {@link #trim(String)} does, and returns null where nothing but whitespace is left.
+     * "Nothing but whitespace" is judged as {@link #isEmpty(CharSequence)} judges it, the wider rule: a string of
+     * Unicode spaces, which {@code trim()} leaves as it is, is null here.
      *
      * @param value string input
-     * @return String, trimmed from value.  If the value was empty we return null.
+     * @return the trimmed string, or null if value was null, empty, or whitespace only
      */
     public static String trimToNull(String value) {
         String ts = trim(value);
@@ -1309,6 +1321,12 @@ public final class StringUtilities {
 
     /**
      * Determine if the supplied string contains only numeric digits.
+     * <p>
+     * A digit is any decimal digit {@link Character#isDigit(char)} knows, the digits the Converter reads in a number:
+     * {@code 0-9}, and those of other scripts in the Basic Multilingual Plane (Arabic-Indic, Devanagari, fullwidth),
+     * a set that follows the JDK's Unicode version. Digits outside that plane are not counted. The length is not
+     * judged: twenty digits are numeric here and do not fit a long.
+     * </p>
      *
      * @param s the string to test, may be {@code null}
      * @return {@code true} if {@code s} is non-empty and consists solely of digits

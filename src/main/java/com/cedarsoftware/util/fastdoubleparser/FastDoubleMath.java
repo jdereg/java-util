@@ -773,6 +773,19 @@ public final class FastDoubleMath {
             return isNegative ? -0.0 : 0.0;
         }
 
+        // java-util change (4.119.0): far outside the range of a double, the answer is known here. The value is
+        // at least 1 x 10^power and below 2^64 x 10^power, so from 10^309 up it is Infinity, and below 10^-345 it
+        // rounds to zero. Returning NaN for these sent them to Double.parseDouble, which on JDK 8 answers
+        // Infinity for a number written with hundreds of zeros after its decimal point and an exponent over 330
+        // ("0." + 1,020 zeros + "845836E+466", which is 8E-562).
+        final int power = isSignificandTruncated ? exponentOfTruncatedSignificand : exponent;
+        if (power > DOUBLE_MAX_EXPONENT_POWER_OF_TEN) {
+            return isNegative ? Double.NEGATIVE_INFINITY : Double.POSITIVE_INFINITY;
+        }
+        if (power < DOUBLE_MIN_EXPONENT_POWER_OF_TEN - 20) {
+            return isNegative ? -0.0 : 0.0;
+        }
+
         final double result;
         if (isSignificandTruncated) {
             // We have too many digits. We may have to round up.

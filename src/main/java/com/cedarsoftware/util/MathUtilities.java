@@ -472,6 +472,10 @@ public final class MathUtilities
      *       keeps, a value beyond the double range (never Infinity), or one so small it would lose digits or become
      *       0.0. On JDK 8-18, whose {@code Double.toString} does not always write the shortest form (about 3 doubles
      *       in 1,000 get an 18th digit), the type can differ from JDK 19+ for such numbers; the value is the same.</li>
+     *   <li>Text that only {@link Double#parseDouble(String)} reads -- a {@code d} or {@code f} suffix, spaces around
+     *       the number, hexadecimal -- is the Double it reads as, whatever its digits: {@code "8.000000000000001d"}
+     *       is the Double 8.000000000000002. Whole numbers take no such text.</li>
+     *   <li>Zero written with any exponent ({@code "0e99999999999"}) is the Double 0.0.</li>
      * </ul>
      *
      * <p><strong>Examples:</strong></p>
@@ -599,6 +603,14 @@ public final class MathUtilities
                 {
                     // fall through to BigDecimal
                 }
+            }
+            else if (exponentOverflow && exponentHasDigits
+                    && significantDigits(text, start, mantissaEnd, mantissaSize) == 0)
+            {
+                // Zero with an exponent past what a BigDecimal can hold ("0e99999999999"): still zero, and a
+                // double holds it. It was a NumberFormatException, from the BigDecimal parser below, where
+                // "0e400" was the Double 0.0. (The double parser is what refuses text that is not a number.)
+                return JavaDoubleParser.parseDouble(text);
             }
             return JavaBigDecimalParser.parseBigDecimal(text);
         } else {
@@ -998,7 +1010,9 @@ public final class MathUtilities
     /**
      * {@code value} as text: its plain digits, as {@link BigDecimal#toPlainString()} writes them, while
      * {@link #fitsPlainDigits(BigDecimal, int)}; past that, {@link BigDecimal#toString()}'s exponent form
-     * ({@code "1E+999999999"} rather than a billion digits). Either reads back as the same BigDecimal.
+     * ({@code "1E+999999999"} rather than a billion digits). Either reads back as a BigDecimal of the same value
+     * ({@code compareTo}); its scale can differ, as it can with {@code toPlainString()}: {@code 1E+3} is written
+     * {@code "1000"}.
      *
      * @param value     the number
      * @param maxDigits the most digits an exponent may expand it to (the Converter's default is 1,000)

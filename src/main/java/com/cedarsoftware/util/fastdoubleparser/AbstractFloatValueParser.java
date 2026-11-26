@@ -39,5 +39,24 @@ abstract class AbstractFloatValueParser extends AbstractNumberParser {
      */
     final static int MAX_EXPONENT_NUMBER = 1024;
 
+    /**
+     * Where the digits of an exponent stop being added up: far below what a long holds, and far above anything
+     * the number of digits in a significand could offset (an input is at most 2^31 characters).
+     * <p>
+     * java-util change (4.119.0). As vendored, the exponent stopped being read at {@link #MAX_EXPONENT_NUMBER},
+     * 1024, on the reasoning that a double's exponent goes no further: {@code e10240} was taken as {@code e1024}.
+     * But the exponent is then added to the position of the decimal point, and with about a thousand digits in
+     * the significand that sum came back inside the double range: {@code 0.}, 1,005 zeros and {@code 12345e10240},
+     * which is 1.2345E+9234 and so Infinity to {@code Double.parseDouble}, was returned as 1.2345E18.
+     * The exponent is now added up in full, and the sum is clamped: outside the double range by any amount it
+     * goes to the caller's fallback, {@code Double.parseDouble}.
+     */
+    final static long MAX_EXPONENT_DIGITS_VALUE = 1_000_000_000_000_000L;
+
+    /** An exponent as an int: its own value within a billion either way, which is far outside any double. */
+    static int clampExponent(long exponent) {
+        return (int) Math.max(-1_000_000_000L, Math.min(1_000_000_000L, exponent));
+    }
+
 
 }

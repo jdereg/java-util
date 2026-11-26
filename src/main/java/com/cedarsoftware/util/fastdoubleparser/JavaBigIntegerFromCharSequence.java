@@ -23,6 +23,12 @@ final class JavaBigIntegerFromCharSequence extends AbstractBigIntegerParser {
         try {
             int size = str.length();
             final int endIndex = AbstractNumberParser.checkBounds(size, offset, length);
+            if (length == 0) {
+                // java-util change (4.119.0): no digits is not a number, as for new BigInteger(""). The sign was
+                // read from outside an empty slice (an index exception for empty text), and a slice of no
+                // characters came out as 0.
+                throw new NumberFormatException(SYNTAX_ERROR);
+            }
 
             // Parse optional sign
             // -------------------

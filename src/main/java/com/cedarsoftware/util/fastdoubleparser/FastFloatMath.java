@@ -49,6 +49,15 @@ final class FastFloatMath {
             return isNegative ? -0.0f : 0.0f;
         }
 
+        // java-util change (4.119.0): as in FastDoubleMath.tryDecFloatToDoubleTruncated, for a float's range
+        final int power = isSignificandTruncated ? exponentOfTruncatedSignificand : exponent;
+        if (power > FLOAT_MAX_EXPONENT_POWER_OF_TEN) {
+            return isNegative ? Float.NEGATIVE_INFINITY : Float.POSITIVE_INFINITY;
+        }
+        if (power < FLOAT_MIN_EXPONENT_POWER_OF_TEN - 20) {
+            return isNegative ? -0.0f : 0.0f;
+        }
+
         final float result;
         if (isSignificandTruncated) {
 

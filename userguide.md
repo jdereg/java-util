@@ -6199,7 +6199,7 @@ MathUtilities provides configurable security limits through system properties. T
 |----------|---------|-------------|
 | `mathutilities.security.enabled` | `false` | Master switch: no limit applies while it is `false` |
 | `mathutilities.max.array.size` | `100000` | Array size limit for min/max operations (0 = no limit) |
-| `mathutilities.max.string.length` | `100000` | String length limit for parsing operations (0 = no limit) |
+| `mathutilities.max.string.length` | `100000` | Text length limit for `parseToMinimalNumericType()` only; `parseDouble`, `parseFloat`, `parseBigDecimal` and `parseBigInteger` take text of any length (0 = no limit) |
 | `mathutilities.max.permutation.size` | `10` | List size limit for permutation generation (0 = no limit) |
 
 **Usage Examples:**
@@ -6256,7 +6256,8 @@ try {
 
 // Decimal values
 "123.45"    → Double
-"1e308"     → BigDecimal (if > Double.MAX_VALUE)
+"1e308"     → Double (1.0E308: a double holds it)
+"1e309"     → BigDecimal (past Double.MAX_VALUE, never Infinity)
 "1.234...5" → BigDecimal (if needs more precision)
 ```
 
@@ -8654,7 +8655,7 @@ mathutilities.security.enabled=false
 # Array size limit for min/max operations (0 = disabled)
 mathutilities.max.array.size=100000
 
-# String length limit for parsing operations (0 = disabled)
+# Text length limit for parseToMinimalNumericType() (0 = disabled); the other parse methods are not limited
 mathutilities.max.string.length=100000
 
 # List size limit for permutation operations (0 = disabled)

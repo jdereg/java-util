@@ -38,6 +38,9 @@
 | `SafeSimpleDateFormat.getCalendar()`, `getNumberFormat()`, `getTimeZone()` | the object last handed to the setter, else an internal one | a copy of what is in force |
 | A formatter from `SafeSimpleDateFormat.getDateFormat(pattern)` that the caller changed (`setTimeZone`, `setLenient`, ...) | the change was lost once the thread had asked for 16 other patterns | kept for the life of the thread |
 | A `SafeSimpleDateFormat` serialized by 4.119.0, read by 4.118.0 or earlier | (4.118.0's own streams) | not readable there; streams from 4.118.0 and earlier read in 4.119.0 |
+| `MathUtilities.parseDouble()` / `parseFloat()` / `parseToMinimalNumericType()`, and so json-io and the Converter, on a number with 700 or more digits and an exponent of 10240 or more | an ordinary number that is not the one written (`1.2345E18` for 1.2345E+9234) | what `Double.parseDouble` returns: `Infinity` or `0.0`; a `BigDecimal` from `parseToMinimalNumericType()` |
+| `MathUtilities.parseBigInteger()` of empty text or an empty slice | an index exception; 0 for a slice | `NumberFormatException` |
+| `MathUtilities.parseToMinimalNumericType("0e99999999999")` | `NumberFormatException` | `0.0` |
 
 * **BUILD**: Test scope: `json-io` 4.117.0 → **4.118.0**, released alongside java-util 4.118.0.
 * **SECURITY**: **`EncryptionUtilities.decrypt()` reads only what `encrypt()` writes, unless the application asks for the old format.** The note at the top of this section says what to do; this is the detail.
@@ -151,6 +154,12 @@
   * **A setter no longer discards the formatter it replaces**, so going back and forth between two settings builds each once (the last row).
   * **Serialized size:** 45 to 56 KB → 5 to 7 KB. A formatter written by 4.118.0 or earlier still reads (`safe-simple-date-format-4.118.0.ser.gz` in the test resources pins it). One written by 4.119.0 cannot be read by 4.118.0, and that is left so: those versions need the symbols, the number format and a summary of it in the stream, and writing them for their sake would put the 45 KB back into every stream and a deleted class back into the library.
   * **Simpler:** the configuration compares by its values, and the hand-kept summary of a number format (`NFSig`) and the second copy of the settings are gone.
+* **SECURITY / BUG FIX**: **A number written with a long run of digits and a five-digit exponent is no longer read as a different number.** The bundled fast parser behind `MathUtilities.parseDouble()` and `parseFloat()` stopped reading an exponent at 1024, as past any double: `e10240` was taken as `e1024`. It then added the exponent to the position of the decimal point, and with about a thousand digits before or after the point the sum came back inside the double range. `0.` + 1,005 zeros + `12345e10240`, which is 1.2345E+9234, was returned as `1.2345E18`; `12345` + 1,019 zeros + `e-10240` as `0.12345`. The shortest such text is 728 characters; hexadecimal floats did the same.
+  * **Who read it:** json-io with its default options (`[1.2345E18]`) and with `floatPointBoth()`, and `Converter.convert(text, Double.class)`, whose refusal of a number outside the double range was passed by. `parseToMinimalNumericType()` since 4.118.0; `parseDouble()` and `parseFloat()` since 4.102.0. A validator that reads the same text with the JDK or a `BigDecimal` saw another number than the one used.
+  * **Now** the exponent is read in full and the sum cannot wrap; outside the double range the answer is Infinity or zero, as `Double.parseDouble` gives. Ordinary numbers parse at the speed they did (8 to 9 ns).
+  * **Also:** `parseBigInteger()` of empty text threw an index exception, and of an empty slice returned 0; both are a `NumberFormatException`, as from `new BigInteger("")`. `parseToMinimalNumericType("0e99999999999")`, zero with an exponent past what a `BigDecimal` holds, threw; it is `0.0`, as `"0e400"` was.
+  * **Tests.** `MathUtilitiesOnceOverTest` (4): the texts above through every overload, 4,000 random long numbers with exponents of up to six digits against the exact value rounded once, hexadecimal, empty input, zero.
+  * **User guide and Javadoc corrected:** `"1e308"` is a Double (the guide said BigDecimal); `mathutilities.max.string.length` limits `parseToMinimalNumericType()` only; text with a `d` suffix is the Double it reads as; `toPlainString(value, max)` reads back equal in value, not in scale.
 
 #### 4.118.0 - 2026-10-26
 **Upgrading from 4.117.0 -- what can change a result.** Each row is pinned by `UpgradeTo4118NotesTest`; every

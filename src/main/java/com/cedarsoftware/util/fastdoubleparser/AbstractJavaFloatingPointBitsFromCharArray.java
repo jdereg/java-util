@@ -114,7 +114,7 @@ abstract class AbstractJavaFloatingPointBitsFromCharArray extends AbstractFloatV
 
         // Parse exponent number
         // ---------------------
-        int expNumber = 0;
+        long expNumber = 0;
         if ((ch | 0x20) == 'e') {// equals ignore case
             ch = charAt(str, ++index, endIndex);
             boolean isExponentNegative = ch == '-';
@@ -125,7 +125,8 @@ abstract class AbstractJavaFloatingPointBitsFromCharArray extends AbstractFloatV
             illegal |= digit >= 10;
             do {
                 // Guard against overflow
-                if (expNumber < AbstractFloatValueParser.MAX_EXPONENT_NUMBER) {
+                // of the long, not of a double: see MAX_EXPONENT_DIGITS_VALUE
+                if (expNumber < AbstractFloatValueParser.MAX_EXPONENT_DIGITS_VALUE) {
                     expNumber = 10 * expNumber + digit;
                 }
                 ch = charAt(str, ++index, endIndex);
@@ -134,7 +135,7 @@ abstract class AbstractJavaFloatingPointBitsFromCharArray extends AbstractFloatV
             if (isExponentNegative) {
                 expNumber = -expNumber;
             }
-            exponent += expNumber;
+            exponent = AbstractFloatValueParser.clampExponent(exponent + expNumber);
         }
 
         // Parse NaN or Infinity (this occurs rarely)
@@ -177,7 +178,8 @@ abstract class AbstractJavaFloatingPointBitsFromCharArray extends AbstractFloatV
                 }
             }
             isSignificandTruncated = (index < significandEndIndex);
-            exponentOfTruncatedSignificand = integerDigitCount - truncatedDigitCount + expNumber;
+            exponentOfTruncatedSignificand = AbstractFloatValueParser.clampExponent(
+                    (long) integerDigitCount - truncatedDigitCount + expNumber);
         } else {
             isSignificandTruncated = false;
             exponentOfTruncatedSignificand = 0;
@@ -309,7 +311,7 @@ abstract class AbstractJavaFloatingPointBitsFromCharArray extends AbstractFloatV
 
         // Parse exponent
         // --------------
-        int expNumber = 0;
+        long expNumber = 0;
         final boolean hasExponent = (ch | 0x20) == 'p';// equals ignore case;
         if (hasExponent) {
             ch = charAt(str, ++index, endIndex);
@@ -321,7 +323,8 @@ abstract class AbstractJavaFloatingPointBitsFromCharArray extends AbstractFloatV
             illegal |= digit >= 10;
             do {
                 // Guard against overflow
-                if (expNumber < AbstractFloatValueParser.MAX_EXPONENT_NUMBER) {
+                // of the long, not of a double: see MAX_EXPONENT_DIGITS_VALUE
+                if (expNumber < AbstractFloatValueParser.MAX_EXPONENT_DIGITS_VALUE) {
                     expNumber = 10 * (expNumber) + digit;
                 }
                 ch = charAt(str, ++index, endIndex);
@@ -330,7 +333,7 @@ abstract class AbstractJavaFloatingPointBitsFromCharArray extends AbstractFloatV
             if (isExponentNegative) {
                 expNumber = -expNumber;
             }
-            exponent += expNumber;
+            exponent = AbstractFloatValueParser.clampExponent(exponent + expNumber);
         }
 
         // Skip optional FloatTypeSuffix
@@ -375,7 +378,8 @@ abstract class AbstractJavaFloatingPointBitsFromCharArray extends AbstractFloatV
         }
 
         return valueOfHexLiteral(str, startIndex, endIndex, isNegative, significand, exponent, isSignificandTruncated,
-                (virtualIndexOfPoint - index + skipCountInTruncatedDigits) * 4 + expNumber);
+                AbstractFloatValueParser.clampExponent(
+                        (virtualIndexOfPoint - index + skipCountInTruncatedDigits) * 4L + expNumber));
     }
 
     private long parseNaNOrInfinity(char[] str, int index, int endIndex, boolean isNegative) {

@@ -19,11 +19,6 @@ import java.util.Map;
 import java.util.TimeZone;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -40,7 +35,9 @@ import java.util.regex.Pattern;
  * <ul>
  *   <li><code>dateutilities.security.enabled=false</code> &mdash; Master switch for all security features</li>
  *   <li><code>dateutilities.input.validation.enabled=false</code> &mdash; Enable input length and content validation</li>
- *   <li><code>dateutilities.regex.timeout.enabled=false</code> &mdash; Enable regex timeout protection</li>
+ *   <li><code>dateutilities.regex.timeout.enabled=true</code> &mdash; Regex time limit: on with the master switch
+ *       unless this, or <code>cedarsoftware.regex.timeout.enabled</code>, is <code>false</code>. It is kept on the
+ *       calling thread: no thread is started for it.</li>
  *   <li><code>dateutilities.malformed.string.protection.enabled=false</code> &mdash; Enable malformed input protection</li>
  *   <li><code>dateutilities.max.input.length=1000</code> &mdash; Maximum input string length</li>
  *   <li><code>dateutilities.max.epoch.digits=19</code> &mdash; Maximum digits for epoch milliseconds</li>
@@ -186,12 +183,6 @@ public final class DateUtilities {
     private static final int DEFAULT_MAX_EPOCH_DIGITS = 19;
     private static final long DEFAULT_REGEX_TIMEOUT_MILLISECONDS = 1000L;
 
-    private static final ExecutorService DATE_REGEX_EXECUTOR = Executors.newCachedThreadPool(r -> {
-        Thread thread = new Thread(r, "DateUtilities-Regex-Timeout-Thread");
-        thread.setDaemon(true);
-        return thread;
-    });
-
     // ----- Security configuration cache -----
     // System.getProperty() reads from the synchronized java.util.Properties singleton; in date-parsing-heavy
     // workloads safeFind/safeMatches were calling several of these per regex match, dominating the profile
@@ -214,9 +205,22 @@ public final class DateUtilities {
         if (tri != TRI_UNRESOLVED) {
             return tri == TRI_TRUE;
         }
-        boolean value = Boolean.parseBoolean(System.getProperty("dateutilities.security.enabled", "false"));
+        boolean value = isTrue(System.getProperty("dateutilities.security.enabled"));
         cachedSecurityEnabled = value ? TRI_TRUE : TRI_FALSE;
         return value;
+    }
+
+    /**
+     * A switch that is off unless asked for is on for "true" in any case, spaces around it ignored: read with
+     * Boolean.parseBoolean, "true " in a properties file left the protection off without a word.
+     */
+    private static boolean isTrue(String value) {
+        return value != null && "true".equalsIgnoreCase(value.trim());
+    }
+
+    /** A switch that is on unless refused is off only for "false": anything else leaves it on. */
+    private static boolean isFalse(String value) {
+        return value != null && "false".equalsIgnoreCase(value.trim());
     }
 
     private static boolean isInputValidationEnabled() {
@@ -224,7 +228,7 @@ public final class DateUtilities {
         if (tri != TRI_UNRESOLVED) {
             return tri == TRI_TRUE;
         }
-        boolean value = Boolean.parseBoolean(System.getProperty("dateutilities.input.validation.enabled", "false"));
+        boolean value = isTrue(System.getProperty("dateutilities.input.validation.enabled"));
         cachedInputValidationEnabled = value ? TRI_TRUE : TRI_FALSE;
         return value;
     }
@@ -234,7 +238,7 @@ public final class DateUtilities {
         if (tri != TRI_UNRESOLVED) {
             return tri == TRI_TRUE;
         }
-        boolean value = Boolean.parseBoolean(System.getProperty("dateutilities.malformed.string.protection.enabled", "false"));
+        boolean value = isTrue(System.getProperty("dateutilities.malformed.string.protection.enabled"));
         cachedMalformedStringProtectionEnabled = value ? TRI_TRUE : TRI_FALSE;
         return value;
     }
@@ -298,13 +302,9 @@ public final class DateUtilities {
         }
         String timeoutEnabled = System.getProperty("dateutilities.regex.timeout.enabled");
         if (timeoutEnabled != null) {
-            return Boolean.parseBoolean(timeoutEnabled);
+            return !isFalse(timeoutEnabled);
         }
-        String globalTimeoutEnabled = System.getProperty("cedarsoftware.regex.timeout.enabled");
-        if (globalTimeoutEnabled != null) {
-            return Boolean.parseBoolean(globalTimeoutEnabled);
-        }
-        return true;
+        return !isFalse(System.getProperty("cedarsoftware.regex.timeout.enabled"));
     }
 
     static long getRegexTimeoutMilliseconds() {
@@ -334,7 +334,7 @@ public final class DateUtilities {
             return null;
         }
         try {
-            long parsed = Long.parseLong(value);
+            long parsed = Long.parseLong(value.trim());
             return parsed > 0 ? parsed : null;
         } catch (NumberFormatException ignored) {
             return null;
@@ -359,45 +359,6 @@ public final class DateUtilities {
         return tl.get().reset(input);
     }
 
-    /**
-     * CharSequence wrapper whose {@code charAt} checks the thread's interrupt flag, so a
-     * Matcher operating on it aborts promptly when {@code Future.cancel(true)} interrupts
-     * the regex thread. {@code java.util.regex} never checks interrupts on its own, so
-     * without this a timed-out (possibly ReDoS) match keeps burning a pool thread's CPU
-     * until the backtracking completes — and the cached thread pool grows unboundedly
-     * under repeated attacks. Post-match reads (group(), subSequence) bypass charAt.
-     */
-    private static final class InterruptibleCharSequence implements CharSequence {
-        private final String delegate;
-
-        InterruptibleCharSequence(String delegate) {
-            this.delegate = delegate;
-        }
-
-        @Override
-        public int length() {
-            return delegate.length();
-        }
-
-        @Override
-        public char charAt(int index) {
-            if (Thread.currentThread().isInterrupted()) {
-                throw new java.util.concurrent.CancellationException("Regex match cancelled after timeout");
-            }
-            return delegate.charAt(index);
-        }
-
-        @Override
-        public CharSequence subSequence(int start, int end) {
-            return delegate.subSequence(start, end);
-        }
-
-        @Override
-        public String toString() {
-            return delegate;
-        }
-    }
-
     private static boolean safeMatches(Pattern pattern, String input) {
         if (pattern == null || input == null) {
             return false;
@@ -410,21 +371,11 @@ public final class DateUtilities {
             return matches;
         }
 
-        long timeout = getRegexTimeoutMilliseconds();
-        // Slow path runs on a different thread inside DATE_REGEX_EXECUTOR; let it allocate its own
-        // Matcher to avoid sharing thread-local state across the executor boundary. The
-        // InterruptibleCharSequence lets cancel(true) actually stop a runaway match.
-        Future<Boolean> future = DATE_REGEX_EXECUTOR.submit(
-                () -> pattern.matcher(new InterruptibleCharSequence(input)).matches());
-
-        try {
-            return future.get(timeout, TimeUnit.MILLISECONDS);
-        } catch (TimeoutException e) {
-            future.cancel(true);
-            throw new SecurityException("Regex operation timed out (>" + timeout + "ms) - possible ReDoS attack", e);
-        } catch (Exception e) {
-            throw new SecurityException("Regex operation failed: " + e.getMessage(), e);
-        }
+        // With the time limit: on this thread, over text that stops the match when the time is up, as
+        // RegexUtilities does it. Until 4.119.0 each match was handed to a thread of a pool that grew without
+        // limit, and the caller waited for it: several hand-offs for every date parsed.
+        return RegexUtilities.runTimed(text -> pattern.matcher(text).matches(), input,
+                getRegexTimeoutMilliseconds());
     }
 
     private static RegexUtilities.SafeMatchResult safeFind(Pattern pattern, String input) {
@@ -441,26 +392,10 @@ public final class DateUtilities {
             return result;
         }
 
-        long timeout = getRegexTimeoutMilliseconds();
-        Future<RegexUtilities.SafeMatchResult> future = DATE_REGEX_EXECUTOR.submit(() -> {
-            // InterruptibleCharSequence lets cancel(true) actually stop a runaway match.
-            // group()/subSequence reads after a successful match bypass charAt, so the
-            // returned Matcher remains fully usable by the caller.
-            Matcher matcher = pattern.matcher(new InterruptibleCharSequence(input));
-            if (matcher.find()) {
-                return new RegexUtilities.SafeMatchResult(matcher, input);
-            }
-            return new RegexUtilities.SafeMatchResult(null, input);
-        });
-
-        try {
-            return future.get(timeout, TimeUnit.MILLISECONDS);
-        } catch (TimeoutException e) {
-            future.cancel(true);
-            throw new SecurityException("Regex operation timed out (>" + timeout + "ms) - possible ReDoS attack", e);
-        } catch (Exception e) {
-            throw new SecurityException("Regex operation failed: " + e.getMessage(), e);
-        }
+        return RegexUtilities.runTimed(text -> {
+            Matcher matcher = pattern.matcher(text);
+            return new RegexUtilities.SafeMatchResult(matcher.find() ? matcher : null, input);
+        }, input, getRegexTimeoutMilliseconds());
     }
 
     // Pre-compiled pattern for invalid characters check (avoids creating Pattern on each call)

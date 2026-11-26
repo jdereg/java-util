@@ -46,6 +46,8 @@
 | `cedarsoftware.security.enabled` / `cedarsoftware.regex.timeout.enabled` set to anything but `true` or `false` (`1`, `yes`, `" true"`) | RegexUtilities' protection off | on: only `false` switches it off |
 | `RegexUtilities.getCachedPattern()` of a regex longer than 4,096 characters | cached | compiled on each call |
 | `new RegexUtilities.SafeMatchResult(matcher, input)` with a matcher that holds no match | `IllegalStateException` | an unmatched result |
+| `dateutilities.security.enabled`, `…input.validation.enabled` or `…malformed.string.protection.enabled` written as `true` with a space beside it | off | on |
+| `dateutilities.regex.timeout.enabled` / `cedarsoftware.regex.timeout.enabled`, as DateUtilities reads them, set to anything but `true` or `false` (`1`, `yes`, `" true"`) | DateUtilities' time limit off | on: only `false` switches it off |
 | `CollectionUtilities.deepCopyContainers()` of a set holding a list or array that holds sets | a set that cannot find its own element; a sorted set missing elements | a correct copy |
 | `deepCopyContainers()` of `ArrayDeque[]`, `Vector[]`, `CopyOnWriteArrayList[]`, `ConcurrentSkipListSet[]` | `ArrayStoreException` | copied, elements of that class |
 | `deepCopyContainers()` of an `IdentitySet`, `CaseInsensitiveSet` or `ConcurrentNavigableSetNullSafe` | a `LinkedHashSet` / `TreeSet` (equal members merged; null refused) | the same class |
@@ -191,6 +193,11 @@
   * **`SafeMatchResult`:** `getReplacement()` (the input without the match) is made when asked for, not for every match: finding a date at the head of 10 MB took 3.3 ms and takes 4 µs. Made from a `Matcher` that holds no match it is an unmatched result, as its Javadoc said, not an `IllegalStateException`.
   * **Tests.** `RegexUtilitiesOnCallerThreadTest` (9): 200 threads at once; sixteen runaway matches beside a harmless one; a limit kept and no thread started; the JDK's exceptions; an interrupt before and during; the switch values; a long regex; the match result. A 554,400-case comparison with plain `Matcher` results, run outside the suite, shows no difference.
   * **User guide:** the RegexUtilities section listed `clearCaches()`, `isValidPattern()` and `SafeMatchResult.getInput()`, which do not exist, an example that returned false where it said true, and "returns false if timeout occurs". Rewritten from the class.
+* **PERFORMANCE**: **`DateUtilities` keeps its regex time limit on the calling thread as well.** This applies only with `dateutilities.security.enabled=true` (off by default). DateUtilities had a thread pool of its own for the limit, of the design RegexUtilities had, but without a cap on its threads: each of the several matches behind one parsed date was handed to a pool thread and waited for.
+  * **Cost of a parse with the limit on:** 15,156 → 441 ns on JDK 25 and 16,242 → 462 ns on JDK 8; with eight threads parsing, 92,138 → 454 ns and 82,064 → 501 ns. With the limit off a parse takes 426 ns (JDK 25), so the limit now costs about 3%.
+  * **Threads:** none. Eight parsing threads kept 11 or 12 `DateUtilities-Regex-Timeout-Thread` threads alive, and the pool grew with the number of callers.
+  * **Switches:** the three that are off unless asked for are on for `true` in any case with spaces around it (`"true "` in a properties file left all of it off, silently). The time limit, on with the master switch, is off only for `false`. The timeout value is trimmed.
+  * **Tests.** `DateUtilitiesRegexOnCallerThreadTest` (2), both failing on the old code: 64 threads parse 25,600 dates with the limit on, each equal to the parse without it, and no thread is started for them; the switch values.
 
 #### 4.118.0 - 2026-10-26
 **Upgrading from 4.117.0 -- what can change a result.** Each row is pinned by `UpgradeTo4118NotesTest`; every

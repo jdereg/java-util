@@ -8197,6 +8197,9 @@ Configure security features via system properties:
 - Configurable timeouts for regex operations to prevent catastrophic backtracking
 - Default timeout: 1000 milliseconds per regex operation
 - Protects against specially crafted input designed to cause exponential regex behavior
+- On with the master switch unless `dateutilities.regex.timeout.enabled` (or `cedarsoftware.regex.timeout.enabled`)
+  is `false`. Kept on the calling thread since 4.119.0: no thread is started for it, and a parse costs about 3% more
+  with it than without
 
 **Malformed Input Protection:**
 - Enhanced validation to detect and reject malicious input patterns

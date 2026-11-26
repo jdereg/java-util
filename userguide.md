@@ -6535,43 +6535,45 @@ This implementation provides high-performance reflection utilities with sophisti
 ## RegexUtilities
 [Source](/src/main/java/com/cedarsoftware/util/RegexUtilities.java)
 
-A utility class providing safe and efficient regular expression operations with built-in protection against ReDoS (Regular Expression Denial of Service) attacks through timeout enforcement and performance optimization through pattern caching.
+A utility class for regular expression operations with a time limit, which protects against ReDoS (Regular Expression Denial of Service), and with cached compiled patterns.
 
 ### Key Features
-- **ReDoS Protection**: Configurable timeouts prevent catastrophic backtracking
-- **Pattern Caching**: Compiled patterns are cached to avoid repeated compilation overhead
-- **Thread Safety**: All operations are thread-safe with concurrent caching
-- **Invalid Pattern Tracking**: Remembers invalid patterns to avoid repeated compilation attempts
-- **Configurable Security**: Control security features via system properties
+- **ReDoS Protection**: a match that runs past its time limit is stopped, with a `SecurityException`
+- **On the calling thread**: no thread pool and no hand-off; a protected match of a short input costs about 25 ns more than a plain one (JDK 25)
+- **Pattern Caching**: compiled patterns are kept (the 1,000 most recently used per cache; a regex longer than 4,096 characters is compiled each time and not kept)
+- **Thread Safety**: all operations are thread-safe
+- **Invalid Pattern Tracking**: remembers invalid patterns to avoid compiling them again
+- **Configurable**: by system properties, read on every call
 
-### Security Configuration
+### Configuration
 
-Security features can be controlled via system properties:
 ```java
-// Enable/disable all security features (default: true)
+// All protection (default: on). Only the value "false" switches it off.
 System.setProperty("cedarsoftware.security.enabled", "true");
 
-// Enable/disable regex timeout (default: true)
+// The regex time limit (default: on). Only the value "false" switches it off.
 System.setProperty("cedarsoftware.regex.timeout.enabled", "true");
 
-// Set timeout in milliseconds (default: 5000)
+// The limit in milliseconds (default: 5000)
 System.setProperty("cedarsoftware.regex.timeout.milliseconds", "3000");
 ```
 
 ### Public API
 
 ```java
-// Pattern caching
+// Pattern caching: null for a regex that does not compile
 public static Pattern getCachedPattern(String regex)
 public static Pattern getCachedPattern(String regex, boolean caseInsensitive)
-public static void clearCaches()
+public static Pattern getCachedPattern(String regex, int flags)
+public static void clearPatternCache()
+public static Map<String, Object> getPatternCacheStats()
 
-// Safe matching operations with timeout protection
+// Operations with the time limit
 public static boolean safeMatches(Pattern pattern, String input)
 public static SafeMatchResult safeFind(Pattern pattern, String input)
-
-// Pattern validation
-public static boolean isValidPattern(String regex)
+public static String safeReplaceFirst(Pattern pattern, String input, String replacement)
+public static String safeReplaceAll(Pattern pattern, String input, String replacement)
+public static String[] safeSplit(Pattern pattern, String input)
 ```
 
 ### Usage Examples
@@ -6582,102 +6584,79 @@ public static boolean isValidPattern(String regex)
 Pattern pattern = RegexUtilities.getCachedPattern("\\d+");
 boolean matches = RegexUtilities.safeMatches(pattern, "12345");  // true
 
-// Case-insensitive pattern caching
+// Case-insensitive
 Pattern ciPattern = RegexUtilities.getCachedPattern("hello", true);
-boolean found = RegexUtilities.safeMatches(ciPattern, "HELLO World");  // true
+boolean whole = RegexUtilities.safeMatches(ciPattern, "HELLO");        // true: matches() is the whole input
+boolean inside = RegexUtilities.safeFind(ciPattern, "HELLO World").matched();   // true: find() looks inside
 ```
 
 #### ReDoS Protection
 ```java
-// This pattern with malicious input would cause catastrophic backtracking
-// But RegexUtilities enforces a timeout (default 5 seconds)
+// With this input the pattern backtracks without end. The match is stopped at the time limit.
 Pattern dangerous = RegexUtilities.getCachedPattern("(a+)+$");
-String malicious = "aaaaaaaaaaaaaaaaaaaaaaaaaX";
+String malicious = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaX";
 
 try {
     boolean result = RegexUtilities.safeMatches(dangerous, malicious);
-    // Returns false if timeout occurs
-} catch (Exception e) {
-    // Timeout protection prevented ReDoS attack
+} catch (SecurityException e) {
+    // "Regex operation timed out (>5000ms) - possible ReDoS attack"
 }
 ```
+What an operation throws for its own reasons is not a `SecurityException`: a replacement that names a group the pattern lacks is the JDK's `IndexOutOfBoundsException`, as from a `Matcher`.
 
 #### Safe Find with Result Capture
 ```java
-Pattern pattern = RegexUtilities.getCachedPattern("\\d+");
+Pattern pattern = RegexUtilities.getCachedPattern("(\\d+)");
 SafeMatchResult result = RegexUtilities.safeFind(pattern, "abc123def456");
 
 if (result.matched()) {
     String found = result.group(0);      // "123"
+    String group1 = result.group(1);     // "123"
     int start = result.start();          // 3
     int end = result.end();              // 6
-    int groupCount = result.groupCount(); // 0
-}
-
-// Access groups
-if (result.groupCount() > 0) {
-    String group1 = result.group(1);
+    String rest = result.getReplacement();   // "abcdef456": the input without the match
 }
 ```
 
-#### Pattern Validation
+#### An Invalid Pattern
 ```java
-// Check if a regex pattern is valid before using it
-String userInput = "(unclosed group";
-if (RegexUtilities.isValidPattern(userInput)) {
-    Pattern pattern = RegexUtilities.getCachedPattern(userInput);
-    // Use the pattern
-} else {
-    // Handle invalid pattern
+// getCachedPattern() returns null for a regex that does not compile
+Pattern pattern = RegexUtilities.getCachedPattern("(unclosed group");
+if (pattern == null) {
     System.err.println("Invalid regex pattern");
 }
 ```
 
-#### Performance: Pattern Caching Benefits
+#### Clear the Cache When Needed
 ```java
-// Without caching (slow - compiles pattern every time)
-for (String input : inputs) {
-    Pattern.compile("\\d{3}-\\d{2}-\\d{4}").matcher(input).matches();
-}
-
-// With RegexUtilities caching (fast - compiles once)
-Pattern pattern = RegexUtilities.getCachedPattern("\\d{3}-\\d{2}-\\d{4}");
-for (String input : inputs) {
-    RegexUtilities.safeMatches(pattern, input);
-}
-```
-
-#### Clear Caches When Needed
-```java
-// Clear all cached patterns (useful for memory management in long-running apps)
-RegexUtilities.clearCaches();
+RegexUtilities.clearPatternCache();
 ```
 
 ### SafeMatchResult API
 
-The `SafeMatchResult` class provides access to match results:
 ```java
-public boolean matched()           // Whether the match succeeded
-public String group(int group)     // Get captured group
-public int start()                 // Start index of match
-public int end()                   // End index of match
+public boolean matched()           // Whether a match was found
+public String group()              // The whole match
+public String group(int group)     // A captured group
+public int start()                 // Start index of the match
+public int end()                   // End index of the match
 public int groupCount()            // Number of capturing groups
-public String getInput()           // Original input string
+public String getReplacement()     // The input with the match removed
 ```
 
 ### Performance Characteristics
 
-- **Pattern Compilation**: O(1) amortized (cached after first compilation)
-- **Matching**: O(n) with timeout protection against catastrophic backtracking
-- **Memory**: Bounded by cache size (cleared on demand)
-- **Thread Safety**: Lock-free concurrent caching
+- **Pattern lookup**: a cache lookup after the first compilation
+- **A protected operation**: the JDK's own, on the calling thread, reading its input through a wrapper that looks at the clock once in 1,024 characters. Short inputs: about 25 ns over a plain `Matcher` (JDK 25). Very long inputs cost more per character than a plain `Matcher` on a `String`.
+- **Memory**: bounded by the cache size
+- **No threads**: nothing is started, queued or shared between callers
 
 ### Security Benefits
 
-1. **ReDoS Prevention**: Timeout enforcement prevents regex-based DoS attacks
-2. **Invalid Pattern Handling**: Tracks and rejects known invalid patterns
-3. **Configurable Security**: Fine-grained control via system properties
-4. **Safe Defaults**: Security enabled by default with reasonable timeout (5s)
+1. **ReDoS Prevention**: a time limit on every operation, which a runaway match on one thread cannot make other callers wait for
+2. **Invalid Pattern Handling**: tracks and rejects known invalid patterns
+3. **Configurable**: by system properties
+4. **Safe Defaults**: on by default with a 5 second limit; a mistyped value leaves it on
 
 This implementation provides enterprise-grade regex utilities with built-in security and performance optimizations.
 

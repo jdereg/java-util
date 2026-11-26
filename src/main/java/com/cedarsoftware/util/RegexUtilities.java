@@ -4,16 +4,7 @@ import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.RejectedExecutionException;
-import java.util.concurrent.ThreadFactory;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
 import java.util.regex.MatchResult;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -81,8 +72,14 @@ public final class RegexUtilities {
 
     // Default configuration values
     private static final long DEFAULT_TIMEOUT_MS = 5000L;
-    private static final int MAX_TIMEOUT_THREADS = Math.max(2, Math.min(8, Runtime.getRuntime().availableProcessors()));
-    private static final int MAX_TIMEOUT_QUEUE_SIZE = MAX_TIMEOUT_THREADS * 16;
+
+    /**
+     * The longest regex the caches keep. A compiled Pattern takes about ten bytes for each character of its regex,
+     * and the caches are bounded by how many they hold, not by how big: a thousand 50,000-character patterns read
+     * from data (the Converter's String to Pattern, json-io reading a Pattern) held half a gigabyte in one cache.
+     * A longer regex is compiled each time it is asked for and not kept.
+     */
+    static final int MAX_CACHED_REGEX_LENGTH = 4096;
 
     /**
      * The most patterns each cache keeps; the least recently used are evicted. They were unbounded, and patterns
@@ -102,61 +99,45 @@ public final class RegexUtilities {
     private static final Set<PatternCacheKey> INVALID_PATTERN_KEYS =
             Collections.newSetFromMap(new LRUCache<>(PATTERN_CACHE_CAPACITY));
 
-    // Shared bounded executor for regex timeout operations.
-    private static final ThreadPoolExecutor REGEX_EXECUTOR = createRegexExecutor();
-
     private RegexUtilities() {
         // Utility class - prevent instantiation
-    }
-
-    private static ThreadPoolExecutor createRegexExecutor() {
-        ThreadFactory threadFactory = new ThreadFactory() {
-            private final AtomicInteger threadCounter = new AtomicInteger(1);
-
-            @Override
-            public Thread newThread(Runnable runnable) {
-                Thread thread = new Thread(runnable, "RegexUtilities-Timeout-Thread-" + threadCounter.getAndIncrement());
-                thread.setDaemon(true);
-                return thread;
-            }
-        };
-
-        ThreadPoolExecutor executor = new ThreadPoolExecutor(
-                MAX_TIMEOUT_THREADS,
-                MAX_TIMEOUT_THREADS,
-                30L,
-                TimeUnit.SECONDS,
-                new LinkedBlockingQueue<>(MAX_TIMEOUT_QUEUE_SIZE),
-                threadFactory,
-                new ThreadPoolExecutor.AbortPolicy());
-        executor.allowCoreThreadTimeOut(true);
-        return executor;
     }
 
     private static boolean isTimeoutProtectionEnabled() {
         return isSecurityEnabled() && isRegexTimeoutEnabled();
     }
 
-    private static <T> T executeWithTimeout(Callable<T> operation, long timeout) {
-        Future<T> future;
-        try {
-            future = REGEX_EXECUTOR.submit(operation);
-        } catch (RejectedExecutionException e) {
-            throw new SecurityException("Regex operation rejected due to timeout executor saturation", e);
-        }
+    /**
+     * Runs a regex operation on the calling thread, over text that stops it when its time is up.
+     * <p>
+     * {@code java.util.regex} has no time limit and checks no interrupt, but it reads its input one character at a
+     * time through {@link CharSequence#charAt}, so the input it is given here is a {@link TimedText}: every
+     * {@value TimedText#READS_PER_CHECK} characters read it looks at the clock, and throws when the time is up or
+     * the thread has been interrupted. A runaway match stops within microseconds of its limit, on the thread that
+     * asked for it.
+     * <p>
+     * Until 4.119.0 the operation was handed to a pool of at most eight threads shared by the whole JVM, and the
+     * caller waited for it. That cost about 6 microseconds for a match that takes 15 nanoseconds; with more callers
+     * than the pool and its queue could take (136 on a large machine, 34 on two CPUs) harmless matches were
+     * refused; and eight runaway matches in flight held every other caller for the whole timeout, since time
+     * spent waiting for a pool thread counted against the caller. Whatever the operation threw came back wrapped
+     * in a SecurityException, a StackOverflowError included.
+     */
+    private static <T> T runTimed(Function<CharSequence, T> operation, String input) {
+        return runTimed(operation, input, getRegexTimeoutMilliseconds());
+    }
 
+    /** The same, with the caller's own time limit: DateUtilities has one. */
+    static <T> T runTimed(Function<CharSequence, T> operation, String input, long timeout) {
+        final long nanos = timeout > Long.MAX_VALUE / 1_000_000L ? Long.MAX_VALUE : timeout * 1_000_000L;
         try {
-            return future.get(timeout, TimeUnit.MILLISECONDS);
-        } catch (InterruptedException e) {
-            future.cancel(true);
-            Thread.currentThread().interrupt();
-            throw new SecurityException("Regex operation interrupted", e);
-        } catch (TimeoutException e) {
-            future.cancel(true);
-            throw new SecurityException("Regex operation timed out (>" + timeout + "ms) - possible ReDoS attack", e);
-        } catch (ExecutionException e) {
-            Throwable cause = e.getCause() == null ? e : e.getCause();
-            throw new SecurityException("Regex operation failed: " + cause.getMessage(), cause);
+            return operation.apply(new TimedText(input, nanos));
+        } catch (TimedText.Stopped stopped) {
+            if (stopped.interrupted) {
+                throw new SecurityException("Regex operation interrupted", stopped);
+            }
+            throw new SecurityException("Regex operation timed out (>" + timeout + "ms) - possible ReDoS attack",
+                    stopped);
         }
     }
 
@@ -167,7 +148,15 @@ public final class RegexUtilities {
      * @return true if security is enabled (default), false otherwise
      */
     public static boolean isSecurityEnabled() {
-        return Boolean.parseBoolean(System.getProperty(SECURITY_ENABLED_PROPERTY, "true"));
+        return !isFalse(System.getProperty(SECURITY_ENABLED_PROPERTY));
+    }
+
+    /**
+     * A protection is off only when its property says "false" (any case, spaces around it ignored). Anything
+     * else leaves it on: read with Boolean.parseBoolean, a stray space (" true"), "1" or "yes" switched it off.
+     */
+    private static boolean isFalse(String value) {
+        return value != null && "false".equalsIgnoreCase(value.trim());
     }
 
     /**
@@ -175,7 +164,7 @@ public final class RegexUtilities {
      * @return true if timeout is enabled (default), false otherwise
      */
     public static boolean isRegexTimeoutEnabled() {
-        return Boolean.parseBoolean(System.getProperty(REGEX_TIMEOUT_ENABLED_PROPERTY, "true"));
+        return !isFalse(System.getProperty(REGEX_TIMEOUT_ENABLED_PROPERTY));
     }
 
     /**
@@ -186,7 +175,7 @@ public final class RegexUtilities {
         String value = System.getProperty(REGEX_TIMEOUT_MS_PROPERTY);
         if (value != null) {
             try {
-                long timeout = Long.parseLong(value);
+                long timeout = Long.parseLong(value.trim());
                 if (timeout > 0L) {
                     return timeout;
                 }
@@ -209,6 +198,10 @@ public final class RegexUtilities {
     public static Pattern getCachedPattern(String regex) {
         if (regex == null) {
             return null;
+        }
+
+        if (regex.length() > MAX_CACHED_REGEX_LENGTH) {
+            return compileUncached(regex, 0);
         }
 
         Pattern cached = PATTERN_CACHE.get(regex);
@@ -245,6 +238,10 @@ public final class RegexUtilities {
 
         if (regex == null) {
             return null;
+        }
+
+        if (regex.length() > MAX_CACHED_REGEX_LENGTH) {
+            return compileUncached(regex, Pattern.CASE_INSENSITIVE);
         }
 
         Pattern cached = PATTERN_CACHE_CI.get(regex);
@@ -287,6 +284,10 @@ public final class RegexUtilities {
             return getCachedPattern(regex, true);
         }
 
+        if (regex.length() > MAX_CACHED_REGEX_LENGTH) {
+            return compileUncached(regex, flags);
+        }
+
         PatternCacheKey key = new PatternCacheKey(regex, flags);
         Pattern cached = PATTERN_CACHE_FLAGS.get(key);
         if (cached != null) {
@@ -306,6 +307,15 @@ public final class RegexUtilities {
                 return null;
             }
         });
+    }
+
+    /** A regex too long to keep ({@link #MAX_CACHED_REGEX_LENGTH}): compiled for this call, null if invalid. */
+    private static Pattern compileUncached(String regex, int flags) {
+        try {
+            return Pattern.compile(regex, flags);
+        } catch (PatternSyntaxException e) {
+            return null;
+        }
     }
 
     /**
@@ -356,11 +366,7 @@ public final class RegexUtilities {
             return pattern.matcher(input).matches();
         }
 
-        long timeout = getRegexTimeoutMilliseconds();
-        // InterruptibleCharSequence lets Future.cancel(true) actually stop a runaway match —
-        // java.util.regex never checks interrupts, so without it a timed-out (ReDoS) match
-        // burns a pool thread until backtracking completes, saturating the bounded executor
-        return executeWithTimeout(() -> pattern.matcher(new InterruptibleCharSequence(input)).matches(), timeout);
+        return runTimed(text -> pattern.matcher(text).matches(), input);
     }
 
     /**
@@ -387,15 +393,14 @@ public final class RegexUtilities {
             }
         }
 
-        long timeout = getRegexTimeoutMilliseconds();
-        return executeWithTimeout(() -> {
-            Matcher matcher = pattern.matcher(new InterruptibleCharSequence(input));
+        return runTimed(text -> {
+            Matcher matcher = pattern.matcher(text);
             if (matcher.find()) {
                 return new SafeMatchResult(matcher, input);
             } else {
                 return new SafeMatchResult(null, input);
             }
-        }, timeout);
+        }, input);
     }
 
     /**
@@ -420,9 +425,8 @@ public final class RegexUtilities {
             return pattern.matcher(input).replaceFirst(replacement);
         }
 
-        long timeout = getRegexTimeoutMilliseconds();
         final String finalReplacement = replacement;
-        return executeWithTimeout(() -> pattern.matcher(new InterruptibleCharSequence(input)).replaceFirst(finalReplacement), timeout);
+        return runTimed(text -> pattern.matcher(text).replaceFirst(finalReplacement), input);
     }
 
     /**
@@ -447,9 +451,8 @@ public final class RegexUtilities {
             return pattern.matcher(input).replaceAll(replacement);
         }
 
-        long timeout = getRegexTimeoutMilliseconds();
         final String finalReplacement = replacement;
-        return executeWithTimeout(() -> pattern.matcher(new InterruptibleCharSequence(input)).replaceAll(finalReplacement), timeout);
+        return runTimed(text -> pattern.matcher(text).replaceAll(finalReplacement), input);
     }
 
     /**
@@ -470,50 +473,84 @@ public final class RegexUtilities {
             return pattern.split(input);
         }
 
-        long timeout = getRegexTimeoutMilliseconds();
-        return executeWithTimeout(() -> pattern.split(new InterruptibleCharSequence(input)), timeout);
+        return runTimed(text -> pattern.split(text), input);
     }
 
     // ========== Inner Classes ==========
 
     /**
-     * CharSequence wrapper whose {@code charAt} checks the thread's interrupt flag, so a
-     * Matcher operating on it aborts promptly when {@code Future.cancel(true)} interrupts
-     * the regex thread. {@code java.util.regex} never checks interrupts on its own, so
-     * without this a timed-out (possibly ReDoS) match keeps burning a pool thread's CPU
-     * until the backtracking completes — with this class's bounded executor, a handful of
-     * such matches would permanently saturate the pool and reject all subsequent operations.
-     * Post-match reads (group(), toMatchResult()) bypass charAt via toString().
-     * (Same mechanism as DateUtilities' ReDoS protection.)
+     * The input of one timed operation: the text itself, with a clock looked at once in every
+     * {@value #READS_PER_CHECK} characters read. Reading the clock on every character would cost several times
+     * what the read does; once in 1,024 is a look every few microseconds of a runaway match.
+     * <p>
+     * The time allowed runs from the first look, not from the call: an operation that ends within its first 1,024
+     * reads, as nearly all do, never reads the clock at all. (On macOS every {@code System.nanoTime()} writes one
+     * word shared by the whole JVM; read once per call, eight threads matching at once took 370 ns a match
+     * instead of 40.)
+     * <p>
+     * It also stops for an interrupt, as the pooled version did, but only one that arrives during the operation: a
+     * thread whose interrupt flag was already set when it asked can match, as it can with a plain Matcher.
+     * What a Matcher reads after matching (groups, the text between matches) comes from {@link #subSequence} and
+     * {@link #toString}, which are the String's own.
      */
-    private static final class InterruptibleCharSequence implements CharSequence {
-        private final String delegate;
+    private static final class TimedText implements CharSequence {
+        static final int READS_PER_CHECK = 1024;
+        private final String text;
+        private long start;                 // when the clock was first looked at; 0 until then
+        private final long limitNanos;
+        private final boolean interruptedBefore = Thread.currentThread().isInterrupted();
+        private int readsLeft = READS_PER_CHECK;    // until the next look at the clock
 
-        InterruptibleCharSequence(String delegate) {
-            this.delegate = delegate;
+        TimedText(String text, long limitNanos) {
+            this.text = text;
+            this.limitNanos = limitNanos;
         }
 
         @Override
         public int length() {
-            return delegate.length();
+            return text.length();
         }
 
         @Override
         public char charAt(int index) {
-            if (Thread.currentThread().isInterrupted()) {
-                throw new java.util.concurrent.CancellationException("Regex match cancelled after timeout");
+            if (--readsLeft == 0) {
+                readsLeft = READS_PER_CHECK;
+                check();
             }
-            return delegate.charAt(index);
+            return text.charAt(index);
+        }
+
+        private void check() {
+            long now = System.nanoTime();
+            if (start == 0) {
+                start = now == 0 ? 1 : now;
+            } else if (now - start > limitNanos) {
+                throw new Stopped(false);
+            }
+            if (!interruptedBefore && Thread.currentThread().isInterrupted()) {
+                throw new Stopped(true);
+            }
         }
 
         @Override
         public CharSequence subSequence(int start, int end) {
-            return delegate.subSequence(start, end);
+            return text.subSequence(start, end);
         }
 
         @Override
         public String toString() {
-            return delegate;
+            return text;
+        }
+
+        /** Thrown through the Matcher to end the operation; never seen outside this class. */
+        static final class Stopped extends RuntimeException {
+            private static final long serialVersionUID = 1L;
+            final boolean interrupted;
+
+            Stopped(boolean interrupted) {
+                super(interrupted ? "interrupted" : "out of time", null, false, false);
+                this.interrupted = interrupted;
+            }
         }
     }
 
@@ -530,28 +567,29 @@ public final class RegexUtilities {
         // "extract every group as a String at construction time" pattern.
         private final MatchResult matchResult;
         private final String input;
-        private final String replacement;
+        private String replacement;         // made when first asked for: see getReplacement()
         private final boolean matched;
 
         /**
          * Creates a SafeMatchResult from a Matcher.
-         * If matcher is null or didn't match, creates an unmatched result.
+         * If matcher is null or holds no match, creates an unmatched result.
          *
          * @param matcher The Matcher to capture data from (null if no match)
          * @param originalInput The original input string
          */
         public SafeMatchResult(Matcher matcher, String originalInput) {
+            MatchResult result = null;
             if (matcher != null) {
-                this.matchResult = matcher.toMatchResult();
-                this.input = originalInput;
-                this.matched = true;
-                this.replacement = removeMatchedRange(originalInput, matchResult.start(), matchResult.end());
-            } else {
-                this.matchResult = null;
-                this.input = originalInput;
-                this.matched = false;
-                this.replacement = originalInput;
+                try {
+                    result = matcher.toMatchResult();
+                    result.start();                 // throws when the matcher holds no match
+                } catch (IllegalStateException noMatch) {
+                    result = null;
+                }
             }
+            this.matchResult = result;
+            this.input = originalInput;
+            this.matched = result != null;
         }
 
         /**
@@ -619,7 +657,15 @@ public final class RegexUtilities {
          * @return The input string with the first match removed, or the original input if no match
          */
         public String getReplacement() {
-            return replacement;
+            // Built here, not in the constructor: it is a copy of the whole input, and a caller that wants the
+            // match and its groups never asks for it. Finding a date at the head of 10 MB of text took 3
+            // milliseconds for the copy. (A race to build it builds the same String twice.)
+            String result = replacement;
+            if (result == null && input != null) {
+                result = matched ? removeMatchedRange(input, matchResult.start(), matchResult.end()) : input;
+                replacement = result;
+            }
+            return result;
         }
 
         private static String removeMatchedRange(String input, int start, int end) {

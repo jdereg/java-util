@@ -66,7 +66,7 @@ etc.) see real parameter names.
   - [OSGi](#osgi)
   - [Maven and Gradle Integration](#maven-and-gradle-integration)
   - [Framework Integration Examples](#-framework-integration-examples)
-- [Feature Options](features.md)
+- [Feature Options](#feature-options)
 - [Logging](#logging)
 - [User Guide](#user-guide)
 
@@ -652,7 +652,7 @@ java-util provides **70+ runtime configuration options** via system properties, 
 
 All security features are **disabled by default** for backward compatibility.
 
-📖 **[View complete feature options reference →](features.md)**
+📖 **[View complete feature options reference →](userguide.md#system-property-reference)**
 
 ### Logging
 

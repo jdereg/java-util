@@ -6,8 +6,12 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.regex.Matcher;
@@ -15,6 +19,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.function.Executable;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -25,6 +30,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * {@code byteutilities.max.*}, {@code math.max.*} for {@code mathutilities.max.*}, and three limits that do not exist
  * -- so whoever set them, as the guide said to, had no limit. Its ByteUtilities and MathUtilities examples also left
  * out the master switch, without which no limit applies.
+ * <p>
+ * The guide ends with the "System Property Reference", the one list of every property (4.119.0; it replaced a
+ * separate file, features.md). That list is held to the code from the other side as well: a property the code reads
+ * is in it, and where a test can try a limit, the default the list states is the one applied.
  *
  * @author John DeRegnaucourt (jdereg@gmail.com)
  *         <br>
@@ -56,6 +65,20 @@ class UserGuidePropertyNamesTest {
             "path."};
     private static final Pattern SET_PROPERTY = Pattern.compile("System\\.setProperty\\(\"([^\"]+)\",\\s*\"([^\"]+)\"\\)");
 
+    // The guide's last section: one row for each property java-util reads -- | `name` | default | what it does |
+    private static final String REFERENCE = "\n## System Property Reference\n";
+    private static final Pattern REFERENCE_ROW = Pattern.compile("^\\| `([^`]+)` \\| ([^|]*) \\|", Pattern.MULTILINE);
+    private static final Pattern PROPERTY_NAME = Pattern.compile("[a-z][a-zA-Z0-9]*(?:\\.[a-zA-Z0-9]+)+");
+    // How main code hands a name to what reads a system property: System.getProperty and its typed cousins, a helper
+    // named ...Property(...), or a constant named ...PROP...
+    private static final Pattern READ = Pattern.compile(
+            "(?:getProperty|getBoolean|getInteger|getLong|\\w*Property\\w*)\\(\\s*\"([^\"]+)\""
+                    + "|\\b[A-Z0-9_]*PROP[A-Z0-9_]*\\s*=\\s*\"([^\"]+)\"");
+    private static final Pattern LITERAL = Pattern.compile("\"([^\"]+)\"");
+    // Read by java-util and not its own: LoggingConfig looks for these to tell a test run
+    private static final Set<String> BUILD_TOOLS = new HashSet<>(Arrays.asList("maven.test.skip",
+            "surefire.test.class.path"));
+
     @Test
     void everyPropertyTheDocumentsNameIsOneJavaUtilReads() throws IOException {
         Set<String> literals = stringLiteralsOfMainSources();
@@ -77,6 +100,111 @@ class UserGuidePropertyNamesTest {
             }
         }
         assertTrue(unread.isEmpty(), "named in the documents, read by nothing: " + unread);
+    }
+
+    /**
+     * The reference that ends the guide lists every property java-util reads, once. A property is one a main source
+     * hands to System.getProperty (or Boolean.getBoolean, Integer.getInteger, Long.getLong), to a helper named
+     * ...Property(...), or keeps in a constant named ...PROP...; and any other literal that begins like a listed
+     * one ("traverser.", "io.", ...), which is how a helper of another name -- Traverser's limit("...") -- is seen.
+     * <p>
+     * The list this replaced, features.md, had no such test: written once, it lacked 16 of the properties the code
+     * read and named three the code did not.
+     */
+    @Test
+    void everyPropertyJavaUtilReadsIsInTheGuidesReference() throws IOException {
+        Map<String, String> rows = referenceRows();
+        Set<String> families = new HashSet<>();
+        for (String name : rows.keySet()) {
+            families.add(name.substring(0, name.indexOf('.') + 1));
+        }
+
+        Set<String> unlisted = new TreeSet<>();
+        try (Stream<Path> files = Files.walk(Paths.get("src", "main", "java"))) {
+            for (Path file : (Iterable<Path>) files.filter(p -> p.toString().endsWith(".java"))::iterator) {
+                String code = withoutCommentLines(new String(Files.readAllBytes(file), StandardCharsets.UTF_8));
+                Set<String> read = new TreeSet<>();
+                Matcher matcher = READ.matcher(code);
+                while (matcher.find()) {
+                    read.add(matcher.group(1) != null ? matcher.group(1) : matcher.group(2));
+                }
+                matcher = LITERAL.matcher(code);
+                while (matcher.find()) {
+                    String literal = matcher.group(1);
+                    int dot = literal.indexOf('.');
+                    if (dot > 0 && families.contains(literal.substring(0, dot + 1))) {
+                        read.add(literal);
+                    }
+                }
+                for (String name : read) {
+                    if (PROPERTY_NAME.matcher(name).matches() && !isJdks(name) && !BUILD_TOOLS.contains(name)
+                            && !rows.containsKey(name)) {
+                        unlisted.add(file.getFileName() + ": " + name);
+                    }
+                }
+            }
+        }
+        assertTrue(unlisted.isEmpty(), "read by java-util, missing from the guide's System Property Reference: "
+                + unlisted);
+    }
+
+    /**
+     * For the limits a test can try, the default the reference states is the one applied: with the property not set,
+     * one past the stated default is refused, in a message that names that default. (A larger real default would
+     * refuse nothing; a smaller one would name itself.) features.md stated "0 (disabled)" for ten of these.
+     */
+    @Test
+    void theDefaultsTheReferenceStatesAreTheOnesApplied() throws IOException {
+        Map<String, String> rows = referenceRows();
+
+        // DeepEquals: no switch, and read once -- so read again here, with none of its properties set
+        String[] deepEquals = {"deepequals.max.collection.size", "deepequals.max.array.size",
+                "deepequals.max.map.size"};
+        withPropertiesCleared(deepEquals, DeepEquals::reloadSecurityProperties, () -> {
+            int size = defaultOf(rows, deepEquals[0]);
+            refusedNaming(size, () -> DeepEquals.deepEquals(listOf(size + 1), listOf(size + 1)));
+            int length = defaultOf(rows, deepEquals[1]);
+            refusedNaming(length, () -> DeepEquals.deepEquals(new int[length + 1], new int[length + 1]));
+            int entries = defaultOf(rows, deepEquals[2]);
+            refusedNaming(entries, () -> DeepEquals.deepEquals(mapOf(entries + 1), mapOf(entries + 1)));
+        });
+
+        // ClassUtilities: the resource-name limit needs no switch. It is read once too, and a test that ran earlier
+        // in this JVM may have left another limit in force, so it is read again here.
+        withPropertiesCleared(new String[] {"classutilities.enhanced.security.enabled",
+                "classutilities.max.resource.name.length"}, ClassUtilities::reinitializeSecuritySettings, () -> {
+            int nameLength = defaultOf(rows, "classutilities.max.resource.name.length");
+            refusedNaming(nameLength, () -> ClassUtilities.loadResourceAsBytes(repeat("a", nameLength + 1)));
+        });
+
+        // The rest wait for their master switch
+        withMaster("byteutilities.security.enabled", new String[] {"byteutilities.max.hex.string.length",
+                "byteutilities.max.array.size"}, () -> { }, () -> {
+            int hex = defaultOf(rows, "byteutilities.max.hex.string.length");
+            refusedNaming(hex, () -> ByteUtilities.decode(repeat("A", hex + 2)));
+            int bytes = defaultOf(rows, "byteutilities.max.array.size");
+            refusedNaming(bytes, () -> ByteUtilities.encode(new byte[bytes + 1]));
+        });
+        withMaster("mathutilities.security.enabled", new String[] {"mathutilities.max.array.size",
+                "mathutilities.max.string.length", "mathutilities.max.permutation.size"}, () -> { }, () -> {
+            int array = defaultOf(rows, "mathutilities.max.array.size");
+            refusedNaming(array, () -> MathUtilities.minimum(new long[array + 1]));
+            int text = defaultOf(rows, "mathutilities.max.string.length");
+            refusedNaming(text, () -> MathUtilities.parseToMinimalNumericType(repeat("1", text + 1)));
+            int list = defaultOf(rows, "mathutilities.max.permutation.size");
+            refusedNaming(list, () -> MathUtilities.nextPermutation(listOf(list + 1)));
+        });
+        // DateUtilities reads its switches once, so they are read again around this
+        List<String[]> dateSwitches = new ArrayList<>();
+        dateSwitches.add(new String[] {"dateutilities.input.validation.enabled", "true"});
+        withProperties(dateSwitches, () -> withMaster("dateutilities.security.enabled",
+                new String[] {"dateutilities.max.input.length", "dateutilities.max.epoch.digits"},
+                DateUtilities::resetSecurityConfigCacheForTesting, () -> {
+                    int input = defaultOf(rows, "dateutilities.max.input.length");
+                    refusedNaming(input, () -> DateUtilities.parseDate(repeat("x", input + 1)));
+                    int digits = defaultOf(rows, "dateutilities.max.epoch.digits");
+                    refusedNaming(digits, () -> DateUtilities.parseDate(repeat("1", digits + 1)));
+                }));
     }
 
     /** The guide's ByteUtilities example, applied as written, limits what decode() reads. */
@@ -171,6 +299,91 @@ class UserGuidePropertyNamesTest {
         }
         assertTrue(literals.contains("byteutilities.security.enabled"), "read the main sources");
         return literals;
+    }
+
+    /** The reference's rows, each name with its Default cell. */
+    private static Map<String, String> referenceRows() throws IOException {
+        String guide = read("userguide.md");
+        int start = guide.indexOf(REFERENCE);
+        assertTrue(start >= 0, "userguide.md has the section" + REFERENCE.trim());
+        int end = guide.indexOf("\n## ", start + REFERENCE.length());
+        Map<String, String> rows = new LinkedHashMap<>();
+        Matcher matcher = REFERENCE_ROW.matcher(guide.substring(start, end < 0 ? guide.length() : end));
+        while (matcher.find()) {
+            String earlier = rows.put(matcher.group(1), matcher.group(2).trim());
+            assertTrue(earlier == null, matcher.group(1) + " is listed twice");
+        }
+        assertTrue(rows.size() > 80, "the reference lists " + rows.size() + " properties");
+        return rows;
+    }
+
+    /** The source with its comment lines blanked: a name in Javadoc is not a name the code reads. */
+    private static String withoutCommentLines(String source) {
+        StringBuilder code = new StringBuilder(source.length());
+        for (String line : source.split("\n", -1)) {
+            String trimmed = line.trim();
+            if (!trimmed.startsWith("*") && !trimmed.startsWith("//") && !trimmed.startsWith("/*")) {
+                code.append(line);
+            }
+            code.append('\n');
+        }
+        return code.toString();
+    }
+
+    private static int defaultOf(Map<String, String> rows, String name) {
+        String cell = rows.get(name);
+        assertTrue(cell != null, name + " is in the reference");
+        return Integer.parseInt(cell.replace("`", ""));
+    }
+
+    /** The call is refused, and the refusal names the limit: as a whole number, so 100 does not pass for 10. */
+    private static void refusedNaming(int limit, Executable call) {
+        SecurityException refusal = assertThrows(SecurityException.class, call);
+        assertTrue(Pattern.compile("(?<!\\d)" + limit + "(?!\\d)").matcher(String.valueOf(refusal.getMessage())).find(),
+                "a limit of " + limit + ": " + refusal.getMessage());
+    }
+
+    /** Runs the check with these properties not set; settings a class keeps are read again before and after. */
+    private static void withPropertiesCleared(String[] names, Runnable readAgain, Runnable check) {
+        Map<String, String> before = new LinkedHashMap<>();
+        for (String name : names) {
+            before.put(name, System.getProperty(name));
+            System.clearProperty(name);
+        }
+        readAgain.run();
+        try {
+            check.run();
+        } finally {
+            for (Map.Entry<String, String> entry : before.entrySet()) {
+                if (entry.getValue() != null) {
+                    System.setProperty(entry.getKey(), entry.getValue());
+                }
+            }
+            readAgain.run();
+        }
+    }
+
+    /** The same, with the class's master switch on. */
+    private static void withMaster(String master, String[] limits, Runnable readAgain, Runnable check) {
+        List<String[]> on = new ArrayList<>();
+        on.add(new String[] {master, "true"});
+        withProperties(on, () -> withPropertiesCleared(limits, readAgain, check));
+    }
+
+    private static List<Integer> listOf(int size) {
+        List<Integer> list = new ArrayList<>(size);
+        for (int i = 0; i < size; i++) {
+            list.add(i);
+        }
+        return list;
+    }
+
+    private static Map<Integer, Integer> mapOf(int size) {
+        Map<Integer, Integer> map = new HashMap<>(size * 2);
+        for (int i = 0; i < size; i++) {
+            map.put(i, i);
+        }
+        return map;
     }
 
     private static String read(String document) throws IOException {

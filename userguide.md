@@ -4693,7 +4693,11 @@ DeepEquals.deepEquals(map1, map2);
 
 ### Feature Options
 
-DeepEquals provides configurable security and performance options through system properties. All security features are **disabled by default** for backward compatibility.
+DeepEquals reads its options from system properties. **Its size limits are on with nothing set**, at the defaults
+below: comparing two collections, arrays or maps of more than 100,000 elements throws `SecurityException` unless the
+limit is raised or set to `0`. `deepequals.secure.errors` is off by default. The properties are read once, when
+DeepEquals is first used, so set them at startup (`-D...`) rather than in running code. (This guide said, through
+4.118.0, that the limits were off by default. They were, from 3.6.0 to 4.0.0, and have been on since 4.1.0.)
 
 #### Programmatic Options (via options Map)
 
@@ -4736,7 +4740,7 @@ instead, as before 4.113.0, when that made `new Random(1)` equal `new Random(2)`
 # Set maximum collection size (0 = disabled)
 -Ddeepequals.max.collection.size=50000
 ```
-- **Default:** `0` (disabled)
+- **Default:** `100000`
 - **Description:** Prevents memory exhaustion attacks by limiting collection sizes during comparison. Set to 0 or negative to disable.
 
 **Array Size Limit:**
@@ -4744,7 +4748,7 @@ instead, as before 4.113.0, when that made `new Random(1)` equal `new Random(2)`
 # Set maximum array size (0 = disabled)
 -Ddeepequals.max.array.size=50000
 ```
-- **Default:** `0` (disabled)
+- **Default:** `100000`
 - **Description:** Prevents memory exhaustion attacks by limiting array sizes during comparison. Set to 0 or negative to disable.
 
 **Map Size Limit:**
@@ -4752,7 +4756,7 @@ instead, as before 4.113.0, when that made `new Random(1)` equal `new Random(2)`
 # Set maximum map size (0 = disabled)
 -Ddeepequals.max.map.size=50000
 ```
-- **Default:** `0` (disabled)
+- **Default:** `100000`
 - **Description:** Prevents memory exhaustion attacks by limiting map sizes during comparison. Set to 0 or negative to disable.
 
 **Object Field Count Limit:**
@@ -4760,7 +4764,7 @@ instead, as before 4.113.0, when that made `new Random(1)` equal `new Random(2)`
 # Set maximum object field count (0 = disabled)
 -Ddeepequals.max.object.fields=1000
 ```
-- **Default:** `0` (disabled)
+- **Default:** `1000`
 - **Description:** Prevents memory exhaustion attacks by limiting the number of fields in objects during comparison. Set to 0 or negative to disable.
 
 **Recursion Depth Limit:**
@@ -4768,18 +4772,23 @@ instead, as before 4.113.0, when that made `new Random(1)` equal `new Random(2)`
 # Set maximum recursion depth (0 = disabled)
 -Ddeepequals.max.recursion.depth=500
 ```
-- **Default:** `0` (disabled)
+- **Default:** `1000000`
 - **Description:** Prevents stack overflow attacks by limiting recursion depth during comparison. Set to 0 or negative to disable.
 
 #### Usage Examples:
 ```bash
-# Enable all security protections with reasonable limits
+# Hide values in the difference text, and hold comparisons to tighter limits than the defaults
 -Ddeepequals.secure.errors=true \
--Ddeepequals.max.collection.size=100000 \
--Ddeepequals.max.array.size=100000 \
--Ddeepequals.max.map.size=100000 \
--Ddeepequals.max.object.fields=1000 \
+-Ddeepequals.max.collection.size=10000 \
+-Ddeepequals.max.array.size=10000 \
+-Ddeepequals.max.map.size=10000 \
+-Ddeepequals.max.object.fields=200 \
 -Ddeepequals.max.recursion.depth=1000
+
+# Compare collections, arrays and maps of any size
+-Ddeepequals.max.collection.size=0 \
+-Ddeepequals.max.array.size=0 \
+-Ddeepequals.max.map.size=0
 ```
 
 ### Implementation Notes
@@ -5437,6 +5446,14 @@ or "failed", and a party who can submit inputs and see that answer can, in a few
 password, build a ciphertext that `decrypt()` accepts and that decrypts to text of their choosing. With the switch
 on, a changed AES-GCM ciphertext can also come back as noise instead of failing, because a failed tag check is
 retried as the old format. Through 4.118.0 the old format was always read.
+
+### Settings
+
+EncryptionUtilities reads thirteen system properties: the legacy-format switch above, and twelve that bound
+file sizes, buffer sizes and key-derivation parameters. The twelve are off until
+`encryptionutilities.security.enabled` is `true`, and each group has a validation switch of its own. They
+are listed, with their defaults, under
+[EncryptionUtilities properties](#encryptionutilities-properties).
 
 ### Implementation Notes
 
@@ -7699,28 +7716,40 @@ Utility methods for fetching HTTP/HTTPS content with configurable security contr
 - Stream directly to an `OutputStream` with `copyContentFromUrl`
 - Configurable default connect and read timeouts
 - Optional insecure SSL mode via `allowAllCerts` parameters
-- Comprehensive security controls for SSRF protection and resource limits
+- Limits on download size and `Content-Length`, and an optional cookie-domain check
 
 ### Security Configuration
 
-UrlUtilities provides configurable security controls to prevent various attack vectors including SSRF (Server-Side Request Forgery), resource exhaustion, and cookie injection attacks. **All security features are disabled by default** for backward compatibility.
+UrlUtilities limits the size of what it downloads and can check cookie domains. One limit is on with nothing set:
+a download of more than 100 MB is refused.
 
 **System Property Configuration:**
 ```properties
-# Master switch - enables all security features
+# Master switch for the two size properties, as described below
 urlutilities.security.enabled=false
 
-# Resource limits (0 = disabled)
-urlutilities.max.download.size=0          # Max download size in bytes
-urlutilities.max.content.length=0         # Max Content-Length header value
+# Largest download in bytes. Read only while the master switch is true.
+urlutilities.max.download.size=104857600
 
-# SSRF protection
-urlutilities.allow.internal.hosts=true    # Allow access to localhost/internal IPs
-urlutilities.allowed.protocols=http,https,ftp  # Comma-separated allowed protocols
+# Largest Content-Length accepted, in bytes. Not set by default; applied whenever it is set.
+# urlutilities.max.content.length=524288000
 
-# Cookie security
-urlutilities.strict.cookie.domain=false   # Enable strict cookie domain validation
+# Refuse a cookie whose domain is not the host's. Needs no master switch.
+urlutilities.strict.cookie.domain=false
 ```
+
+- **Download size.** With the master switch off, the limit is the one `UrlUtilities.setMaxDownloadSize()` holds:
+  100 MB unless changed. With it on, `urlutilities.max.download.size` replaces that when set.
+- **Content-Length.** `urlutilities.max.content.length` is applied whenever it is set. Not set, there is no limit
+  with the master switch off, and 500 MB (`setMaxContentLength()`) with it on.
+- **Protocols.** UrlUtilities reads `http`, `https` and `ftp` URLs, and `res://` for a classpath resource. The list
+  is fixed.
+
+**Two properties are read and not applied.** `urlutilities.allow.internal.hosts` and
+`urlutilities.allowed.protocols` change nothing: with `allow.internal.hosts=false` a URL on `localhost` or a
+private address is still read (a warning is logged), and `allowed.protocols=https` does not stop an `http` URL.
+Do not rely on either. To keep a caller from reaching internal hosts, check the URL before it is given to
+UrlUtilities.
 
 **Usage Example:**
 ```java
@@ -7728,8 +7757,6 @@ urlutilities.strict.cookie.domain=false   # Enable strict cookie domain validati
 System.setProperty("urlutilities.security.enabled", "true");
 System.setProperty("urlutilities.max.download.size", "50000000"); // 50MB
 System.setProperty("urlutilities.max.content.length", "200000000"); // 200MB
-System.setProperty("urlutilities.allow.internal.hosts", "false");
-System.setProperty("urlutilities.allowed.protocols", "https");
 System.setProperty("urlutilities.strict.cookie.domain", "true");
 
 // These will now enforce security controls
@@ -7739,12 +7766,9 @@ String content = UrlUtilities.readStringFromUrl("https://api.example.com/endpoin
 
 **Security Features:**
 
-- **SSRF Protection:** Validates protocols and optionally blocks internal host access
 - **Resource Exhaustion Protection:** Limits download sizes and content lengths
 - **Cookie Security:** Validates cookie domains to prevent hijacking
-- **Protocol Restriction:** Configurable allowed protocols list
-
-**Backward Compatibility:** When security is disabled (default), all methods behave exactly as before with no performance impact.
+- **Protocols:** Only `http`, `https`, `ftp` and `res://` URLs are read
 
 ### Public API
 
@@ -8642,51 +8666,248 @@ if (commandExecutionRequired) {
 
 ---
 
-## Security Configuration Summary
+## System Property Reference
 
-All java-util security features follow consistent patterns:
+Every system property java-util reads, in one list. The class sections above explain each in context; this is the
+index. Through 4.118.0 the list was a separate file, `features.md`.
 
-### Common Principles
+A test, `UserGuidePropertyNamesTest`, holds this list to the code: every name here is one the code reads, every
+property the code reads is here, and for the size limits it can try, the default stated here is the one applied.
 
-1. **Disabled by Default:** All security features are disabled by default for backward compatibility (except Executor for security reasons)
-2. **Master Switches:** Each utility class has a `[classname].security.enabled` property
-3. **Configurable Limits:** Individual limits can be customized via system properties
-4. **Zero Disables:** Setting limits to 0 or negative values disables that specific check
-5. **Clear Errors:** SecurityExceptions provide clear guidance on configuration
+**Reading the tables**
 
-### Property Naming Convention
+- **Default** is what applies when the property is not set.
+- **Most limits wait for a master switch.** `<class>.security.enabled` is `false` by default, and a limit under it
+  does nothing until the switch is `true`. The line above each table names the switch.
+- **Four things are on with nothing set:** DeepEquals' size limits, IOUtilities' path and protocol checks,
+  RegexUtilities' time limit, and UrlUtilities' 100 MB download limit. ClassUtilities' block list is always on and
+  has no switch.
+- **One thing is off until asked for:** Executor runs no command unless `executor.enabled=true`.
+- **`0` usually means "no limit".** Each table says where it does not.
 
-```properties
-# Master switch pattern
-[classname].security.enabled=false
+### ArrayUtilities properties
 
-# Individual limit patterns
-[classname].max.[feature].[type]=[limit]
-```
+The limit applies only while `arrayutilities.security.enabled` is `true`.
+[More](#arrayutilities-security-configuration)
 
-### Examples of Consistent Configuration
+| Property | Default | What it does |
+|---|---|---|
+| `arrayutilities.security.enabled` | `false` | Master switch. |
+| `arrayutilities.max.array.size` | `2147483639` | Largest array ArrayUtilities creates. Here `0` is a limit of zero, not "no limit". |
 
-```properties
-# System utilities
-systemutilities.security.enabled=false
-systemutilities.max.shutdown.hooks=100
+### ByteUtilities properties
 
-# String utilities
-stringutilities.security.enabled=false
-stringutilities.max.repeat.total.size=10000000
+The limits apply only while `byteutilities.security.enabled` is `true`. `0` means no limit.
+[More](#byteutilities-security-configuration)
 
-# Array utilities
-arrayutilities.security.enabled=false
-arrayutilities.max.array.size=1000000
+| Property | Default | What it does |
+|---|---|---|
+| `byteutilities.security.enabled` | `false` | Master switch. |
+| `byteutilities.max.hex.string.length` | `1000000` | Longest text `decode()` reads. |
+| `byteutilities.max.array.size` | `10000000` | Largest array `encode()` takes. |
 
-# Byte utilities
-byteutilities.security.enabled=false
-byteutilities.max.hex.string.length=1000000
+### ClassUtilities properties
 
-# Math utilities
-mathutilities.security.enabled=false
-mathutilities.max.array.size=100000
+The block list (`Runtime`, `ProcessBuilder`, ...) is always on. All but the last property are read once, when
+ClassUtilities loads. [More](#classutilities-security-configuration)
 
-# Exception: Executor (disabled by default for security)
-executor.enabled=false
-```
+| Property | Default | What it does |
+|---|---|---|
+| `classutilities.security.blocked.classes` | none | Class names added to the block list, comma-separated. |
+| `classutilities.security.blocked.packages` | none | Package prefixes added to the block list, comma-separated. |
+| `classutilities.security.unblocked` | none | Class names taken off the block list, comma-separated. |
+| `classutilities.enhanced.security.enabled` | `false` | Turns on the two limits below, and lets the resource-name limit be changed. |
+| `classutilities.max.class.load.depth` | `100` | Deepest nesting of class loads. `0` means no limit. Needs the enhanced switch. |
+| `classutilities.max.constructor.args` | `50` | Most arguments `newInstance()` takes. `0` means no limit. Needs the enhanced switch. |
+| `classutilities.max.resource.name.length` | `1000` | Longest resource name `loadResourceAsBytes()` takes. Always applied; a value set here (100 or more) counts only with the enhanced switch. |
+| `classutilities.class.not.found.cache.millis` | `1000` | How long a class name that was not found is remembered. `0` means not at all. |
+
+### CompactMap properties
+
+A value below 2, or not a number, leaves the default. [More](#compactmap)
+
+| Property | Default | What it does |
+|---|---|---|
+| `compactmap.max.compact.size` | `256` | Largest `compactSize`; a larger one is clipped to it. |
+| `compactmap.max.configurations` | `1000` | Most builder configurations a class is generated for. |
+
+### Converter properties
+
+Each takes `millis` or `nanos`. The names begin with `cedarsoftware.`; without it they are not read.
+[More](#converter)
+
+| Property | Default | What it does |
+|---|---|---|
+| `cedarsoftware.converter.modern.time.long.precision` | `millis` | What a `long` means in conversions to and from `Instant`, `ZonedDateTime` and `OffsetDateTime`. |
+| `cedarsoftware.converter.duration.long.precision` | `millis` | The same, for `Duration`. |
+| `cedarsoftware.converter.localtime.long.precision` | `millis` | The same, for `LocalTime`. |
+
+### DateUtilities properties
+
+Nothing applies until `dateutilities.security.enabled` is `true`. The switches and the time limit are read once, at
+first use. [More](#dateutilities-security-configuration)
+
+| Property | Default | What it does |
+|---|---|---|
+| `dateutilities.security.enabled` | `false` | Master switch. |
+| `dateutilities.input.validation.enabled` | `false` | Applies the two limits below. |
+| `dateutilities.max.input.length` | `1000` | Longest text parsed. |
+| `dateutilities.max.epoch.digits` | `19` | Most digits in an epoch-milliseconds value. |
+| `dateutilities.malformed.string.protection.enabled` | `false` | Refuses text with heavy repetition, deep nesting or control characters. |
+| `dateutilities.regex.timeout.enabled` | `true` | Time limit on each regex match. On with the master switch unless this, or `cedarsoftware.regex.timeout.enabled`, is `false`. |
+| `dateutilities.regex.timeout.milliseconds` | `1000` | The time limit. Not set, `cedarsoftware.regex.timeout.milliseconds` is used if that is set. |
+
+### DeepEquals properties
+
+There is no master switch: the limits are on. They are read once, when DeepEquals is first used. `0` means no
+limit. Past a limit, `deepEquals()` throws `SecurityException`. [More](#deepequals)
+
+| Property | Default | What it does |
+|---|---|---|
+| `deepequals.max.collection.size` | `100000` | Largest collection compared. |
+| `deepequals.max.array.size` | `100000` | Largest array compared. |
+| `deepequals.max.map.size` | `100000` | Largest map compared. |
+| `deepequals.max.object.fields` | `1000` | Most fields in one object. |
+| `deepequals.max.recursion.depth` | `1000000` | Deepest nesting followed. |
+| `deepequals.secure.errors` | `false` | Hides string values and the values of fields named like a secret in the difference text. |
+
+### EncryptionUtilities properties
+
+A limit needs two switches: `encryptionutilities.security.enabled` and the validation switch above it in the
+table. The first row needs neither. [More](#encryptionutilities)
+
+| Property | Default | What it does |
+|---|---|---|
+| `encryptionutilities.legacy.decrypt.enabled` | `false` | Lets `decrypt()` and `decryptBytes()` read what java-util 3.3.2 and earlier wrote (AES-CBC). |
+| `encryptionutilities.security.enabled` | `false` | Master switch. |
+| `encryptionutilities.file.size.validation.enabled` | `false` | Applies the limit below to the file hashes (`fastMD5(File)`, `fastSHA256(File)`, ...). |
+| `encryptionutilities.max.file.size` | `2147483647` | Largest file hashed, in bytes. |
+| `encryptionutilities.buffer.size.validation.enabled` | `false` | Checks the 64 KB read buffer of the file hashes against the limit below. |
+| `encryptionutilities.max.buffer.size` | `1048576` | Largest read buffer allowed, in bytes. At least 1024. |
+| `encryptionutilities.crypto.parameters.validation.enabled` | `false` | Applies the six bounds below. |
+| `encryptionutilities.min.pbkdf2.iterations` | `10000` | Fewest key-derivation iterations allowed. At least 1000. java-util uses 65,536. |
+| `encryptionutilities.max.pbkdf2.iterations` | `1000000` | Most key-derivation iterations allowed. |
+| `encryptionutilities.min.salt.size` | `8` | Smallest salt, in bytes. |
+| `encryptionutilities.max.salt.size` | `64` | Largest salt, in bytes. |
+| `encryptionutilities.min.iv.size` | `8` | Smallest IV, in bytes. |
+| `encryptionutilities.max.iv.size` | `32` | Largest IV, in bytes. |
+
+### Executor properties
+
+[More](#executor-security-configuration)
+
+| Property | Default | What it does |
+|---|---|---|
+| `executor.enabled` | `false` | `Executor` runs a command only when this is `true`. Otherwise it throws `SecurityException`. |
+
+### IOUtilities properties
+
+There is no master switch. The path and protocol checks are on, and the three `*.disabled` properties turn them
+off. [More](#ioutilities)
+
+| Property | Default | What it does |
+|---|---|---|
+| `io.connect.timeout` | `5000` | Connect timeout in milliseconds. Held between 1000 and 300000. |
+| `io.read.timeout` | `30000` | Read timeout in milliseconds. Held between 1000 and 300000. |
+| `io.max.stream.size` | half the heap | Largest stream `inputStreamToBytes()` reads into memory, in bytes. At most 2147483639. |
+| `io.max.decompression.size` | half the heap | Largest result of `uncompressBytes()`, in bytes. When set, it also limits a gzip or deflate response. |
+| `io.allowed.protocols` | `http,https,file,jar` | URL protocols IOUtilities reads from, comma-separated. |
+| `io.path.validation.disabled` | `false` | `true` turns off the file path checks. |
+| `io.url.protocol.validation.disabled` | `false` | `true` turns off the protocol check. |
+| `io.file.protocol.validation.disabled` | `false` | `true` turns off the checks on `file:` and `jar:` URLs. |
+| `io.debug` | `false` | Debug logging. Read once, when IOUtilities loads. |
+| `io.debug.detailed.urls` | `false` | Whole URLs in log messages. They are shortened otherwise. |
+| `io.debug.detailed.paths` | `false` | Whole file paths in log messages. They are shortened otherwise. |
+
+### LoggingConfig properties
+
+[More](#loggingconfig)
+
+| Property | Default | What it does |
+|---|---|---|
+| `ju.log.dateFormat` | `yyyy-MM-dd HH:mm:ss.SSS` | Date pattern of the log lines `LoggingConfig.init()` sets up. |
+
+### MathUtilities properties
+
+The limits apply only while `mathutilities.security.enabled` is `true`. `0` means no limit.
+[More](#mathutilities-security-configuration)
+
+| Property | Default | What it does |
+|---|---|---|
+| `mathutilities.security.enabled` | `false` | Master switch. |
+| `mathutilities.max.array.size` | `100000` | Largest array `minimum()` and `maximum()` take. |
+| `mathutilities.max.string.length` | `100000` | Longest text `parseToMinimalNumericType()` reads. |
+| `mathutilities.max.permutation.size` | `10` | Largest list `nextPermutation()` takes. |
+
+### RegexUtilities properties
+
+The time limit is on with nothing set. A switch here is off only for `false`. [More](#regexutilities)
+
+| Property | Default | What it does |
+|---|---|---|
+| `cedarsoftware.security.enabled` | `true` | `false` turns off the time limit. |
+| `cedarsoftware.regex.timeout.enabled` | `true` | `false` turns off the time limit. DateUtilities reads it too. |
+| `cedarsoftware.regex.timeout.milliseconds` | `5000` | The time limit on a regex operation RegexUtilities runs. |
+
+### StringUtilities properties
+
+The limits apply only while `stringutilities.security.enabled` is `true`. None has a default: a limit that is not
+set is no limit. [More](#stringutilities)
+
+| Property | Default | What it does |
+|---|---|---|
+| `stringutilities.security.enabled` | `false` | Master switch. |
+| `stringutilities.max.hex.decode.size` | `0` | Longest text `decode()` reads. |
+| `stringutilities.max.wildcard.length` | `0` | Longest pattern `wildcardToRegexString()` takes. |
+| `stringutilities.max.wildcard.count` | `0` | Most wildcards in one pattern. |
+| `stringutilities.max.levenshtein.string.length` | `0` | Longest text `levenshteinDistance()` takes. |
+| `stringutilities.max.damerau.levenshtein.string.length` | `0` | Longest text `damerauLevenshteinDistance()` takes. |
+| `stringutilities.max.repeat.count` | `0` | Largest count `repeat()` takes. |
+| `stringutilities.max.repeat.total.size` | `0` | Longest text `repeat()` builds. |
+
+### SystemUtilities properties
+
+A check needs two switches: `systemutilities.security.enabled` and its own.
+[More](#systemutilities-security-configuration)
+
+| Property | Default | What it does |
+|---|---|---|
+| `systemutilities.security.enabled` | `false` | Master switch. |
+| `systemutilities.environment.variable.validation.enabled` | `false` | `getExternalVariable()` and `getEnvironmentVariables()` leave out variables named like a secret. |
+| `systemutilities.sensitive.variable.patterns` | 20 words | The words that mark a variable name as a secret, comma-separated. The default list is in the section linked above. |
+| `systemutilities.file.system.validation.enabled` | `false` | Checks the prefix given to `createTempDirectory()`. |
+| `systemutilities.max.temp.prefix.length` | `100` | Longest prefix allowed. |
+| `systemutilities.resource.limits.enabled` | `false` | Limits the shutdown hooks `addShutdownHook()` registers. |
+| `systemutilities.max.shutdown.hooks` | `100` | Most shutdown hooks. |
+
+### Traverser properties
+
+The limits apply only while `traverser.security.enabled` is `true`. None has a default: a limit that is not set is
+no limit. [More](#traverser)
+
+| Property | Default | What it does |
+|---|---|---|
+| `traverser.security.enabled` | `false` | Master switch. |
+| `traverser.max.stack.depth` | `0` | Deepest nesting followed. |
+| `traverser.max.objects.visited` | `0` | Most objects visited. |
+| `traverser.max.collection.size` | `0` | Largest collection or map walked. |
+| `traverser.max.array.length` | `0` | Largest object array walked. |
+
+### UrlUtilities properties
+
+The last two properties are read and not applied: setting them changes nothing. [More](#urlutilities)
+
+| Property | Default | What it does |
+|---|---|---|
+| `urlutilities.security.enabled` | `false` | Master switch for the two size properties, as each row says. |
+| `urlutilities.max.download.size` | `104857600` | Largest download, in bytes. Read only with the master switch. Without it the limit is the one `setMaxDownloadSize()` holds, 100 MB unless changed. |
+| `urlutilities.max.content.length` | none | Largest `Content-Length` accepted, in bytes. Applied whenever it is set. Not set, with the master switch, the limit is 524288000 (500 MB). |
+| `urlutilities.strict.cookie.domain` | `false` | Refuses a cookie whose domain is not the host's. Needs no master switch. |
+| `urlutilities.allow.internal.hosts` | `true` | **Not applied.** Internal hosts are read whatever it says; a warning is logged. |
+| `urlutilities.allowed.protocols` | `http,https,ftp` | **Not applied.** The protocols are fixed: `http`, `https` and `ftp`. |
+
+### For java-util's own tests
+
+| Property | Default | What it does |
+|---|---|---|
+| `java.util.force.jre` | `false` | `ReflectionUtils.isJavaCompilerAvailable()` answers `false`, as on a JRE. |

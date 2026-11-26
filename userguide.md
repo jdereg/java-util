@@ -7089,16 +7089,13 @@ TimeZone tz = SystemUtilities.getSystemTimeZone();
 
 **Error Handling:**
 ```java
+// Neither method declares a checked exception: an IOException or SocketException from the JDK
+// is thrown as it is, undeclared. Catch Exception to handle it.
 try {
     File tempDir = SystemUtilities.createTempDirectory("temp-");
-} catch (IOException e) {
-    // Handle filesystem errors
-}
-
-try {
     List<NetworkInfo> interfaces = SystemUtilities.getNetworkInterfaces();
-} catch (SocketException e) {
-    // Handle network errors
+} catch (Exception e) {
+    // IOException: the directory could not be created; SocketException: the interfaces could not be read
 }
 ```
 
@@ -8118,7 +8115,7 @@ SystemUtilities.addShutdownHook(() -> System.out.println("Cleanup"));
 // By default, all security features are disabled
 // These operations work without restrictions
 String password = SystemUtilities.getExternalVariable("PASSWORD"); // returns actual value
-File tempDir = SystemUtilities.createTempDirectory("../test"); // allowed
+File tempDir = SystemUtilities.createTempDirectory("my-prefix"); // not validated here (the JDK itself refuses "../x")
 Map<String, String> allEnvVars = SystemUtilities.getEnvironmentVariables(null); // includes sensitive vars
 ```
 

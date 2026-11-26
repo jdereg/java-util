@@ -48,6 +48,8 @@
 | `new RegexUtilities.SafeMatchResult(matcher, input)` with a matcher that holds no match | `IllegalStateException` | an unmatched result |
 | `dateutilities.security.enabled`, `…input.validation.enabled` or `…malformed.string.protection.enabled` written as `true` with a space beside it | off | on |
 | `dateutilities.regex.timeout.enabled` / `cedarsoftware.regex.timeout.enabled`, as DateUtilities reads them, set to anything but `true` or `false` (`1`, `yes`, `" true"`) | DateUtilities' time limit off | on: only `false` switches it off |
+| Loading `SystemUtilities` | wrote three `systemutilities.*` system properties | writes none; the limits are unchanged |
+| A directory from `SystemUtilities.createTempDirectory()` that has files in it at JVM exit | left on disk | deleted |
 | `CollectionUtilities.deepCopyContainers()` of a set holding a list or array that holds sets | a set that cannot find its own element; a sorted set missing elements | a correct copy |
 | `deepCopyContainers()` of `ArrayDeque[]`, `Vector[]`, `CopyOnWriteArrayList[]`, `ConcurrentSkipListSet[]` | `ArrayStoreException` | copied, elements of that class |
 | `deepCopyContainers()` of an `IdentitySet`, `CaseInsensitiveSet` or `ConcurrentNavigableSetNullSafe` | a `LinkedHashSet` / `TreeSet` (equal members merged; null refused) | the same class |
@@ -198,6 +200,12 @@
   * **Threads:** none. Eight parsing threads kept 11 or 12 `DateUtilities-Regex-Timeout-Thread` threads alive, and the pool grew with the number of callers.
   * **Switches:** the three that are off unless asked for are on for `true` in any case with spaces around it (`"true "` in a properties file left all of it off, silently). The time limit, on with the master switch, is off only for `false`. The timeout value is trimmed.
   * **Tests.** `DateUtilitiesRegexOnCallerThreadTest` (2), both failing on the old code: 64 threads parse 25,600 dates with the limit on, each equal to the parse without it, and no thread is started for them; the switch values.
+* **BUG FIX**: **`SystemUtilities`.**
+  * **Loading it writes no system properties (regression since 3.3.0).** Its static initializer set three (`systemutilities.sensitive.variable.patterns`, `...max.shutdown.hooks`, `...max.temp.prefix.length`) when they were not set. Where properties may be read and not written (a SecurityManager on JDK 8 to 17) the class could not load, and `UniqueIdGenerator` and json-io's reflection, which load it, failed with it. The defaults apply without being written.
+  * **The sensitive-variable filter** kept its patterns and the text they came from in two fields; while the property was being changed a reader could pair the new text with the old patterns and return a variable the new patterns block. One holder now.
+  * **`createTempDirectory()`** promised a directory deleted at JVM exit and used `File.deleteOnExit()`, which deletes a directory only if it is empty and remembers every path for the life of the JVM (20,000 calls, 20,000 paths). One shutdown hook deletes each directory with its contents; directories the caller has deleted are forgotten.
+  * **`getSystemTimeZone()`** logged a WARNING on every call for `TZ=":America/Chicago"`, the POSIX form with a colon, while returning the right zone.
+  * **Tests.** `SystemUtilitiesOnceOverTest` (5), two of them in a second JVM (exit and `TZ`).
 
 #### 4.118.0 - 2026-10-26
 **Upgrading from 4.117.0 -- what can change a result.** Each row is pinned by `UpgradeTo4118NotesTest`; every

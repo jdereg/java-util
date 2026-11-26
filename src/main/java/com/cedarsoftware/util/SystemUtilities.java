@@ -7,7 +7,12 @@ import java.lang.reflect.Method;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.net.SocketException;
+import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
+import java.nio.file.LinkOption;
+import java.nio.file.Path;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Enumeration;
@@ -18,6 +23,8 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.TimeZone;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Predicate;
 import java.util.logging.Level;
@@ -128,7 +135,7 @@ public final class SystemUtilities {
         LoggingConfig.init();
     }
 
-    // Default sensitive variable patterns (moved to system properties in static initializer)
+    // Default sensitive variable patterns: what applies when the property is not set
     private static final String DEFAULT_SENSITIVE_VARIABLE_PATTERNS =
             "PASSWORD,PASSWD,PASS,SECRET,KEY,TOKEN,CREDENTIAL,AUTH,APIKEY,API_KEY,PRIVATE,CERT,CERTIFICATE,DATABASE_URL,DB_URL,CONNECTION_STRING,DSN,AWS_SECRET,AZURE_CLIENT_SECRET,GCP_SERVICE_ACCOUNT";
 
@@ -140,32 +147,26 @@ public final class SystemUtilities {
     // Security: Resource limits for system operations
     private static final AtomicInteger SHUTDOWN_HOOK_COUNT = new AtomicInteger(0);
 
-    // Cached security configuration (volatile for thread-safe lazy initialization)
-    private static volatile Set<String> cachedSensitivePatterns;
-    private static volatile String cachedPatternSource;
+    // The sensitive-variable patterns in force and the property text they were made from, published together: as
+    // two fields, a reader could take the new text with the old set and let a variable through that the new
+    // patterns block.
+    private static volatile SensitivePatterns cachedSensitivePatterns;
     private static final Object PATTERN_LOCK = new Object();
 
-    static {
-        // Initialize system properties with defaults if not already set (backward compatibility)
-        initializeSystemPropertyDefaults();
-    }
+    private static final class SensitivePatterns {
+        final String source;
+        final Set<String> patterns;
 
-    private static void initializeSystemPropertyDefaults() {
-        // Set sensitive variable patterns if not explicitly configured
-        if (System.getProperty("systemutilities.sensitive.variable.patterns") == null) {
-            System.setProperty("systemutilities.sensitive.variable.patterns", DEFAULT_SENSITIVE_VARIABLE_PATTERNS);
-        }
-
-        // Set max shutdown hooks if not explicitly configured
-        if (System.getProperty("systemutilities.max.shutdown.hooks") == null) {
-            System.setProperty("systemutilities.max.shutdown.hooks", String.valueOf(DEFAULT_MAX_SHUTDOWN_HOOKS));
-        }
-
-        // Set max temp prefix length if not explicitly configured
-        if (System.getProperty("systemutilities.max.temp.prefix.length") == null) {
-            System.setProperty("systemutilities.max.temp.prefix.length", String.valueOf(DEFAULT_MAX_TEMP_PREFIX_LENGTH));
+        SensitivePatterns(String source, Set<String> patterns) {
+            this.source = source;
+            this.patterns = patterns;
         }
     }
+
+    // Nothing is written to the system properties when this class loads. Through 4.118.0 three were (the patterns
+    // and the two limits below, when not set), as defaults for all the JVM to see: under a SecurityManager that
+    // lets properties be read and not written the class could not load, and UniqueIdGenerator and json-io's
+    // reflection, which load it, failed with it. A property that is not set reads as its default here.
 
     // Security configuration methods
 
@@ -194,7 +195,7 @@ public final class SystemUtilities {
                 // Fall through to default
             }
         }
-        return isSecurityEnabled() ? DEFAULT_MAX_SHUTDOWN_HOOKS : Integer.MAX_VALUE;
+        return DEFAULT_MAX_SHUTDOWN_HOOKS;
     }
 
     private static int getMaxTempPrefixLength() {
@@ -206,16 +207,17 @@ public final class SystemUtilities {
                 // Fall through to default
             }
         }
-        return isSecurityEnabled() ? DEFAULT_MAX_TEMP_PREFIX_LENGTH : Integer.MAX_VALUE;
+        return DEFAULT_MAX_TEMP_PREFIX_LENGTH;
     }
 
     private static Set<String> getSensitiveVariablePatterns() {
         String patterns = System.getProperty("systemutilities.sensitive.variable.patterns", DEFAULT_SENSITIVE_VARIABLE_PATTERNS);
 
-        // Double-checked locking for thread-safe lazy caching
-        if (cachedSensitivePatterns == null || !patterns.equals(cachedPatternSource)) {
+        SensitivePatterns cached = cachedSensitivePatterns;
+        if (cached == null || !patterns.equals(cached.source)) {
             synchronized (PATTERN_LOCK) {
-                if (cachedSensitivePatterns == null || !patterns.equals(cachedPatternSource)) {
+                cached = cachedSensitivePatterns;
+                if (cached == null || !patterns.equals(cached.source)) {
                     // Pre-process patterns: trim and uppercase for efficient matching
                     Set<String> processedPatterns = new HashSet<>();
                     for (String pattern : patterns.split(",")) {
@@ -224,12 +226,13 @@ public final class SystemUtilities {
                             processedPatterns.add(trimmed);
                         }
                     }
-                    cachedPatternSource = patterns;
-                    cachedSensitivePatterns = processedPatterns;
+                    cached = new SensitivePatterns(patterns, processedPatterns);
+                    cachedSensitivePatterns = cached;
                 }
             }
         }
-        return cachedSensitivePatterns;
+        // The set made from the text just read, even if another thread has since published one for other text
+        return cached.patterns;
     }
 
     private SystemUtilities() {
@@ -467,7 +470,12 @@ public final class SystemUtilities {
     }
 
     /**
-     * Create temporary directory that will be deleted on JVM exit.
+     * Create temporary directory that will be deleted on JVM exit, with whatever is in it by then. A caller that
+     * deletes the directory itself costs nothing further.
+     * <p>
+     * (Through 4.118.0 this was {@code File.deleteOnExit()}, which deletes a directory only if it is empty, so a
+     * directory that had been used stayed; and which keeps the path until the JVM ends, deleted or not: 20,000
+     * calls held 20,000 paths.)
      *
      * <p><strong>Security Note:</strong> The prefix parameter is validated to prevent
      * path traversal attacks and ensure safe directory creation.</p>
@@ -489,12 +497,72 @@ public final class SystemUtilities {
         }
 
         try {
-            File tempDir = Files.createTempDirectory(prefix).toFile();
-            tempDir.deleteOnExit();
-            return tempDir.getCanonicalFile();
+            Path tempDir = Files.createTempDirectory(prefix);
+            deleteAtExit(tempDir);
+            return tempDir.toFile().getCanonicalFile();
         } catch (IOException e) {
             ExceptionUtilities.uncheckedThrow(e);
             return null; // unreachable
+        }
+    }
+
+    // The directories createTempDirectory() made and has not seen gone, for the one hook that deletes them.
+    private static final Set<Path> TEMP_DIRECTORIES = ConcurrentHashMap.newKeySet();
+    private static final AtomicBoolean TEMP_CLEANUP_REGISTERED = new AtomicBoolean();
+    private static final AtomicInteger TEMP_FORGET_AT = new AtomicInteger(256);
+
+    private static void deleteAtExit(Path directory) {
+        if (TEMP_CLEANUP_REGISTERED.compareAndSet(false, true)) {
+            try {
+                Thread cleanup = new Thread(SystemUtilities::deleteTempDirectories, "SystemUtilities-temp-cleanup");
+                cleanup.setContextClassLoader(null);
+                Runtime.getRuntime().addShutdownHook(cleanup);
+            } catch (IllegalStateException | SecurityException e) {
+                // the JVM is already going down, or hooks are not allowed here: nothing will be deleted at exit
+            }
+        }
+        TEMP_DIRECTORIES.add(directory);
+        // Forget the ones their caller has deleted, each time the list has doubled, so that it does not grow with
+        // every call for the life of the JVM
+        int forgetAt = TEMP_FORGET_AT.get();
+        if (TEMP_DIRECTORIES.size() >= forgetAt && TEMP_FORGET_AT.compareAndSet(forgetAt, Integer.MAX_VALUE)) {
+            TEMP_DIRECTORIES.removeIf(each -> !Files.exists(each, LinkOption.NOFOLLOW_LINKS));
+            TEMP_FORGET_AT.set(Math.max(256, TEMP_DIRECTORIES.size() * 2));
+        }
+    }
+
+    /** At JVM exit: each temporary directory and what is in it. Links are removed, not followed. */
+    private static void deleteTempDirectories() {
+        for (Path directory : TEMP_DIRECTORIES) {
+            deleteTree(directory);
+        }
+    }
+
+    static void deleteTree(Path directory) {
+        try {
+            if (!Files.exists(directory, LinkOption.NOFOLLOW_LINKS)) {
+                return;
+            }
+            Files.walkFileTree(directory, new SimpleFileVisitor<Path>() {
+                @Override
+                public FileVisitResult visitFile(Path file, BasicFileAttributes attributes) throws IOException {
+                    Files.deleteIfExists(file);
+                    return FileVisitResult.CONTINUE;
+                }
+
+                @Override
+                public FileVisitResult visitFileFailed(Path file, IOException e) {
+                    return FileVisitResult.CONTINUE;
+                }
+
+                @Override
+                public FileVisitResult postVisitDirectory(Path dir, IOException e) throws IOException {
+                    Files.deleteIfExists(dir);
+                    return FileVisitResult.CONTINUE;
+                }
+            });
+        } catch (IOException | RuntimeException e) {
+            // best effort, as File.deleteOnExit() is
         }
     }
 
@@ -556,9 +624,12 @@ public final class SystemUtilities {
     public static TimeZone getSystemTimeZone() {
         String tzEnv = System.getenv("TZ");
         if (tzEnv != null && !tzEnv.isEmpty()) {
-            TimeZone tz = TimeZone.getTimeZone(tzEnv);
+            // POSIX allows a colon before the name (TZ=":America/Chicago"), and the JDK reads it; without this the
+            // lookup below failed and a warning was logged on every call, for a value that is not invalid
+            String zoneId = tzEnv.charAt(0) == ':' ? tzEnv.substring(1) : tzEnv;
+            TimeZone tz = TimeZone.getTimeZone(zoneId);
             // TimeZone.getTimeZone() returns GMT for unknown IDs - validate the result
-            if (!"GMT".equals(tz.getID()) || "GMT".equalsIgnoreCase(tzEnv)) {
+            if (!"GMT".equals(tz.getID()) || "GMT".equalsIgnoreCase(zoneId)) {
                 return tz;
             }
             // TZ was set but invalid, log warning and fall back to default

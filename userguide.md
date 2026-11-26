@@ -7910,7 +7910,7 @@ reflectionutils.sensitive.field.patterns=password,passwd,secret,secretkey,apikey
 **Dangerous Class Protection:**
 - Prevents reflection access to system classes that could enable privilege escalation
 - Configurable via comma-separated class patterns
-- Supports exact class names and package prefixes
+- Each pattern is a class's exact name; a package prefix is not matched, and neither is a subclass of a named class
 - Trusted caller validation allows java-util library internal access
 
 **Sensitive Field Protection:**

@@ -227,8 +227,9 @@ public final class ReflectionUtils {
             perClass(c -> new ConcurrentHashMap<>());
 
     /**
-     * call(instance, name, args): name -> by argument count, NO_OVERLOADS or {Method[] overloads, the last choice as
-     * AtomicReference of {Class[] argument classes, Method}}. JDK types only (see perClass).
+     * call(instance, name, args): name -> by argument count, NO_OVERLOADS or {Method[] overloads, the last choices
+     * as AtomicReference of {WeakReference[] argument classes, Method} pairs, Class[][] the overloads' parameter
+     * types}. JDK types only (see perClass), and no class but the bean's own held strongly.
      */
     private static final ClassValue<ConcurrentHashMap<String, Object[][]>> OVERLOADS =
             perClass(c -> new ConcurrentHashMap<>());
@@ -861,8 +862,10 @@ public final class ReflectionUtils {
             return false;
         }
 
-        // Filter out internal enum fields that should not be modified
-        return !(Enum.class.isAssignableFrom(declaringClass) &&
+        // Filter out java.lang.Enum's own internal fields, which should not be modified. Its own: tested with
+        // Enum.class.isAssignableFrom(declaringClass), which every enum passes, this also dropped a field named
+        // "hash" or "ordinal" that an enum declares for itself, and json-io wrote such an enum without it.
+        return !(declaringClass == Enum.class &&
                 (fieldName.equals("hash") || fieldName.equals("ordinal")));
     };
 
@@ -1611,32 +1614,30 @@ public final class ReflectionUtils {
     }
 
     /**
-     * Simplifies reflective method invocation by wrapping checked exceptions into runtime exceptions.
-     * This method provides a cleaner API for reflection-based method calls.
-     * <p>
-     * Key features:
-     * <ul>
-     *     <li>Converts checked exceptions to runtime exceptions</li>
-     *     <li>Preserves the original exception cause</li>
-     *     <li>Provides clear error messages</li>
-     *     <li>Handles null checking for both method and instance</li>
-     * </ul>
+     * Simplifies reflective method invocation: no checked exception is declared, so no try-catch is forced on the
+     * caller.
      * <p>
      * Exception handling:
      * <ul>
-     *     <li>IllegalAccessException → RuntimeException</li>
-     *     <li>InvocationTargetException → RuntimeException (with target exception)</li>
+     *     <li>What the method throws arrives as {@link Method#invoke} delivers it: an
+     *         {@link InvocationTargetException} with the method's own exception as its cause
+     *         ({@code getTargetException()}) -- for an unchecked exception and an Error too. It is thrown as it
+     *         is, undeclared: it is not wrapped in a RuntimeException and is not caught by
+     *         {@code catch (RuntimeException e)}. Catch {@code Exception} and unwrap.</li>
+     *     <li>A method that cannot be accessed: the {@link IllegalAccessException} itself, likewise undeclared.</li>
      *     <li>Null method → IllegalArgumentException</li>
      *     <li>Null instance → IllegalArgumentException</li>
      * </ul>
+     * (Through 4.118.0 this comment said both became RuntimeExceptions. They did until 3.3.0; callers since have
+     * come to rely on the InvocationTargetException, so the comment is what was corrected.)
      * <p>
      * Example usage:
      * <pre>
      * Method method = ReflectionUtils.getMethod(obj.getClass(), "processData", String.class);
      * Object result = ReflectionUtils.call(obj, method, "input data");
      *
-     * // No need for try-catch blocks for checked exceptions
-     * // Just handle RuntimeException if needed
+     * // No try-catch is required; to handle what the method throws, catch Exception and
+     * // look at InvocationTargetException.getTargetException()
      * </pre>
      *
      * @param instance The object instance on which to call the method
@@ -1644,7 +1645,6 @@ public final class ReflectionUtils {
      * @param args The arguments to pass to the method (may be empty)
      * @return The result of the method invocation, or null for void methods
      * @throws IllegalArgumentException if either method or instance is null
-     * @throws RuntimeException if the method is inaccessible or throws an exception
      * @see Method#invoke(Object, Object...) For the underlying reflection mechanism
      */
     public static Object call(Object instance, Method method, Object... args) {
@@ -1674,24 +1674,29 @@ public final class ReflectionUtils {
      * <ul>
      *     <li>Caches method lookups for improved performance</li>
      *     <li>Handles different classloaders correctly</li>
-     *     <li>Converts checked exceptions to runtime exceptions</li>
+     *     <li>Declares no checked exception (see "Exception handling")</li>
      *     <li>Caches what it finds on the class; a name the class does not have stores nothing</li>
      *     <li>Thread-safe implementation</li>
      * </ul>
      * <p>
-     * Limitations:
+     * Which method:
      * <ul>
-     *     <li>Does not distinguish between overloaded methods with same parameter count</li>
-     *     <li>Only matches by method name and parameter count</li>
-     *     <li>Always selects the first matching method found</li>
-     *     <li>Only finds public methods</li>
+     *     <li>Among overloads with the same number of parameters, the one Java would call with these arguments
+     *         (JLS 15.12.2), chosen among the methods the object's class has: not a superclass's private
+     *         method, an interface's static method, or a package-private method from another package.</li>
+     *     <li>When the arguments fit no single overload best, the one
+     *         {@link #getMethod(Object, String, int)} returns, which is the same on every JVM.</li>
+     *     <li>Methods of any access level are found. On JDK 9+, a method of a class the JDK does not open
+     *         (the list {@code Arrays.asList()} returns, a HashMap entry) is called through the public
+     *         declaration it overrides.</li>
      * </ul>
      * <p>
      * Exception handling:
      * <ul>
      *     <li>Method not found → IllegalArgumentException</li>
-     *     <li>IllegalAccessException → RuntimeException</li>
-     *     <li>InvocationTargetException → RuntimeException (with target exception)</li>
+     *     <li>What the method throws → the {@link InvocationTargetException} that {@link Method#invoke} makes of
+     *         it, thrown undeclared with the method's exception as its cause; it is not a RuntimeException.</li>
+     *     <li>A method that cannot be accessed → the {@link IllegalAccessException}, undeclared.</li>
      *     <li>Null instance/methodName → IllegalArgumentException</li>
      * </ul>
      * <p>
@@ -1710,21 +1715,23 @@ public final class ReflectionUtils {
      * @param args The arguments to pass to the method (may be empty)
      * @return The result of the method invocation, or null for void methods
      * @throws IllegalArgumentException if the method cannot be found, or if instance/methodName is null
-     * @throws RuntimeException if the method is inaccessible or throws an exception
      * @see #call(Object, Method, Object...) For handling overloaded methods
      * @see #getMethod(Class, String, Class...) For explicit method lookup with parameter types
      */
     public static Object call(Object instance, String methodName, Object... args) {
         // Security check: Verify permission for reflection access
         Method method = getMethod(instance, methodName, args.length);
+        Class<?> beanClass = (instance instanceof Class) ? (Class<?>) instance : instance.getClass();
         if (args.length > 0) {
             // Among overloads with that many parameters, the one Java would call with these arguments
-            Class<?> beanClass = (instance instanceof Class) ? (Class<?>) instance : instance.getClass();
             Method overload = chooseOverload(overloads(beanClass, methodName, args.length), args);
             if (overload != null) {
                 secureSetAccessible(overload);
                 method = overload;
             }
+        }
+        if (!method.isAccessible()) {
+            method = openEquivalent(beanClass, method);
         }
         try {
             return method.invoke(instance, args);
@@ -1827,6 +1834,7 @@ public final class ReflectionUtils {
         }
 
         // 2) Walk interface graph (BFS) for default methods
+        Method fromInterface = null;
         Set<Class<?>> seen = new IdentitySet<>();
         Deque<Class<?>> toVisit = new ArrayDeque<>();
         toVisit.add(c);
@@ -1837,8 +1845,12 @@ public final class ReflectionUtils {
 
             for (Class<?> iface : x.getInterfaces()) {
                 Method method = declaredMethod(iface, methodName, types);
-                if (method != null) {
-                    return method;
+                // Of several, the one whose interface is the most specific (JLS 9.4.1), as Class.getMethod()
+                // answers on JDK 9+: where Special extends Base and both declare it, Special's, with its return
+                // type and annotations. The first one met was returned, which was Base's when Base came first.
+                if (method != null && (fromInterface == null
+                        || fromInterface.getDeclaringClass().isAssignableFrom(method.getDeclaringClass()))) {
+                    fromInterface = method;
                 }
                 toVisit.add(iface);
             }
@@ -1848,6 +1860,9 @@ public final class ReflectionUtils {
             if (superclass != null) {
                 toVisit.add(superclass);
             }
+        }
+        if (fromInterface != null) {
+            return fromInterface;
         }
 
         // 3) Fallback to JDK resolution for public methods across interfaces (asked only when one exists)
@@ -1962,7 +1977,7 @@ public final class ReflectionUtils {
         if (argCount == 0) {
             Method exact = getMethod(beanClass, methodName, NO_PARAMETERS);
             if (exact != null) {
-                return exact;
+                return exact.isAccessible() ? exact : openEquivalent(beanClass, exact);
             }
         }
 
@@ -1999,11 +2014,12 @@ public final class ReflectionUtils {
         if (byCount != null && argCount < byCount.length && byCount[argCount] != null) {
             return byCount[argCount];
         }
-        Method selected = selectByArgCount(c, methodName, argCount);
-        if (selected == null) {
+        Method chosen = selectByArgCount(c, methodName, argCount);
+        if (chosen == null) {
             return null;
         }
-        secureSetAccessible(selected);
+        secureSetAccessible(chosen);
+        final Method selected = chosen.isAccessible() ? chosen : openEquivalent(c, chosen);
         byCount = found.compute(methodName, (name, current) -> {
             if (current != null && argCount < current.length && current[argCount] != null) {
                 return current;                 // another thread got there first
@@ -2024,9 +2040,16 @@ public final class ReflectionUtils {
     }
 
     /**
-     * The overloads call() chooses among: the methods with that name and argument count in the hierarchy, one per
-     * parameter list (the one selectMethod() prefers, e.g. an override over the method it overrides), bridge and
-     * synthetic methods left out, as the compiler leaves them out. Per class, name and count, computed once.
+     * The overloads call() chooses among: the methods with that name and argument count that are members of the
+     * class (JLS 8.4.8), one per parameter list (the one selectMethod() prefers, e.g. an override over the method
+     * it overrides), bridge and synthetic methods left out, as the compiler leaves them out. Per class, name and
+     * count, computed once.
+     * <p>
+     * Members only: the hierarchy also holds methods the class does not have -- a superclass's private method, an
+     * interface's static method, a package-private method of a superclass in another package -- and Java never
+     * calls those through the class. From 4.113.0 through 4.118.0 they were among the candidates, and the most
+     * specific of all won: child.log("x") ran the superclass's private log(String) where Java runs the child's
+     * log(Object).
      */
     private static Object[] overloads(Class<?> c, String methodName, int argCount) {
         ConcurrentHashMap<String, Object[][]> byName = OVERLOADS.get(c);
@@ -2036,7 +2059,7 @@ public final class ReflectionUtils {
         }
         List<List<Method>> groups = new ArrayList<>();
         for (Method method : methodsNamed(c, methodName, argCount)) {
-            if (method.isBridge() || method.isSynthetic()) {
+            if (method.isBridge() || method.isSynthetic() || !isMemberOf(c, method)) {
                 continue;
             }
             List<Method> group = null;
@@ -2053,14 +2076,16 @@ public final class ReflectionUtils {
             group.add(method);
         }
         Object[] entry;
-        if (groups.size() < 2) {
-            entry = NO_OVERLOADS;
+        if (groups.isEmpty()) {
+            entry = NO_OVERLOADS;       // the class has no such method of its own: getMethod()'s, of any class
         } else {
             Method[] overloads = new Method[groups.size()];
+            Class<?>[][] parameterTypes = new Class<?>[overloads.length][];
             for (int i = 0; i < overloads.length; i++) {
                 overloads[i] = selectMethod(groups.get(i));
+                parameterTypes[i] = overloads[i].getParameterTypes();
             }
-            entry = new Object[]{overloads, new AtomicReference<Object[]>()};
+            entry = new Object[]{overloads, new AtomicReference<Object[][]>(NO_CHOICES), parameterTypes};
         }
         byName.compute(methodName, (name, current) -> {
             int length = current == null ? argCount + 1 : Math.max(current.length, argCount + 1);
@@ -2073,66 +2098,169 @@ public final class ReflectionUtils {
         return entry;
     }
 
+    /** Whether a method declared somewhere in {@code c}'s hierarchy is one {@code c} has (JLS 8.4.8). */
+    private static boolean isMemberOf(Class<?> c, Method method) {
+        Class<?> declarer = method.getDeclaringClass();
+        if (declarer == c) {
+            return true;
+        }
+        int modifiers = method.getModifiers();
+        if (Modifier.isPrivate(modifiers)) {
+            return false;
+        }
+        if (Modifier.isStatic(modifiers) && declarer.isInterface()) {
+            return false;
+        }
+        if (!Modifier.isPublic(modifiers) && !Modifier.isProtected(modifiers)) {
+            return declarer.getClassLoader() == c.getClassLoader()          // package-private: the same package
+                    && packageName(declarer).equals(packageName(c));
+        }
+        return true;
+    }
+
+    private static String packageName(Class<?> c) {
+        String name = c.getName();
+        int dot = name.lastIndexOf('.');
+        return dot < 0 ? "" : name.substring(0, dot);
+    }
+
+    /**
+     * A method that can be invoked and runs the same code, when {@code method} cannot be: on JDK 9+ a method of a
+     * class the JDK does not open (java.util.Arrays$ArrayList.size(), a HashMap entry's getKey()) cannot be made
+     * accessible, and invoking it is an IllegalAccessException, though Java calls it without ceremony -- through
+     * List.size() and Map.Entry.getKey(), the public declarations it overrides. This finds that declaration: the
+     * same name and parameter types on a supertype, the first one that can be opened. The method itself when
+     * there is none.
+     */
+    private static Method openEquivalent(Class<?> c, Method method) {
+        ConcurrentHashMap<Method, Method> known = OPEN_EQUIVALENTS.get(c);
+        Method open = known.get(method);
+        if (open == null) {
+            open = findOpenEquivalent(c, method);
+            known.put(method, open);
+        }
+        return open;
+    }
+
+    /** Per class: a method that could not be opened -> the one to invoke in its place (itself when none). */
+    private static final ClassValue<ConcurrentHashMap<Method, Method>> OPEN_EQUIVALENTS =
+            perClass(c -> new ConcurrentHashMap<>());
+
+    private static Method findOpenEquivalent(Class<?> c, Method method) {
+        if (Modifier.isStatic(method.getModifiers()) || Modifier.isPrivate(method.getModifiers())) {
+            return method;
+        }
+        Class<?>[] types = method.getParameterTypes();
+        Set<Class<?>> seen = new IdentitySet<>();
+        Deque<Class<?>> toVisit = new ArrayDeque<>();
+        toVisit.add(c);
+        while (!toVisit.isEmpty()) {
+            Class<?> type = toVisit.poll();
+            if (!seen.add(type)) {
+                continue;
+            }
+            Method declared = declaredMethod(type, method.getName(), types);
+            if (declared != null && declared != method && !Modifier.isStatic(declared.getModifiers())
+                    && !Modifier.isPrivate(declared.getModifiers())) {
+                secureSetAccessible(declared);
+                if (declared.isAccessible()) {
+                    return declared;
+                }
+            }
+            if (type.getSuperclass() != null) {
+                toVisit.add(type.getSuperclass());
+            }
+            Collections.addAll(toVisit, type.getInterfaces());
+        }
+        return method;
+    }
+
+    private static final Object[][] NO_CHOICES = new Object[0][];
+    /** How many argument-class lists call() remembers the choice for, per class, method name and count. */
+    private static final int CHOICES_KEPT = 8;
+
     /**
      * The overload Java would choose for these arguments (JLS 15.12.2): of those the arguments can be passed to
      * without unboxing -- or, when none, with unboxing and widening, as Method.invoke() does -- the most specific
-     * (every parameter type a subtype of the other's, JLS 4.10). Null when there are not two overloads, when none
-     * takes the arguments, or when no single one is most specific; call() then uses getMethod(instance, name, count).
-     * The choice depends only on the arguments' classes, so the last one is remembered with them.
+     * (every parameter type a subtype of the other's, JLS 4.10). The one method when the class has one. Null when
+     * it has none, when none takes the arguments, or when no single one is most specific; call() then uses
+     * getMethod(instance, name, count), which looks at every class in the hierarchy.
+     * <p>
+     * The choice depends only on the arguments' classes, so it is remembered with them: for the last
+     * {@value #CHOICES_KEPT} lists of classes, each class held weakly. (One list, held strongly, until 4.119.0:
+     * callers that passed a String and callers that passed an Integer took turns computing the choice again, and
+     * an argument's class, so its class loader, stayed in memory as long as the class called on did --
+     * ArrayList, say.)
      */
     @SuppressWarnings("unchecked")
     private static Method chooseOverload(Object[] entry, Object[] args) {
         if (entry == NO_OVERLOADS) {
             return null;
         }
-        AtomicReference<Object[]> memo = (AtomicReference<Object[]>) entry[1];
-        Object[] last = memo.get();
-        if (last != null && sameClasses((Class<?>[]) last[0], args)) {
-            return (Method) last[1];
+        Method[] overloads = (Method[]) entry[0];
+        if (overloads.length == 1) {
+            return overloads[0];        // the one such method the class has: nothing to choose
         }
-        Method chosen = chooseOverload((Method[]) entry[0], args);
-        Class<?>[] classes = new Class<?>[args.length];
+        AtomicReference<Object[][]> memo = (AtomicReference<Object[][]>) entry[1];
+        Object[][] choices = memo.get();
+        for (Object[] choice : choices) {
+            if (sameClasses((WeakReference<Class<?>>[]) choice[0], args)) {
+                return (Method) choice[1];
+            }
+        }
+        Method chosen = chooseOverload(overloads, (Class<?>[][]) entry[2], args);
+        WeakReference<Class<?>>[] classes = new WeakReference[args.length];
         for (int i = 0; i < args.length; i++) {
-            classes[i] = args[i] == null ? null : args[i].getClass();
+            classes[i] = args[i] == null ? null : new WeakReference<Class<?>>(args[i].getClass());
         }
-        memo.set(new Object[]{classes, chosen});
+        // The newest first, the oldest dropped. A choice another thread added meanwhile may be lost: it is
+        // computed again when it is next needed.
+        Object[][] next = new Object[Math.min(CHOICES_KEPT, choices.length + 1)][];
+        next[0] = new Object[]{classes, chosen};
+        System.arraycopy(choices, 0, next, 1, next.length - 1);
+        memo.set(next);
         return chosen;
     }
 
-    private static boolean sameClasses(Class<?>[] classes, Object[] args) {
+    private static boolean sameClasses(WeakReference<Class<?>>[] classes, Object[] args) {
         for (int i = 0; i < args.length; i++) {
-            if (classes[i] != (args[i] == null ? null : args[i].getClass())) {
+            WeakReference<Class<?>> held = classes[i];
+            if (args[i] == null ? held != null : held == null || held.get() != args[i].getClass()) {
                 return false;
             }
         }
         return true;
     }
 
-    private static Method chooseOverload(Method[] overloads, Object[] args) {
+    private static Method chooseOverload(Method[] overloads, Class<?>[][] parameterTypes, Object[] args) {
+        final int count = overloads.length;
+        boolean[] applicable = new boolean[count];
         for (int phase = 1; phase <= 2; phase++) {
-            List<Method> applicable = new ArrayList<>(overloads.length);
-            for (Method m : overloads) {
-                if (accepts(m.getParameterTypes(), args, phase == 2)) {
-                    applicable.add(m);
-                }
+            boolean any = false;
+            for (int i = 0; i < count; i++) {
+                applicable[i] = accepts(parameterTypes[i], args, phase == 2);
+                any |= applicable[i];
             }
-            if (applicable.isEmpty()) {
+            if (!any) {
                 continue;
             }
-            Method best = null;
-            for (Method m : applicable) {
+            int best = -1;
+            for (int i = 0; i < count; i++) {
+                if (!applicable[i]) {
+                    continue;
+                }
                 boolean beaten = false;
-                for (Method other : applicable) {
-                    beaten |= other != m && moreSpecific(other.getParameterTypes(), m.getParameterTypes());
+                for (int other = 0; other < count; other++) {
+                    beaten |= other != i && applicable[other] && moreSpecific(parameterTypes[other], parameterTypes[i]);
                 }
                 if (!beaten) {
-                    if (best != null) {
+                    if (best >= 0) {
                         return null;        // ambiguous
                     }
-                    best = m;
+                    best = i;
                 }
             }
-            return best;
+            return best < 0 ? null : overloads[best];
         }
         return null;
     }
@@ -2233,13 +2361,29 @@ public final class ReflectionUtils {
                             getAccessibilityScore(m1.getModifiers());
                     if (accessDiff != 0) return accessDiff;
 
-                    // Finally, prefer methods declared in most specific class
-                    if (m1.getDeclaringClass().isAssignableFrom(m2.getDeclaringClass())) return 1;
-                    if (m2.getDeclaringClass().isAssignableFrom(m1.getDeclaringClass())) return -1;
+                    // Then, prefer methods declared in most specific class
+                    Class<?> c1 = m1.getDeclaringClass();
+                    Class<?> c2 = m2.getDeclaringClass();
+                    if (c1 != c2) {
+                        if (c1.isAssignableFrom(c2)) return 1;
+                        if (c2.isAssignableFrom(c1)) return -1;
+                    }
 
-                    return 0;
+                    // Finally, one order on every JVM: by the names of the parameter types. Two overloads of
+                    // one class compared as "1" both ways here (a class is assignable from itself), so the
+                    // choice was the last in getDeclaredMethods() order, which is the JVM's own and differs:
+                    // process(String) on JDK 8 and process(Integer) on JDK 25 for the same class.
+                    return parameterTypeNames(m1).compareTo(parameterTypeNames(m2));
                 })
                 .orElse(candidates.get(0));
+    }
+
+    private static String parameterTypeNames(Method method) {
+        StringBuilder names = new StringBuilder();
+        for (Class<?> type : method.getParameterTypes()) {
+            names.append(type.getName()).append(',');
+        }
+        return names.toString();
     }
 
     /**
@@ -2306,7 +2450,8 @@ public final class ReflectionUtils {
      * and within each level by parameter count (most specific first).
      *
      * @param clazz The class to get constructors for
-     * @return Array of constructors in optimal order
+     * @return Array of constructors in optimal order. It is the one array every caller is given, and the one
+     *         {@code ClassUtilities.newInstance()} walks: do not sort or write to it; copy it first.
      */
     public static Constructor<?>[] getAllConstructors(Class<?> clazz) {
         if (clazz == null) {
@@ -2470,10 +2615,19 @@ public final class ReflectionUtils {
         if (named == null) {
             return NOT_FOUND_METHOD;
         }
-        if (named.length > 1) {
-            return OVERLOADED_METHOD;       // multiple methods with this name: ambiguous
+        Method method = null;
+        for (Method each : named) {
+            if (each.isBridge()) {
+                continue;       // the compiler's, beside a method the source declares once (Supplier<String>.get())
+            }
+            if (method != null) {
+                return OVERLOADED_METHOD;       // multiple methods with this name: ambiguous
+            }
+            method = each;
         }
-        Method method = named[0];
+        if (method == null) {
+            method = named[0];
+        }
         if (method.getParameterCount() != 0) {
             return NOT_FOUND_METHOD;        // no 0-arg method
         }

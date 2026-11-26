@@ -3,12 +3,14 @@ package com.cedarsoftware.util;
 import java.lang.reflect.Array;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Deque;
 import java.util.EnumSet;
 import java.util.IdentityHashMap;
+import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.List;
@@ -20,6 +22,7 @@ import java.util.Queue;
 import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
+import java.util.concurrent.PriorityBlockingQueue;
 
 import com.cedarsoftware.util.convert.CollectionsWrappers;
 
@@ -577,6 +580,8 @@ public class CollectionUtilities {
      * <p>Collection type preservation:
      * <ul>
      *   <li>EnumSet → EnumSet (preserves enum type)</li>
+     *   <li>This library's IdentitySet, CaseInsensitiveSet and ConcurrentNavigableSetNullSafe → the same class
+     *       (membership by identity, case-insensitive membership, and a null element are kept)</li>
      *   <li>Deque → LinkedList (preserves deque operations, supports nulls)</li>
      *   <li>PriorityQueue → PriorityQueue (preserves comparator and heap semantics)</li>
      *   <li>SortedSet → TreeSet (preserves comparator and sorting)</li>
@@ -593,7 +598,13 @@ public class CollectionUtilities {
      *       reference is maintained in the copy.</li>
      *   <li><strong>Implementation classes may change:</strong> For example, ArrayDeque becomes LinkedList
      *       (to support nulls), HashSet becomes LinkedHashSet (to preserve order). The semantic behavior
-     *       is preserved where possible.</li>
+     *       is preserved where possible. So declare the result by its interface ({@code Deque}, {@code List},
+     *       {@code Set}, {@code Queue}), not by the argument's class: {@code ArrayDeque<String> copy =
+     *       deepCopyContainers(arrayDeque)} compiles and throws ClassCastException. The one place the class is
+     *       kept is an element of an array whose component type is that class ({@code ArrayDeque[]}).</li>
+     *   <li><strong>A JDK identity set</strong> ({@code Collections.newSetFromMap(new IdentityHashMap<>())})
+     *       cannot be told from any other Set and becomes a LinkedHashSet: members that are equal to each other
+     *       become one. Use this library's {@code IdentitySet}, which is copied as one.</li>
      *   <li><strong>Concurrent/blocking queues:</strong> Special queue types (concurrent, blocking) become
      *       LinkedList, losing their concurrency or blocking semantics but preserving queue operations.</li>
      *   <li><strong>Thread Safety:</strong> This method is NOT thread-safe. The copy operation is not safe 
@@ -729,8 +740,12 @@ public class CollectionUtilities {
                                     dstArr[i] = elementCopy;
                                     // DO NOT enqueue - it's already fully copied
                                 } else {
-                                    // Create new container copy
+                                    // Create new container copy: one this array can hold
                                     Object elementCopy = createContainerCopy(element);
+                                    Class<?> slotType = dstArr.getClass().getComponentType();
+                                    if (!slotType.isInstance(elementCopy)) {
+                                        elementCopy = createCopyOfSameClass(element, slotType);
+                                    }
                                     visited.put(element, elementCopy);
                                     dstArr[i] = elementCopy;
                                     // Queue the new container for processing
@@ -807,55 +822,72 @@ public class CollectionUtilities {
      * exempt: its elements are enums (berries), which are never copied and always complete.
      */
     private static boolean isContentSensitiveTarget(Collection<?> target) {
-        return (target instanceof Set && !(target instanceof EnumSet)) || target instanceof PriorityQueue;
+        return (target instanceof Set && !(target instanceof EnumSet)) || target instanceof PriorityQueue
+                || target instanceof PriorityBlockingQueue;
     }
 
     /**
-     * Installs buffered elements into content-sensitive targets, children before parents,
-     * so that a parent set/queue hashes, sorts, or heapifies fully-populated element copies.
-     * A target is ready once none of its elements is itself a still-unfilled deferred target
-     * (self-references don't block). Pure cycles can never become ready — when a pass makes
-     * no progress, the most recently discovered pending target (deepest in the graph) is
-     * filled to break the cycle; such structures are inherently unstable in hashed
+     * Installs buffered elements into content-sensitive targets, children before parents, so that a parent
+     * set or queue hashes, sorts or heapifies element copies that are complete -- complete all the way down: a
+     * set is not ready while a set inside a list inside it is still empty. (Until 4.119.0 only a set's direct
+     * elements were looked at, so {@code Set{List[Set{x}]}} was hashed around an empty inner set: the copy could
+     * not find its own element, and a sorted set ordered by what its elements hold kept one of three.)
+     * <p>
+     * One walk over the copies, depth first, filling each target as the walk leaves it: every node and edge once,
+     * where the earlier pass-until-nothing-changes took a pass per level of nesting. The walk keeps its place in
+     * a list, so nesting costs no stack. An edge back to a copy the walk is still inside is a cycle and is
+     * skipped: the copy that closes it is filled first, and such structures are inherently unstable in hashed
      * containers, in the copy exactly as they were in the original.
      */
     private static void fillDeferredTargets(List<DeferredFill> deferredFills) {
         if (deferredFills.isEmpty()) {
             return;
         }
-        Set<Object> unfilled = Collections.newSetFromMap(new IdentityHashMap<>(deferredFills.size()));
+        Map<Object, DeferredFill> fills = new IdentityHashMap<>(deferredFills.size() * 2);
         for (DeferredFill fill : deferredFills) {
-            unfilled.add(fill.target);
+            fills.put(fill.target, fill);
         }
-        List<DeferredFill> pending = deferredFills;
-        while (!pending.isEmpty()) {
-            List<DeferredFill> notReady = new ArrayList<>();
-            for (DeferredFill fill : pending) {
-                boolean ready = true;
-                for (Object element : fill.elements) {
-                    if (element != fill.target && unfilled.contains(element)) {
-                        ready = false;
+        Set<Object> entered = Collections.newSetFromMap(new IdentityHashMap<>());
+        Deque<Object> copies = new ArrayDeque<>();              // the copies the walk is inside, innermost first
+        Deque<Iterator<?>> members = new ArrayDeque<>();        // and where it is among the members of each
+        for (DeferredFill start : deferredFills) {
+            if (!entered.add(start.target)) {
+                continue;
+            }
+            copies.push(start.target);
+            members.push(membersToFill(start.target, fills));
+            while (!copies.isEmpty()) {
+                Object inner = null;
+                for (Iterator<?> remaining = members.peek(); remaining.hasNext(); ) {
+                    Object member = remaining.next();
+                    if ((member instanceof Collection || member instanceof Object[]) && entered.add(member)) {
+                        inner = member;
                         break;
                     }
                 }
-                if (ready) {
+                if (inner != null) {
+                    copies.push(inner);
+                    members.push(membersToFill(inner, fills));
+                    continue;
+                }
+                members.pop();
+                DeferredFill fill = fills.get(copies.pop());
+                if (fill != null) {
                     fill.target.addAll(fill.elements);
-                    unfilled.remove(fill.target);
-                } else {
-                    notReady.add(fill);
                 }
             }
-            if (notReady.size() == pending.size()) {
-                // No progress: everything left participates in a cycle. Break it by filling
-                // the most recently discovered target, then let the loop re-evaluate.
-                DeferredFill fill = notReady.remove(notReady.size() - 1);
-                fill.target.addAll(fill.elements);
-                unfilled.remove(fill.target);
-            }
-            pending = notReady;
         }
     }
-    
+
+    /** What a copy holds, or will: a deferred target's members are still in its buffer. */
+    private static Iterator<?> membersToFill(Object copy, Map<Object, DeferredFill> fills) {
+        DeferredFill fill = fills.get(copy);
+        if (fill != null) {
+            return fill.elements.iterator();
+        }
+        return copy instanceof Object[] ? Arrays.asList((Object[]) copy).iterator() : ((Collection<?>) copy).iterator();
+    }
+
     /**
      * Determines if an object is a container (array or Collection).
      * Maps are NOT considered containers.
@@ -895,6 +927,14 @@ public class CollectionUtilities {
                 // For non-empty sets, get enum type from first element
                 return EnumSet.noneOf((Class) src.iterator().next().getDeclaringClass());
             }
+        } else if (source instanceof IdentitySet) {
+            // Members by identity: a LinkedHashSet would keep one of two that are equal
+            return new IdentitySet<>();
+        } else if (source instanceof CaseInsensitiveSet) {
+            return new CaseInsensitiveSet<>();
+        } else if (source instanceof ConcurrentNavigableSetNullSafe) {
+            // Holds null, which a TreeSet in natural order refuses
+            return new ConcurrentNavigableSetNullSafe<>(((ConcurrentNavigableSetNullSafe) source).comparator());
         } else if (source instanceof Deque) {
             // Preserve deque behavior and tolerate nulls (LinkedList allows nulls, ArrayDeque doesn't)
             return new LinkedList<>();
@@ -929,6 +969,31 @@ public class CollectionUtilities {
         throw new IllegalArgumentException("Unknown container type: " + source.getClass());
     }
     
+    /**
+     * An empty collection of {@code source}'s own class, for a place that the usual substitute does not fit: an
+     * {@code ArrayDeque[]} cannot hold the LinkedList that an ArrayDeque is otherwise copied to (it was an
+     * ArrayStoreException). The classes the substitutes stand in for all have a constructor without arguments,
+     * or one that takes the comparator.
+     */
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    private static Object createCopyOfSameClass(Object source, Class<?> slotType) {
+        Class<?> type = source.getClass();
+        try {
+            if (source instanceof PriorityBlockingQueue) {
+                PriorityBlockingQueue<?> queue = (PriorityBlockingQueue<?>) source;
+                return new PriorityBlockingQueue<>(Math.max(1, queue.size()), (Comparator) queue.comparator());
+            }
+            if (source instanceof SortedSet && ((SortedSet<?>) source).comparator() != null) {
+                return type.getConstructor(Comparator.class).newInstance(((SortedSet<?>) source).comparator());
+            }
+            return type.getConstructor().newInstance();
+        } catch (ReflectiveOperationException | RuntimeException e) {
+            throw new IllegalArgumentException("Cannot copy a " + type.getName() + " for an array of "
+                    + slotType.getName() + ": it has no public constructor that takes "
+                    + (source instanceof SortedSet ? "its comparator, or nothing" : "nothing"), e);
+        }
+    }
+
     /**
      * Pair of source and target containers for processing.
      */

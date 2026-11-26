@@ -2,6 +2,7 @@ package com.cedarsoftware.util;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -63,6 +64,7 @@ public class MapUtilities {
      * @param <T>       Throwable passed in to be thrown *if* the passed in key is not within the passed in map.
      * @return the value associated to the passed in key from the passed in map, otherwise throw the passed in exception.
      */
+    @SuppressWarnings("unchecked")
     public static <T extends Throwable> Object getOrThrow(Map<?, ?> map, Object key, T throwable) throws T {
         if (map == null) {
             throw new NullPointerException("Map parameter cannot be null");
@@ -72,11 +74,17 @@ public class MapUtilities {
             throw new NullPointerException("Throwable object cannot be null");
         }
 
-        if (map.containsKey(key)) {
-            return map.get(key);
+        // One lookup. containsKey() and then get() are two, and on a map other threads change the key can go
+        // between them: the caller was handed null for a key that was not there, from a ConcurrentHashMap that
+        // cannot hold null.
+        Object value = ((Map<Object, Object>) map).getOrDefault(key, ABSENT);
+        if (value == ABSENT) {
+            throw throwable;
         }
-        throw throwable;
+        return value;
     }
+
+    private static final Object ABSENT = new Object();
 
     /**
      * Returns null safe isEmpty check for Map
@@ -385,5 +393,27 @@ public class MapUtilities {
             throw new IllegalArgumentException(
                     "Cannot determine map ordering: " + e.getMessage());
         }
+    }
+
+    /**
+     * Whether a map that {@link #detectMapOrdering(Map)} gives one name is also in the order {@code ordering}
+     * names. Two are: a SortedMap whose comparator is a reversed natural or case-insensitive order is "sorted" by
+     * its type and in {@link CompactMap#REVERSE} order by what it holds, and an EnumMap, "insertion" by tradition,
+     * iterates in its enum's natural order, which is {@link CompactMap#SORTED}.
+     */
+    static boolean isAlsoOrdered(Map<?, ?> map, String ordering) {
+        Map<?, ?> underlying;
+        try {
+            underlying = getUnderlyingMap(map);
+        } catch (IllegalArgumentException e) {
+            return false;
+        }
+        if (CompactMap.REVERSE.equals(ordering) && underlying instanceof SortedMap) {
+            Comparator<?> comparator = ((SortedMap<?, ?>) underlying).comparator();
+            return comparator != null && (comparator.equals(Collections.reverseOrder())
+                    || comparator.equals(Collections.reverseOrder(Comparator.<String>naturalOrder()))
+                    || comparator.equals(Collections.reverseOrder(String.CASE_INSENSITIVE_ORDER)));
+        }
+        return CompactMap.SORTED.equals(ordering) && underlying instanceof EnumMap;
     }
 }

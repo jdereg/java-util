@@ -2718,7 +2718,7 @@ public class CompactMap<K, V> implements Map<K, V> {
         if (sourceMap != null) {
             String sourceOrdering = MapUtilities.detectMapOrdering(sourceMap);
             if (!UNORDERED.equals(ordering) && !UNORDERED.equals(sourceOrdering) &&
-                    !ordering.equals(sourceOrdering)) {
+                    !ordering.equals(sourceOrdering) && !MapUtilities.isAlsoOrdered(sourceMap, ordering)) {
                 throw new IllegalArgumentException(
                         "Requested ordering '" + ordering +
                                 "' conflicts with source map's ordering '" + sourceOrdering +

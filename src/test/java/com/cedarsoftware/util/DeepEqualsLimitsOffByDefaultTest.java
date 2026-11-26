@@ -119,6 +119,24 @@ class DeepEqualsLimitsOffByDefaultTest {
         assertNotNull(deep.get(DeepEquals.DIFF));
     }
 
+    /** GraphComparator compares an object that has no ID with deepEquals(), so the old limits stopped it as well. */
+    @Test
+    void graphComparatorComparesAnObjectHoldingALargeCollection() {
+        Identified source = new Identified(numbers(OVER_THE_OLD_SIZE));
+        Identified target = new Identified(numbers(OVER_THE_OLD_SIZE));
+        target.content.items.set(OVER_THE_OLD_SIZE - 1, -1);
+
+        List<GraphComparator.Delta> deltas = GraphComparator.compare(source, target, object -> {
+            if (object instanceof Identified) {
+                return ((Identified) object).id;
+            }
+            throw new IllegalArgumentException("an object without an ID");
+        });
+
+        assertEquals(1, deltas.size());
+        assertEquals("content", deltas.get(0).getFieldName());
+    }
+
     /** A limit that is set applies, as before: each of the five refuses what passes it, and names itself. */
     @Test
     void aLimitThatIsSetStillApplies() {
@@ -184,6 +202,23 @@ class DeepEqualsLimitsOffByDefaultTest {
         Link(Link next, String name) {
             this.next = next;
             this.name = name;
+        }
+    }
+
+    private static final class Identified {
+        final long id = 1;
+        final Content content;
+
+        Identified(List<Integer> items) {
+            content = new Content(items);
+        }
+    }
+
+    private static final class Content {
+        final List<Integer> items;
+
+        Content(List<Integer> items) {
+            this.items = items;
         }
     }
 

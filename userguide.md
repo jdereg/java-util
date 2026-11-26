@@ -8101,9 +8101,8 @@ Map<String, String> allEnvVars = SystemUtilities.getEnvironmentVariables(null); 
 
 **Thread Safety:**
 - All security checks are thread-safe
-- System property changes require application restart
 - Resource counters use atomic operations
-- Configuration is read dynamically for maximum flexibility
+- The settings are read on each call: a property set or changed at run time takes effect at once, with no restart
 
 ---
 
@@ -8235,9 +8234,12 @@ Date bigEpoch = DateUtilities.parseDate("123456789012345678901234567890"); // al
 
 **Thread Safety:**
 - All security checks are thread-safe
-- System property changes require application restart
-- No shared mutable state between threads
-- Configuration is read dynamically for maximum flexibility
+
+**When the Settings Are Read:**
+- The four switches (`dateutilities.security.enabled`, `...input.validation.enabled`,
+  `...malformed.string.protection.enabled`, `...regex.timeout.enabled`) and the timeout are read once, the first
+  time DateUtilities needs them, and kept. Set them at startup (`-D...`): a change made later is not seen.
+- The two limits, `dateutilities.max.input.length` and `dateutilities.max.epoch.digits`, are read on each parse.
 
 **Attack Vectors Addressed:**
 - **ReDoS attacks:** Malicious regex patterns designed to cause exponential backtracking
@@ -8256,15 +8258,17 @@ ClassUtilities provides a unique hybrid security model that combines always-acti
 **Core Security (Always Active):**
 - Dangerous class blocking (Runtime, ProcessBuilder, System, etc.)
 - Path traversal protection in resource loading
-- ClassLoader validation
-- Reflection permission checks
-- These protections **cannot be disabled** and are always enforced
+- A limit of 1,000 characters on a resource name
+- These need no switch. The block list can be added to, and one of its entries exempted, as described below
 
 **Enhanced Security (Configurable):**
 - Class loading depth limits
 - Constructor argument count limits
-- Reflection operation limits
-- Configurable resource name length restrictions
+- A resource-name length limit of your own choosing
+
+(This list named "Reflection operation limits", "ClassLoader validation" and "Reflection permission checks"
+through 4.118.0. ClassUtilities has none of the three: the first was a setting that limited nothing, removed in
+4.1.0.)
 
 ### System Property Configuration
 
@@ -8379,15 +8383,12 @@ ClassUtilities.SecurityChecker.clearSecurityOverrides();
 - Uses high-performance ClassValue caching for fast validation
 
 **Resource Path Protection:**
-- Blocks path traversal attempts (../, \\, absolute paths)
-- Prevents access to system resources (META-INF, passwd, hosts)
-- Validates resource names for null bytes and dangerous patterns
-- Always enforces basic length limits (configurable with enhanced security)
-
-**ClassLoader Validation:**
-- Validates context ClassLoaders for suspicious patterns
-- Warns about non-standard ClassLoader usage
-- Provides OSGi and JPMS environment detection
+- Refuses a `..` path segment, written plainly or percent-encoded (`%2e%2e`)
+- Refuses a Windows drive path (`C:/...`) and a UNC path (`//server/...`)
+- Refuses a name that holds a null byte
+- Always enforces a length limit of 1,000 characters (configurable with enhanced security)
+- A backslash is read as a forward slash; a name is not refused for what it names (`META-INF/...` is a resource
+  like any other)
 
 **Enhanced Security Features (Configurable):**
 
@@ -8510,7 +8511,6 @@ System.setProperty("classutilities.max.resource.name.length", "500");
 - **Class loading attacks:** Prevents loading and instantiation of dangerous classes
 - **Path traversal:** Blocks unauthorized resource access via malicious paths
 - **Resource exhaustion:** Limits constructor arguments and class loading depth
-- **Reflection bypasses:** Enforces security even in reflection-based operations
 
 ---
 

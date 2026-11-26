@@ -292,7 +292,7 @@ From reflection helpers to graph traversal, concurrent collections to date utili
 | **Universal Type Conversion** | ❌ | Limited | ❌ | Limited | ✅ ~1800 conversions           |
 | **N-Dimensional Mapping** | ❌ | ⚠️ Table (2D only) | ❌ | ⚠️ Limited | ✅ MultiKeyMap (unlimited N-D) |
 | **Deep Object Comparison** | ❌ | Limited | ❌ | ❌ | ✅ Handles cycles              |
-| **Runtime Configuration** | ❌ | ❌ | ❌ | ❌ | ✅ 70+ feature options         |
+| **Runtime Configuration** | ❌ | ❌ | ❌ | ❌ | ✅ 90 feature options          |
 | **TTL Caching** | ❌ | ✅ | ❌ | ❌ | ✅ + LRU combo                 |
 | **Thread-Safe with Nulls** | ❌ | ❌ | ❌ | ❌ | ✅ All concurrent types        |
 | **JPMS/OSGi Ready** | ✅ | ⚠️ | ✅ | ⚠️ | ✅ Pre-configured              |
@@ -308,7 +308,7 @@ From reflection helpers to graph traversal, concurrent collections to date utili
 
 **🔄 Universal Conversion**: Convert between any meaningful Java types - primitives, collections, dates, enums, custom objects. Other libraries require multiple dependencies to achieve the same coverage.
 
-**⚙️ Production Flexibility**: 70+ runtime configuration options allow zero-downtime security hardening and environment-specific tuning that enterprise applications demand.
+**⚙️ Production Flexibility**: 90 runtime configuration options allow zero-downtime security hardening and environment-specific tuning that enterprise applications demand.
 
 ## 🔒 Enterprise Security Features
 
@@ -318,12 +318,15 @@ java-util provides comprehensive security controls designed for enterprise envir
 
 **Configurable Resource Limits:**
 ```java
-// Prevent memory exhaustion attacks
-System.setProperty("deepequals.max.collection.size", "1000000");
+// Prevent memory exhaustion attacks. A limit applies once its class's master switch is on
+System.setProperty("stringutilities.security.enabled", "true");
 System.setProperty("stringutilities.max.repeat.total.size", "10485760");
+System.setProperty("mathutilities.security.enabled", "true");
 System.setProperty("mathutilities.max.array.size", "1000000");
+System.setProperty("deepequals.max.collection.size", "1000000");   // DeepEquals has no master switch
 
 // Protect against ReDoS (Regular Expression Denial of Service)
+System.setProperty("dateutilities.security.enabled", "true");
 System.setProperty("dateutilities.regex.timeout.enabled", "true");
 System.setProperty("dateutilities.regex.timeout.milliseconds", "1000");
 ```
@@ -349,6 +352,10 @@ ClassUtilities.forName("java.lang.ProcessBuilder", classLoader);  // SecurityExc
 
 **Enforce Strong Crypto Parameters:**
 ```java
+// The parameter checks apply once both switches are on
+System.setProperty("encryptionutilities.security.enabled", "true");
+System.setProperty("encryptionutilities.crypto.parameters.validation.enabled", "true");
+
 // PBKDF2 iteration requirements
 System.setProperty("encryptionutilities.min.pbkdf2.iterations", "100000");
 System.setProperty("encryptionutilities.max.pbkdf2.iterations", "1000000");
@@ -416,7 +423,7 @@ System.setProperty("io.debug.detailed.paths", "true");
 | **NIST Guidelines** | ✅ Input validation, Crypto parameter enforcement |
 | **SOC 2 Type II** | ✅ Audit logging, Access controls, Data protection |
 
-> **Default Secure**: All security features are disabled by default for backward compatibility, but can be enabled system-wide with zero code changes.
+> **Defaults**: Most limits are off until their class's master switch is set, and can be switched on system-wide with zero code changes. On with nothing set: `ClassUtilities`' block list of dangerous classes, `IOUtilities`' path and protocol checks, `RegexUtilities`' time limit, and `UrlUtilities`' 100 MB download limit. Off until asked for: `Executor` runs no command, and `EncryptionUtilities` reads no legacy ciphertext. [Every setting and its default →](userguide.md#system-property-reference)
 
 ## Core Components
 
@@ -644,14 +651,14 @@ Key integrations include:
 
 ## Feature Options
 
-java-util provides **70+ runtime configuration options** via system properties, enabling:
+java-util provides **90 runtime configuration options** via system properties, enabling:
 
 - **Zero-downtime security hardening** - Enable security features without code changes
 - **Environment-specific tuning** - Different limits for development vs. production
 - **Gradual rollout strategies** - Test new security features with feature flags
 - **Compliance flexibility** - Meet varying regulatory requirements across deployments
 
-All security features are **disabled by default** for backward compatibility.
+Most limits are **off until their class's master switch is set**; a few protections are on with nothing set. The reference lists every setting with its default.
 
 📖 **[View complete feature options reference →](userguide.md#system-property-reference)**
 

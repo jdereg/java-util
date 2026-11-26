@@ -1,5 +1,6 @@
 package com.cedarsoftware.util;
 
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -25,6 +26,28 @@ public class ClassUtilitiesSecurityTest {
     @AfterEach
     public void tearDown() {
         ClassUtilities.setUseUnsafe(false); // Reset to safe default
+    }
+
+    /**
+     * ClassUtilities reads its enhanced-security settings once and keeps them, so a test here that changes one must
+     * have them read again when it puts the properties back. Until 4.119.0 the properties were restored and the
+     * kept settings were not: every test class after this one in the JVM ran with enhanced security on and the last
+     * test's limits in force (a resource-name limit of 150, where the default is 1,000).
+     */
+    @AfterAll
+    static void leavesClassUtilitiesAsItFoundIt() {
+        StringBuilder name = new StringBuilder();
+        while (name.length() < 200) {   // past every limit a test here sets, within the default
+            name.append("no_such_resource_");
+        }
+        try {
+            ClassUtilities.loadResourceAsBytes(name.toString());
+            fail("there is no such resource");
+        } catch (SecurityException e) {
+            fail("this class left a limit in force for the classes after it: " + e.getMessage());
+        } catch (IllegalArgumentException expected) {
+            // the answer with the default settings: the name is acceptable, and no resource has it
+        }
     }
     
     // Test resource path traversal prevention
@@ -376,7 +399,6 @@ public class ClassUtilitiesSecurityTest {
     private String originalEnhancedSecurity;
     private String originalMaxClassLoadDepth;
     private String originalMaxConstructorArgs;
-    private String originalMaxReflectionOps;
     private String originalMaxResourceNameLength;
 
     private void setupEnhancedSecurity() {
@@ -384,7 +406,6 @@ public class ClassUtilitiesSecurityTest {
         originalEnhancedSecurity = System.getProperty("classutilities.enhanced.security.enabled");
         originalMaxClassLoadDepth = System.getProperty("classutilities.max.class.load.depth");
         originalMaxConstructorArgs = System.getProperty("classutilities.max.constructor.args");
-        originalMaxReflectionOps = System.getProperty("classutilities.max.reflection.operations");
         originalMaxResourceNameLength = System.getProperty("classutilities.max.resource.name.length");
     }
 
@@ -393,8 +414,8 @@ public class ClassUtilitiesSecurityTest {
         restoreProperty("classutilities.enhanced.security.enabled", originalEnhancedSecurity);
         restoreProperty("classutilities.max.class.load.depth", originalMaxClassLoadDepth);
         restoreProperty("classutilities.max.constructor.args", originalMaxConstructorArgs);
-        restoreProperty("classutilities.max.reflection.operations", originalMaxReflectionOps);
         restoreProperty("classutilities.max.resource.name.length", originalMaxResourceNameLength);
+        ClassUtilities.reinitializeSecuritySettings();   // the settings are kept: read the restored properties
     }
 
     private void restoreProperty(String key, String originalValue) {

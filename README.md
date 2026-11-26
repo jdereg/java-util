@@ -330,15 +330,19 @@ System.setProperty("dateutilities.regex.timeout.milliseconds", "1000");
 
 ### 🚫 Dangerous Class Protection
 
-**Block Access to Sensitive System Classes:**
+**A Class Name From Data Never Reaches a Sensitive System Class:**
 ```java
-// Prevent reflection-based attacks
-System.setProperty("reflectionutils.dangerous.class.validation.enabled", "true");
-// Blocks: Runtime, ProcessBuilder, System, Unsafe, ScriptEngine
+// Always on, nothing to switch on: a class name read from JSON, a file or a request is vetted
+// where it becomes a class
+ClassUtilities.forName("java.lang.Runtime", classLoader);         // SecurityException
+ClassUtilities.forName("java.lang.ProcessBuilder", classLoader);  // SecurityException
+// Blocks: Runtime, ProcessBuilder, Process, Unsafe, the script engines, and more
+```
 
-// Prevent sensitive field access
-System.setProperty("reflectionutils.sensitive.field.validation.enabled", "true");  
-// Blocks: password, secret, apikey, credential fields
+**Add Your Own Classes and Packages to the List:**
+```bash
+-Dclassutilities.security.blocked.classes=com.acme.AdminConsole
+-Dclassutilities.security.blocked.packages=com.acme.internal.
 ```
 
 ### 🔐 Cryptographic Security
@@ -387,17 +391,19 @@ System.setProperty("io.debug.detailed.paths", "true");
 
 **Example: Progressive Security Enablement**
 ```bash
-# Development (permissive)
--Dreflectionutils.security.enabled=false
+# Development (permissive: the default)
+-Dmathutilities.security.enabled=false
 
-# Staging (warning mode)  
--Dreflectionutils.security.enabled=true
--Dreflectionutils.dangerous.class.validation.enabled=false
+# Staging (limits on, generous)
+-Dmathutilities.security.enabled=true
+-Dmathutilities.max.array.size=10000000
+-Dmathutilities.max.string.length=10000000
 
-# Production (full security)
--Dreflectionutils.security.enabled=true
--Dreflectionutils.dangerous.class.validation.enabled=true
--Dreflectionutils.sensitive.field.validation.enabled=true
+# Production (limits on, tighter)
+-Dmathutilities.security.enabled=true
+-Dmathutilities.max.array.size=1000000
+-Dmathutilities.max.string.length=1000000
+-Dmathutilities.max.permutation.size=10
 ```
 
 ### 📋 Security Compliance

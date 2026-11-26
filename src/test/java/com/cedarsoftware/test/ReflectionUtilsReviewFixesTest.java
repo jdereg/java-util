@@ -1,11 +1,6 @@
 package com.cedarsoftware.test;
 
-import java.lang.reflect.Field;
-import java.util.Currency;
-import java.util.function.Predicate;
-
 import com.cedarsoftware.util.ReflectionUtils;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -13,47 +8,14 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
- * Pins the fixes from the 4.106.0 ReflectionUtils review. This test lives in
- * {@code com.cedarsoftware.test} (NOT {@code com.cedarsoftware.util}) on purpose: the
- * dangerous-class block is only enforced against callers OUTSIDE the java-util package
- * ({@code isTrustedCaller()}), so the assertion below is only meaningful from here.
- * <ul>
- *   <li>The dangerous-class security block still fires when the check runs inside the THREADED
- *       cache strategy's {@code computeIfAbsent} — whose mapping function is invoked from a lambda
- *       inside {@code ThreadedLRUCacheStrategy} / {@code AbstractConcurrentNullSafeMap}. Those
- *       intermediary {@code com.cedarsoftware.util.*} lambda frames must be recognized as cache
- *       infrastructure, not mis-read as a trusted java-util caller (which would bypass the block).
- *       Regression guard for the LOCKING→THREADED reflection-cache switch.</li>
- *   <li>{@code getClassNameFromByteCode} throws {@code IllegalStateException} (its documented
- *       contract) rather than {@code NegativeArraySizeException} on a malformed
- *       {@code constant_pool_count} of 0.</li>
- * </ul>
+ * Pins a fix from the 4.106.0 ReflectionUtils review: {@code getClassNameFromByteCode} throws
+ * {@code IllegalStateException} (its documented contract) rather than {@code NegativeArraySizeException} on a
+ * malformed {@code constant_pool_count} of 0. (The review's other fix was to the dangerous-class switch, which
+ * 4.119.0 removed along with its test here; see {@code ReflectionUtilsSwitchesRemovedTest}.)
  *
  * @author John DeRegnaucourt (jdereg@gmail.com)
  */
 class ReflectionUtilsReviewFixesTest {
-
-    @AfterEach
-    void clearSecurityProps() {
-        System.clearProperty("reflectionutils.security.enabled");
-        System.clearProperty("reflectionutils.dangerous.class.validation.enabled");
-        System.clearProperty("reflectionutils.dangerous.class.patterns");
-    }
-
-    @Test
-    void dangerousClassBlockSurvivesThreadedCacheComputeIfAbsent() {
-        System.setProperty("reflectionutils.security.enabled", "true");
-        System.setProperty("reflectionutils.dangerous.class.validation.enabled", "true");
-        System.setProperty("reflectionutils.dangerous.class.patterns", "java.util.Currency");
-
-        // A unique filter instance forces a cache miss, so the security check runs INSIDE the
-        // THREADED cache's computeIfAbsent mapping function (the path whose intermediary lambda
-        // frames must be treated as infrastructure, not as a trusted java-util caller).
-        Predicate<Field> uniqueFilter = f -> true;
-        assertThatThrownBy(() -> ReflectionUtils.getDeclaredFields(Currency.class, uniqueFilter))
-                .isInstanceOf(SecurityException.class)
-                .hasMessageContaining("Access denied");
-    }
 
     @Test
     void getClassNameFromByteCodeStillWorksOnValidClassFile() throws Exception {

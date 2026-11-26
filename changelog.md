@@ -11,6 +11,16 @@
 >
 > **The remedy is one setting.** Start the application with `-Dencryptionutilities.legacy.decrypt.enabled=true` (or call `System.setProperty("encryptionutilities.legacy.decrypt.enabled", "true")` at startup) and the old data reads exactly as it did. Nothing is lost and nothing has to be converted. To leave the old format behind for good, save each value again with `encrypt()`, then remove the setting.
 
+> **Action may be needed if you set a `reflectionutils.*` security property**
+>
+> **What changed.** `ReflectionUtils` no longer has optional security checks. The six system properties that switched them on are now ignored: `reflectionutils.security.enabled`, `reflectionutils.dangerous.class.validation.enabled`, `reflectionutils.dangerous.class.patterns`, `reflectionutils.sensitive.field.validation.enabled`, `reflectionutils.sensitive.field.patterns` and `reflectionutils.log.obfuscation.enabled`.
+>
+> **Why.** They were off by default, and switched on they did not do what their names said. The class check compared exact names, so a running process (a `java.lang.ProcessImpl`) passed. Any caller with a class named `com.cedarsoftware.util.*` was exempt, and any jar can declare one. The field check refused the whole class for one field named like `password` or `isPrivate`, so json-io wrote such an object as `{}`.
+>
+> **Are you affected?** Only if your application sets one of those properties. Then `ReflectionUtils` now answers where it threw `SecurityException`, and **json-io writes and reads, in full, the objects it used to write as `{}`: a field named `password` included.**
+>
+> **The remedy.** Remove the properties. To keep a field out of JSON, use json-io's `@IoIgnore` or `WriteOptionsBuilder.addExcludedFields()`. To refuse a class that is named in data, nothing is needed: `ClassUtilities.forName()` and `newInstance()` have a block list that is always on (`Runtime`, `ProcessBuilder`, `Process`, `Unsafe`, the script engines), and `-Dclassutilities.security.blocked.classes` / `.blocked.packages` add to it.
+
 **Upgrading from 4.118.0 -- what can change a result.** The entries below have the details.
 
 | Area | 4.118.0 | 4.119.0 |
@@ -50,6 +60,8 @@
 | `dateutilities.regex.timeout.enabled` / `cedarsoftware.regex.timeout.enabled`, as DateUtilities reads them, set to anything but `true` or `false` (`1`, `yes`, `" true"`) | DateUtilities' time limit off | on: only `false` switches it off |
 | Loading `SystemUtilities` | wrote three `systemutilities.*` system properties | writes none; the limits are unchanged |
 | A directory from `SystemUtilities.createTempDirectory()` that has files in it at JVM exit | left on disk | deleted |
+| `reflectionutils.security.enabled=true` with `reflectionutils.dangerous.class.validation.enabled=true` | `SecurityException` from `getMethod()`, `call()`, `getConstructor()` and the field lists for `Runtime`, `ProcessBuilder` and five more | the properties are ignored; no class is refused |
+| `reflectionutils.security.enabled=true` with `reflectionutils.sensitive.field.validation.enabled=true` | `SecurityException` for a class with a field named like `password` or `isPrivate`; json-io wrote the object as `{}` | the properties are ignored; every field is there |
 | `ReflectionUtils.getDeclaredFields()` / `getAllDeclaredFields()` / `getField()` for an enum that declares a field named `hash` or `ordinal` | the field left out | included |
 | `ReflectionUtils.getMethod(instance, name, argCount)` with several overloads of that count in one class | the last in the JVM's method order: differs between JDK 8 and JDK 25 | the first by parameter type names, on every JVM |
 | `ReflectionUtils.call(instance, name, args)` where a superclass has a private method, or an interface a static one, of that name | could run it | runs what Java runs |
@@ -219,8 +231,21 @@
   * **`call()` no longer keeps an argument's class alive, and remembers more than one choice (both since 4.113.0).** The remembered choice held the argument classes strongly on the class called: `call(arrayList, "remove", pluginObject)` kept the plugin's class loader in memory. And with one slot, callers passing different argument classes recomputed it in turn: 102 → 12 ns for arguments that alternate, 129 → 13 ns for eight threads each with its own (JDK 25). Eight lists of classes are remembered, held weakly. Repeated identical arguments cost 1 to 2 ns more (9.2 → 10.8 ns).
   * **On JDK 9+, methods of JDK classes that are not open can be called:** `call(Arrays.asList(1, 2), "size")`, a HashMap entry's `getKey()`, an unmodifiable list's `isEmpty()` were `IllegalAccessException`. They are called through the public declaration they override, as Java calls them.
   * **`getNonOverloadedMethod()`** called a method overloaded when the compiler had added a bridge for it (`Supplier<String>.get()`). **`getMethod(Class, name, types)`** returned the less specific of two interfaces' declarations when one extends the other; it returns the overriding one, with its return type and annotations.
-  * **Javadoc:** `call()` said it converts checked exceptions to `RuntimeException`. It throws the `InvocationTargetException` or `IllegalAccessException` itself, undeclared, and has since 3.4.0; callers rely on that, so the Javadoc is what changed. `getAllConstructors()` returns one shared array: do not modify. The user guide said the dangerous-class patterns match package prefixes; they match exact names.
+  * **Javadoc:** `call()` said it converts checked exceptions to `RuntimeException`. It throws the `InvocationTargetException` or `IllegalAccessException` itself, undeclared, and has since 3.4.0; callers rely on that, so the Javadoc is what changed. `getAllConstructors()` returns one shared array: do not modify.
   * **Tests.** `ReflectionUtilsOnceOverTest` (8).
+* **CHANGE**: **`ReflectionUtils` no longer has optional security switches.** The note at the top of this section says what to do; this is the detail.
+  * **What they were.** Six system properties added in June 2025, all off by default: a master switch (`reflectionutils.security.enabled`); a "dangerous class" check and its list (`...dangerous.class.validation.enabled`, `...dangerous.class.patterns`: `Runtime`, `Process`, `ProcessBuilder`, two `Unsafe` classes, `ScriptEngine`, `ScriptEngineManager`); a "sensitive field" check and its words (`...sensitive.field.validation.enabled`, `...sensitive.field.patterns`: `password`, `secret`, `private` and nine more); and `...log.obfuscation.enabled`, for the warning logged with a refusal.
+  * **Why they are gone.** Switched on, they did not hold. Each of these was run against the code before this change:
+    * **Exact names only.** `java.lang.Process` was listed; a running process is a `java.lang.ProcessImpl`, and `getMethod(process, "destroy", 0)` was answered.
+    * **A name anyone can take.** A caller with a stack frame named `com.cedarsoftware.util.*` was "trusted" and exempt. An application's own class declared in that package got `Runtime.exec(String)` where the same call from another package was refused.
+    * **Not applied to what was already known.** A class whose fields were asked for before the switch was set kept handing out its `password` field after.
+    * **The field check refused the class, not the field.** One field whose name contains a listed word (`isPrivate` contains `private`) and the class had no fields at all: `SecurityException` from `getAllDeclaredFields()`, an object written by json-io as `{}` with no error, and an exception reading one.
+    * **Harmless calls refused.** `call(Runtime.getRuntime(), "availableProcessors")` threw, while a caller holding the class can ask the JDK for any of its methods directly.
+  * **Six releases repaired it** (4.1.0, 4.91.0, which found the class check "always bypassed", 4.95.0, 4.101.0, 4.106.0, 4.113.0), and the faults above remained. It follows the `ArrayUtilities` check out, above.
+  * **What guards a class name that arrives in data.** `ClassUtilities.forName()` and `newInstance()`, whose block list is always on and matches supertypes and packages: `Runtime`, `ProcessBuilder`, `Process`, `ProcessImpl`, `Unsafe` and the script engines are refused there. json-io relies on that, and it is unchanged.
+  * **What changes.** Nothing, unless one of the six properties was set. Then: no `SecurityException` from `ReflectionUtils` for a listed class or a field name, no warning logged, and json-io writes and reads in full the objects it wrote as `{}`.
+  * **Tests.** `ReflectionUtilsSwitchesRemovedTest` (3), in a package outside `com.cedarsoftware.util`: with all six properties set, a class from the old list, classes with `password` / `isPrivate` / `apiKey` / `secretKey` fields, and lists of the caller's own all answer as they do with none set. All three fail on the code before, with `SecurityException`. The 46 tests that pinned the switches are removed: `ReflectionUtilsSecurityTest` in two packages (29 and 13), `ReflectionUtilsPerClassCacheSecurityTest` (2), `ReflectionUtilsTurkishLocaleTest` (1), and one test of `ReflectionUtilsReviewFixesTest`.
+  * **Docs.** The user guide's section is rewritten. The README's two passages that showed these properties now show `ClassUtilities`' block list and a `mathutilities.*` example. `features.md` loses the five rows, and four more for properties that were already retired (`arrayutilities.component.type.validation.enabled` and `arrayutilities.dangerous.class.patterns` in this release, `reflectionutils.max.cache.size` and `reflection.utils.cache.size` in 4.113.0).
 
 #### 4.118.0 - 2026-10-26
 **Upgrading from 4.117.0 -- what can change a result.** Each row is pinned by `UpgradeTo4118NotesTest`; every

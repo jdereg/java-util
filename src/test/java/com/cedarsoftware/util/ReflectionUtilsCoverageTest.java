@@ -25,9 +25,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * - getAllConstructors
  * - getMethod by arg count (instance-based API)
  * - Cache key equals edge cases (via cache swap + re-lookup)
- *
- * Note: Security validation tests (dangerous class, sensitive field) are in
- * dedicated security test files to avoid system property cross-contamination.
  */
 class ReflectionUtilsCoverageTest {
 

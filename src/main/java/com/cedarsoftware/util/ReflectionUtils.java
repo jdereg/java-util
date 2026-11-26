@@ -11,7 +11,6 @@ import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
-import java.util.AbstractMap;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -19,11 +18,9 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Deque;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -32,51 +29,23 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import java.util.function.Predicate;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 /**
  * Utilities to simplify writing reflective code as well as improve performance of reflective operations like
  * method and annotation lookups.
  *
- * <h2>Security Configuration</h2>
- * <p>ReflectionUtils provides configurable security controls to prevent various attack vectors including
- * unauthorized access to dangerous classes, sensitive field exposure, and reflection-based attacks.
- * All security features are <strong>disabled by default</strong> for backward compatibility.</p>
- *
- * <p>Security controls can be enabled via system properties:</p>
- * <ul>
- *   <li><code>reflectionutils.security.enabled=false</code> &mdash; Master switch for all security features</li>
- *   <li><code>reflectionutils.dangerous.class.validation.enabled=false</code> &mdash; Block dangerous class access</li>
- *   <li><code>reflectionutils.sensitive.field.validation.enabled=false</code> &mdash; Block sensitive field access</li>
- *   <li><code>reflectionutils.dangerous.class.patterns=java.lang.Runtime,java.lang.Process,...</code> &mdash; Comma-separated dangerous class patterns</li>
- *   <li><code>reflectionutils.sensitive.field.patterns=password,secret,apikey,...</code> &mdash; Comma-separated sensitive field patterns</li>
- * </ul>
- *
- * <h3>Security Features</h3>
- * <ul>
- *   <li><b>Dangerous Class Protection:</b> Prevents reflection access to system classes that could enable privilege escalation</li>
- *   <li><b>Sensitive Field Protection:</b> Blocks access to fields containing sensitive information (passwords, tokens, etc.)</li>
- *   <li><b>Trusted Caller Validation:</b> Allows java-util library internal access while blocking external callers</li>
- * </ul>
+ * <h2>No switches of its own</h2>
+ * <p>ReflectionUtils answers for whatever class it is handed. Through 4.118.0 six system properties
+ * ({@code reflectionutils.security.enabled} and five more) could ask it to refuse a list of class names and
+ * any class with a field named like {@code password}; they were removed in 4.119.0 and are now ignored.
+ * A class NAME that arrives in data is vetted where it is turned into a class:
+ * {@link ClassUtilities#forName(String, ClassLoader)}, whose block list is always on.</p>
  *
  * <h2>Caching</h2>
  * <p>What ReflectionUtils finds out about a class is kept on that class, in a {@link ClassValue}: worked out
  * once, then read by every thread without locking or writing. It is bounded by the class itself (its members),
  * nothing is evicted, and a name the class does not have is simply not found, storing nothing. It never keeps a
  * class, or its ClassLoader, alive: it goes away with the class.</p>
- *
- * <h3>Usage Example</h3>
- * <pre>{@code
- * // Enable security with custom settings
- * System.setProperty("reflectionutils.security.enabled", "true");
- * System.setProperty("reflectionutils.dangerous.class.validation.enabled", "true");
- * System.setProperty("reflectionutils.sensitive.field.validation.enabled", "true");
- *
- * // These will now enforce security controls
- * Method method = ReflectionUtils.getMethod(String.class, "valueOf", int.class);
- * Field field = ReflectionUtils.getField(MyClass.class, "normalField");
- * }</pre>
  *
  * @author John DeRegnaucourt (jdereg@gmail.com)
  *         <br>
@@ -95,74 +64,6 @@ import java.util.logging.Logger;
  *         limitations under the License.
  */
 public final class ReflectionUtils {
-    private static final Logger LOG = Logger.getLogger(ReflectionUtils.class.getName());
-    
-    // Default dangerous class patterns (moved to system properties in static initializer)
-    private static final String DEFAULT_DANGEROUS_CLASS_PATTERNS = 
-        "java.lang.Runtime,java.lang.Process,java.lang.ProcessBuilder,sun.misc.Unsafe,jdk.internal.misc.Unsafe,javax.script.ScriptEngine,javax.script.ScriptEngineManager";
-    
-    // Default sensitive field patterns (moved to system properties in static initializer)
-    private static final String DEFAULT_SENSITIVE_FIELD_PATTERNS = 
-        "password,passwd,secret,secretkey,apikey,api_key,authtoken,accesstoken,credential,confidential,adminkey,private";
-    
-    // Removed static initializer that was mutating System properties
-    // Properties are now only read, not set
-    
-    // Security configuration methods
-    
-    private static boolean isSecurityEnabled() {
-        return Boolean.parseBoolean(System.getProperty("reflectionutils.security.enabled", "false"));
-    }
-
-    private static boolean isDangerousClassValidationEnabled() {
-        return Boolean.parseBoolean(System.getProperty("reflectionutils.dangerous.class.validation.enabled", "false"));
-    }
-
-    private static boolean isSensitiveFieldValidationEnabled() {
-        return Boolean.parseBoolean(System.getProperty("reflectionutils.sensitive.field.validation.enabled", "false"));
-    }
-
-    // Single volatile reference pairs a property string with its parsed pattern set,
-    // ensuring atomic visibility of both values (no TOCTOU race).
-    private static volatile Map.Entry<String, Set<String>> cachedDangerousClass = null;
-    private static volatile Map.Entry<String, Set<String>> cachedSensitiveField = null;
-
-    private static Set<String> getDangerousClassPatterns() {
-        String currentProperty = System.getProperty("reflectionutils.dangerous.class.patterns", DEFAULT_DANGEROUS_CLASS_PATTERNS);
-        Map.Entry<String, Set<String>> holder = cachedDangerousClass;
-        if (holder != null && currentProperty.equals(holder.getKey())) {
-            return holder.getValue();
-        }
-        Set<String> set = new HashSet<>();
-        for (String pattern : currentProperty.split(",")) {
-            String trimmed = pattern.trim();
-            if (!trimmed.isEmpty()) {
-                set.add(trimmed);
-            }
-        }
-        Set<String> patterns = Collections.unmodifiableSet(set);
-        cachedDangerousClass = new AbstractMap.SimpleImmutableEntry<>(currentProperty, patterns);
-        return patterns;
-    }
-
-    private static Set<String> getSensitiveFieldPatterns() {
-        String currentProperty = System.getProperty("reflectionutils.sensitive.field.patterns", DEFAULT_SENSITIVE_FIELD_PATTERNS);
-        Map.Entry<String, Set<String>> holder = cachedSensitiveField;
-        if (holder != null && currentProperty.equals(holder.getKey())) {
-            return holder.getValue();
-        }
-        Set<String> set = new HashSet<>();
-        for (String pattern : currentProperty.split(",")) {
-            String processed = pattern.trim().toLowerCase(Locale.ROOT);
-            if (!processed.isEmpty()) {
-                set.add(processed);
-            }
-        }
-        Set<String> patterns = Collections.unmodifiableSet(set);
-        cachedSensitiveField = new AbstractMap.SimpleImmutableEntry<>(currentProperty, patterns);
-        return patterns;
-    }
-    
     // ---------------------------------------------------------------------------------------------
     // What ReflectionUtils finds out about a class never changes while the class is loaded, so it is kept on the class
     // itself, in a ClassValue: worked out on first use, then read by every thread without locking or writing anything.
@@ -433,224 +334,12 @@ public final class ReflectionUtils {
     }
 
     /**
-     * Securely sets the accessible flag on a reflection object with proper security checks.
-     * <p>
-     * This method wraps ClassUtilities.trySetAccessible() with additional security validation
-     * to prevent unauthorized access control bypass. It verifies that the caller has the
-     * necessary permissions before attempting to suppress access checks.
-     * </p>
-     *
-     * @param obj The AccessibleObject (Field, Method, or Constructor) to make accessible
-     * @throws SecurityException if the caller lacks suppressAccessChecks permission
+     * Makes a member accessible as ReflectionUtils' own lookups do. For java-util code handed a member that may
+     * not have come from ReflectionUtils; one that is already accessible (every member ReflectionUtils hands
+     * out) costs only the flag read.
      */
-    private static void secureSetAccessible(java.lang.reflect.AccessibleObject obj) {
-        // Additional security validation for fields
-        if (obj instanceof Field) {
-            validateFieldAccess((Field) obj);
-        }
-
-        // ALWAYS attempt to set accessible for json-io compatibility
-        // This is required for:
-        // - Module system boundaries (Java 9+)
-        // - Security manager environments
-        // - Performance optimizations
-        ClassUtilities.trySetAccessible(obj);
-    }
-
-    /**
-     * Makes a member accessible through the same security-checked path as ReflectionUtils' own lookups. For java-util
-     * code handed a member that may not have come from ReflectionUtils; one that is already accessible (every member
-     * ReflectionUtils hands out, vetted when it was cached) costs only the flag read.
-     */
-    @SuppressWarnings("deprecation")    // isAccessible(): canAccess(Object) needs JDK 9
     static void makeAccessible(java.lang.reflect.AccessibleObject member) {
-        if (!member.isAccessible()) {
-            secureSetAccessible(member);
-        }
-    }
-    
-    /**
-     * Validates that a field is safe to access via reflection.
-     * 
-     * @param field the field to validate
-     * @throws SecurityException if the field should not be accessible and validation is enabled
-     */
-    private static void validateFieldAccess(Field field) {
-        // Only validate if security features are enabled
-        if (!isSecurityEnabled()) {
-            return;
-        }
-        
-        Class<?> declaringClass = field.getDeclaringClass();
-        // Locale.ROOT: a Turkish default lowers API_KEY to "apı_key" (dotless i), which no pattern matches
-        String fieldName = field.getName().toLowerCase(Locale.ROOT);
-        String className = declaringClass.getName();
-        
-        // Check if the declaring class is dangerous (if dangerous class validation is enabled)
-        if (isDangerousClassValidationEnabled() && isDangerousClass(declaringClass)) {
-            LOG.log(Level.WARNING, "Access to field blocked in dangerous class: " + sanitizeClassName(className) + "." + fieldName);
-            throw new SecurityException("Access denied: Field access not permitted in security-sensitive class");
-        }
-        
-        // Only apply sensitive field validation if enabled and for non-JDK classes
-        if (!isSensitiveFieldValidationEnabled()) {
-            return;
-        }
-        
-        // This prevents blocking legitimate JDK internal fields while still protecting user classes
-        if (className.startsWith("java.") || className.startsWith("javax.") || 
-            className.startsWith("sun.") || className.startsWith("com.sun.")) {
-            return; // Allow access to JDK classes
-        }
-        
-        // Removed special case for "normal" prefix - all fields follow same validation rules
-        
-        // Check if the field name suggests sensitive content (only for user classes)
-        // Patterns are pre-processed (trimmed and lowercased) in getSensitiveFieldPatterns
-        for (String pattern : getSensitiveFieldPatterns()) {
-            if (fieldName.contains(pattern)) {
-                LOG.log(Level.WARNING, "Access to sensitive field blocked: " + sanitizeClassName(className) + "." + fieldName);
-                throw new SecurityException("Access denied: Sensitive field access not permitted");
-            }
-        }
-    }
-    
-    /**
-     * Checks if a class is considered dangerous for reflection operations.
-     * 
-     * @param clazz the class to check
-     * @return true if the class is dangerous and the caller is not trusted, and validation is enabled
-     */
-    private static boolean isDangerousClass(Class<?> clazz) {
-        if (clazz == null) {
-            return false;
-        }
-        
-        // Only check if security and dangerous class validation are enabled
-        if (!isSecurityEnabled() || !isDangerousClassValidationEnabled()) {
-            return false;
-        }
-        
-        String className = clazz.getName();
-
-        // Patterns are pre-processed (trimmed) in getDangerousClassPatterns
-        if (!getDangerousClassPatterns().contains(className)) {
-            return false;
-        }
-        
-        // Allow trusted internal callers (java-util library) to access dangerous classes
-        // This is necessary for legitimate functionality like Unsafe usage by ClassUtilities
-        if (isTrustedCaller()) {
-            return false;
-        }
-        
-        return true;
-    }
-    
-    /**
-     * Checks if the current caller is from a trusted package (java-util library).
-     * Skips frames from ReflectionUtils itself AND internal infrastructure
-     * (caches, lambdas) that can appear on the stack during normal operation
-     * without representing a real caller.
-     * <p>
-     * <b>Why this is careful:</b> When ReflectionUtils uses its own cache
-     * (LRUCache, LockingLRUCacheStrategy) via {@code computeIfAbsent}, those
-     * cache classes appear on the stack between ReflectionUtils and the
-     * security check. A naive {@code startsWith("com.cedarsoftware.util.")}
-     * check would incorrectly treat those cache frames as "trusted callers"
-     * and bypass security for EVERY caller, including external ones.
-     * </p>
-     *
-     * @return true if the external caller chain includes a trusted java-util
-     *         class (e.g., a java-util internal helper that legitimately needs
-     *         reflective access to dangerous classes)
-     */
-    private static boolean isTrustedCaller() {
-        String thisClassName = ReflectionUtils.class.getName();
-        StackTraceElement[] stack = Thread.currentThread().getStackTrace();
-
-        for (StackTraceElement element : stack) {
-            String className = element.getClassName();
-
-            // Skip ReflectionUtils frames (always present) and Thread.getStackTrace. ReflectionUtils' own nested
-            // classes count as ReflectionUtils: a per-class cache computes its value inside ReflectionUtils$N, and
-            // that frame, read as a java-util caller, would trust every caller.
-            if (isFrameOf(className, thisClassName) || className.equals("java.lang.Thread")) {
-                continue;
-            }
-
-            // Skip internal infrastructure classes that appear on the stack as
-            // cache callback frames (not real callers).
-            if (isInfrastructureFrame(className)) {
-                continue;
-            }
-
-            // Check if any other caller is from the trusted java-util package
-            if (className.startsWith("com.cedarsoftware.util.")) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    /**
-     * Returns true if the given class name is a java-util infrastructure class
-     * that may appear on the stack during callback/lambda execution but does
-     * not represent a real caller. These are intermediaries between
-     * ReflectionUtils and its actual caller.
-     */
-    private static boolean isInfrastructureFrame(String className) {
-        return isFrameOf(className, "com.cedarsoftware.util.LRUCache")
-                || isFrameOf(className, "com.cedarsoftware.util.cache.LockingLRUCacheStrategy")
-                || isFrameOf(className, "com.cedarsoftware.util.cache.ThreadedLRUCacheStrategy")
-                || isFrameOf(className, "com.cedarsoftware.util.ConcurrentHashMapNullSafe")
-                // Null-safe map superclass where compute()/computeIfAbsent() wrapping runs — the
-                // THREADED strategy's backing ConcurrentHashMapNullSafe invokes the ReflectionUtils
-                // mapping function from inside this class's wrapping lambda.
-                || isFrameOf(className, "com.cedarsoftware.util.AbstractConcurrentNullSafeMap");
-    }
-
-    /**
-     * True if {@code className} is {@code owner} itself OR one of its synthetic/inner frames
-     * (lambda, nested class), which the JVM names {@code owner$...} (e.g.
-     * {@code ...ConcurrentHashMapNullSafe$$Lambda/0x...}). Matching only via {@code equals()}
-     * misses these: the THREADED cache strategy invokes the ReflectionUtils mapping function from
-     * inside a lambda defined in {@code ConcurrentHashMapNullSafe}, so that lambda frame must still
-     * be recognized as cache plumbing — otherwise {@link #isTrustedCaller()}'s
-     * {@code startsWith("com.cedarsoftware.util.")} test would misread it as a real trusted caller
-     * and bypass the dangerous-class check. The {@code '$'} boundary avoids matching sibling
-     * classes such as {@code ConcurrentHashMapNullSafeHelper}.
-     */
-    private static boolean isFrameOf(String className, String owner) {
-        return className.equals(owner) || className.startsWith(owner + "$");
-    }
-    
-    /**
-     * Sanitizes class names for safe logging.
-     * 
-     * @param className the class name to sanitize
-     * @return sanitized class name safe for logging
-     */
-    private static String sanitizeClassName(String className) {
-        if (className == null) {
-            return "[null]";
-        }
-        
-        // Check if log obfuscation is enabled
-        if (!isLogObfuscationEnabled()) {
-            return className; // Return full class name when obfuscation disabled
-        }
-        
-        if (className.length() <= 10) {
-            return "[class:" + className.length() + "-chars]";
-        }
-        
-        return className.substring(0, 5) + "***" + className.substring(className.length() - 5);
-    }
-    
-    private static boolean isLogObfuscationEnabled() {
-        return Boolean.parseBoolean(System.getProperty("reflectionutils.log.obfuscation.enabled", "false"));
+        ClassUtilities.trySetAccessible(member);
     }
 
     private ReflectionUtils() { }
@@ -1206,10 +895,6 @@ public final class ReflectionUtils {
             }
         }
 
-        // Security: Validate field access before returning
-        if (field != null) {
-            validateFieldAccess(field);
-        }
         return field;
     }
 
@@ -1342,12 +1027,6 @@ public final class ReflectionUtils {
         Convention.throwIfNull(c, "class cannot be null");
         Convention.throwIfNull(fieldFilter, "fieldFilter cannot be null");
 
-        // Security: Check if the class is dangerous before proceeding
-        if (isDangerousClass(c)) {
-            LOG.log(Level.WARNING, "Field access blocked for dangerous class: " + sanitizeClassName(c.getName()));
-            throw new SecurityException("Access denied: Field access not permitted for security-sensitive class");
-        }
-
         Map<? super FieldsCacheKey, Collection<Field>> installed = FIELDS_CACHE.get();
         if (installed == null) {
             return allDeclaredFields(c, fieldFilter);
@@ -1401,7 +1080,7 @@ public final class ReflectionUtils {
         return null;
     }
 
-    /** The class's own fields that pass the filter, made accessible (and vetted, when security is on). */
+    /** The class's own fields that pass the filter, made accessible. */
     private static List<Field> filterDeclaredFields(Class<?> c, Predicate<Field> fieldFilter) {
         Field[] declared = DECLARED_FIELDS.get(c);
         List<Field> filteredList = new ArrayList<>(declared.length);
@@ -1409,7 +1088,7 @@ public final class ReflectionUtils {
             if (!fieldFilter.test(field)) {
                 continue;
             }
-            secureSetAccessible(field);
+            ClassUtilities.trySetAccessible(field);
             filteredList.add(field);
         }
         // Return an unmodifiable List so it cannot be mutated later
@@ -1420,7 +1099,7 @@ public final class ReflectionUtils {
     private static List<Field> collectAllDeclaredFields(Class<?> c, Predicate<Field> fieldFilter) {
         List<Field> allFields = new ArrayList<>();
         Class<?> current = c;
-        while (current != null && !isDangerousClass(current)) {
+        while (current != null) {
             allFields.addAll(declaredFields(current, fieldFilter));
             current = current.getSuperclass();
         }
@@ -1655,8 +1334,7 @@ public final class ReflectionUtils {
         if (instance == null) {
             throw new IllegalArgumentException("Cannot call [" + method.getName() + "()] on a null object.");
         }
-        
-        // Security check: Verify permission for reflection access
+
         try {
             return method.invoke(instance, args);
         } catch (IllegalAccessException | InvocationTargetException e) {
@@ -1719,14 +1397,13 @@ public final class ReflectionUtils {
      * @see #getMethod(Class, String, Class...) For explicit method lookup with parameter types
      */
     public static Object call(Object instance, String methodName, Object... args) {
-        // Security check: Verify permission for reflection access
         Method method = getMethod(instance, methodName, args.length);
         Class<?> beanClass = (instance instanceof Class) ? (Class<?>) instance : instance.getClass();
         if (args.length > 0) {
             // Among overloads with that many parameters, the one Java would call with these arguments
             Method overload = chooseOverload(overloads(beanClass, methodName, args.length), args);
             if (overload != null) {
-                secureSetAccessible(overload);
+                ClassUtilities.trySetAccessible(overload);
                 method = overload;
             }
         }
@@ -1766,12 +1443,6 @@ public final class ReflectionUtils {
     public static Method getMethod(Class<?> c, String methodName, Class<?>... types) {
         Convention.throwIfNull(c, "class cannot be null");
         Convention.throwIfNull(methodName, "methodName cannot be null");
-        
-        // Security: Check if the class is dangerous before proceeding
-        if (isDangerousClass(c)) {
-            LOG.log(Level.WARNING, "Method access blocked for dangerous class: " + sanitizeClassName(c.getName()) + "." + methodName);
-            throw new SecurityException("Access denied: Method access not permitted for security-sensitive class");
-        }
         Objects.requireNonNull(types, "types cannot be null");
 
         Map<? super MethodCacheKey, Method> installed = METHOD_CACHE.get();
@@ -1796,7 +1467,7 @@ public final class ReflectionUtils {
         if (method == null) {
             return null;
         }
-        secureSetAccessible(method);
+        ClassUtilities.trySetAccessible(method);
         final Method resolved = method;
         final Class<?>[] parameterTypes = method.getParameterTypes();
         Object[] pairs = found.compute(methodName, (name, current) -> {
@@ -1969,11 +1640,6 @@ public final class ReflectionUtils {
 
         Class<?> beanClass = (instance instanceof Class) ? (Class<?>) instance : instance.getClass();
 
-        if (isDangerousClass(beanClass)) {
-            LOG.log(Level.WARNING, "Method access blocked for dangerous class: " + sanitizeClassName(beanClass.getName()) + "." + methodName);
-            throw new SecurityException("Access denied: Method access not permitted for security-sensitive class");
-        }
-
         if (argCount == 0) {
             Method exact = getMethod(beanClass, methodName, NO_PARAMETERS);
             if (exact != null) {
@@ -2018,7 +1684,7 @@ public final class ReflectionUtils {
         if (chosen == null) {
             return null;
         }
-        secureSetAccessible(chosen);
+        ClassUtilities.trySetAccessible(chosen);
         final Method selected = chosen.isAccessible() ? chosen : openEquivalent(c, chosen);
         byCount = found.compute(methodName, (name, current) -> {
             if (current != null && argCount < current.length && current[argCount] != null) {
@@ -2162,7 +1828,7 @@ public final class ReflectionUtils {
             Method declared = declaredMethod(type, method.getName(), types);
             if (declared != null && declared != method && !Modifier.isStatic(declared.getModifiers())
                     && !Modifier.isPrivate(declared.getModifiers())) {
-                secureSetAccessible(declared);
+                ClassUtilities.trySetAccessible(declared);
                 if (declared.isAccessible()) {
                     return declared;
                 }
@@ -2409,12 +2075,6 @@ public final class ReflectionUtils {
     @SuppressWarnings("unchecked") // For the cast from cached Constructor<?> to Constructor<T>
     public static <T> Constructor<T> getConstructor(Class<T> clazz, Class<?>... parameterTypes) {
         Convention.throwIfNull(clazz, "class cannot be null");
-        
-        // Security: Check if the class is dangerous before proceeding
-        if (isDangerousClass(clazz)) {
-            LOG.log(Level.WARNING, "Constructor access blocked for dangerous class: " + sanitizeClassName(clazz.getName()));
-            throw new SecurityException("Access denied: Constructor access not permitted for security-sensitive class");
-        }
         Objects.requireNonNull(parameterTypes, "parameterTypes cannot be null");
 
         Map<? super ConstructorCacheKey, Constructor<?>> installed = CONSTRUCTOR_CACHE.get();
@@ -2433,7 +2093,7 @@ public final class ReflectionUtils {
             for (int i = 0; i < table.length; i += 2) {
                 if (Arrays.equals((Class<?>[]) table[i], parameterTypes)) {
                     Constructor<?> ctor = (Constructor<?>) table[i + 1];
-                    secureSetAccessible(ctor); // Secure method with proper security checks
+                    ClassUtilities.trySetAccessible(ctor);
                     return ctor;
                 }
             }
@@ -2456,12 +2116,6 @@ public final class ReflectionUtils {
     public static Constructor<?>[] getAllConstructors(Class<?> clazz) {
         if (clazz == null) {
             return new Constructor<?>[0];
-        }
-        
-        // Security: Check if the class is dangerous before proceeding
-        if (isDangerousClass(clazz)) {
-            LOG.log(Level.WARNING, "Constructor enumeration blocked for dangerous class: " + sanitizeClassName(clazz.getName()));
-            throw new SecurityException("Access denied: Constructor enumeration not permitted for security-sensitive class");
         }
 
         Map<Object, Constructor<?>[]> installed = SORTED_CONSTRUCTORS_CACHE.get();
@@ -2495,7 +2149,7 @@ public final class ReflectionUtils {
         Constructor<?>[] result = new Constructor<?>[table.length / 2];
         for (int i = 0; i < result.length; i++) {
             Constructor<?> ctor = (Constructor<?>) table[2 * i + 1];
-            secureSetAccessible(ctor);
+            ClassUtilities.trySetAccessible(ctor);
             result[i] = ctor;
         }
 
@@ -2583,11 +2237,6 @@ public final class ReflectionUtils {
             throw new IllegalArgumentException("Attempted to call getMethod() with a null or blank method name on class: " + clazz.getName());
         }
 
-        if (isDangerousClass(clazz)) {
-            LOG.log(Level.WARNING, "Method access blocked for dangerous class: " + sanitizeClassName(clazz.getName()) + "." + methodName);
-            throw new SecurityException("Access denied: Method access not permitted for security-sensitive class");
-        }
-
         Method result;
         Map<? super MethodCacheKey, Method> installed = METHOD_CACHE.get();
         if (installed == null) {
@@ -2631,7 +2280,7 @@ public final class ReflectionUtils {
         if (method.getParameterCount() != 0) {
             return NOT_FOUND_METHOD;        // no 0-arg method
         }
-        secureSetAccessible(method);
+        ClassUtilities.trySetAccessible(method);
         return method;
     }
 
@@ -2856,7 +2505,7 @@ public final class ReflectionUtils {
                     names[i] = (String) RecordSupport.COMPONENT_GET_NAME_METHOD.invoke(components[i]);
                     accessors[i] = (Method) RecordSupport.COMPONENT_GET_ACCESSOR_METHOD.invoke(components[i]);
                     try {
-                        secureSetAccessible(accessors[i]);
+                        ClassUtilities.trySetAccessible(accessors[i]);
                     } catch (RuntimeException e) {
                         // Left as it is: reading this component then fails, and each caller says how it treats that
                     }
@@ -2988,7 +2637,7 @@ public final class ReflectionUtils {
     /** The value of a record component, read through its accessor made accessible; throws if it cannot be read. */
     private static Object readRecordComponent(Object recordComponent, Object recordInstance) throws Exception {
         Method accessor = (Method) RecordSupport.COMPONENT_GET_ACCESSOR_METHOD.invoke(recordComponent);
-        secureSetAccessible(accessor);
+        ClassUtilities.trySetAccessible(accessor);
         return accessor.invoke(recordInstance);
     }
 }

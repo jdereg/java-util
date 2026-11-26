@@ -25,7 +25,6 @@ All security features are **disabled by default** to ensure seamless upgrades, w
 - [EncryptionUtilities](#encryptionutilities)
 - [IOUtilities](#ioutilities)
 - [MathUtilities](#mathutilities)
-- [ReflectionUtils](#reflectionutils)
 - [StringUtilities](#stringutilities)
 - [SystemUtilities](#systemutilities)
 - [Traverser](#traverser)
@@ -54,22 +53,10 @@ All security features are **disabled by default** to ensure seamless upgrades, w
 <td>Master switch for all ArrayUtilities security features</td>
 </tr>
 <tr>
-<td><code>arrayutilities.component.type.validation.enabled</code></td>
-<td><code>true</code>, <code>false</code></td>
-<td><span style="color: #007acc">false</span></td>
-<td>Block dangerous system classes in array operations</td>
-</tr>
-<tr>
 <td><code>arrayutilities.max.array.size</code></td>
 <td>Integer</td>
 <td><span style="color: #007acc">2147483639</span></td>
 <td>Maximum array size (Integer.MAX_VALUE-8)</td>
-</tr>
-<tr>
-<td><code>arrayutilities.dangerous.class.patterns</code></td>
-<td>Comma-separated patterns</td>
-<td><span style="color: #007acc; font-size: 7pt">java.lang.Runtime,<br>java.lang.ProcessBuilder,<br>java.lang.System,<br>java.security.,javax.script.,<br>sun.,com.sun.,java.lang.Class</span></td>
-<td>Dangerous class patterns to block</td>
 </tr>
 <tr style="background-color: #f0f4f8;">
 <td colspan="4" style="color: #334155; font-weight: bold; padding: 8px;" id="byteutilities"><strong>ByteUtilities</strong></td>
@@ -359,51 +346,6 @@ All security features are **disabled by default** to ensure seamless upgrades, w
 <td>List size limit for permutations</td>
 </tr>
 <tr style="background-color: #f0f4f8;">
-<td colspan="4" style="color: #334155; font-weight: bold; padding: 8px;" id="reflectionutils"><strong>ReflectionUtils</strong></td>
-</tr>
-<tr>
-<td><code>reflectionutils.security.enabled</code></td>
-<td><code>true</code>, <code>false</code></td>
-<td><span style="color: #007acc">false</span></td>
-<td>Master switch for all ReflectionUtils security features</td>
-</tr>
-<tr>
-<td><code>reflectionutils.dangerous.class.validation.enabled</code></td>
-<td><code>true</code>, <code>false</code></td>
-<td><span style="color: #007acc">false</span></td>
-<td>Block dangerous class access</td>
-</tr>
-<tr>
-<td><code>reflectionutils.sensitive.field.validation.enabled</code></td>
-<td><code>true</code>, <code>false</code></td>
-<td><span style="color: #007acc">false</span></td>
-<td>Block sensitive field access</td>
-</tr>
-<tr>
-<td><code>reflectionutils.max.cache.size</code></td>
-<td>Integer</td>
-<td><span style="color: #007acc">50000</span></td>
-<td>Maximum cache size per cache type</td>
-</tr>
-<tr>
-<td><code>reflectionutils.dangerous.class.patterns</code></td>
-<td>Comma-separated patterns</td>
-<td><span style="color: #007acc; font-size: 7pt">java.lang.Runtime,java.lang.Process,<br>java.lang.ProcessBuilder,sun.misc.Unsafe,<br>jdk.internal.misc.Unsafe,<br>javax.script.ScriptEngine,<br>javax.script.ScriptEngineManager</span></td>
-<td>Dangerous class patterns</td>
-</tr>
-<tr>
-<td><code>reflectionutils.sensitive.field.patterns</code></td>
-<td>Comma-separated patterns</td>
-<td><span style="color: #007acc; font-size: 7pt">password,passwd,secret,secretkey,<br>apikey,api_key,authtoken,accesstoken,<br>credential,confidential,adminkey,private</span></td>
-<td>Sensitive field patterns</td>
-</tr>
-<tr>
-<td><code>reflection.utils.cache.size</code></td>
-<td>Integer</td>
-<td><span style="color: #007acc">1500</span></td>
-<td>Reflection cache size</td>
-</tr>
-<tr style="background-color: #f0f4f8;">
 <td colspan="4" style="color: #334155; font-weight: bold; padding: 8px;" id="stringutilities"><strong>StringUtilities</strong></td>
 </tr>
 <tr>
@@ -612,17 +554,19 @@ All security features are **disabled by default** to ensure seamless upgrades, w
 ### Enable Security Features
 
 ```bash
-# Development (permissive)
--Dreflectionutils.security.enabled=false
+# Development (permissive: the default)
+-Dmathutilities.security.enabled=false
 
-# Staging (warning mode)
--Dreflectionutils.security.enabled=true
--Dreflectionutils.dangerous.class.validation.enabled=false
+# Staging (limits on, generous)
+-Dmathutilities.security.enabled=true
+-Dmathutilities.max.array.size=10000000
+-Dmathutilities.max.string.length=10000000
 
-# Production (full security)
--Dreflectionutils.security.enabled=true
--Dreflectionutils.dangerous.class.validation.enabled=true
--Dreflectionutils.sensitive.field.validation.enabled=true
+# Production (limits on, tighter)
+-Dmathutilities.security.enabled=true
+-Dmathutilities.max.array.size=1000000
+-Dmathutilities.max.string.length=1000000
+-Dmathutilities.max.permutation.size=10
 ```
 
 ### Resource Limits

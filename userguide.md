@@ -7884,134 +7884,41 @@ on 5 of the 12 paths that create an array, so it did not do what its name said. 
 
 [View Source](/src/main/java/com/cedarsoftware/util/ReflectionUtils.java)
 
-ReflectionUtils provides configurable security controls to prevent various attack vectors including unauthorized access to dangerous classes, sensitive field exposure, and reflection-based attacks. **All security features are disabled by default** for backward compatibility.
+ReflectionUtils has no security settings of its own. It answers for whatever class it is handed: the caller
+already holds that class, and could ask the JDK the same question.
 
-### System Property Configuration
+### The six switches are gone (4.119.0)
 
-```properties
-# Master switch - enables all security features
-reflectionutils.security.enabled=false
+Through 4.118.0 these system properties, all off by default, could ask ReflectionUtils to refuse a list of class
+names and any class with a field named like a secret. They are now ignored.
 
-# Dangerous class validation - prevents reflection access to system classes
-reflectionutils.dangerous.class.validation.enabled=false
+- `reflectionutils.security.enabled`: the master switch for the rest
+- `reflectionutils.dangerous.class.validation.enabled`: `SecurityException` for a class on the list
+- `reflectionutils.dangerous.class.patterns`: the list, seven class names by default (`java.lang.Runtime`,
+  `java.lang.Process`, ...)
+- `reflectionutils.sensitive.field.validation.enabled`: `SecurityException` for a class with a field whose name
+  contains a listed word
+- `reflectionutils.sensitive.field.patterns`: the words, `password`, `secret`, `credential`, `private` and eight more
+- `reflectionutils.log.obfuscation.enabled`: shortened class names in the warning logged with a refusal
 
-# Sensitive field validation - blocks access to sensitive fields
-reflectionutils.sensitive.field.validation.enabled=false
+Why they were removed:
 
-# Dangerous class patterns - configurable list of blocked classes
-reflectionutils.dangerous.class.patterns=java.lang.Runtime,java.lang.Process,java.lang.ProcessBuilder,sun.misc.Unsafe,jdk.internal.misc.Unsafe,javax.script.ScriptEngine,javax.script.ScriptEngineManager
+- **The class check matched exact names only.** `java.lang.Process` was on the list, but a running process is a
+  `java.lang.ProcessImpl`, which passed.
+- **Any caller named `com.cedarsoftware.util.*` was exempt**, and any jar can declare a class with such a name.
+- **The field check refused the whole class, not the field.** One field named `password`, or `isPrivate`, and
+  the class had no fields at all: json-io wrote such an object as `{}` and could not read one back.
+- **What was already worked out was not checked again**, so a switch turned on after a class's first use did not
+  apply to that class.
 
-# Sensitive field patterns - configurable list of blocked field names
-reflectionutils.sensitive.field.patterns=password,passwd,secret,secretkey,apikey,api_key,authtoken,accesstoken,credential,confidential,adminkey,private
-```
+What does the job:
 
-### Security Features
-
-**Dangerous Class Protection:**
-- Prevents reflection access to system classes that could enable privilege escalation
-- Configurable via comma-separated class patterns
-- Each pattern is a class's exact name; a package prefix is not matched, and neither is a subclass of a named class
-- Trusted caller validation allows java-util library internal access
-
-**Sensitive Field Protection:**
-- Blocks access to fields containing sensitive information (passwords, tokens, etc.)
-- Configurable field name patterns with case-insensitive matching
-- Only applies to user classes (not JDK classes)
-- Protects against credential exposure via reflection
-
-**Bounded Caches:**
-- What is cached is kept on each class and bounded by the class's own members
-- A name a class does not have stores nothing, so made-up names cannot grow the caches
-
-**Trusted Caller Validation:**
-- Allows java-util library internal access while blocking external callers
-- Based on stack trace analysis to identify caller package
-- Prevents circumvention of security controls
-
-### Usage Examples
-
-**Enable Security with Default Settings:**
-```java
-// Enable all security features
-System.setProperty("reflectionutils.security.enabled", "true");
-System.setProperty("reflectionutils.dangerous.class.validation.enabled", "true");
-System.setProperty("reflectionutils.sensitive.field.validation.enabled", "true");
-
-// These will now be blocked for external callers
-try {
-    Constructor<Runtime> ctor = ReflectionUtils.getConstructor(Runtime.class);
-} catch (SecurityException e) {
-    // Access denied for external callers to dangerous classes
-}
-
-try {
-    Field passwordField = ReflectionUtils.getField(MyClass.class, "password");
-} catch (SecurityException e) {
-    // Access denied: Sensitive field access not permitted
-}
-```
-
-**Custom Security Configuration:**
-```java
-// Enable security with custom patterns
-System.setProperty("reflectionutils.security.enabled", "true");
-System.setProperty("reflectionutils.sensitive.field.validation.enabled", "true");
-System.setProperty("reflectionutils.sensitive.field.patterns", "apiKey,secretToken,password");
-
-// Safe operations work normally
-Method method = ReflectionUtils.getMethod(String.class, "valueOf", int.class);
-Field normalField = ReflectionUtils.getField(MyClass.class, "normalData");
-```
-
-**Backward Compatibility (Default Behavior):**
-```java
-// By default, all security features are disabled
-// These operations work without restrictions
-Constructor<Runtime> ctor = ReflectionUtils.getConstructor(Runtime.class);
-Field sensitiveField = ReflectionUtils.getField(MyClass.class, "password");
-Method systemMethod = ReflectionUtils.getMethod(System.class, "getProperty", String.class);
-```
-
-### Configuration Details
-
-**Class Pattern Matching:**
-- **Exact matches:** `java.lang.Runtime` blocks only the Runtime class
-- **Package prefixes:** `java.security.` blocks all classes in java.security package
-- **Multiple patterns:** Comma-separated list of patterns
-
-**Field Pattern Matching:**
-- **Case-insensitive:** `password` matches "password", "Password", "PASSWORD"
-- **Contains matching:** `secret` matches "secretKey", "mySecret", "secretData"
-- **Only user classes:** JDK classes (java.*, javax.*, sun.*) are excluded from field validation
-
-**Trusted Caller Detection:**
-- Internal java-util classes are considered trusted callers
-- Based on stack trace analysis of calling package
-- Allows legitimate internal library operations while blocking external abuse
-
-**Static Initialization:**
-- Default patterns are set automatically if not configured
-- Ensures backward compatibility when users haven't set system properties
-- Users can override defaults by setting system properties before class loading
-
-### Security Considerations
-
-**When to Enable:**
-- Production environments handling untrusted input
-- Applications using reflection with user-controlled class/field names
-- Systems requiring protection against credential exposure
-- Multi-tenant environments requiring strict reflection controls
-
-**Performance Impact:**
-- Minimal overhead when security is disabled (default)
-- Small validation cost when enabled
-- Caching reduces repeated security checks
-- No impact on normal reflection operations
-
-**Thread Safety:**
-- All security checks are thread-safe
-- System property changes require application restart
-- Cache operations are concurrent and lock-free
+- **A class name that arrives in data** (JSON, a configuration file, a request) is vetted where it becomes a class.
+  `ClassUtilities.forName()` and `ClassUtilities.newInstance()` refuse `Runtime`, `ProcessBuilder`, `Process` and
+  `ProcessImpl`, the script engines, `Unsafe` and the rest of a block list that is always on. See
+  [ClassUtilities Security Configuration](#classutilities-security-configuration).
+- **A field that must stay out of JSON** is excluded in json-io: `@IoIgnore` on the field, or
+  `WriteOptionsBuilder.addExcludedFields(MyClass.class, ...)`.
 
 ## SystemUtilities Security Configuration
 

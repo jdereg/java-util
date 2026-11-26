@@ -111,16 +111,18 @@ import static com.cedarsoftware.util.Converter.convert2boolean;
  *   Found: "value2"
  * }</pre>
  *
- * <p><strong>Security and Performance Configuration:</strong></p>
- * <p>DeepEquals provides configurable security and performance options through system properties.
- * Default safeguards are enabled to prevent excessive resource consumption:</p>
+ * <p><strong>Optional limits (system properties):</strong></p>
+ * <p>DeepEquals compares objects of any size and depth unless a limit is set. Every limit below is off (0) by
+ * default; set one to a positive number and a comparison that passes it throws {@link SecurityException}. The
+ * properties are read once, when DeepEquals is first used, so set them at startup. (From 4.1.0 through 4.118.0
+ * the limits were on with nothing set, at 100,000 / 100,000 / 100,000 / 1,000 / 1,000,000.)</p>
  * <ul>
- *   <li><code>deepequals.secure.errors=false</code> &mdash; Enable error message sanitization (default: false)</li>
- *   <li><code>deepequals.max.collection.size=100000</code> &mdash; Collection size limit (default: 100,000, 0=disabled)</li>
- *   <li><code>deepequals.max.array.size=100000</code> &mdash; Array size limit (default: 100,000, 0=disabled)</li>
- *   <li><code>deepequals.max.map.size=100000</code> &mdash; Map size limit (default: 100,000, 0=disabled)</li>
- *   <li><code>deepequals.max.object.fields=1000</code> &mdash; Object field count limit (default: 1,000, 0=disabled)</li>
- *   <li><code>deepequals.max.recursion.depth=1000000</code> &mdash; Recursion depth limit (default: 1,000,000, 0=disabled)</li>
+ *   <li><code>deepequals.secure.errors</code> &mdash; Redact sensitive values in difference text (default: false)</li>
+ *   <li><code>deepequals.max.collection.size</code> &mdash; Largest collection compared (default: 0 = no limit)</li>
+ *   <li><code>deepequals.max.array.size</code> &mdash; Largest array compared (default: 0 = no limit)</li>
+ *   <li><code>deepequals.max.map.size</code> &mdash; Largest map compared (default: 0 = no limit)</li>
+ *   <li><code>deepequals.max.object.fields</code> &mdash; Most fields an object may have (default: 0 = no limit)</li>
+ *   <li><code>deepequals.max.recursion.depth</code> &mdash; Deepest nesting compared (default: 0 = no limit)</li>
  * </ul>
  *
  * @see #deepEquals(Object, Object)
@@ -206,14 +208,14 @@ public class DeepEquals {
             "authorization", "authentication", "api_key", "apikey", "secretkey"
     );
     
-    // Default security limits
-    private static final int DEFAULT_MAX_COLLECTION_SIZE = 100000;
-    private static final int DEFAULT_MAX_ARRAY_SIZE = 100000;
-    private static final int DEFAULT_MAX_MAP_SIZE = 100000;
-    private static final int DEFAULT_MAX_OBJECT_FIELDS = 1000;
-    private static final int DEFAULT_MAX_RECURSION_DEPTH = 1000000;  // 1M depth for heap-based traversal
+    // Optional limits, each 0 (no limit) unless its system property holds a positive number. What is compared has
+    // already been built and is held by the caller, and the walk is on the heap, not the call stack; a limit that
+    // is on by default only refuses a large comparison that would have worked. (4.1.0 - 4.118.0 applied 100,000 /
+    // 100,000 / 100,000 / 1,000 / 1,000,000 with nothing set: the fallbacks left in force when the initializer
+    // that wrote "0" into the system properties was removed.)
+    private static final int NO_LIMIT = 0;
 
-    // Cached security configuration values (parsed once at class load, reloadable for testing)
+    // Cached configuration values (parsed once at class load, reloadable for testing)
     private static boolean secureErrorsEnabled;
     private static int maxCollectionSize;
     private static int maxArraySize;
@@ -232,11 +234,11 @@ public class DeepEquals {
      */
     static void reloadSecurityProperties() {
         secureErrorsEnabled = Boolean.parseBoolean(System.getProperty("deepequals.secure.errors", "false"));
-        maxCollectionSize = parseIntProperty("deepequals.max.collection.size", DEFAULT_MAX_COLLECTION_SIZE);
-        maxArraySize = parseIntProperty("deepequals.max.array.size", DEFAULT_MAX_ARRAY_SIZE);
-        maxMapSize = parseIntProperty("deepequals.max.map.size", DEFAULT_MAX_MAP_SIZE);
-        maxObjectFields = parseIntProperty("deepequals.max.object.fields", DEFAULT_MAX_OBJECT_FIELDS);
-        maxRecursionDepth = parseIntProperty("deepequals.max.recursion.depth", DEFAULT_MAX_RECURSION_DEPTH);
+        maxCollectionSize = parseIntProperty("deepequals.max.collection.size", NO_LIMIT);
+        maxArraySize = parseIntProperty("deepequals.max.array.size", NO_LIMIT);
+        maxMapSize = parseIntProperty("deepequals.max.map.size", NO_LIMIT);
+        maxObjectFields = parseIntProperty("deepequals.max.object.fields", NO_LIMIT);
+        maxRecursionDepth = parseIntProperty("deepequals.max.recursion.depth", NO_LIMIT);
     }
 
     private static int parseIntProperty(String propertyName, int defaultValue) {

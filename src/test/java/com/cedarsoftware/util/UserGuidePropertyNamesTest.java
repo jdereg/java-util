@@ -21,6 +21,7 @@ import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.function.Executable;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -152,21 +153,25 @@ class UserGuidePropertyNamesTest {
      * For the limits a test can try, the default the reference states is the one applied: with the property not set,
      * one past the stated default is refused, in a message that names that default. (A larger real default would
      * refuse nothing; a smaller one would name itself.) features.md stated "0 (disabled)" for ten of these.
+     * <p>
+     * Where the reference states 0, no limit -- DeepEquals, since 4.119.0 -- a size past the limit that 4.1.0 to
+     * 4.118.0 applied is compared, not refused.
      */
     @Test
     void theDefaultsTheReferenceStatesAreTheOnesApplied() throws IOException {
         Map<String, String> rows = referenceRows();
 
-        // DeepEquals: no switch, and read once -- so read again here, with none of its properties set
+        // DeepEquals: no switch, and read once -- so read again here, with none of its properties set. Its rows
+        // state 0, no limit: what 4.1.0 - 4.118.0 refused with nothing set (over 100,000 elements) is compared.
         String[] deepEquals = {"deepequals.max.collection.size", "deepequals.max.array.size",
                 "deepequals.max.map.size"};
         withPropertiesCleared(deepEquals, DeepEquals::reloadSecurityProperties, () -> {
-            int size = defaultOf(rows, deepEquals[0]);
-            refusedNaming(size, () -> DeepEquals.deepEquals(listOf(size + 1), listOf(size + 1)));
-            int length = defaultOf(rows, deepEquals[1]);
-            refusedNaming(length, () -> DeepEquals.deepEquals(new int[length + 1], new int[length + 1]));
-            int entries = defaultOf(rows, deepEquals[2]);
-            refusedNaming(entries, () -> DeepEquals.deepEquals(mapOf(entries + 1), mapOf(entries + 1)));
+            for (String limit : deepEquals) {
+                assertEquals(0, defaultOf(rows, limit), limit);
+            }
+            assertTrue(DeepEquals.deepEquals(listOf(100001), listOf(100001)), "a list past the old limit");
+            assertTrue(DeepEquals.deepEquals(new int[100001], new int[100001]), "an array past the old limit");
+            assertTrue(DeepEquals.deepEquals(mapOf(100001), mapOf(100001)), "a map past the old limit");
         });
 
         // ClassUtilities: the resource-name limit needs no switch. It is read once too, and a test that ran earlier

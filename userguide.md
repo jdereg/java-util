@@ -4693,11 +4693,15 @@ DeepEquals.deepEquals(map1, map2);
 
 ### Feature Options
 
-DeepEquals reads its options from system properties. **Its size limits are on with nothing set**, at the defaults
-below: comparing two collections, arrays or maps of more than 100,000 elements throws `SecurityException` unless the
-limit is raised or set to `0`. `deepequals.secure.errors` is off by default. The properties are read once, when
-DeepEquals is first used, so set them at startup (`-D...`) rather than in running code. (This guide said, through
-4.118.0, that the limits were off by default. They were, from 3.6.0 to 4.0.0, and have been on since 4.1.0.)
+DeepEquals reads its options from system properties. **With nothing set there is no limit**: it compares objects
+of any size and depth. Each limit below is there for the application that wants one; set to a positive number, a
+comparison that passes it throws `SecurityException`. `deepequals.secure.errors` is off by default. The properties
+are read once, when DeepEquals is first used, so set them at startup (`-D...`) rather than in running code.
+
+> **4.1.0 through 4.118.0 applied limits with nothing set**: 100,000 elements in a collection, an array or a map,
+> 1,000 fields in an object, 1,000,000 levels of nesting. That was not intended (this guide said "off" throughout),
+> and 4.119.0 is off again, as 3.6.0 to 4.0.0 were. To have those limits back, set the five properties to those
+> values.
 
 #### Programmatic Options (via options Map)
 
@@ -4737,47 +4741,47 @@ instead, as before 4.113.0, when that made `new Random(1)` equal `new Random(2)`
 
 **Collection Size Limit:**
 ```bash
-# Set maximum collection size (0 = disabled)
+# Set maximum collection size (0 = no limit)
 -Ddeepequals.max.collection.size=50000
 ```
-- **Default:** `100000`
-- **Description:** Prevents memory exhaustion attacks by limiting collection sizes during comparison. Set to 0 or negative to disable.
+- **Default:** `0` (no limit)
+- **Description:** The largest collection `deepEquals()` compares. Larger, it throws `SecurityException`. 0 or a negative number means no limit.
 
 **Array Size Limit:**
 ```bash
-# Set maximum array size (0 = disabled)
+# Set maximum array size (0 = no limit)
 -Ddeepequals.max.array.size=50000
 ```
-- **Default:** `100000`
-- **Description:** Prevents memory exhaustion attacks by limiting array sizes during comparison. Set to 0 or negative to disable.
+- **Default:** `0` (no limit)
+- **Description:** The largest array `deepEquals()` compares. Larger, it throws `SecurityException`. 0 or a negative number means no limit.
 
 **Map Size Limit:**
 ```bash
-# Set maximum map size (0 = disabled)
+# Set maximum map size (0 = no limit)
 -Ddeepequals.max.map.size=50000
 ```
-- **Default:** `100000`
-- **Description:** Prevents memory exhaustion attacks by limiting map sizes during comparison. Set to 0 or negative to disable.
+- **Default:** `0` (no limit)
+- **Description:** The largest map `deepEquals()` compares. Larger, it throws `SecurityException`. 0 or a negative number means no limit.
 
 **Object Field Count Limit:**
 ```bash
-# Set maximum object field count (0 = disabled)
+# Set maximum object field count (0 = no limit)
 -Ddeepequals.max.object.fields=1000
 ```
-- **Default:** `1000`
-- **Description:** Prevents memory exhaustion attacks by limiting the number of fields in objects during comparison. Set to 0 or negative to disable.
+- **Default:** `0` (no limit)
+- **Description:** The most fields an object may have and still be compared field by field. 0 or a negative number means no limit.
 
 **Recursion Depth Limit:**
 ```bash
-# Set maximum recursion depth (0 = disabled)
+# Set maximum nesting depth (0 = no limit)
 -Ddeepequals.max.recursion.depth=500
 ```
-- **Default:** `1000000`
-- **Description:** Prevents stack overflow attacks by limiting recursion depth during comparison. Set to 0 or negative to disable.
+- **Default:** `0` (no limit)
+- **Description:** The deepest nesting `deepEquals()` follows. It walks the objects with a list on the heap, not the call stack, so depth alone does not overflow the stack; the limit is for the application that wants to refuse deep input. 0 or a negative number means no limit.
 
 #### Usage Examples:
 ```bash
-# Hide values in the difference text, and hold comparisons to tighter limits than the defaults
+# Hide values in the difference text, and refuse to compare anything large
 -Ddeepequals.secure.errors=true \
 -Ddeepequals.max.collection.size=10000 \
 -Ddeepequals.max.array.size=10000 \
@@ -4785,10 +4789,12 @@ instead, as before 4.113.0, when that made `new Random(1)` equal `new Random(2)`
 -Ddeepequals.max.object.fields=200 \
 -Ddeepequals.max.recursion.depth=1000
 
-# Compare collections, arrays and maps of any size
--Ddeepequals.max.collection.size=0 \
--Ddeepequals.max.array.size=0 \
--Ddeepequals.max.map.size=0
+# The limits 4.1.0 through 4.118.0 applied with nothing set
+-Ddeepequals.max.collection.size=100000 \
+-Ddeepequals.max.array.size=100000 \
+-Ddeepequals.max.map.size=100000 \
+-Ddeepequals.max.object.fields=1000 \
+-Ddeepequals.max.recursion.depth=1000000
 ```
 
 ### Implementation Notes
@@ -8679,9 +8685,8 @@ property the code reads is here, and for the size limits it can try, the default
 - **Default** is what applies when the property is not set.
 - **Most limits wait for a master switch.** `<class>.security.enabled` is `false` by default, and a limit under it
   does nothing until the switch is `true`. The line above each table names the switch.
-- **Four things are on with nothing set:** DeepEquals' size limits, IOUtilities' path and protocol checks,
-  RegexUtilities' time limit, and UrlUtilities' 100 MB download limit. ClassUtilities' block list is always on and
-  has no switch.
+- **Three things are on with nothing set:** IOUtilities' path and protocol checks, RegexUtilities' time limit, and
+  UrlUtilities' 100 MB download limit. ClassUtilities' block list is always on and has no switch.
 - **One thing is off until asked for:** Executor runs no command unless `executor.enabled=true`.
 - **`0` usually means "no limit".** Each table says where it does not.
 
@@ -8759,16 +8764,17 @@ first use. [More](#dateutilities-security-configuration)
 
 ### DeepEquals properties
 
-There is no master switch: the limits are on. They are read once, when DeepEquals is first used. `0` means no
-limit. Past a limit, `deepEquals()` throws `SecurityException`. [More](#deepequals)
+There is no master switch, and no limit unless one is set: `0` means no limit. Past a limit that is set,
+`deepEquals()` throws `SecurityException`. The properties are read once, when DeepEquals is first used. (4.1.0
+through 4.118.0 applied 100,000 / 100,000 / 100,000 / 1,000 / 1,000,000 with nothing set.) [More](#deepequals)
 
 | Property | Default | What it does |
 |---|---|---|
-| `deepequals.max.collection.size` | `100000` | Largest collection compared. |
-| `deepequals.max.array.size` | `100000` | Largest array compared. |
-| `deepequals.max.map.size` | `100000` | Largest map compared. |
-| `deepequals.max.object.fields` | `1000` | Most fields in one object. |
-| `deepequals.max.recursion.depth` | `1000000` | Deepest nesting followed. |
+| `deepequals.max.collection.size` | `0` | Largest collection compared. |
+| `deepequals.max.array.size` | `0` | Largest array compared. |
+| `deepequals.max.map.size` | `0` | Largest map compared. |
+| `deepequals.max.object.fields` | `0` | Most fields in one object. |
+| `deepequals.max.recursion.depth` | `0` | Deepest nesting followed. |
 | `deepequals.secure.errors` | `false` | Hides string values and the values of fields named like a secret in the difference text. |
 
 ### EncryptionUtilities properties

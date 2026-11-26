@@ -7715,22 +7715,26 @@ Once configured, JUL output flows through your framework's configuration.
 ## UrlUtilities
 [Source](/src/main/java/com/cedarsoftware/util/UrlUtilities.java)
 
-Utility methods for fetching HTTP/HTTPS content with configurable security controls.
+Utility methods for fetching HTTP/HTTPS content.
+
+> **Deprecated: scheduled for removal in java-util 5.0.** It wraps the old `HttpURLConnection` stack and is no
+> longer used anywhere in the Cedar Software libraries. For new code use `java.net.http.HttpClient` (JDK 11+), and
+> `IOUtilities` for transferring streams.
 
 ### Key Features
 - Fetch content as `byte[]` or `String`
 - Stream directly to an `OutputStream` with `copyContentFromUrl`
 - Configurable default connect and read timeouts
 - Optional insecure SSL mode via `allowAllCerts` parameters
-- Limits on download size and `Content-Length`, and an optional cookie-domain check
+- A list of allowed protocols, limits on download size and `Content-Length`, and an optional cookie-domain check
 
-### Security Configuration
-
-UrlUtilities limits the size of what it downloads and can check cookie domains. One limit is on with nothing set:
-a download of more than 100 MB is refused.
+### Limits and Checks
 
 **System Property Configuration:**
 ```properties
+# The protocols a URL given as text may have. Needs no master switch.
+urlutilities.allowed.protocols=http,https,ftp
+
 # Master switch for the two size properties, as described below
 urlutilities.security.enabled=false
 
@@ -7740,55 +7744,63 @@ urlutilities.max.download.size=104857600
 # Largest Content-Length accepted, in bytes. Not set by default; applied whenever it is set.
 # urlutilities.max.content.length=524288000
 
-# Refuse a cookie whose domain is not the host's. Needs no master switch.
+# Keep a cookie only if its domain is the host's own or a parent of it. Needs no master switch.
 urlutilities.strict.cookie.domain=false
 ```
 
-- **Download size.** With the master switch off, the limit is the one `UrlUtilities.setMaxDownloadSize()` holds:
-  100 MB unless changed. With it on, `urlutilities.max.download.size` replaces that when set.
+- **Protocols.** A URL given as text must be `http`, `https` or `ftp`, or name a classpath resource with `res://`.
+  `urlutilities.allowed.protocols`, a comma-separated list, replaces those three: `https` alone refuses http and
+  ftp (`IllegalArgumentException`: "Unsupported protocol: http"; the `getContentFromUrl` methods that take text log
+  it and return null). A protocol the list names is allowed, `file` included. The property is read on each call. A
+  `java.net.URL` object the caller built is opened as it is: the list judges text.
+- **Download size.** One limit is on with nothing set: a download of more than 100 MB is refused. With the master
+  switch off, the limit is the one `UrlUtilities.setMaxDownloadSize()` holds: 100 MB unless changed. With it on,
+  `urlutilities.max.download.size` replaces that when set.
 - **Content-Length.** `urlutilities.max.content.length` is applied whenever it is set. Not set, there is no limit
   with the master switch off, and 500 MB (`setMaxContentLength()`) with it on.
-- **Protocols.** UrlUtilities reads `http`, `https` and `ftp` URLs, and `res://` for a classpath resource. The list
-  is fixed.
 
-**Two properties are read and not applied.** `urlutilities.allow.internal.hosts` and
-`urlutilities.allowed.protocols` change nothing: with `allow.internal.hosts=false` a URL on `localhost` or a
-private address is still read (a warning is logged), and `allowed.protocols=https` does not stop an `http` URL.
-Do not rely on either. To keep a caller from reaching internal hosts, check the URL before it is given to
-UrlUtilities.
+**This class is no protection against SSRF.** It opens any host, follows redirects, and only logs a warning for a
+host written as `localhost` or a private address. Through 4.118.0 this guide presented two properties as SSRF
+protection, and neither was ever applied:
+
+- `urlutilities.allowed.protocols` was read by a method nothing called. It works, as described above, since 4.119.0.
+- `urlutilities.allow.internal.hosts` was the same, and is retired: the property is no longer read. A check on how a
+  host is written (`localhost`, `10.`) does not decide where a request goes: a public name can resolve to a
+  private address, an address can be written as one number, and a redirect can lead anywhere.
+
+To keep a URL from an untrusted source away from internal hosts, judge it before it reaches UrlUtilities: resolve
+the host, and refuse loopback, link-local and private addresses.
 
 **Usage Example:**
 ```java
-// Enable security with custom limits
+// https only, and tighter size limits
+System.setProperty("urlutilities.allowed.protocols", "https");
 System.setProperty("urlutilities.security.enabled", "true");
 System.setProperty("urlutilities.max.download.size", "50000000"); // 50MB
 System.setProperty("urlutilities.max.content.length", "200000000"); // 200MB
 System.setProperty("urlutilities.strict.cookie.domain", "true");
 
-// These will now enforce security controls
-byte[] data = UrlUtilities.readBytesFromUrl("https://example.com/data");
-String content = UrlUtilities.readStringFromUrl("https://api.example.com/endpoint");
+byte[] data = UrlUtilities.getContentFromUrl("https://example.com/data");
+String content = UrlUtilities.getContentFromUrlAsString("https://api.example.com/endpoint");
 ```
-
-**Security Features:**
-
-- **Resource Exhaustion Protection:** Limits download sizes and content lengths
-- **Cookie Security:** Validates cookie domains to prevent hijacking
-- **Protocols:** Only `http`, `https`, `ftp` and `res://` URLs are read
 
 ### Public API
 
 ```java
 // Basic content fetching
-public static byte[] readBytesFromUrl(String url)
-public static String readStringFromUrl(String url)
+public static byte[] getContentFromUrl(String url)
+public static String getContentFromUrlAsString(String url)
 public static void copyContentFromUrl(String url, OutputStream out)
 
-// With cookie support
-public static byte[] readBytesFromUrl(String url, Map<String, String> cookies, Map<String, String> headers)
-public static String readStringFromUrl(String url, Map<String, String> cookies, Map<String, String> headers)
+// With a cookie store, and optionally without certificate checks (development only)
+public static byte[] getContentFromUrl(String url, Map inCookies, Map outCookies)
+public static byte[] getContentFromUrl(String url, Map inCookies, Map outCookies, boolean allowAllCerts)
+public static String getContentFromUrlAsString(String url, Map inCookies, Map outCookies, boolean trustAllCerts)
 
-// Security configuration
+// The connection itself, to set request headers or to post
+public static URLConnection getConnection(String url, boolean input, boolean output, boolean cache)
+
+// Size limits
 public static void setMaxDownloadSize(long maxSizeBytes)
 public static long getMaxDownloadSize()
 public static void setMaxContentLength(int maxLengthBytes)
@@ -7805,11 +7817,11 @@ public static int getDefaultConnectTimeout()
 
 **Simple Content Fetching:**
 ```java
-// Fetch as byte array
-byte[] data = UrlUtilities.readBytesFromUrl("https://example.com/api/data");
+// Fetch as byte array (null when the fetch fails; the reason is logged)
+byte[] data = UrlUtilities.getContentFromUrl("https://example.com/api/data");
 
 // Fetch as string
-String json = UrlUtilities.readStringFromUrl("https://api.example.com/users");
+String json = UrlUtilities.getContentFromUrlAsString("https://api.example.com/users");
 
 // Stream to output
 try (FileOutputStream fos = new FileOutputStream("download.zip")) {
@@ -7817,17 +7829,17 @@ try (FileOutputStream fos = new FileOutputStream("download.zip")) {
 }
 ```
 
-**With Headers and Cookies:**
+**With Cookies, and With Headers:**
 ```java
-Map<String, String> headers = new HashMap<>();
-headers.put("Authorization", "Bearer " + token);
-headers.put("Accept", "application/json");
+// A cookie store. The cookies a response sets are added to it, and sent with the next request to that host.
+Map cookies = new ConcurrentHashMap();
+String page = UrlUtilities.getContentFromUrlAsString("https://example.com/login", cookies, cookies, false);
+String next = UrlUtilities.getContentFromUrlAsString("https://example.com/account", cookies, cookies, false);
 
-Map<String, String> cookies = new HashMap<>();
-cookies.put("sessionId", "abc123");
-
-String response = UrlUtilities.readStringFromUrl(
-    "https://api.example.com/protected", cookies, headers);
+// A request header: get the connection, set the header, then read
+URLConnection connection = UrlUtilities.getConnection("https://api.example.com/protected", true, false, false);
+connection.setRequestProperty("Authorization", "Bearer " + token);
+byte[] body = IOUtilities.inputStreamToBytes(IOUtilities.getInputStream(connection));
 ```
 
 ### Configuration Management
@@ -7839,9 +7851,9 @@ UrlUtilities.setDefaultConnectTimeout(30000); // 30 seconds
 UrlUtilities.setDefaultReadTimeout(60000);    // 60 seconds
 ```
 
-**Security Limits:**
+**Size Limits:**
 ```java
-// Programmatic configuration (when security is disabled)
+// In code (the download limit applies with the master switch off as well)
 UrlUtilities.setMaxDownloadSize(100 * 1024 * 1024); // 100MB
 UrlUtilities.setMaxContentLength(500 * 1024 * 1024); // 500MB
 
@@ -7853,12 +7865,10 @@ int maxContentLength = UrlUtilities.getMaxContentLength();
 ### Implementation Notes
 
 - **SSL/TLS Support:** Full HTTPS support with optional certificate validation bypass (⚠️ development only)
-- **Cookie Management:** Automatic cookie handling with domain validation
+- **Cookie Management:** Cookie handling through a store the caller passes; domain check with `urlutilities.strict.cookie.domain`
 - **Error Handling:** Comprehensive error response reading and logging
 - **Thread Safety:** All static methods are thread-safe
 - **Resource Management:** Automatic cleanup of connections and streams
-
-This implementation provides robust HTTP/HTTPS client capabilities with emphasis on security, performance, and ease of use.
 
 ---
 
@@ -8901,16 +8911,16 @@ no limit. [More](#traverser)
 
 ### UrlUtilities properties
 
-The last two properties are read and not applied: setting them changes nothing. [More](#urlutilities)
+The master switch governs the two size properties only. This class is no protection against SSRF: it opens any
+host. (`urlutilities.allow.internal.hosts`, which was never applied, is no longer read.) [More](#urlutilities)
 
 | Property | Default | What it does |
 |---|---|---|
+| `urlutilities.allowed.protocols` | `http,https,ftp` | The protocols a URL given as text may have, comma-separated. Needs no master switch. A `res://` classpath URL and a `URL` object the caller built are not judged by it. |
 | `urlutilities.security.enabled` | `false` | Master switch for the two size properties, as each row says. |
 | `urlutilities.max.download.size` | `104857600` | Largest download, in bytes. Read only with the master switch. Without it the limit is the one `setMaxDownloadSize()` holds, 100 MB unless changed. |
 | `urlutilities.max.content.length` | none | Largest `Content-Length` accepted, in bytes. Applied whenever it is set. Not set, with the master switch, the limit is 524288000 (500 MB). |
-| `urlutilities.strict.cookie.domain` | `false` | Refuses a cookie whose domain is not the host's. Needs no master switch. |
-| `urlutilities.allow.internal.hosts` | `true` | **Not applied.** Internal hosts are read whatever it says; a warning is logged. |
-| `urlutilities.allowed.protocols` | `http,https,ftp` | **Not applied.** The protocols are fixed: `http`, `https` and `ftp`. |
+| `urlutilities.strict.cookie.domain` | `false` | Keeps a cookie only if its domain is the host's own or a parent of it. Needs no master switch. |
 
 ### For java-util's own tests
 

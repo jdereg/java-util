@@ -360,15 +360,16 @@ System.setProperty("encryptionutilities.min.iv.size", "12");
 
 ### 🌐 Network Security Controls
 
-**Protocol and Host Validation:**
+**Protocol and Size Limits:**
 ```java
 // Restrict allowed protocols
 System.setProperty("io.allowed.protocols", "https");
 System.setProperty("urlutilities.allowed.protocols", "https");
 
-// Prevent SSRF (Server-Side Request Forgery)
-System.setProperty("urlutilities.allow.internal.hosts", "false");
-System.setProperty("urlutilities.max.download.size", "104857600"); // 100MB limit
+// Limit what a download may bring into memory
+System.setProperty("io.max.stream.size", "104857600");             // 100MB, IOUtilities
+System.setProperty("urlutilities.security.enabled", "true");
+System.setProperty("urlutilities.max.download.size", "52428800");  // 50MB, UrlUtilities
 ```
 
 ### 🔍 Security Audit & Monitoring

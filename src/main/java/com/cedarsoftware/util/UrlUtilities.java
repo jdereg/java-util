@@ -46,39 +46,37 @@ import java.util.regex.Pattern;
  *
  * <p>Example: -Dhttp.proxyHost=proxy.example.org -Dhttp.proxyPort=8080 -Dhttps.proxyHost=proxy.example.org -Dhttps.proxyPort=8080 -Dhttp.nonProxyHosts=*.foo.com|localhost|*.td.afg</p>
  *
- * <h2>Security Configuration</h2>
- * <p>UrlUtilities provides configurable security controls to prevent various attack vectors including
- * SSRF (Server-Side Request Forgery), resource exhaustion, and cookie injection attacks.
- * All security features are <strong>disabled by default</strong> for backward compatibility.</p>
- *
- * <p>Security controls can be enabled via system properties:</p>
+ * <h2>Limits and checks</h2>
+ * <p>What UrlUtilities applies, and the system properties that change it:</p>
  * <ul>
- *   <li><code>urlutilities.security.enabled=false</code> &mdash; Master switch for all security features</li>
- *   <li><code>urlutilities.max.download.size=0</code> &mdash; Max download size in bytes (0=disabled, default=100MB when enabled)</li>
- *   <li><code>urlutilities.max.content.length=0</code> &mdash; Max Content-Length header value (0=disabled, default=500MB when enabled)</li>
- *   <li><code>urlutilities.allow.internal.hosts=true</code> &mdash; Allow access to internal/local hosts (default=true)</li>
- *   <li><code>urlutilities.allowed.protocols=http,https,ftp</code> &mdash; Comma-separated list of allowed protocols</li>
- *   <li><code>urlutilities.strict.cookie.domain=false</code> &mdash; Enable strict cookie domain validation (default=false)</li>
+ *   <li><b>Protocols.</b> A URL given as text must be {@code http}, {@code https} or {@code ftp}, or name a
+ *       classpath resource with {@code res://}. <code>urlutilities.allowed.protocols</code>, a comma-separated
+ *       list, replaces those three: <code>https</code> alone refuses http and ftp. A {@link URL} object the caller
+ *       built is opened as it is.</li>
+ *   <li><b>Download size.</b> A download of more than 100 MB is refused; {@link #setMaxDownloadSize(long)} changes
+ *       the limit. With <code>urlutilities.security.enabled=true</code>,
+ *       <code>urlutilities.max.download.size</code> (bytes) replaces it when set.</li>
+ *   <li><b>Content-Length.</b> <code>urlutilities.max.content.length</code> (bytes) is applied whenever it is set.
+ *       Not set, there is no limit unless <code>urlutilities.security.enabled=true</code>, and then it is 500 MB
+ *       ({@link #setMaxContentLength(int)}).</li>
+ *   <li><b>Cookie domains.</b> <code>urlutilities.strict.cookie.domain=true</code> keeps a cookie only if its
+ *       domain is the host's own or a parent of it.</li>
  * </ul>
  *
- * <h3>Security Features</h3>
- * <ul>
- *   <li><b>SSRF Protection:</b> Validates protocols and optionally blocks internal host access</li>
- *   <li><b>Resource Exhaustion Protection:</b> Limits download sizes and content lengths</li>
- *   <li><b>Cookie Security:</b> Validates cookie domains to prevent hijacking</li>
- *   <li><b>Protocol Restriction:</b> Configurable allowed protocols list</li>
- * </ul>
+ * <p><b>This class is no protection against SSRF</b> (a request made to an internal host for whoever supplied the
+ * URL). It opens any host, follows redirects, and only logs a warning for a host written as {@code localhost} or a
+ * private address. Through 4.118.0 this Javadoc presented <code>urlutilities.allow.internal.hosts</code> and
+ * <code>urlutilities.allowed.protocols</code> as SSRF protection, and neither was ever applied. The first is no
+ * longer read; the second works as described above since 4.119.0. Judge a URL from an untrusted source before it
+ * reaches this class: resolve the host, and refuse loopback, link-local and private addresses.</p>
  *
- * <h3>Usage Example</h3>
  * <pre>{@code
- * // Enable security with custom limits
- * System.setProperty("urlutilities.security.enabled", "true");
- * System.setProperty("urlutilities.max.download.size", "50000000"); // 50MB
- * System.setProperty("urlutilities.allow.internal.hosts", "false");
+ * // https only, and at most 50 MB
  * System.setProperty("urlutilities.allowed.protocols", "https");
+ * System.setProperty("urlutilities.security.enabled", "true");
+ * System.setProperty("urlutilities.max.download.size", "50000000");
  *
- * // These will now enforce security controls
- * byte[] data = UrlUtilities.readBytesFromUrl(url);
+ * byte[] data = UrlUtilities.getContentFromUrl("https://example.com/data");
  * }</pre>
  *
  * @author Ken Partlow
@@ -126,8 +124,7 @@ public final class UrlUtilities {
     private static volatile int defaultReadTimeout = 220000;
     private static volatile int defaultConnectTimeout = 45000;
     
-    // Security configuration - all disabled by default for backward compatibility
-    // These are checked dynamically to allow runtime configuration changes for testing
+    // The master switch for the two size properties. Read on each call, so a change applies to the next one.
     private static boolean isSecurityEnabled() {
         return Boolean.parseBoolean(System.getProperty("urlutilities.security.enabled", "false"));
     }
@@ -160,15 +157,34 @@ public final class UrlUtilities {
         return isSecurityEnabled() ? maxContentLength : Integer.MAX_VALUE;
     }
     
-    private static boolean isInternalHostAllowed() {
-        return Boolean.parseBoolean(System.getProperty("urlutilities.allow.internal.hosts", "true"));
+    /**
+     * Whether a URL given as text may have this protocol: one of the comma-separated names in
+     * {@code urlutilities.allowed.protocols}, or http, https or ftp when the property is not set or names nothing.
+     * Read on each call. (Through 4.118.0 the property was read by a method nothing called.)
+     */
+    private static boolean isAllowedProtocol(String protocol) {
+        if (protocol == null) {
+            return false;
+        }
+        String list = System.getProperty("urlutilities.allowed.protocols");
+        if (list != null) {
+            boolean namesOne = false;
+            for (String allowed : list.split(",")) {
+                allowed = allowed.trim();
+                if (!allowed.isEmpty()) {
+                    if (allowed.equalsIgnoreCase(protocol)) {
+                        return true;
+                    }
+                    namesOne = true;
+                }
+            }
+            if (namesOne) {
+                return false;
+            }
+        }
+        return protocol.equals("http") || protocol.equals("https") || protocol.equals("ftp");
     }
-    
-    private static String[] getAllowedProtocols() {
-        String prop = System.getProperty("urlutilities.allowed.protocols", "http,https,ftp");
-        return prop.split(",");
-    }
-    
+
     private static boolean isStrictCookieDomainEnabled() {
         return Boolean.parseBoolean(System.getProperty("urlutilities.strict.cookie.domain", "false"));
     }
@@ -1043,6 +1059,13 @@ public final class UrlUtilities {
         sc.setHostnameVerifier(NAIVE_VERIFIER);
     }
 
+    /**
+     * The URL a text names. {@code res://path} names a classpath resource (null when there is none). Anything else
+     * must have an allowed protocol: http, https or ftp, or, when {@code urlutilities.allowed.protocols} is set,
+     * one of the names in it.
+     *
+     * @throws IllegalArgumentException for a protocol that is not allowed
+     */
     public static URL getActualUrl(String url) {
         Convention.throwIfNull(url, "URL cannot be null");
         
@@ -1052,15 +1075,15 @@ public final class UrlUtilities {
         } else {
             try {
                 URL parsedUrl = new URL(url);
-                // Basic SSRF protection - validate protocol and host
+                // The protocols a URL given as text may have: urlutilities.allowed.protocols, else http, https, ftp
                 String protocol = parsedUrl.getProtocol();
-                if (protocol == null || (!protocol.equals("http") && !protocol.equals("https") && !protocol.equals("ftp"))) {
+                if (!isAllowedProtocol(protocol)) {
                     throw new IllegalArgumentException("Unsupported protocol: " + protocol);
                 }
                 
                 String host = parsedUrl.getHost();
                 if (host != null && (host.equals("localhost") || host.equals("127.0.0.1") || host.startsWith("192.168.") || host.startsWith("10.") || host.startsWith("172."))) {
-                    // Allow but log potential internal access
+                    // A line in the log, not a check: an internal host is opened like any other
                     LOG.warning("Accessing internal/local host: " + host);
                 }
                 

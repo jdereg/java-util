@@ -21,6 +21,16 @@
 >
 > **The remedy.** Remove the properties. To keep a field out of JSON, use json-io's `@IoIgnore` or `WriteOptionsBuilder.addExcludedFields()`. To refuse a class that is named in data, nothing is needed: `ClassUtilities.forName()` and `newInstance()` have a block list that is always on (`Runtime`, `ProcessBuilder`, `Process`, `Unsafe`, the script engines), and `-Dclassutilities.security.blocked.classes` / `.blocked.packages` add to it.
 
+> **Check your own protection if you set `urlutilities.allow.internal.hosts` or `urlutilities.allowed.protocols`**
+>
+> **What was wrong.** Since 3.6.0 the Javadoc and the user guide presented these two `UrlUtilities` properties as protection against SSRF (a request made to an internal host for whoever supplied the URL). Neither was ever applied: each was read by a method that nothing called. With `allow.internal.hosts=false`, `http://127.0.0.1/` was fetched. With `allowed.protocols=https`, so was an `http` URL.
+>
+> **What changed.** `urlutilities.allowed.protocols` now works: it names the protocols a URL given as text may have. `urlutilities.allow.internal.hosts` is retired and no longer read. `UrlUtilities` opens any host, as it always has.
+>
+> **Are you affected?** Only if you set one of them. If you relied on `allow.internal.hosts=false`, you were not protected, and are not now.
+>
+> **The remedy.** Judge a URL from an untrusted source before it reaches `UrlUtilities`: resolve the host, and refuse loopback, link-local and private addresses. `UrlUtilities` is deprecated, for removal in 5.0; `java.net.http.HttpClient` is the replacement.
+
 **Upgrading from 4.118.0 -- what can change a result.** The entries below have the details.
 
 | Area | 4.118.0 | 4.119.0 |
@@ -74,6 +84,7 @@
 | `MapUtilities.getOrThrow()` on a map other threads change | could return null for an absent key | throws |
 | `CompactMap.builder().reverseOrder().sourceMap(reverseOrderedTreeMap)`, `.sortedOrder().sourceMap(enumMap)` | `IllegalArgumentException` | built |
 | `toString()` of this library's maps nested hundreds of levels deep | `StackOverflowError` (from 194 levels on a 512 KB stack) | the text |
+| `UrlUtilities` with `urlutilities.allowed.protocols` set, on a URL given as text | the property was ignored: `http`, `https` and `ftp` were opened, whatever it said | only the protocols it names are opened |
 | `DeepEquals.deepEquals()`, no `deepequals.max.*` property set, on a collection, array or map of more than 100,000 elements, an object with more than 1,000 fields, or nesting deeper than 1,000,000 | `SecurityException` (since 4.1.0) | compared |
 
 * **BUILD**: Test scope: `json-io` 4.117.0 → **4.118.0**, released alongside java-util 4.118.0.
@@ -247,7 +258,7 @@
   * **What changes.** Nothing, unless one of the six properties was set. Then: no `SecurityException` from `ReflectionUtils` for a listed class or a field name, no warning logged, and json-io writes and reads in full the objects it wrote as `{}`.
   * **Tests.** `ReflectionUtilsSwitchesRemovedTest` (3), in a package outside `com.cedarsoftware.util`: with all six properties set, a class from the old list, classes with `password` / `isPrivate` / `apiKey` / `secretKey` fields, and lists of the caller's own all answer as they do with none set. All three fail on the code before, with `SecurityException`. The 46 tests that pinned the switches are removed: `ReflectionUtilsSecurityTest` in two packages (29 and 13), `ReflectionUtilsPerClassCacheSecurityTest` (2), `ReflectionUtilsTurkishLocaleTest` (1), and one test of `ReflectionUtilsReviewFixesTest`.
   * **Docs.** The user guide's section is rewritten. The README's two passages that showed these properties now show `ClassUtilities`' block list and a `mathutilities.*` example.
-* **DOCS**: **The list of every system property is now in the user guide, and `features.md` is gone.** The user guide ends with a "System Property Reference": one row for each of the 91 properties java-util reads, with its default and what it does. The README links there.
+* **DOCS**: **The list of every system property is now in the user guide, and `features.md` is gone.** The user guide ends with a "System Property Reference": one row for each of the 90 properties java-util reads, with its default and what it does. The README links there.
   * **Why.** `features.md` was written once, at 4.89.0, and never edited. Checked against the 4.118.0 code, 3 of its names were read by nothing, 15 of its defaults were not the ones applied, and 16 properties the code reads were not in it. Every setting was described in three places (the Javadoc, the user guide and that file), and the third was the one nobody kept.
   * **If you took a setting from `features.md`, check it.**
     * **Names.** `converter.modern.time.long.precision`, `converter.duration.long.precision` and `converter.localtime.long.precision` are not read. The properties are `cedarsoftware.converter.*`.
@@ -255,7 +266,7 @@
     * **`dateutilities.regex.timeout.enabled`** is on with the master switch; the file said off.
   * **Two user guide sections said the same wrong things.**
     * **DeepEquals.** The guide said its size limits were off by default. In the code they were on, and had been since 4.1.0. Here the code was the one in error, and it is the code that changes: the next entry.
-    * **UrlUtilities.** The guide presented `urlutilities.allow.internal.hosts` and `urlutilities.allowed.protocols` as SSRF protection. Neither is applied: the two methods that read them are called from nowhere, and have been since they were added in June 2025. With `allow.internal.hosts=false` a `localhost` URL is still read, and with `allowed.protocols=https` so is an `http` URL. The guide now says so. It also gave the two size limits as "0 (disabled)"; a download is held to 100 MB with nothing set.
+    * **UrlUtilities.** The guide presented `urlutilities.allow.internal.hosts` and `urlutilities.allowed.protocols` as SSRF protection. Neither was applied. One now works and the other is retired: the entry after next. The guide also gave the two size limits as "0 (disabled)"; a download is held to 100 MB with nothing set.
   * **EncryptionUtilities.** Its twelve limit properties were in `features.md` and the Javadoc only. They are in the reference, and the class's section points to them.
   * **Tests.** `UserGuidePropertyNamesTest` (3 → 5). `everyPropertyJavaUtilReadsIsInTheGuidesReference`: every property a main source reads has a row. `theDefaultsTheReferenceStatesAreTheOnesApplied`: for eleven limits (DeepEquals 3, ByteUtilities 2, MathUtilities 3, DateUtilities 2, ClassUtilities 1), one past the stated default is refused, in a message that names that default. Both fail on the documents before. Against the new guide with one thing broken at a time, all nine were caught: a row removed (three, each read a different way), a name without its prefix, and a default made 0, too small or too large (five).
 * **BUG FIX (regression since 4.1.0)**: **`DeepEquals` compares objects of any size and depth unless a limit is set.**
@@ -265,6 +276,13 @@
   * **To keep the limits.** Set the properties: `-Ddeepequals.max.collection.size=100000`, `-Ddeepequals.max.array.size=100000`, `-Ddeepequals.max.map.size=100000`, `-Ddeepequals.max.object.fields=1000`, `-Ddeepequals.max.recursion.depth=1000000`. A property that is set applies exactly as before, and they are still read once, when DeepEquals is first used.
   * **Tests.** `DeepEqualsLimitsOffByDefaultTest` (7). Six fail on the code before, between them with the `SecurityException` of each of the five limits; the seventh pins that each limit, set, still refuses. `UserGuidePropertyNamesTest` holds the reference's `0` to the code: a list, an array and a map of 100,001 elements are compared.
   * **Docs.** The user guide's DeepEquals section and reference rows, and the class Javadoc, which had listed the limits as "default safeguards".
+* **SECURITY**: **`urlutilities.allowed.protocols` is applied, and `urlutilities.allow.internal.hosts` is retired.** The note at the top of this section says what to check; this is the detail.
+  * **What was wrong.** Both properties arrived in 3.6.0 (June 2025) with a Javadoc line, "SSRF Protection: validates protocols and optionally blocks internal host access". Each was read by a private method, `getAllowedProtocols()` and `isInternalHostAllowed()`, that nothing called, in every release through 4.118.0. The protocols were a fixed list in `getActualUrl()`, and a host written as `localhost` or a private address got a line in the log.
+  * **`urlutilities.allowed.protocols` now works.** A comma-separated list of the protocols a URL given as text may have, in place of `http`, `https` and `ftp`. Spaces and case are ignored, and a list that names nothing leaves the three. It is read on each call and needs no master switch. A refused URL is an `IllegalArgumentException` ("Unsupported protocol: http") from `getActualUrl()`, `getConnection(String, ...)` and `copyContentFromUrl(String, ...)`; the `getContentFromUrl` methods that take text log it and return null, as they do for any failure. Nothing is requested. A `res://` classpath URL and a `java.net.URL` object the caller built are not judged by the list, as they were not judged by the fixed one.
+  * **`urlutilities.allow.internal.hosts` is retired**, not made to work. A check on how a host is written does not decide where the request goes: a public name can resolve to a private address, `2130706433` is `127.0.0.1`, IPv6 has its own loopback and private ranges, and a redirect, which this class follows, can lead anywhere. Doing it properly means resolving the name and holding the connection to that address, which is work for the HTTP client that replaces this deprecated class, not for a property on it.
+  * **What changes.** Nothing, unless `urlutilities.allowed.protocols` is set. Then a text URL whose protocol the list does not name is refused where it was opened, and one it names beyond the three (`file`, say) is opened where it was refused.
+  * **Tests.** `UrlUtilitiesAllowedProtocolsTest` (9). Five fail on the code before. One of them runs a local HTTP server: with the list set to `https`, four ways of asking for its `http` URL are refused and the server sees no request. The other four pin what does not change: nothing set, a list that names nothing, `res://`, and the retired property.
+  * **Docs.** The class Javadoc and the user guide's section now say what the class does, and that it is no SSRF protection. The guide's examples named `readBytesFromUrl()` and `readStringFromUrl()`, which do not exist; they show `getContentFromUrl()` and `getContentFromUrlAsString()`. The README's example no longer sets the retired property. The reference has 90 rows.
 
 #### 4.118.0 - 2026-10-26
 **Upgrading from 4.117.0 -- what can change a result.** Each row is pinned by `UpgradeTo4118NotesTest`; every

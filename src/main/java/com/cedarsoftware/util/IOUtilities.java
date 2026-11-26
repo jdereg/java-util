@@ -163,24 +163,13 @@ public final class IOUtilities {
     private IOUtilities() { }
 
     /**
-     * Safely retrieves and validates timeout values from system properties.
-     * Prevents system property injection attacks by enforcing strict bounds and validation.
-     * 
-     * @param propertyName the system property name to read
-     * @param defaultValue the default value to use if property is invalid or missing
-     * @param propertyType description of the property for logging (e.g., "connect timeout")
-     * @return validated timeout value within safe bounds
+     * A timeout from the text of a system property, held to safe bounds: the default for text that is missing, blank
+     * or not a whole number, and otherwise no less than {@code MIN_TIMEOUT} and no more than {@code MAX_TIMEOUT}.
+     *
+     * @param propertyValue the property's text, or null when it is not set
+     * @param defaultValue the value for missing or unreadable text
+     * @param propertyType what the property is, for the debug log (e.g., "connect timeout")
      */
-    private static int getValidatedTimeout(String propertyName, int defaultValue, String propertyType) {
-        try {
-            String propertyValue = System.getProperty(propertyName);
-            return parseValidatedTimeoutValue(propertyValue, defaultValue, propertyType);
-        } catch (SecurityException e) {
-            debug("Security restriction accessing " + propertyType + " property, using defaults", null);
-            return defaultValue;
-        }
-    }
-
     private static int parseValidatedTimeoutValue(String propertyValue, int defaultValue, String propertyType) {
         if (propertyValue == null || propertyValue.trim().isEmpty()) {
             return defaultValue;
@@ -214,24 +203,13 @@ public final class IOUtilities {
     }
 
     /**
-     * Safely retrieves and validates size limit values from system properties.
-     * Prevents system property injection attacks by enforcing strict bounds and validation.
-     * 
-     * @param propertyName the system property name to read
-     * @param defaultValue the default value to use if property is invalid or missing
-     * @param propertyType description of the property for logging (e.g., "max stream size")
-     * @return validated size value within safe bounds
+     * A size limit from the text of a system property: the default for text that is missing, blank, not a whole
+     * number or not positive, and otherwise no more than the largest array a JVM allocates.
+     *
+     * @param propertyValue the property's text, or null when it is not set
+     * @param defaultValue the value for missing or unreadable text
+     * @param propertyType what the property is, for the debug log (e.g., "max stream size")
      */
-    private static int getValidatedSizeProperty(String propertyName, int defaultValue, String propertyType) {
-        try {
-            String propertyValue = System.getProperty(propertyName);
-            return parseValidatedSizeValue(propertyValue, defaultValue, propertyType);
-        } catch (SecurityException e) {
-            debug("Security restriction accessing " + propertyType + " property, using defaults", null);
-            return defaultValue;
-        }
-    }
-
     private static int parseValidatedSizeValue(String propertyValue, int defaultValue, String propertyType) {
         if (propertyValue == null || propertyValue.trim().isEmpty()) {
             return defaultValue;

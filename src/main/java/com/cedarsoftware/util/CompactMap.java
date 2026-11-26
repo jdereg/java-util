@@ -328,9 +328,10 @@ public class CompactMap<K, V> implements Map<K, V> {
     }
 
     /**
-     * Per-class cache for the isLegacyConstructed() result. This is the only configuration
-     * method that does real work (string operations on class name). The other config methods
-     * (isCaseInsensitive, compactSize, getOrdering) simply return constants and are already fast.
+     * Per class: whether it is a legacy subclass, one written by a user of CompactMap, or a class the builder
+     * generated (those are named "com.cedarsoftware.util.CompactMap$..."). This is the only configuration question
+     * that does real work (string operations on the class name); the others (isCaseInsensitive, compactSize,
+     * getOrdering) return constants and are already fast.
      * Kept in the class itself (a ClassValue of JDK types, which pins no class loader); these three were
      * ClassValueMaps.
      */
@@ -813,27 +814,6 @@ public class CompactMap<K, V> implements Map<K, V> {
                 && !(value instanceof Map || value instanceof Object[] || value instanceof CompactMap.CompactMapEntry);
     }
 
-    /**
-     * Determines if this CompactMap instance was created using legacy construction (direct subclassing)
-     * rather than the template-based generation system.
-     * <p>
-     * Legacy construction refers to instances where CompactMap is directly subclassed by user code,
-     * rather than using the builder pattern or template generation system. This method helps
-     * differentiate between these two creation patterns to maintain backward compatibility.
-     * </p>
-     * <p>
-     * The method works by checking if the class name starts with the template prefix
-     * "com.cedarsoftware.util.CompactMap$". Template-generated classes will always have this
-     * prefix, while legacy subclasses will not.
-     * </p>
-     *
-     * @return {@code true} if this instance was created through legacy subclassing,
-     *         {@code false} if it was created through the template generation system
-     */
-    private boolean isLegacyConstructed() {
-        return !getClass().getName().startsWith("com.cedarsoftware.util.CompactMap$");
-    }
-    
     /**
      * Returns {@code true} if this map contains a mapping for the specified key.
      *

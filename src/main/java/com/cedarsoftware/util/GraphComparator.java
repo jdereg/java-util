@@ -710,11 +710,6 @@ public class GraphComparator
                 Character.class == c;
     }
 
-    private static boolean isIdObject(Object o, ID idFetcher)
-    {
-        return resolveId(o, idFetcher, null) != NO_ID;
-    }
-
     private static Object resolveId(Object o, ID idFetcher, Map<Object, Object> idCache)
     {
         if (o == null || idFetcher == null)

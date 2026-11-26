@@ -21,8 +21,8 @@ import static org.junit.jupiter.api.Assertions.fail;
  */
 public class IOUtilitiesSystemPropertyInjectionTest {
     
-    private Method getValidatedTimeoutMethod;
-    private Method getValidatedSizePropertyMethod;
+    private ValidatedProperty getValidatedTimeoutMethod;
+    private ValidatedProperty getValidatedSizePropertyMethod;
     private String originalConnectTimeout;
     private String originalReadTimeout;
     private String originalMaxStreamSize;
@@ -30,12 +30,11 @@ public class IOUtilitiesSystemPropertyInjectionTest {
     
     @BeforeEach
     public void setUp() throws Exception {
-        // Access the private validation methods via reflection for testing
-        getValidatedTimeoutMethod = IOUtilities.class.getDeclaredMethod("getValidatedTimeout", String.class, int.class, String.class);
-        getValidatedTimeoutMethod.setAccessible(true);
-        
-        getValidatedSizePropertyMethod = IOUtilities.class.getDeclaredMethod("getValidatedSizeProperty", String.class, int.class, String.class);
-        getValidatedSizePropertyMethod.setAccessible(true);
+        // The private methods that judge a property's text. IOUtilities hands them the text of io.connect.timeout,
+        // io.read.timeout, io.max.stream.size and io.max.decompression.size (getCachedConnectTimeout() and its three
+        // siblings); so does this test. Until 4.119.0 it called two wrappers that nothing else did.
+        getValidatedTimeoutMethod = new ValidatedProperty("parseValidatedTimeoutValue");
+        getValidatedSizePropertyMethod = new ValidatedProperty("parseValidatedSizeValue");
         
         // Store original system property values
         originalConnectTimeout = System.getProperty("io.connect.timeout");
@@ -58,6 +57,20 @@ public class IOUtilitiesSystemPropertyInjectionTest {
             System.clearProperty(key);
         } else {
             System.setProperty(key, value);
+        }
+    }
+
+    /** Reads the named system property and has one of IOUtilities' two parsers judge its text. */
+    private static final class ValidatedProperty {
+        private final Method parser;
+
+        ValidatedProperty(String parserName) throws Exception {
+            parser = IOUtilities.class.getDeclaredMethod(parserName, String.class, int.class, String.class);
+            parser.setAccessible(true);
+        }
+
+        Object invoke(Object target, String propertyName, int defaultValue, String propertyType) throws Exception {
+            return parser.invoke(target, System.getProperty(propertyName), defaultValue, propertyType);
         }
     }
     

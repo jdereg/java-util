@@ -58,8 +58,8 @@ etc.) see real parameter names.
   - [Cryptographic Security](#-cryptographic-security)
   - [Network Security Controls](#-network-security-controls)
   - [Security Audit & Monitoring](#-security-audit--monitoring)
-  - [Zero-Downtime Security Hardening](#-zero-downtime-security-hardening)
-  - [Security Compliance](#-security-compliance)
+  - [Hardening Without Code Changes](#-hardening-without-code-changes)
+  - [What the Controls Address](#-what-the-controls-address)
 - [Core Components](#core-components)
 - [Integration and Module Support](#integration-and-module-support)
   - [JPMS](#jpms-java-platform-module-system)
@@ -308,7 +308,7 @@ From reflection helpers to graph traversal, concurrent collections to date utili
 
 **🔄 Universal Conversion**: Convert between any meaningful Java types - primitives, collections, dates, enums, custom objects. Other libraries require multiple dependencies to achieve the same coverage.
 
-**⚙️ Production Flexibility**: 90 runtime configuration options allow zero-downtime security hardening and environment-specific tuning that enterprise applications demand.
+**⚙️ Production Flexibility**: 90 runtime configuration options, each a system property, allow security hardening and environment-specific tuning without code changes.
 
 ## 🔒 Enterprise Security Features
 
@@ -381,21 +381,21 @@ System.setProperty("urlutilities.max.download.size", "52428800");  // 50MB, UrlU
 
 ### 🔍 Security Audit & Monitoring
 
-**Comprehensive Logging:**
+**Debug Logging of What `IOUtilities` Opens and Refuses:**
 ```java
-// Enable detailed security logging
+// Set at startup: io.debug is read once, when IOUtilities loads
 System.setProperty("io.debug", "true");
 System.setProperty("io.debug.detailed.urls", "true");
 System.setProperty("io.debug.detailed.paths", "true");
 ```
 
-### 🏢 Zero-Downtime Security Hardening
+### 🏢 Hardening Without Code Changes
 
-**Production-Safe Configuration:**
+**Every Control Is a System Property:**
 - **Feature flags**: Enable/disable security features without code changes
 - **Gradual rollout**: Test security features in staging before production
 - **Environment-specific**: Different limits for dev/staging/production
-- **Compliance ready**: Meet OWASP, SOC 2, ISO 27001 requirements
+- **When a change takes effect**: Most settings are read each time they are used, so a change applies at once in a running JVM. Some are read once and kept, those of `ClassUtilities` and `DeepEquals` and the `DateUtilities` switches among them: set those at startup
 
 **Example: Progressive Security Enablement**
 ```bash
@@ -414,14 +414,19 @@ System.setProperty("io.debug.detailed.paths", "true");
 -Dmathutilities.max.permutation.size=10
 ```
 
-### 📋 Security Compliance
+### 📋 What the Controls Address
 
-| Security Standard | java-util Coverage |
-|-------------------|-------------------|
-| **OWASP Top 10** | ✅ Injection prevention, DoS protection, Logging |
-| **CWE Mitigation** | ✅ CWE-22 (Path traversal), CWE-502 (Unsafe deserialization) |
-| **NIST Guidelines** | ✅ Input validation, Crypto parameter enforcement |
-| **SOC 2 Type II** | ✅ Audit logging, Access controls, Data protection |
+java-util is a library. Standards such as SOC 2 and ISO 27001 are met by an organization and the application it runs, and no dependency makes an application compliant. What a library can do is close specific weaknesses. These are the ones java-util's controls address, each with its [CWE](https://cwe.mitre.org/) number, the name a security review knows it by:
+
+| Weakness | What java-util does | With nothing set |
+|----------|---------------------|------------------|
+| **Deserialization of untrusted data** (CWE-502) | `ClassUtilities.forName()` and `newInstance()` refuse the classes that turn a class name in data into an attack: `Runtime`, `ProcessBuilder`, class loaders, script engines, JNDI and more. json-io relies on it | On |
+| **Path traversal** (CWE-22) | `IOUtilities` refuses a `..` path element, the credential directories (`.ssh`, `.aws`, `.gnupg`, `.docker`) and system paths such as `/proc`, `/sys`, `/dev` and `/etc/passwd`. `ClassUtilities` refuses traversal in a resource name | On |
+| **Regular expression denial of service** (CWE-1333) | `RegexUtilities` puts a time limit on every match it runs. `StringUtilities.wildcardToRegexString()` writes a regex that matches in time proportional to the text | On |
+| **Resource exhaustion** (CWE-400, CWE-770) | `IOUtilities` limits what it reads or inflates into memory. `ArrayUtilities`, `ByteUtilities`, `DateUtilities`, `DeepEquals`, `MathUtilities`, `StringUtilities` and `Traverser` each have size limits | `IOUtilities`: on, at half the heap. The others: off until switched on |
+| **Encryption that cannot detect tampering** (CWE-353) | `EncryptionUtilities.encrypt()` writes AES-GCM, and `decrypt()` reads nothing else unless asked | On |
+
+**Not addressed: server-side request forgery (CWE-918).** `IOUtilities` and `UrlUtilities` check a URL's protocol, not where its host leads. Judge a URL from an untrusted source before handing it over.
 
 > **Defaults**: Most limits are off until their class's master switch is set, and can be switched on system-wide with zero code changes. On with nothing set: `ClassUtilities`' block list of dangerous classes, `IOUtilities`' path and protocol checks, `RegexUtilities`' time limit, and `UrlUtilities`' 100 MB download limit. Off until asked for: `Executor` runs no command, and `EncryptionUtilities` reads no legacy ciphertext. [Every setting and its default →](userguide.md#system-property-reference)
 
@@ -653,10 +658,10 @@ Key integrations include:
 
 java-util provides **90 runtime configuration options** via system properties, enabling:
 
-- **Zero-downtime security hardening** - Enable security features without code changes
+- **Hardening without code changes** - Switch limits and protections on with a system property
 - **Environment-specific tuning** - Different limits for development vs. production
 - **Gradual rollout strategies** - Test new security features with feature flags
-- **Compliance flexibility** - Meet varying regulatory requirements across deployments
+- **Per-deployment policy** - Each deployment sets the limits its own rules call for
 
 Most limits are **off until their class's master switch is set**; a few protections are on with nothing set. The reference lists every setting with its default.
 

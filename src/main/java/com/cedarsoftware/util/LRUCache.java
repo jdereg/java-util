@@ -94,21 +94,6 @@ public class LRUCache<K, V> implements Map<K, V> {
     }
 
     /**
-     * Create a "thread-based" LRUCache with the passed in capacity.
-     * @param capacity int maximum number of entries in the cache.
-     * @param cleanupDelayMillis ignored (cleanup is now handled automatically)
-     * @see com.cedarsoftware.util.cache.ThreadedLRUCacheStrategy
-     * @deprecated Use {@link #LRUCache(int)} instead. The cleanupDelayMillis parameter is no longer used.
-     */
-    @Deprecated
-    public LRUCache(int capacity, int cleanupDelayMillis) {
-        if (capacity < 1) {
-            throw new IllegalArgumentException("Capacity must be at least 1.");
-        }
-        strategy = new ThreadedLRUCacheStrategy<>(capacity);
-    }
-
-    /**
      * @return the maximum number of entries in the cache.
      */
     public int getCapacity() {

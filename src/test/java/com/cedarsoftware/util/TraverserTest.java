@@ -5,6 +5,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -103,29 +104,27 @@ public class TraverserTest
         visited[2] = 0;
         visited[3] = 0;
 
-        Traverser.Visitor visitor = new Traverser.Visitor()
+        Consumer<Traverser.NodeVisit> visitor = visit ->
         {
-            public void process(Object o)
+            Object o = visit.getNode();
+            if (o instanceof Alpha)
             {
-                if (o instanceof Alpha)
-                {
-                    visited[0]++;
-                }
-                else if (o instanceof Beta)
-                {
-                    visited[1]++;
-                }
-                else if (o instanceof Charlie)
-                {
-                    visited[2]++;
-                }
-                else if (o instanceof TimeZone)
-                {
-                    visited[3]++;
-                }
+                visited[0]++;
+            }
+            else if (o instanceof Beta)
+            {
+                visited[1]++;
+            }
+            else if (o instanceof Charlie)
+            {
+                visited[2]++;
+            }
+            else if (o instanceof TimeZone)
+            {
+                visited[3]++;
             }
         };
-        Traverser.traverse(alpha, visitor);
+        Traverser.traverse(alpha, visitor, null);
         assertEquals(1, visited[0]);
         assertEquals(1, visited[1]);
         assertEquals(1, visited[2]);
@@ -135,7 +134,7 @@ public class TraverserTest
         visited[1] = 0;
         visited[2] = 0;
         visited[3] = 0;
-        Traverser.traverse(alpha, new Class[] { TimeZone.class }, visitor);
+        Traverser.traverse(alpha, visitor, new HashSet<>(Collections.singletonList(TimeZone.class)));
         assertEquals(1, visited[0]);
         assertEquals(1, visited[1]);
         assertEquals(1, visited[2]);

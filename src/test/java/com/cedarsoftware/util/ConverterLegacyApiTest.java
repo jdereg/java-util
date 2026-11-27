@@ -3,9 +3,6 @@ package com.cedarsoftware.util;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.sql.Timestamp;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.Calendar;
 import java.util.Date;
@@ -275,16 +272,5 @@ class ConverterLegacyApiTest {
 
         assertTrue(Converter.isConversionSupportedFor(UUID.class, UUID.class));
         assertFalse(Converter.isConversionSupportedFor(Map.class, Map.class));
-    }
-
-    @Test
-    void localDateMillisConversions() {
-        LocalDate date = LocalDate.of(2020, 1, 1);
-        long expectedDateMillis = date.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli();
-        assertThat(Converter.localDateToMillis(date)).isEqualTo(expectedDateMillis);
-
-        LocalDateTime ldt = LocalDateTime.of(2020, 1, 1, 12, 0);
-        long expectedLdtMillis = ldt.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
-        assertThat(Converter.localDateTimeToMillis(ldt)).isEqualTo(expectedLdtMillis);
     }
 }

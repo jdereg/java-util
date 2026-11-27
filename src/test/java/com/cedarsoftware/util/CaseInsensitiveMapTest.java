@@ -2559,21 +2559,6 @@ class CaseInsensitiveMapTest
     }
 
     @Test
-    public void testDeprecatedCacheMethodsAreNoOps() {
-        // These deprecated methods should not throw — they are no-ops for backwards compatibility
-        CaseInsensitiveMap.replaceCache(new ConcurrentHashMap<>(), 100);
-        CaseInsensitiveMap.replaceCache(new ConcurrentHashMap<>());
-        CaseInsensitiveMap.resetCacheToDefault();
-        CaseInsensitiveMap.setMaxCacheLengthString(10);
-
-        // Maps still work correctly after calling deprecated methods
-        CaseInsensitiveMap<String, String> map = new CaseInsensitiveMap<>();
-        map.put("test1", "value1");
-        assertTrue(map.containsKey("TEST1"));
-        assertEquals("value1", map.get("TEST1"));
-    }
-
-    @Test
     public void testCachingBehavior() {
         CaseInsensitiveMap<String, String> map = new CaseInsensitiveMap<>();
 
@@ -2622,13 +2607,6 @@ class CaseInsensitiveMapTest
         assertFalse(entry.equals(notAnEntry), "Entry should not be equal to non-Entry object");
     }
     
-    @Test
-    public void testSetMaxCacheLengthStringIsDeprecatedNoOp() {
-        // Deprecated no-op — should not throw
-        CaseInsensitiveMap.setMaxCacheLengthString(9);
-        CaseInsensitiveMap.setMaxCacheLengthString(100);
-    }
-
     @Test
     public void testCaseInsensitiveStringSubSequence() {
         CaseInsensitiveMap.CaseInsensitiveString cis = new CaseInsensitiveMap.CaseInsensitiveString("Hello");

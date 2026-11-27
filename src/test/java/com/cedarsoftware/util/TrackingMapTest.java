@@ -459,38 +459,6 @@ public class TrackingMapTest
     }
 
     @Test
-    public void testSetWrappedMapDelegatesToReplaceContents()
-    {
-        Map<String, String> base = new HashMap<>();
-        base.put("x", "xray");
-        TrackingMap<String, String> tracking = new TrackingMap<>(base);
-
-        Map<String, String> newContents = new HashMap<>();
-        newContents.put("y", "yankee");
-        Map<String, String> before = tracking.getWrappedMap();
-
-        tracking.setWrappedMap(newContents);
-
-        assertSame(before, tracking.getWrappedMap());
-        assertEquals(1, tracking.size());
-        assertTrue(tracking.getWrappedMap().containsKey("y"));
-        assertTrue(tracking.keysUsed().isEmpty());
-    }
-
-    @Test
-    public void testSetWrappedMapNullThrows()
-    {
-        TrackingMap<String, String> tracking = new TrackingMap<>(new HashMap<>());
-        try
-        {
-            tracking.setWrappedMap(null);
-            fail();
-        }
-        catch (IllegalArgumentException ignored)
-        { }
-    }
-
-    @Test
     public void testNullKeyHandling()
     {
         TrackingMap<String, String> tracking = new TrackingMap<>(new HashMap<>());

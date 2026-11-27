@@ -1,10 +1,8 @@
 package com.cedarsoftware.util;
 
 import javax.crypto.Cipher;
-import javax.crypto.spec.SecretKeySpec;
 import java.io.File;
 import java.nio.charset.StandardCharsets;
-import java.security.Key;
 import java.security.MessageDigest;
 
 import org.junit.jupiter.api.Test;
@@ -32,36 +30,9 @@ public class EncryptionUtilitiesLowLevelTest {
     }
 
     @Test
-    public void testCreateCipherBytes() {
-        byte[] bytes = EncryptionUtilities.createCipherBytes("password", 128);
-        assertArrayEquals("5F4DCC3B5AA765D6".getBytes(StandardCharsets.UTF_8), bytes);
-    }
-
-    @Test
-    public void testCreateAesEncryptionDecryptionCipher() throws Exception {
-        String key = "secret";
-        Cipher enc = EncryptionUtilities.createAesEncryptionCipher(key);
-        Cipher dec = EncryptionUtilities.createAesDecryptionCipher(key);
-        byte[] plain = "hello world".getBytes(StandardCharsets.UTF_8);
-        byte[] cipherText = enc.doFinal(plain);
-        assertArrayEquals(plain, dec.doFinal(cipherText));
-    }
-
-    @Test
-    public void testCreateAesCipherWithKey() throws Exception {
-        byte[] b = EncryptionUtilities.createCipherBytes("password", 128);
-        Key key = new SecretKeySpec(b, "AES");
-        Cipher enc = EncryptionUtilities.createAesCipher(key, Cipher.ENCRYPT_MODE);
-        Cipher dec = EncryptionUtilities.createAesCipher(key, Cipher.DECRYPT_MODE);
-        byte[] value = "binary".getBytes(StandardCharsets.UTF_8);
-        byte[] encrypted = enc.doFinal(value);
-        assertArrayEquals(value, dec.doFinal(encrypted));
-    }
-
-    @Test
     public void testLegacyCiphertextWithVersionByteCollisionDecrypts() throws Exception {
         String key = "GavynRocks";
-        Cipher enc = EncryptionUtilities.createAesEncryptionCipher(key);
+        Cipher enc = LegacyAesFormat.cipher(key, Cipher.ENCRYPT_MODE);
 
         byte[] plain = null;
         byte[] cipherText = null;
@@ -81,17 +52,17 @@ public class EncryptionUtilitiesLowLevelTest {
         assertNotNull(cipherText, "Unable to generate legacy collision ciphertext");
         String hex = ByteUtilities.encode(cipherText);
 
-        // 4.119.0: the old format is read only when the application asks for it. This ciphertext looks like an
-        // AES-GCM payload (its first byte is the version byte), so without the switch it fails its tag check.
+        // This ciphertext looks like an AES-GCM payload (its first byte is the version byte): it fails the tag check
+        // and is read by the second try, the old format. Turned off (=false), it just fails.
         String switchName = "encryptionutilities.legacy.decrypt.enabled";
         String before = System.getProperty(switchName);
         try {
             System.clearProperty(switchName);
-            assertThrows(IllegalStateException.class, () -> EncryptionUtilities.decrypt(key, hex));
-
-            System.setProperty(switchName, "true");
             assertEquals(new String(plain, StandardCharsets.UTF_8), EncryptionUtilities.decrypt(key, hex));
             assertArrayEquals(plain, EncryptionUtilities.decryptBytes(key, hex));
+
+            System.setProperty(switchName, "false");
+            assertThrows(IllegalStateException.class, () -> EncryptionUtilities.decrypt(key, hex));
         } finally {
             if (before == null) {
                 System.clearProperty(switchName);

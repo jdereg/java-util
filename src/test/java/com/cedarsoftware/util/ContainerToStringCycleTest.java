@@ -83,7 +83,7 @@ class ContainerToStringCycleTest {
                 map("LRUCache(LOCKING)", () -> new LRUCache<>(100, LRUCache.StrategyType.LOCKING)),
                 map("LRUCache(THREADED)", () -> new LRUCache<>(100, LRUCache.StrategyType.THREADED)),
                 map("LockingLRUCacheStrategy", () -> new LockingLRUCacheStrategy<>(100)),
-                map("ThreadedLRUCacheStrategy", () -> new ThreadedLRUCacheStrategy<>(100, 60_000)),
+                map("ThreadedLRUCacheStrategy", () -> new ThreadedLRUCacheStrategy<>(100)),
                 map("TTLCache", () -> new TTLCache<>(60_000)));
     }
 

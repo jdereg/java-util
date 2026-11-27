@@ -3305,19 +3305,6 @@ public class ClassUtilities {
         return true;
     }
 
-    /**
-     * @deprecated Use {@link #newInstance(Converter, Class, Object)} instead.
-     * @param converter Converter instance
-     * @param c Class to instantiate
-     * @param argumentValues Collection of constructor arguments
-     * @return A new instance of the specified class
-     * @see #newInstance(Converter, Class, Object)
-     */
-    @Deprecated
-    public static Object newInstance(Converter converter, Class<?> c, Collection<?> argumentValues) {
-        return newInstance(converter, c, (Object) argumentValues);
-    }
-
     private static Object newInstance(Converter converter, Class<?> c, Collection<?> argumentValues,
                                       Set<Class<?>> visitedClasses) {
         Convention.throwIfNull(c, "Class cannot be null");
@@ -4717,7 +4704,28 @@ public class ClassUtilities {
                 "java.util.logging.LogManager",
 
                 // --- Constructors that start a thread: one payload can start thousands ---
-                "java.util.Timer"
+                "java.util.Timer",
+
+                // --- Public constructors that a JSON object's values reach. A JDK constructor's parameters carry
+                // no names, so newInstance() falls back to matching the values to a constructor by type: an
+                // object holding one string runs a class's (String) constructor.
+                //   GUI components: JEditorPane(String url) calls setPage(url), which fetches the URL (http,
+                //   https, file, jar) -- the gadget jackson-databind blocked as CVE-2020-10969. The two root
+                //   names cover every AWT and Swing component and menu, and any subclass of one. SplashScreen
+                //   has no public constructor; blocked as GUI. javax.swing.* is blocked as a package below. The
+                //   AWT value types (Point, Color, Rectangle, Dimension, Insets, Font, java.awt.geom.*) are not
+                //   components and are not blocked.
+                "java.awt.Component",
+                "java.awt.MenuComponent",
+                "java.awt.SplashScreen",
+                //   DescriptorSupport(String) parses its text, and a field value written "(class.name/arg)" is
+                //   built as new class.name(arg) by reflection: any class with a (String) constructor, past this
+                //   block list -- JEditorPane, FileOutputStream, a Spring ApplicationContext.
+                "javax.management.modelmbean.DescriptorSupport",
+                //   DataFlavor(String mimeType) loads AND initializes the class its "class=" parameter names.
+                "java.awt.datatransfer.DataFlavor",
+                //   KerberosPrincipal(String, int) with a host-based name looks the host up in DNS, both ways.
+                "javax.security.auth.kerberos.KerberosPrincipal"
         ));
 
         // Blocked package prefixes. Applied to the class being checked AND to every supertype, on both
@@ -4737,7 +4745,12 @@ public class ClassUtilities {
                 "jdk.jshell.",               // JShell: executes code, launches a debuggee JVM
                 "jdk.jfr.",                  // Flight Recorder: a Recording creates its repository on disk
                 "jdk.management.jfr.",
-                "java.util.prefs."           // writes the preferences store; starts timers, shutdown hooks
+                "java.util.prefs.",          // writes the preferences store; starts timers, shutdown hooks
+                "javax.swing.",              // Swing: JEditorPane(String url) fetches the URL; ImageIcon(String)
+                                             // loads an image. Also refuses Swing's data types and any class
+                                             // that implements a Swing interface (TableModel, TreeNode, ...)
+                "javax.imageio.stream."      // FileCacheImageInputStream creates a temp file that may never be
+                                             // deleted; FileImageInputStream(File) opens any named file
         ));
 
         // JDK and platform-vendor INTERNAL packages. On JDK 8 -- and on JDK 9-15, whose default

@@ -19,7 +19,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 /**
  * Coverage tests for ReflectionUtils — targets JaCoCo gaps:
  * - ensureThreadSafe with non-concurrent map (HashMap)
- * - getDeclaredFields with filter, on enums, populating collections
+ * - getDeclaredFields with filter and on enums
  * - getAllDeclaredFields (deep hierarchy traversal)
  * - Annotation lookups (class-level, method-level, negative, cached)
  * - getAllConstructors
@@ -151,13 +151,6 @@ class ReflectionUtilsCoverageTest {
     void testGetDeclaredFieldsWithFilterNoMatch() {
         List<Field> fields = ReflectionUtils.getDeclaredFields(SimpleClass.class, f -> false);
         assertThat(fields).isEmpty();
-    }
-
-    @Test
-    void testGetDeclaredFieldsIntoCollection() {
-        java.util.ArrayList<Field> fields = new java.util.ArrayList<>();
-        ReflectionUtils.getDeclaredFields(SimpleClass.class, fields);
-        assertThat(fields).isNotEmpty();
     }
 
     // ========== getAllDeclaredFields (deep hierarchy) ==========

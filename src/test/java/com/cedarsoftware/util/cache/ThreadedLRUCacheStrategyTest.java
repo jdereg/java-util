@@ -49,13 +49,13 @@ class ThreadedLRUCacheStrategyTest {
 
     @Test
     void testGetCapacityReturnsConstructorValue() {
-        ThreadedLRUCacheStrategy<Integer, String> cache = new ThreadedLRUCacheStrategy<>(5, 50);
+        ThreadedLRUCacheStrategy<Integer, String> cache = new ThreadedLRUCacheStrategy<>(5);
         assertEquals(5, cache.getCapacity());
     }
 
     @Test
     void testGetCapacityAfterPuts() {
-        ThreadedLRUCacheStrategy<Integer, String> cache = new ThreadedLRUCacheStrategy<>(2, 50);
+        ThreadedLRUCacheStrategy<Integer, String> cache = new ThreadedLRUCacheStrategy<>(2);
         cache.put(1, "A");
         cache.put(2, "B");
         cache.put(3, "C");

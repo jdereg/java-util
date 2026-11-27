@@ -53,7 +53,7 @@ class ConverterInstanceBugTest {
     @Test
     void testIsConversionSupportedForFindsUserAddedConversion() {
         Converter converter = new Converter(new DefaultConverterOptions());
-        converter.addConversion(String.class, Widget.class, (from, conv) -> new Widget((String) from));
+        converter.addConversion((from, conv) -> new Widget((String) from), String.class, Widget.class);
 
         // Should return true — the user registered this conversion
         assertTrue(converter.isConversionSupportedFor(String.class, Widget.class),
@@ -63,7 +63,7 @@ class ConverterInstanceBugTest {
     @Test
     void testIsConversionSupportedForDoesNotPoisonConvertCache() {
         Converter converter = new Converter(new DefaultConverterOptions());
-        converter.addConversion(String.class, Widget.class, (from, conv) -> new Widget((String) from));
+        converter.addConversion((from, conv) -> new Widget((String) from), String.class, Widget.class);
 
         // Call isConversionSupportedFor FIRST — before convert()
         boolean supported = converter.isConversionSupportedFor(String.class, Widget.class);
@@ -79,7 +79,7 @@ class ConverterInstanceBugTest {
     void testConvertWorksWithUserAddedConversionWithoutPriorQuery() {
         // Baseline: convert() works when called directly (not preceded by isConversionSupportedFor)
         Converter converter = new Converter(new DefaultConverterOptions());
-        converter.addConversion(String.class, Widget.class, (from, conv) -> new Widget((String) from));
+        converter.addConversion((from, conv) -> new Widget((String) from), String.class, Widget.class);
 
         Widget result = converter.convert("world", Widget.class);
         assertNotNull(result);
@@ -99,7 +99,7 @@ class ConverterInstanceBugTest {
                 "String→Integer should be simple before override");
 
         // Override with a custom conversion
-        converter.addConversion(String.class, Integer.class, (from, conv) -> 42);
+        converter.addConversion((from, conv) -> 42, String.class, Integer.class);
 
         // Should now return false — user has overridden it, so it's not a "simple" type anymore
         assertFalse(converter.isSimpleTypeConversionSupported(String.class, Integer.class),
@@ -111,7 +111,7 @@ class ConverterInstanceBugTest {
         Converter converter = new Converter(new DefaultConverterOptions());
 
         // Override a built-in conversion targeting Integer
-        converter.addConversion(String.class, Integer.class, (from, conv) -> 42);
+        converter.addConversion((from, conv) -> 42, String.class, Integer.class);
 
         // The single-arg form checks hasConverterOverrideFor(Integer.class)
         // which should detect the identity entry added by addConversion()
@@ -126,7 +126,7 @@ class ConverterInstanceBugTest {
     @Test
     void testIsConversionSupportedForSameTypeDetectsDynamicConversion() {
         Converter converter = new Converter(new DefaultConverterOptions());
-        converter.addConversion(String.class, Widget.class, (from, conv) -> new Widget((String) from));
+        converter.addConversion((from, conv) -> new Widget((String) from), String.class, Widget.class);
 
         // addConversion() adds identity (Widget→Widget) to USER_DB for this instance.
         // same-source/target query should return true.
@@ -143,7 +143,7 @@ class ConverterInstanceBugTest {
     void testIsConversionSupportedForFindsUserConversionViaInheritance() {
         Converter converter = new Converter(new DefaultConverterOptions());
         // Register conversion for a PARENT class (Object→Widget)
-        converter.addConversion(Object.class, Widget.class, (from, conv) -> new Widget(from.toString()));
+        converter.addConversion((from, conv) -> new Widget(from.toString()), Object.class, Widget.class);
 
         // Query via CHILD class (String→Widget) — should find via inheritance walk
         assertTrue(converter.isConversionSupportedFor(String.class, Widget.class),
@@ -159,7 +159,7 @@ class ConverterInstanceBugTest {
     void testConvertNotPoisonedByIsSimpleTypeViaInheritance() {
         Converter converter = new Converter(new DefaultConverterOptions());
         // Register conversion for a PARENT class (Object→Widget)
-        converter.addConversion(Object.class, Widget.class, (from, conv) -> new Widget(from.toString()));
+        converter.addConversion((from, conv) -> new Widget(from.toString()), Object.class, Widget.class);
 
         // isSimpleTypeConversionSupported should not poison the cache for this pair
         // (it may return true or false, but must not cache UNSUPPORTED for a pair that convert() handles)
@@ -178,7 +178,7 @@ class ConverterInstanceBugTest {
 
         // Instance B: has user conversion for Widget
         Converter converterB = new Converter(new DefaultConverterOptions());
-        converterB.addConversion(String.class, Widget.class, (from, conv) -> new Widget((String) from));
+        converterB.addConversion((from, conv) -> new Widget((String) from), String.class, Widget.class);
 
         // Instance B should say Widget is supported
         assertTrue(converterB.isConversionSupportedFor(Widget.class, Widget.class),

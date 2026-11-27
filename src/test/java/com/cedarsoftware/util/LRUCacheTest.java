@@ -62,13 +62,8 @@ public class LRUCacheTest {
     void testInvalidCapacityThrows(LRUCache.StrategyType strategy) {
         assertThrows(IllegalArgumentException.class, () -> new LRUCache<>(0, strategy));
         assertThrows(IllegalArgumentException.class, () -> new LRUCache<>(-5, strategy));
-        if (strategy == LRUCache.StrategyType.THREADED) {
-            assertThrows(IllegalArgumentException.class, () -> new LRUCache<>(0, 10));
-            assertThrows(IllegalArgumentException.class, () -> new LRUCache<>(-1, 10));
-        } else {
-            assertThrows(IllegalArgumentException.class, () -> new LRUCache<>(0));
-            assertThrows(IllegalArgumentException.class, () -> new LRUCache<>(-1));
-        }
+        assertThrows(IllegalArgumentException.class, () -> new LRUCache<>(0));
+        assertThrows(IllegalArgumentException.class, () -> new LRUCache<>(-1));
     }
 
     /**
@@ -104,13 +99,8 @@ public class LRUCacheTest {
         LRUCache<Integer, String> cache = new LRUCache<>(5, strategy);
         assertEquals(5, cache.getCapacity());
 
-        if (strategy == LRUCache.StrategyType.THREADED) {
-            LRUCache<Integer, String> threaded = new LRUCache<>(2, 25);
-            assertEquals(2, threaded.getCapacity());
-        } else {
-            LRUCache<Integer, String> locking = new LRUCache<>(4);
-            assertEquals(4, locking.getCapacity());
-        }
+        LRUCache<Integer, String> locking = new LRUCache<>(4);
+        assertEquals(4, locking.getCapacity());
     }
     
     @ParameterizedTest

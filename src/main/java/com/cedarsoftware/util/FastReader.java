@@ -787,24 +787,6 @@ public final class FastReader extends Reader {
     }
 
     /**
-     * @return 0 - line tracking removed for performance. Use getLastSnippet() for error context.
-     * @deprecated Line tracking removed for performance optimization
-     */
-    @Deprecated
-    public int getLine() {
-        return 0;
-    }
-
-    /**
-     * @return 0 - column tracking removed for performance. Use getLastSnippet() for error context.
-     * @deprecated Column tracking removed for performance optimization
-     */
-    @Deprecated
-    public int getCol() {
-        return 0;
-    }
-
-    /**
      * Returns the last portion of the buffer that has been read, useful for error context.
      * @return up to the last 200 characters read from the current buffer
      */

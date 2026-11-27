@@ -139,7 +139,7 @@ import com.cedarsoftware.util.convert.DefaultConverterOptions;
  *     an EnumSet when converting arrays/collections to enum types.
  *
  *     // Add a custom conversion from String to CustomType
- *     converter.addConversion(String.class, CustomType.class, (from, conv) -> new CustomType(from));
+ *     converter.addConversion((from, conv) -> new CustomType(from), String.class, CustomType.class);
  *
  *     // Convert using the custom converter
  *     CustomType custom = converter.convert("customValue", CustomType.class);
@@ -255,7 +255,7 @@ public final class Converter
      *
      *     // Example 7: Register and Use a Custom Converter
      *     // Custom converter to convert String to CustomType
-     *     converter.addConversion(String.class, CustomType.class, (from, conv) -> new CustomType(from));
+     *     converter.addConversion((from, conv) -> new CustomType(from), String.class, CustomType.class);
      *
      *     String customStr = "customValue";
      *     CustomType custom = converter.convert(customStr, CustomType.class);
@@ -448,19 +448,6 @@ public final class Converter
      */
     public static boolean isSimpleTypeConversionSupported(Class<?> source, Class<?> target) {
         return instance.isSimpleTypeConversionSupported(source, target);
-    }
-
-    /**
-     * Compatibility overload for legacy callers that ask if a type is "simple".
-     *
-     * @param type the class to check
-     * @return {@code true} if simple-type conversion is supported for {@code type -> type}
-     * @deprecated Use {@link #isSimpleTypeConversionSupported(Class, Class)} with
-     * {@code isSimpleTypeConversionSupported(type, type)}.
-     */
-    @Deprecated
-    public static boolean isSimpleTypeConversionSupported(Class<?> type) {
-        return instance.isSimpleTypeConversionSupported(type, type);
     }
 
     /**
@@ -817,41 +804,5 @@ public final class Converter
     public static AtomicBoolean convertToAtomicBoolean(Object fromInstance)
     {
         return instance.convert(fromInstance, AtomicBoolean.class);
-    }
-    
-    /**
-     * No longer needed - use convert(localDate, long.class)
-     * @param localDate A Java LocalDate
-     * @return a long representing the localDate as epoch milliseconds (since 1970 Jan 1 at midnight)
-     * @deprecated  replaced by convert(localDate, long.class)
-     */
-    @Deprecated
-    public static long localDateToMillis(LocalDate localDate)
-    {
-        return instance.convert(localDate, long.class);
-    }
-
-    /**
-     * No longer needed - use convert(localDateTime, long.class)
-     * @param localDateTime A Java LocalDateTime
-     * @return a long representing the localDateTime as epoch milliseconds (since 1970 Jan 1 at midnight)
-     * @deprecated replaced by convert(localDateTime, long.class)
-     */
-    @Deprecated
-    public static long localDateTimeToMillis(LocalDateTime localDateTime)
-    {
-        return instance.convert(localDateTime, long.class);
-    }
-
-    /**
-     * No longer needed - use convert(ZonedDateTime, long.class)
-     * @param zonedDateTime A Java ZonedDateTime
-     * @return a long representing the ZonedDateTime as epoch milliseconds (since 1970 Jan 1 at midnight)
-     * @deprecated replaced by convert(ZonedDateTime, long.class)
-     */
-    @Deprecated
-    public static long zonedDateTimeToMillis(ZonedDateTime zonedDateTime)
-    {
-        return instance.convert(zonedDateTime, long.class);
     }
 }

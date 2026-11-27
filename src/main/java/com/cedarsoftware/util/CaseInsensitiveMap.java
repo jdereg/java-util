@@ -277,51 +277,6 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
     }
 
     /**
-     * @param lruCache ignored
-     * @deprecated CaseInsensitiveString caching has been removed. This method is a no-op.
-     */
-    @Deprecated
-    public static void replaceCache(LRUCache<String, CaseInsensitiveString> lruCache) {
-        // No-op: CaseInsensitiveString instances are now constructed directly (no cache)
-    }
-
-    /**
-     * @param cache ignored
-     * @param capacity ignored
-     * @deprecated CaseInsensitiveString caching has been removed. This method is a no-op.
-     */
-    @Deprecated
-    public static void replaceCache(ConcurrentHashMap<String, CaseInsensitiveString> cache, int capacity) {
-        // No-op: CaseInsensitiveString instances are now constructed directly (no cache)
-    }
-
-    /**
-     * @param cache ignored
-     * @deprecated CaseInsensitiveString caching has been removed. This method is a no-op.
-     */
-    @Deprecated
-    public static void replaceCache(ConcurrentHashMap<String, CaseInsensitiveString> cache) {
-        // No-op: CaseInsensitiveString instances are now constructed directly (no cache)
-    }
-
-    /**
-     * @deprecated CaseInsensitiveString caching has been removed. This method is a no-op.
-     */
-    @Deprecated
-    public static void resetCacheToDefault() {
-        // No-op: CaseInsensitiveString instances are now constructed directly (no cache)
-    }
-
-    /**
-     * @param length ignored
-     * @deprecated CaseInsensitiveString caching has been removed. This method is a no-op.
-     */
-    @Deprecated
-    public static void setMaxCacheLengthString(int length) {
-        // No-op: CaseInsensitiveString instances are now constructed directly (no cache)
-    }
-
-    /**
      * Creates a new thread-safe CaseInsensitiveMap backed by a ConcurrentHashMap that can handle null as a
      * key or value.  This is equivalent to {@code new CaseInsensitiveMap<>(Collections.emptyMap(), new ConcurrentHashMapNullSafe<>())}.
      *

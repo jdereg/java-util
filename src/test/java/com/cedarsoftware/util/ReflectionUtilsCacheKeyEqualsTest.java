@@ -1,10 +1,7 @@
 package com.cedarsoftware.util;
 
 import java.lang.reflect.Constructor;
-import java.lang.reflect.Field;
 import java.lang.reflect.Method;
-import java.util.ArrayList;
-import java.util.Collection;
 
 import org.junit.jupiter.api.Test;
 
@@ -12,20 +9,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
 class ReflectionUtilsCacheKeyEqualsTest {
-
-    static class FieldSample {
-        public int value;
-        transient int skip;
-        static int ignored;
-    }
-
-    @Test
-    void testDeprecatedGetDeclaredFields() {
-        Collection<Field> fields = new ArrayList<>();
-        ReflectionUtils.getDeclaredFields(FieldSample.class, fields);
-        assertEquals(1, fields.size());
-        assertEquals("value", fields.iterator().next().getName());
-    }
 
     @Test
     void testClassAnnotationCacheKeyEquals() throws Exception {

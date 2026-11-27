@@ -292,7 +292,7 @@ From reflection helpers to graph traversal, concurrent collections to date utili
 | **Universal Type Conversion** | ❌ | Limited | ❌ | Limited | ✅ ~1800 conversions           |
 | **N-Dimensional Mapping** | ❌ | ⚠️ Table (2D only) | ❌ | ⚠️ Limited | ✅ MultiKeyMap (unlimited N-D) |
 | **Deep Object Comparison** | ❌ | Limited | ❌ | ❌ | ✅ Handles cycles              |
-| **Runtime Configuration** | ❌ | ❌ | ❌ | ❌ | ✅ 90 feature options          |
+| **Runtime Configuration** | ❌ | ❌ | ❌ | ❌ | ✅ 85 feature options          |
 | **TTL Caching** | ❌ | ✅ | ❌ | ❌ | ✅ + LRU combo                 |
 | **Thread-Safe with Nulls** | ❌ | ❌ | ❌ | ❌ | ✅ All concurrent types        |
 | **JPMS/OSGi Ready** | ✅ | ⚠️ | ✅ | ⚠️ | ✅ Pre-configured              |
@@ -308,7 +308,7 @@ From reflection helpers to graph traversal, concurrent collections to date utili
 
 **🔄 Universal Conversion**: Convert between any meaningful Java types - primitives, collections, dates, enums, custom objects. Other libraries require multiple dependencies to achieve the same coverage.
 
-**⚙️ Production Flexibility**: 90 runtime configuration options, each a system property, allow security hardening and environment-specific tuning without code changes.
+**⚙️ Production Flexibility**: 85 runtime configuration options, each a system property, allow security hardening and environment-specific tuning without code changes.
 
 ## 🔒 Enterprise Security Features
 
@@ -371,12 +371,9 @@ System.setProperty("encryptionutilities.min.iv.size", "12");
 ```java
 // Restrict allowed protocols
 System.setProperty("io.allowed.protocols", "https");
-System.setProperty("urlutilities.allowed.protocols", "https");
 
 // Limit what a download may bring into memory
 System.setProperty("io.max.stream.size", "104857600");             // 100MB, IOUtilities
-System.setProperty("urlutilities.security.enabled", "true");
-System.setProperty("urlutilities.max.download.size", "52428800");  // 50MB, UrlUtilities
 ```
 
 ### 🔍 Security Audit & Monitoring
@@ -424,11 +421,11 @@ java-util is a library. Standards such as SOC 2 and ISO 27001 are met by an orga
 | **Path traversal** (CWE-22) | `IOUtilities` refuses a `..` path element, the credential directories (`.ssh`, `.aws`, `.gnupg`, `.docker`) and system paths such as `/proc`, `/sys`, `/dev` and `/etc/passwd`. `ClassUtilities` refuses traversal in a resource name | On |
 | **Regular expression denial of service** (CWE-1333) | `RegexUtilities` puts a time limit on every match it runs. `StringUtilities.wildcardToRegexString()` writes a regex that matches in time proportional to the text | On |
 | **Resource exhaustion** (CWE-400, CWE-770) | `IOUtilities` limits what it reads or inflates into memory. `ArrayUtilities`, `ByteUtilities`, `DateUtilities`, `DeepEquals`, `MathUtilities`, `StringUtilities` and `Traverser` each have size limits | `IOUtilities`: on, at half the heap. The others: off until switched on |
-| **Encryption that cannot detect tampering** (CWE-353) | `EncryptionUtilities.encrypt()` writes AES-GCM, and `decrypt()` reads nothing else unless asked | On |
+| **Encryption that cannot detect tampering** (CWE-353) | `EncryptionUtilities.encrypt()` writes AES-GCM. `decrypt()` also reads the unauthenticated format of java-util 3.3.2 and earlier, as a second try, unless `encryptionutilities.legacy.decrypt.enabled=false` | Off: set the property to `false` |
 
-**Not addressed: server-side request forgery (CWE-918).** `IOUtilities` and `UrlUtilities` check a URL's protocol, not where its host leads. Judge a URL from an untrusted source before handing it over.
+**Not addressed: server-side request forgery (CWE-918).** `IOUtilities` checks a URL's protocol, not where its host leads. Judge a URL from an untrusted source before handing it over.
 
-> **Defaults**: Most limits are off until their class's master switch is set, and can be switched on system-wide with zero code changes. On with nothing set: `ClassUtilities`' block list of dangerous classes, `IOUtilities`' path and protocol checks, `RegexUtilities`' time limit, and `UrlUtilities`' 100 MB download limit. Off until asked for: `Executor` runs no command, and `EncryptionUtilities` reads no legacy ciphertext. [Every setting and its default →](userguide.md#system-property-reference)
+> **Defaults**: Most limits are off until their class's master switch is set, and can be switched on system-wide with zero code changes. On with nothing set: `ClassUtilities`' block list of dangerous classes, `IOUtilities`' path and protocol checks, and `RegexUtilities`' time limit. Off until asked for: `Executor` runs no command. On until turned off: `EncryptionUtilities.decrypt()` reads the legacy (pre-3.3.3) ciphertext format as a second try. [Every setting and its default →](userguide.md#system-property-reference)
 
 ## Core Components
 
@@ -656,7 +653,7 @@ Key integrations include:
 
 ## Feature Options
 
-java-util provides **90 runtime configuration options** via system properties, enabling:
+java-util provides **85 runtime configuration options** via system properties, enabling:
 
 - **Hardening without code changes** - Switch limits and protections on with a system property
 - **Environment-specific tuning** - Different limits for development vs. production

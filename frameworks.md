@@ -254,5 +254,4 @@ public TTLCache(long ttlMillis, int maxSize, long cleanupIntervalMillis)
 // Capacity is number of entries
 public LRUCache(int capacity)  // Uses LOCKING strategy
 public LRUCache(int capacity, StrategyType strategyType)
-public LRUCache(int capacity, int cleanupDelayMillis)  // Uses THREADED strategy
 ```

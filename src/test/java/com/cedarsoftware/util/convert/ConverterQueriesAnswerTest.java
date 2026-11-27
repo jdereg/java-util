@@ -62,9 +62,9 @@ class ConverterQueriesAnswerTest {
         List<String> threw = new ArrayList<>();
         for (Class<?> source : types) {
             try {
-                converter.isSimpleTypeConversionSupported(source);
+                converter.isSimpleTypeConversionSupported(source, source);
             } catch (RuntimeException e) {
-                threw.add("isSimpleTypeConversionSupported(" + source.getSimpleName() + "): " + e.getMessage());
+                threw.add("isSimpleTypeConversionSupported(" + source.getSimpleName() + ", itself): " + e.getMessage());
             }
             for (Class<?> target : types) {
                 try {

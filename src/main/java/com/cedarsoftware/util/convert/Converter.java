@@ -138,7 +138,7 @@ import com.cedarsoftware.util.geom.Rectangle;
  * </p>
  * <p>
  * <strong>Extensibility:</strong> Additional conversions can be added by specifying the source class, target class,
- * and a conversion function (e.g., a lambda). Use the {@link #addConversion(Class, Class, Convert)} method to register
+ * and a conversion function (e.g., a lambda). Use the {@link #addConversion(Convert, Class, Class)} method to register
  * custom converters. This allows for the inclusion of new Collection types and other custom types as needed.
  * </p>
  *
@@ -195,7 +195,7 @@ import com.cedarsoftware.util.geom.Rectangle;
  *     an EnumSet when converting arrays/collections to enum types.
  *
  *     // Add a custom conversion from String to CustomType
- *     converter.addConversion(String.class, CustomType.class, (from, conv) -> new CustomType(from));
+ *     converter.addConversion((from, conv) -> new CustomType(from), String.class, CustomType.class);
  *
  *     // Convert using the custom converter
  *     CustomType custom = converter.convert("customValue", CustomType.class);
@@ -909,7 +909,7 @@ public final class Converter {
      * <p>
      * These conversions serve as the foundational capabilities of the Converter, enabling it to perform most
      * common type transformations out-of-the-box. Users can extend or override these conversions using the
-     * {@link #addConversion(Class, Class, Convert)} method as needed.
+     * {@link #addConversion(Convert, Class, Class)} method as needed.
      * </p>
      */
     private static void buildFactoryConversions() {
@@ -2259,7 +2259,7 @@ public final class Converter {
      *     <li><b>Inheritance-Based Conversions:</b> Automatically considers superclass and interface hierarchies
      *         to find the most suitable converter when a direct conversion is not available.</li>
      *     <li><b>Custom Converters:</b> Allows users to register custom conversion logic for specific source-target type pairs
-     *         using the {@link #addConversion(Class, Class, Convert)} method.</li>
+     *         using the {@link #addConversion(Convert, Class, Class)} method.</li>
      *     <li><b>Thread-Safe:</b> Designed to be thread-safe, allowing concurrent conversions without compromising data integrity.</li>
      * </ul>
      * </p>
@@ -2308,7 +2308,7 @@ public final class Converter {
      *
      *     // Example 7: Register and Use a Custom Converter
      *     // Custom converter to convert String to CustomType
-     *     converter.addConversion(String.class, CustomType.class, (from, conv) -> new CustomType(from));
+     *     converter.addConversion((from, conv) -> new CustomType(from), String.class, CustomType.class);
      *
      *     String customStr = "customValue";
      *     CustomType custom = converter.convert(customStr, CustomType.class);
@@ -2359,8 +2359,8 @@ public final class Converter {
      * <h3>Extensibility:</h3>
      * <p>
      * Users can extend the Converter's capabilities by registering custom converters for specific type pairs.
-     * This is achieved using the {@link #addConversion(Class, Class, Convert)} method, which accepts the source type,
-     * target type, and a {@link Convert} functional interface implementation that defines the conversion logic.
+     * This is achieved using the {@link #addConversion(Convert, Class, Class)} method, which accepts a {@link Convert}
+     * functional interface implementation that defines the conversion logic, then the source type and the target type.
      * </p>
      *
      * <h3>Performance Considerations:</h3>
@@ -2376,7 +2376,7 @@ public final class Converter {
      * @return An instance of {@code toType} representing the converted value of {@code from}.
      * @throws IllegalArgumentException if {@code toType} is {@code null} or if the conversion is not supported.
      * @see #getSupportedConversions()
-     * @see #addConversion(Class, Class, Convert)
+     * @see #addConversion(Convert, Class, Class)
      */
     @SuppressWarnings("unchecked")
     public <T> T convert(Object from, Class<T> toType) {
@@ -3181,15 +3181,6 @@ public final class Converter {
     }
 
     /**
-     * @deprecated Use {@link #isContainerConversionSupported(Class, Class)} instead.
-     * This method will be removed in a future version.
-     */
-    @Deprecated
-    public static boolean isCollectionConversionSupported(Class<?> sourceType, Class<?> target) {
-        return isContainerConversionSupported(sourceType, target);
-    }
-
-    /**
      * Determines whether a conversion from the specified source type to the target type is supported,
      * excluding any conversions involving arrays or collections.
      *
@@ -3237,19 +3228,6 @@ public final class Converter {
 
         // Delegate conversion capability to the general conversion support API.
         return isConversionSupportedFor(source, target);
-    }
-
-    /**
-     * Compatibility overload for legacy callers that ask if a type is "simple".
-     *
-     * @param type the class to check
-     * @return {@code true} if simple-type conversion is supported for {@code type -> type}
-     * @deprecated Use {@link #isSimpleTypeConversionSupported(Class, Class)} with
-     * {@code isSimpleTypeConversionSupported(type, type)}.
-     */
-    @Deprecated
-    public boolean isSimpleTypeConversionSupported(Class<?> type) {
-        return isSimpleTypeConversionSupported(type, type);
     }
 
     /**
@@ -3642,16 +3620,6 @@ public final class Converter {
                 toFrom.computeIfAbsent(getShortName(source), k -> new TreeSet<>(String::compareTo)).add(getShortName(target));
             }
         });
-    }
-
-    /**
-     * @param conversionMethod A method that converts an instance of the source type to an instance of the target type.
-     * @return The previous conversion method associated with the source and target types, or {@code null} if no conversion existed.
-     * @deprecated Use {@link #addConversion(Convert, Class, Class)} instead. This method will be removed in a future version as it is less safe and does not handle all type variations correctly.
-     */
-    @Deprecated
-    public Convert<?> addConversion(Class<?> source, Class<?> target, Convert<?> conversionMethod) {
-        return addConversion(conversionMethod, source, target);
     }
 
     /**

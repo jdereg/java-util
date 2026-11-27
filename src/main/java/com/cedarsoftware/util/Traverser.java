@@ -3,12 +3,10 @@ package com.cedarsoftware.util;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.ArrayDeque;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Deque;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Optional;
@@ -72,23 +70,23 @@ import java.util.logging.Logger;
  * System.setProperty("traverser.max.objects.visited", "50000");
  *
  * // These will now enforce security controls
- * Traverser.traverse(root, classesToSkip, visit -> {
+ * Traverser.traverse(root, visit -> {
  *     // Process visit - will throw SecurityException if limits exceeded
- * });
+ * }, classesToSkip);
  * }</pre>
  *
  * <p>
  * <b>Usage Examples:</b>
  * </p>
  *
- * <p><b>Using the Modern API (Recommended):</b></p>
+ * <p><b>Example:</b></p>
  * <pre>{@code
  * // Define classes to skip (optional)
  * Set<Class<?>> classesToSkip = new HashSet<>();
  * classesToSkip.add(String.class);
  *
  * // Traverse with full node information
- * Traverser.traverse(root, classesToSkip, visit -> {
+ * Traverser.traverse(root, visit -> {
  *     LOG.info("Node: " + visit.getNode());
  *     visit.getFields().forEach((field, value) -> {
  *         LOG.info("  Field: " + field.getName() +
@@ -100,22 +98,7 @@ import java.util.logging.Logger;
  *             LOG.info("    JSON property: " + ann.value());
  *         }
  *     });
- * });
- * }</pre>
- *
- * <p><b>Using the Legacy API (Deprecated):</b></p>
- * <pre>{@code
- * // Define a visitor that processes each object
- * Traverser.Visitor visitor = new Traverser.Visitor() {
- *     @Override
- *     public void process(Object o) {
- *         LOG.info("Visited: " + o);
- *     }
- * };
- *
- * // Create an object graph and traverse it
- * SomeClass root = new SomeClass();
- * Traverser.traverse(root, visitor);
+ * }, classesToSkip);
  * }</pre>
  *
  * <p>
@@ -235,26 +218,6 @@ public class Traverser {
         public Class<?> getNodeClass() { return node.getClass(); }
     }
 
-    /**
-     * A visitor interface to process each object encountered during traversal.
-     * <p>
-     * <b>Note:</b> This interface is deprecated in favor of using {@link Consumer<NodeVisit>}
-     * with the new {@code traverse} method.
-     * </p>
-     *
-     * @deprecated Use {@link #traverse(Object, Consumer, Set)} instead.
-     */
-    @Deprecated
-    @FunctionalInterface
-    public interface Visitor {
-        /**
-         * Processes an encountered object.
-         *
-         * @param o the object to process
-         */
-        void process(Object o);
-    }
-
     // Every object ever queued: added when queued, never removed. An object is queued at most once, so no
     // object is visited twice, and the queued-but-unvisited ones are exactly those on the stack.
     private final IdentitySet<Object> seen = new IdentitySet<>();
@@ -338,29 +301,6 @@ public class Traverser {
             throw new IllegalArgumentException("objectProcessor cannot be null");
         }
         traverse(root, visit -> objectProcessor.accept(visit.getNode()), classesToSkip, false);
-    }
-
-    /**
-     * @deprecated Use {@link #traverse(Object, Consumer, Set)} instead.
-     */
-    @Deprecated
-    public static void traverse(Object root, Visitor visitor) {
-        if (visitor == null) {
-            throw new IllegalArgumentException("visitor cannot be null");
-        }
-        traverse(root, visit -> visitor.process(visit.getNode()), null, false);
-    }
-
-    /**
-     * @deprecated Use {@link #traverse(Object, Consumer, Set)} instead.
-     */
-    @Deprecated
-    public static void traverse(Object root, Class<?>[] skip, Visitor visitor) {
-        if (visitor == null) {
-            throw new IllegalArgumentException("visitor cannot be null");
-        }
-        Set<Class<?>> classesToSkip = (skip == null) ? null : new HashSet<>(Arrays.asList(skip));
-        traverse(root, visit -> visitor.process(visit.getNode()), classesToSkip, false);
     }
 
     private void walk(Object root, Set<Class<?>> classesToSkip) {

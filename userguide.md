@@ -910,7 +910,6 @@ The case-insensitive behavior applies to all concurrent operations - `putIfAbsen
 - Non-String keys are handled without modification
 - Original String case is preserved
 - Backing map type is preserved when copying from source
-- Cache limit configurable via setMaxCacheLengthString()
 
 ### Thread Safety Notes
 > **🔑 Key Point: Thread safety depends entirely on the backing map implementation**
@@ -3983,7 +3982,7 @@ boolean simpleConvert = converter.isSimpleTypeConversionSupported(
 
 // Quick self-type checks using cached lookups
 boolean uuidSupported = converter.isConversionSupportedFor(UUID.class);
-boolean simpleType = converter.isSimpleTypeConversionSupported(String.class);
+boolean simpleType = converter.isSimpleTypeConversionSupported(String.class, String.class);
 
 // Fetch supported conversions (as Strings)
 Map<String, Set<String>> map = Converter.getSupportedConversions();
@@ -5421,37 +5420,39 @@ String encryptedHex = EncryptionUtilities.encryptBytes("password", originalBytes
 byte[] decryptedBytes = EncryptionUtilities.decryptBytes("password", encryptedHex);
 ```
 
-### Legacy Ciphers (deprecated)
+### The format of java-util 3.3.2 and earlier
 
-`createAesEncryptionCipher()`, `createAesDecryptionCipher()` and `createAesCipher()` are the cipher `encrypt()` used
-before it moved to AES-GCM. They are kept, byte for byte, so data written then can still be read. **Do not encrypt
-new data with them:**
+Before it moved to AES-GCM (3.3.3, June 2025), `encrypt()` wrote another format:
 
 - the mode is AES/CBC/PKCS5Padding, with no authentication: a changed ciphertext is not detected;
 - the IV is the MD5 of the key, so it is the same for every message under one password, and the same text always
   encrypts to the same ciphertext;
 - the key is 16 hex digits of an unsalted MD5 of the password: 64 bits.
 
-```java
-// Only to read data written by the old format
-Cipher legacy = EncryptionUtilities.createAesDecryptionCipher("password");
-```
+The public methods that built that cipher (`createAesEncryptionCipher()`, `createAesDecryptionCipher()`,
+`createAesCipher()` and `createCipherBytes()`) were removed in 4.119.0. Nothing writes the old format any more.
 
-**`decrypt()` and `decryptBytes()` read the legacy format only when asked.** Since 4.119.0 they accept what
-`encrypt()` writes, AES-GCM, and refuse anything else. An application that still holds ciphertext written by
-java-util 3.3.2 or earlier (before June 2025) turns the old format on to read it, and should re-encrypt it:
+**`decrypt()` and `decryptBytes()` still read it, as a second try.** They read what `encrypt()` writes, AES-GCM,
+first; if that fails, they read the input as the old format, as every release has. Data written by java-util 3.3.2
+or earlier keeps working with no setting. To leave it behind, read each kept value and save it again:
 
 ```java
-System.setProperty("encryptionutilities.legacy.decrypt.enabled", "true");   // or -Dencryptionutilities.legacy.decrypt.enabled=true
 String text = EncryptionUtilities.decrypt(password, oldCiphertext);
 String rewritten = EncryptionUtilities.encrypt(password, text);              // AES-GCM
 ```
 
-Leave it off wherever the ciphertext can come from someone else. The old format's padding check answers "decrypted"
-or "failed", and a party who can submit inputs and see that answer can, in a few thousand tries and without the
-password, build a ciphertext that `decrypt()` accepts and that decrypts to text of their choosing. With the switch
-on, a changed AES-GCM ciphertext can also come back as noise instead of failing, because a failed tag check is
-retried as the old format. Through 4.118.0 the old format was always read.
+**Turn the old format off wherever the ciphertext can come from someone else:**
+
+```java
+System.setProperty("encryptionutilities.legacy.decrypt.enabled", "false");  // or -Dencryptionutilities.legacy.decrypt.enabled=false
+```
+
+The old format's padding check answers "decrypted" or "failed", and a party who can submit inputs and see that
+answer can, in a few thousand tries and without the password, build a ciphertext that `decrypt()` accepts and that
+decrypts to text of their choosing. With the old format on, a changed AES-GCM ciphertext (or about 1 wrong password
+in 256) can also come back as noise instead of failing, because a failed tag check is retried as the old format.
+Turned off, `decrypt()` reads AES-GCM only, refuses anything else with one answer for every input, and a failed tag
+check is a failure.
 
 ### Settings
 
@@ -5492,7 +5493,7 @@ String legacyHash = EncryptionUtilities.fastMD5(file);
 String strongKey = "complex-password-here";
 String encrypted = EncryptionUtilities.encrypt(strongKey, data);
 
-// A wrong password or changed ciphertext throws
+// A wrong password or changed ciphertext throws (almost always: always with encryptionutilities.legacy.decrypt.enabled=false)
 try {
     String data = EncryptionUtilities.decrypt(strongKey, encrypted);
 } catch (IllegalArgumentException | IllegalStateException e) {
@@ -5761,7 +5762,6 @@ A Java Object Graph traverser that visits all object reference fields and invoke
 - **Type Skipping:** Allows selective skipping of specified classes during traversal
 - **Security Controls:** Configurable limits to prevent resource exhaustion attacks
 - **Modern API:** Consumer-based callback system with detailed node information
-- **Legacy Support:** Backward-compatible visitor pattern API
 
 ### What is followed
 - The fields of every non-JDK class, including the references the compiler adds: an inner object's outer object
@@ -5795,21 +5795,6 @@ Traverser.traverse(root, visit -> {
         }
     });
 }, classesToSkip);
-```
-
-**Legacy API (Deprecated):**
-```java
-// Define a visitor that processes each object
-Traverser.Visitor visitor = new Traverser.Visitor() {
-    @Override
-    public void process(Object o) {
-        System.out.println("Visited: " + o);
-    }
-};
-
-// Create an object graph and traverse it
-SomeClass root = new SomeClass();
-Traverser.traverse(root, visitor);
 ```
 
 ### Security Configuration
@@ -5848,9 +5833,9 @@ System.setProperty("traverser.max.collection.size", "10000");
 System.setProperty("traverser.max.array.length", "5000");
 
 // These will now enforce security controls
-Traverser.traverse(root, classesToSkip, visit -> {
+Traverser.traverse(root, visit -> {
     // Process visit - will throw SecurityException if limits exceeded
-});
+}, classesToSkip);
 ```
 
 **Security Error Handling:**
@@ -7157,7 +7142,6 @@ A utility class for traversing object graphs in Java, with cycle detection and r
 - Full field metadata access
 - Support for collections, arrays, and maps
 - Lambda-based processing
-- Legacy visitor pattern support (deprecated)
 - Optional lazy field collection via overloaded `traverse` method
 
 ### Core Methods
@@ -7712,166 +7696,6 @@ java -Djava.util.logging.manager=org.apache.logging.log4j.jul.LogManager \
 Once configured, JUL output flows through your framework's configuration.
 
 ---
-## UrlUtilities
-[Source](/src/main/java/com/cedarsoftware/util/UrlUtilities.java)
-
-Utility methods for fetching HTTP/HTTPS content.
-
-> **Deprecated: scheduled for removal in java-util 5.0.** It wraps the old `HttpURLConnection` stack and is no
-> longer used anywhere in the Cedar Software libraries. For new code use `java.net.http.HttpClient` (JDK 11+), and
-> `IOUtilities` for transferring streams.
-
-### Key Features
-- Fetch content as `byte[]` or `String`
-- Stream directly to an `OutputStream` with `copyContentFromUrl`
-- Configurable default connect and read timeouts
-- Optional insecure SSL mode via `allowAllCerts` parameters
-- A list of allowed protocols, limits on download size and `Content-Length`, and an optional cookie-domain check
-
-### Limits and Checks
-
-**System Property Configuration:**
-```properties
-# The protocols a URL given as text may have. Needs no master switch.
-urlutilities.allowed.protocols=http,https,ftp
-
-# Master switch for the two size properties, as described below
-urlutilities.security.enabled=false
-
-# Largest download in bytes. Read only while the master switch is true.
-urlutilities.max.download.size=104857600
-
-# Largest Content-Length accepted, in bytes. Not set by default; applied whenever it is set.
-# urlutilities.max.content.length=524288000
-
-# Keep a cookie only if its domain is the host's own or a parent of it. Needs no master switch.
-urlutilities.strict.cookie.domain=false
-```
-
-- **Protocols.** A URL given as text must be `http`, `https` or `ftp`, or name a classpath resource with `res://`.
-  `urlutilities.allowed.protocols`, a comma-separated list, replaces those three: `https` alone refuses http and
-  ftp (`IllegalArgumentException`: "Unsupported protocol: http"; the `getContentFromUrl` methods that take text log
-  it and return null). A protocol the list names is allowed, `file` included. The property is read on each call. A
-  `java.net.URL` object the caller built is opened as it is: the list judges text.
-- **Download size.** One limit is on with nothing set: a download of more than 100 MB is refused. With the master
-  switch off, the limit is the one `UrlUtilities.setMaxDownloadSize()` holds: 100 MB unless changed. With it on,
-  `urlutilities.max.download.size` replaces that when set.
-- **Content-Length.** `urlutilities.max.content.length` is applied whenever it is set. Not set, there is no limit
-  with the master switch off, and 500 MB (`setMaxContentLength()`) with it on.
-
-**This class is no protection against SSRF.** It opens any host, follows redirects, and only logs a warning for a
-host written as `localhost` or a private address. Through 4.118.0 this guide presented two properties as SSRF
-protection, and neither was ever applied:
-
-- `urlutilities.allowed.protocols` was read by a method nothing called. It works, as described above, since 4.119.0.
-- `urlutilities.allow.internal.hosts` was the same, and is retired: the property is no longer read. A check on how a
-  host is written (`localhost`, `10.`) does not decide where a request goes: a public name can resolve to a
-  private address, an address can be written as one number, and a redirect can lead anywhere.
-
-To keep a URL from an untrusted source away from internal hosts, judge it before it reaches UrlUtilities: resolve
-the host, and refuse loopback, link-local and private addresses.
-
-**Usage Example:**
-```java
-// https only, and tighter size limits
-System.setProperty("urlutilities.allowed.protocols", "https");
-System.setProperty("urlutilities.security.enabled", "true");
-System.setProperty("urlutilities.max.download.size", "50000000"); // 50MB
-System.setProperty("urlutilities.max.content.length", "200000000"); // 200MB
-System.setProperty("urlutilities.strict.cookie.domain", "true");
-
-byte[] data = UrlUtilities.getContentFromUrl("https://example.com/data");
-String content = UrlUtilities.getContentFromUrlAsString("https://api.example.com/endpoint");
-```
-
-### Public API
-
-```java
-// Basic content fetching
-public static byte[] getContentFromUrl(String url)
-public static String getContentFromUrlAsString(String url)
-public static void copyContentFromUrl(String url, OutputStream out)
-
-// With a cookie store, and optionally without certificate checks (development only)
-public static byte[] getContentFromUrl(String url, Map inCookies, Map outCookies)
-public static byte[] getContentFromUrl(String url, Map inCookies, Map outCookies, boolean allowAllCerts)
-public static String getContentFromUrlAsString(String url, Map inCookies, Map outCookies, boolean trustAllCerts)
-
-// The connection itself, to set request headers or to post
-public static URLConnection getConnection(String url, boolean input, boolean output, boolean cache)
-
-// Size limits
-public static void setMaxDownloadSize(long maxSizeBytes)
-public static long getMaxDownloadSize()
-public static void setMaxContentLength(int maxLengthBytes)
-public static int getMaxContentLength()
-
-// Connection management
-public static void setDefaultReadTimeout(int timeout)
-public static int getDefaultReadTimeout()
-public static void setDefaultConnectTimeout(int timeout)
-public static int getDefaultConnectTimeout()
-```
-
-### Basic Operations
-
-**Simple Content Fetching:**
-```java
-// Fetch as byte array (null when the fetch fails; the reason is logged)
-byte[] data = UrlUtilities.getContentFromUrl("https://example.com/api/data");
-
-// Fetch as string
-String json = UrlUtilities.getContentFromUrlAsString("https://api.example.com/users");
-
-// Stream to output
-try (FileOutputStream fos = new FileOutputStream("download.zip")) {
-    UrlUtilities.copyContentFromUrl("https://example.com/file.zip", fos);
-}
-```
-
-**With Cookies, and With Headers:**
-```java
-// A cookie store. The cookies a response sets are added to it, and sent with the next request to that host.
-Map cookies = new ConcurrentHashMap();
-String page = UrlUtilities.getContentFromUrlAsString("https://example.com/login", cookies, cookies, false);
-String next = UrlUtilities.getContentFromUrlAsString("https://example.com/account", cookies, cookies, false);
-
-// A request header: get the connection, set the header, then read
-URLConnection connection = UrlUtilities.getConnection("https://api.example.com/protected", true, false, false);
-connection.setRequestProperty("Authorization", "Bearer " + token);
-byte[] body = IOUtilities.inputStreamToBytes(IOUtilities.getInputStream(connection));
-```
-
-### Configuration Management
-
-**Timeout Configuration:**
-```java
-// Set global defaults
-UrlUtilities.setDefaultConnectTimeout(30000); // 30 seconds
-UrlUtilities.setDefaultReadTimeout(60000);    // 60 seconds
-```
-
-**Size Limits:**
-```java
-// In code (the download limit applies with the master switch off as well)
-UrlUtilities.setMaxDownloadSize(100 * 1024 * 1024); // 100MB
-UrlUtilities.setMaxContentLength(500 * 1024 * 1024); // 500MB
-
-// Check current limits
-long maxDownload = UrlUtilities.getMaxDownloadSize();
-int maxContentLength = UrlUtilities.getMaxContentLength();
-```
-
-### Implementation Notes
-
-- **SSL/TLS Support:** Full HTTPS support with optional certificate validation bypass (⚠️ development only)
-- **Cookie Management:** Cookie handling through a store the caller passes; domain check with `urlutilities.strict.cookie.domain`
-- **Error Handling:** Comprehensive error response reading and logging
-- **Thread Safety:** All static methods are thread-safe
-- **Resource Management:** Automatic cleanup of connections and streams
-
----
-
 ## ArrayUtilities Security Configuration
 
 [View Source](/src/main/java/com/cedarsoftware/util/ArrayUtilities.java)
@@ -8331,6 +8155,7 @@ capability:
 | Thread start in a constructor | `java.util.Timer` |
 | Code execution / diagnostics | `jdk.jshell.*`, `jdk.jfr.*`, `jdk.management.jfr.*` |
 | Preferences store | `java.util.prefs.*` |
+| Constructors a JSON object's values reach, matched by type (a JDK constructor has no parameter names), that act on their own | `javax.swing.*` (`JEditorPane(String url)` fetches the URL, `ImageIcon(String)` loads an image; also refuses Swing's data types and any class that implements a Swing interface), `java.awt.Component` and `java.awt.MenuComponent` (every AWT and Swing component and menu, and subclasses), `java.awt.SplashScreen`, `javax.management.modelmbean.DescriptorSupport` (builds any class named in its text), `java.awt.datatransfer.DataFlavor` (loads and initializes a named class), `javax.imageio.stream.*` (creates temp files, opens a named file), `javax.security.auth.kerberos.KerberosPrincipal` (DNS lookups). `Point`, `Color`, `Rectangle`, `Dimension`, `Insets`, `Font` and `java.awt.geom.*` are not blocked |
 | RMI / remote JMX | `java.rmi.*`, `javax.management.remote.*` |
 | JDK / vendor internals | `sun.*`, `com.sun.*`, `com.apple.*`, `apple.*` — see below |
 
@@ -8695,8 +8520,8 @@ property the code reads is here, and for the size limits it can try, the default
 - **Default** is what applies when the property is not set.
 - **Most limits wait for a master switch.** `<class>.security.enabled` is `false` by default, and a limit under it
   does nothing until the switch is `true`. The line above each table names the switch.
-- **Three things are on with nothing set:** IOUtilities' path and protocol checks, RegexUtilities' time limit, and
-  UrlUtilities' 100 MB download limit. ClassUtilities' block list is always on and has no switch.
+- **Two things are on with nothing set:** IOUtilities' path and protocol checks, and RegexUtilities' time limit.
+  ClassUtilities' block list is always on and has no switch.
 - **One thing is off until asked for:** Executor runs no command unless `executor.enabled=true`.
 - **`0` usually means "no limit".** Each table says where it does not.
 
@@ -8794,7 +8619,7 @@ table. The first row needs neither. [More](#encryptionutilities)
 
 | Property | Default | What it does |
 |---|---|---|
-| `encryptionutilities.legacy.decrypt.enabled` | `false` | Lets `decrypt()` and `decryptBytes()` read what java-util 3.3.2 and earlier wrote (AES-CBC). |
+| `encryptionutilities.legacy.decrypt.enabled` | `true` | Lets `decrypt()` and `decryptBytes()` read what java-util 3.3.2 and earlier wrote (AES-CBC), as a second try. Set `false` to read AES-GCM only. |
 | `encryptionutilities.security.enabled` | `false` | Master switch. |
 | `encryptionutilities.file.size.validation.enabled` | `false` | Applies the limit below to the file hashes (`fastMD5(File)`, `fastSHA256(File)`, ...). |
 | `encryptionutilities.max.file.size` | `2147483647` | Largest file hashed, in bytes. |
@@ -8908,19 +8733,6 @@ no limit. [More](#traverser)
 | `traverser.max.objects.visited` | `0` | Most objects visited. |
 | `traverser.max.collection.size` | `0` | Largest collection or map walked. |
 | `traverser.max.array.length` | `0` | Largest object array walked. |
-
-### UrlUtilities properties
-
-The master switch governs the two size properties only. This class is no protection against SSRF: it opens any
-host. (`urlutilities.allow.internal.hosts`, which was never applied, is no longer read.) [More](#urlutilities)
-
-| Property | Default | What it does |
-|---|---|---|
-| `urlutilities.allowed.protocols` | `http,https,ftp` | The protocols a URL given as text may have, comma-separated. Needs no master switch. A `res://` classpath URL and a `URL` object the caller built are not judged by it. |
-| `urlutilities.security.enabled` | `false` | Master switch for the two size properties, as each row says. |
-| `urlutilities.max.download.size` | `104857600` | Largest download, in bytes. Read only with the master switch. Without it the limit is the one `setMaxDownloadSize()` holds, 100 MB unless changed. |
-| `urlutilities.max.content.length` | none | Largest `Content-Length` accepted, in bytes. Applied whenever it is set. Not set, with the master switch, the limit is 524288000 (500 MB). |
-| `urlutilities.strict.cookie.domain` | `false` | Keeps a cookie only if its domain is the host's own or a parent of it. Needs no master switch. |
 
 ### For java-util's own tests
 

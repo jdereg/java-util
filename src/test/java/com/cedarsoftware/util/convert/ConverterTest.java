@@ -59,7 +59,6 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 import static com.cedarsoftware.util.ArrayUtilities.EMPTY_BYTE_ARRAY;
 import static com.cedarsoftware.util.ArrayUtilities.EMPTY_CHAR_ARRAY;
-import static com.cedarsoftware.util.Converter.zonedDateTimeToMillis;
 import static com.cedarsoftware.util.MapUtilities.mapOf;
 import static com.cedarsoftware.util.StringUtilities.EMPTY;
 import static com.cedarsoftware.util.convert.Converter.VALUE;
@@ -2475,7 +2474,7 @@ class ConverterTest
 
         ZonedDateTime zdt = ZonedDateTime.of(2020, 8, 30, 13, 11, 17, 0, ZoneId.systemDefault());
         Timestamp alexaBirthday = this.converter.convert(zdt, Timestamp.class);
-        assert alexaBirthday.getTime() == zonedDateTimeToMillis(zdt);
+        assert alexaBirthday.getTime() == this.converter.convert(zdt, long.class);
         try
         {
             this.converter.convert(Boolean.TRUE, Timestamp.class);
@@ -3984,13 +3983,13 @@ class ConverterTest
         assert uuid.toString().equals("00000000-0000-0000-0000-0000000003e8");
 
         // Add in conversion
-        this.converter.addConversion(DumbNumber.class, UUID.class, (fromInstance, converter) -> {
+        this.converter.addConversion((fromInstance, converter) -> {
             DumbNumber bigDummy = (DumbNumber) fromInstance;
             BigInteger mask = BigInteger.valueOf(Long.MAX_VALUE);
             long mostSignificantBits = bigDummy.shiftRight(64).and(mask).longValue();
             long leastSignificantBits = bigDummy.and(mask).longValue();
             return new UUID(mostSignificantBits, leastSignificantBits);
-        });
+        }, DumbNumber.class, UUID.class);
 
         // Still converts, but not using inheritance.
         uuid = this.converter.convert(dn, UUID.class);

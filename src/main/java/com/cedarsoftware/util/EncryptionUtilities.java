@@ -1,7 +1,6 @@
 package com.cedarsoftware.util;
 
 import javax.crypto.Cipher;
-import javax.crypto.NoSuchPaddingException;
 import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.IvParameterSpec;
@@ -14,13 +13,9 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
-import java.security.InvalidAlgorithmParameterException;
-import java.security.InvalidKeyException;
-import java.security.Key;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
-import java.security.spec.AlgorithmParameterSpec;
 import java.util.function.Supplier;
 
 /**
@@ -76,9 +71,10 @@ import java.util.function.Supplier;
  *   <li><code>encryptionutilities.max.salt.size=64</code> &mdash; Maximum salt size in bytes</li>
  *   <li><code>encryptionutilities.min.iv.size=8</code> &mdash; Minimum IV size in bytes</li>
  *   <li><code>encryptionutilities.max.iv.size=32</code> &mdash; Maximum IV size in bytes</li>
- *   <li><code>encryptionutilities.legacy.decrypt.enabled=false</code> &mdash; Whether {@code decrypt()} also reads
+ *   <li><code>encryptionutilities.legacy.decrypt.enabled=true</code> &mdash; Whether {@code decrypt()} also reads
  *       the unauthenticated AES-CBC format of java-util 3.3.2 and earlier. Not part of the master switch: it is
- *       off unless set to true</li>
+ *       on unless set to false. Set it to false where a ciphertext can come from someone else (see
+ *       {@link #decrypt(String, String)})</li>
  * </ul>
  *
  * <h3>Security Features</h3>
@@ -128,8 +124,8 @@ import java.util.function.Supplier;
  * <ul>
  *   <li>MD5 and SHA-1 are provided for legacy compatibility but are cryptographically broken</li>
  *   <li>Use SHA-256 or SHA-512 for secure hashing</li>
- *   <li>AES implementation uses GCM mode with authentication; {@code decrypt()} accepts nothing else unless
- *       {@code encryptionutilities.legacy.decrypt.enabled=true}</li>
+ *   <li>AES implementation uses GCM mode with authentication; {@code decrypt()} also reads the unauthenticated
+ *       format of java-util 3.3.2 and earlier unless {@code encryptionutilities.legacy.decrypt.enabled=false}</li>
  *   <li>IV and salt are randomly generated for each encryption</li>
  * </ul>
  *
@@ -786,108 +782,6 @@ public class EncryptionUtilities {
     }
 
     /**
-     * Creates a byte array suitable for use as an AES key from a string password.
-     * <p>
-     * The key is derived using MD5 and truncated to the specified bit length.
-     * This legacy method is retained for backward compatibility.
-     *
-     * @param key        the password to derive the key from
-     * @param bitsNeeded the required key length in bits (typically 128, 192, or 256)
-     * @return byte array containing the derived key
-     * @deprecated Use {@link #deriveKey(String, byte[], int)} for stronger security
-     */
-    public static byte[] createCipherBytes(String key, int bitsNeeded) {
-        String word = calculateMD5Hash(key.getBytes(StandardCharsets.UTF_8));
-        return word.substring(0, bitsNeeded / 8).getBytes(StandardCharsets.UTF_8);
-    }
-
-    /**
-     * Creates the legacy AES cipher in encryption mode.
-     * <p>
-     * This is the cipher {@code encrypt()} used before it moved to AES-GCM, kept byte for byte so data written then
-     * can still be read. It is AES/CBC/PKCS5Padding with no authentication (a changed ciphertext is not detected);
-     * its IV is the MD5 of the key, the same for every message under one password, so the same text always
-     * encrypts to the same ciphertext; and its key is 16 hex digits of an unsalted MD5 of the password, 64 bits.
-     * </p>
-     *
-     * @param key the encryption key
-     * @return Cipher configured for AES encryption
-     * @deprecated do not encrypt new data with it: use {@link #encrypt(String, String)} or
-     *             {@link #encryptBytes(String, byte[])}, which write AES-GCM with a random salt and IV
-     */
-    @Deprecated
-    public static Cipher createAesEncryptionCipher(String key) {
-        return createAesCipher(key, Cipher.ENCRYPT_MODE);
-    }
-
-    /**
-     * Creates the legacy AES cipher in decryption mode.
-     * <p>
-     * This is the cipher {@code encrypt()} used before it moved to AES-GCM, kept byte for byte so data written then
-     * can still be read. It is AES/CBC/PKCS5Padding with no authentication (a changed ciphertext is not detected);
-     * its IV is the MD5 of the key, the same for every message under one password, so the same text always
-     * encrypts to the same ciphertext; and its key is 16 hex digits of an unsalted MD5 of the password, 64 bits.
-     * </p>
-     *
-     * @param key the decryption key
-     * @return Cipher configured for AES decryption
-     * @deprecated only for reading data the legacy cipher wrote; {@link #decrypt(String, String)} and
-     *             {@link #decryptBytes(String, String)} read both formats
-     */
-    @Deprecated
-    public static Cipher createAesDecryptionCipher(String key) {
-        return createAesCipher(key, Cipher.DECRYPT_MODE);
-    }
-
-    /**
-     * Creates an AES cipher with the specified mode.
-     * <p>
-     * Uses CBC mode with PKCS5 padding and IV derived from the key.
-     *
-     * @param key  the encryption/decryption key
-     * @param mode Cipher.ENCRYPT_MODE or Cipher.DECRYPT_MODE
-     * @return configured Cipher instance
-     */
-    @Deprecated
-    public static Cipher createAesCipher(String key, int mode) {
-        Key sKey = new SecretKeySpec(createCipherBytes(key, 128), "AES");
-        return createAesCipher(sKey, mode);
-    }
-
-    /**
-     * Creates an AES cipher with the specified key and mode.
-     * <p>
-     * Uses CBC mode with PKCS5 padding and IV derived from the key.
-     *
-     * @param key  SecretKeySpec for encryption/decryption
-     * @param mode Cipher.ENCRYPT_MODE or Cipher.DECRYPT_MODE
-     * @return configured Cipher instance
-     */
-    @Deprecated
-    public static Cipher createAesCipher(Key key, int mode)  {
-        // Use password key as seed for IV (must be 16 bytes)
-        MessageDigest d = getMD5Digest();
-        d.update(key.getEncoded());
-        byte[] iv = d.digest();
-
-        AlgorithmParameterSpec paramSpec = new IvParameterSpec(iv);
-        Cipher cipher = null;        // CBC faster than CFB8/NoPadding (but file length changes)
-        
-        try {
-            cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
-        } catch (NoSuchAlgorithmException | NoSuchPaddingException e) {
-            ExceptionUtilities.uncheckedThrow(e);
-        }
-
-        try {
-            cipher.init(mode, key, paramSpec);
-        } catch (InvalidKeyException | InvalidAlgorithmParameterException e) {
-            ExceptionUtilities.uncheckedThrow(e);
-        }
-        return cipher;
-    }
-
-    /**
      * Encrypts a string using AES-128.
      *
      * @param key     encryption key
@@ -978,8 +872,19 @@ public class EncryptionUtilities {
         return data.length > 0 && data.length % LEGACY_AES_BLOCK_SIZE == 0;
     }
 
+    /**
+     * Reads the format java-util 3.3.2 and earlier wrote, byte for byte as it was written: AES/CBC/PKCS5Padding with
+     * no authentication; the key is the first 16 hex digits of the unsalted MD5 of the password (64 bits), and the
+     * IV is the MD5 of those key bytes, the same for every message under one password.
+     */
     private static byte[] decryptLegacyPayload(String key, byte[] data) throws Exception {
-        return createAesDecryptionCipher(key).doFinal(data);
+        byte[] keyBytes = calculateMD5Hash(key.getBytes(StandardCharsets.UTF_8)).substring(0, 16)
+                .getBytes(StandardCharsets.UTF_8);
+        MessageDigest md5 = getMD5Digest();
+        md5.update(keyBytes);
+        Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
+        cipher.init(Cipher.DECRYPT_MODE, new SecretKeySpec(keyBytes, "AES"), new IvParameterSpec(md5.digest()));
+        return cipher.doFinal(data);
     }
 
     private static byte[] decryptVersion1Payload(String key, byte[] data) throws Exception {
@@ -996,32 +901,35 @@ public class EncryptionUtilities {
 
     /**
      * Whether decrypt() also reads the format of java-util 3.3.2 and earlier, AES-CBC with no authentication.
-     * Only when the application says so: {@code encryptionutilities.legacy.decrypt.enabled=true}. Read on each call.
+     * Yes unless the application turns it off: {@code encryptionutilities.legacy.decrypt.enabled=false}. Read on
+     * each call. Any value other than "false" (ignoring case) leaves it on.
      */
     private static boolean isLegacyDecryptEnabled() {
-        return Boolean.parseBoolean(System.getProperty(LEGACY_DECRYPT_PROPERTY, "false"));
+        return !"false".equalsIgnoreCase(System.getProperty(LEGACY_DECRYPT_PROPERTY, "true").trim());
     }
 
     /**
-     * With the old format off, an input that is not what encrypt() writes is refused here, before any cipher sees
-     * it and with one answer for every such input. Decrypting it as the old format answered "decrypted" or "bad
+     * With the old format turned off, an input that is not what encrypt() writes is refused here, before any cipher
+     * sees it and with one answer for every such input. Decrypting it as the old format answers "decrypted" or "bad
      * padding", and that answer, asked a few thousand times, is enough to build a ciphertext the application
      * accepts, without the password.
      */
     private static void requireReadableFormat(byte[] data) {
         if (!isVersion1Payload(data) && !isLegacyDecryptEnabled()) {
             throw new IllegalStateException("Not data written by encrypt(): it is not an AES-GCM payload. Data "
-                    + "written by java-util 3.3.2 or earlier (AES-CBC, not authenticated) is read only with "
-                    + LEGACY_DECRYPT_PROPERTY + "=true");
+                    + "written by java-util 3.3.2 or earlier (AES-CBC, not authenticated) is not read while "
+                    + LEGACY_DECRYPT_PROPERTY + "=false");
         }
     }
 
     private static byte[] decryptToBytes(String key, byte[] data) throws Exception {
         if (!isLegacyDecryptEnabled()) {
-            // What encrypt() writes, and nothing else. A failed tag check is a failure: it is not retried as the
-            // old format, where a chosen change to the ciphertext passes the padding check and returns noise.
+            // Turned off: what encrypt() writes, and nothing else. A failed tag check is a failure: it is not retried
+            // as the old format, where a chosen change to the ciphertext passes the padding check and returns noise.
             return decryptVersion1Payload(key, data);
         }
+        // The default: AES-GCM first, then the old format as a second try, as through 4.118.0. Old data whose first
+        // byte happens to be the version byte fails the tag check and is read by the second try.
         if (isVersion1Payload(data)) {
             try {
                 return decryptVersion1Payload(key, data);
@@ -1043,24 +951,25 @@ public class EncryptionUtilities {
     /**
      * Decrypts a hexadecimal string of encrypted data to its original string form.
      * <p>
-     * It reads what {@link #encrypt(String, String)} writes: AES-GCM, which detects a changed ciphertext or a wrong
-     * password and fails. Anything else is refused.
+     * It reads what {@link #encrypt(String, String)} writes, AES-GCM, which detects a changed ciphertext or a wrong
+     * password and fails. If that fails, it tries the format of java-util 3.3.2 and earlier as a second try.
      * </p>
      * <p>
-     * <b>Data written by java-util 3.3.2 or earlier</b> is in another format, AES-CBC with no authentication (see
-     * {@link #createAesDecryptionCipher(String)}), and is read only when the system property
-     * {@code encryptionutilities.legacy.decrypt.enabled} is {@code true}. Turn it on to read such data and
-     * re-encrypt it, and leave it off where the ciphertext can come from anyone else: with it on, a party who can
-     * submit inputs and see whether each one fails can build a ciphertext this method accepts, without the
-     * password, and a changed ciphertext can come back as noise instead of failing. Through 4.118.0 the old format
-     * was always read.
+     * <b>Data written by java-util 3.3.2 or earlier</b> is in another format: AES/CBC/PKCS5Padding with no
+     * authentication, a 64-bit key from an unsalted MD5 of the password, and one IV for every message under a
+     * password. It is read by default, so data kept from those versions keeps working. Set the system property
+     * {@code encryptionutilities.legacy.decrypt.enabled=false} to read AES-GCM only. Do that where a ciphertext can
+     * come from someone else: with the old format on, a party who can submit inputs and see whether each one fails
+     * can build a ciphertext this method accepts, without the password, and a changed ciphertext (or about 1 wrong
+     * password in 256) can come back as noise instead of failing. To leave the old format behind, decrypt each kept
+     * value and save it again with {@link #encrypt(String, String)}, then turn it off.
      * </p>
      *
      * @param key    decryption key
      * @param hexStr hexadecimal string of encrypted data
      * @return decrypted string
      * @throws IllegalStateException if decryption fails, or the input is not an AES-GCM payload and the old
-     *                               format is not turned on
+     *                               format is turned off
      */
     public static String decrypt(String key, String hexStr) {
         if (key == null || hexStr == null) {
@@ -1080,14 +989,14 @@ public class EncryptionUtilities {
 
     /**
      * Decrypts a hexadecimal string of encrypted data to its original byte array form. As
-     * {@link #decrypt(String, String)}: what {@link #encryptBytes(String, byte[])} writes, and the format of
-     * java-util 3.3.2 and earlier only with {@code encryptionutilities.legacy.decrypt.enabled=true}.
+     * {@link #decrypt(String, String)}: what {@link #encryptBytes(String, byte[])} writes, then the format of
+     * java-util 3.3.2 and earlier as a second try, unless {@code encryptionutilities.legacy.decrypt.enabled=false}.
      *
      * @param key    decryption key
      * @param hexStr hexadecimal string of encrypted data
      * @return decrypted byte array
      * @throws IllegalStateException if decryption fails, or the input is not an AES-GCM payload and the old
-     *                               format is not turned on
+     *                               format is turned off
      */
     public static byte[] decryptBytes(String key, String hexStr) {
         if (key == null || hexStr == null) {

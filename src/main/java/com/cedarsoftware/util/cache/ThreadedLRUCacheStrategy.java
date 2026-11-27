@@ -204,20 +204,6 @@ public class ThreadedLRUCacheStrategy<K, V> implements Map<K, V>, Closeable {
     }
 
     /**
-     * Create a ThreadedLRUCacheStrategy with the specified capacity.
-     * <p>
-     * <b>Note:</b> The cleanupDelayMillis parameter is deprecated and ignored.
-     *
-     * @param capacity           int maximum size for the LRU cache.
-     * @param cleanupDelayMillis ignored (formerly: milliseconds before scheduling cleanup)
-     * @deprecated Use {@link #ThreadedLRUCacheStrategy(int)} instead.
-     */
-    @Deprecated
-    public ThreadedLRUCacheStrategy(int capacity, int cleanupDelayMillis) {
-        this(capacity);
-    }
-
-    /**
      * Background cleanup task that runs every 500ms.
      * <p>
      * Uses a global time budget (400ms out of 500ms cycle) shared across all caches.

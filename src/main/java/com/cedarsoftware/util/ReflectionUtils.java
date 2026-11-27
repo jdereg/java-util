@@ -1260,39 +1260,6 @@ public final class ReflectionUtils {
     }
 
     /**
-     * @deprecated As of 3.0.0, replaced by {@link #getAllDeclaredFields(Class)}.
-     * Note that getAllDeclaredFields() includes transient fields and synthetic fields
-     * (like "this$"). If you need the old behavior, filter the additional fields:
-     * <pre>{@code
-            // Combine DEFAULT_FIELD_FILTER with additional criteria for legacy behavior
-            Predicate<Field> legacyFilter = field ->
-            DEFAULT_FIELD_FILTER.test(field) &&
-            !Modifier.isTransient(field.getModifiers()) &&
-            !field.isSynthetic();
-     * }</pre>
-     * This method will be removed in 3.0.0 or soon after.
-     */
-    @Deprecated
-    public static void getDeclaredFields(Class<?> c, Collection<Field> fields) {
-        Convention.throwIfNull(c, "class cannot be null");
-        Convention.throwIfNull(fields, "fields collection cannot be null");
-
-        try {
-            // Combine DEFAULT_FIELD_FILTER with additional criteria for legacy behavior
-            Predicate<Field> legacyFilter = field ->
-                    DEFAULT_FIELD_FILTER.test(field) &&
-                            !Modifier.isTransient(field.getModifiers()) &&
-                            !field.isSynthetic();
-
-            // Get filtered fields and add them to the provided collection
-            List<Field> filteredFields = getDeclaredFields(c, legacyFilter);
-            fields.addAll(filteredFields);
-        } catch (Throwable t) {
-            ExceptionUtilities.safelyIgnoreException(t);
-        }
-    }
-
-    /**
      * Simplifies reflective method invocation: no checked exception is declared, so no try-catch is forced on the
      * caller.
      * <p>

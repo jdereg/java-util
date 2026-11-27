@@ -337,31 +337,6 @@ class EncryptionUtilitiesCoverageTest {
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
-    // ========== Legacy AES cipher methods ==========
-
-    @Test
-    @SuppressWarnings("deprecation")
-    void testCreateAesEncryptionCipher() {
-        javax.crypto.Cipher cipher = EncryptionUtilities.createAesEncryptionCipher("testKey123");
-        assertThat(cipher).isNotNull();
-        assertThat(cipher.getAlgorithm()).contains("AES");
-    }
-
-    @Test
-    @SuppressWarnings("deprecation")
-    void testCreateAesDecryptionCipher() {
-        javax.crypto.Cipher cipher = EncryptionUtilities.createAesDecryptionCipher("testKey123");
-        assertThat(cipher).isNotNull();
-        assertThat(cipher.getAlgorithm()).contains("AES");
-    }
-
-    @Test
-    @SuppressWarnings("deprecation")
-    void testCreateCipherBytes() {
-        byte[] key = EncryptionUtilities.createCipherBytes("password", 128);
-        assertThat(key).hasSize(16); // 128 / 8
-    }
-
     // ========== Security validation — PBKDF2 iterations ==========
 
     @Test
@@ -584,23 +559,20 @@ class EncryptionUtilitiesCoverageTest {
     // ========== Decrypt legacy payload fallback ==========
 
     @Test
-    @SuppressWarnings("deprecation")
     void testDecryptLegacyPayload() throws Exception {
-        // Encrypt with legacy AES/CBC to create old-format ciphertext
-        javax.crypto.Cipher cipher = EncryptionUtilities.createAesEncryptionCipher("legacyKey");
-        String hexStr = ByteUtilities.encode(cipher.doFinal("legacy secret".getBytes(StandardCharsets.UTF_8)));
+        // Old-format (AES/CBC) ciphertext, as java-util 3.3.2 and earlier wrote it
+        String hexStr = LegacyAesFormat.encrypt("legacyKey", "legacy secret".getBytes(StandardCharsets.UTF_8));
 
-        // 4.119.0: read only when the application asks for the old format. (This test caught every exception and
-        // so could not fail; it now asserts both outcomes.)
+        // Read by default (the second try); refused only when the application turns the old format off
         String switchName = "encryptionutilities.legacy.decrypt.enabled";
         String before = System.getProperty(switchName);
         try {
             System.clearProperty(switchName);
+            assertThat(EncryptionUtilities.decrypt("legacyKey", hexStr)).isEqualTo("legacy secret");
+
+            System.setProperty(switchName, "false");
             assertThatThrownBy(() -> EncryptionUtilities.decrypt("legacyKey", hexStr))
                     .isInstanceOf(IllegalStateException.class).hasMessageContaining(switchName);
-
-            System.setProperty(switchName, "true");
-            assertThat(EncryptionUtilities.decrypt("legacyKey", hexStr)).isEqualTo("legacy secret");
         } finally {
             if (before == null) {
                 System.clearProperty(switchName);

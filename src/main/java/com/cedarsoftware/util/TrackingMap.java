@@ -457,16 +457,6 @@ public class TrackingMap<K, V> implements Map<K, V> {
         return map instanceof IdentityHashMap ? new IdentityHashMap<>(map) : new LinkedHashMap<>(map);
     }
 
-    /**
-     * @deprecated Use {@link #replaceContents(Map)} instead. This method
-     * merely replaces the contents of the wrapped map and does not change the
-     * underlying instance.
-     */
-    @Deprecated
-    public void setWrappedMap(Map<K, V> map) {
-        replaceContents(map);
-    }
-
     // ===== ConcurrentMap methods (the wrapped map's own, through the Map defaults where not overridden) =====
     
     /**

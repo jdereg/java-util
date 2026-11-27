@@ -1,6 +1,6 @@
 ### Revision History
 
-#### 4.119.0 - (unreleased)
+#### 4.119.0 - 2026-11-27
 > **Action may be needed if you call a deprecated method: 30 are removed**
 >
 > **What changed.** These deprecated methods and classes are gone. Each had a replacement for several releases:
